@@ -80,10 +80,10 @@
   <div id="msg"></div>
 
   <section id="secClave" class="tarjeta oculto">
-    <h2>Clave de administrador</h2>
-    <p class="mut" style="margin-top:0">Está en tu archivo CLAVES.txt. Solo la escribes una vez en cada dispositivo.</p>
+    <h2>Contraseña de administrador</h2>
+    <p class="mut" style="margin-top:0">La primera vez es la clave del archivo CLAVES.txt (la primera línea, solo la clave). Después puedes cambiarla por una contraseña tuya en Ajustes. Solo se escribe una vez en cada dispositivo.</p>
     <div class="fila">
-      <input id="clave" type="password" placeholder="Pega aquí tu clave" autocomplete="current-password">
+      <input id="clave" type="password" placeholder="Pega aquí tu contraseña" autocomplete="current-password">
       <button id="btnClave">Entrar</button>
     </div>
   </section>
@@ -143,6 +143,14 @@
           <button id="btnGuardarCfg">Guardar ajustes</button>
           <button class="sec" id="btnPlantillaDef">Restaurar mensaje</button>
         </div>
+        <hr style="border:0;border-top:1px solid var(--borde);margin:16px 0">
+        <label>Cambiar la contraseña de administrador (mínimo 8 caracteres)</label>
+        <div class="fila">
+          <input id="nuevaClave" type="password" placeholder="Nueva contraseña" autocomplete="new-password">
+          <input id="nuevaClave2" type="password" placeholder="Repítela" autocomplete="new-password">
+          <button class="sec" id="btnCambiarClave">Cambiar</button>
+        </div>
+        <p class="mut">Vale para todos tus dispositivos. Guárdala en un lugar seguro: si la pierdes, hay que restablecerla desde Supabase (ver GUIA.md).</p>
         <hr style="border:0;border-top:1px solid var(--borde);margin:16px 0">
         <p class="mut" id="baseLinks" style="word-break:break-all"></p>
         <div class="fila">
@@ -208,6 +216,8 @@
   function mensaje(link, hasta) { return st.cfg.plantilla.replace(/\{link\}/g, link).replace(/\{hasta\}/g, fecha(hasta)); }
 
   // ---------- Arranque ----------
+  // Acepta la clave aunque venga pegada con "ADMIN_KEY=", comillas o espacios.
+  function limpiarClave(v) { return String(v || '').trim().replace(/^ADMIN_KEY\s*=\s*/i, '').replace(/^["']+|["']+$/g, '').trim(); }
   function entrar() {
     if (!st.clave) { $('#secClave').classList.remove('oculto'); return; }
     api('/ping').then(function () {
@@ -215,12 +225,23 @@
       $('#secClave').classList.add('oculto'); $('#app').classList.remove('oculto');
       return cargarCfg().then(cargarClases);
     }).catch(function (e) {
-      aviso(e.message, 'mal'); st.clave = ''; try { localStorage.removeItem('al_clave'); } catch (x) {}
+      var m = /incorrecta/i.test(e.message) ? 'Contraseña incorrecta. Si es la primera vez, copia solo la clave de la primera línea de CLAVES.txt, sin espacios.' : e.message;
+      aviso(m, 'mal'); st.clave = ''; try { localStorage.removeItem('al_clave'); } catch (x) {}
       $('#secClave').classList.remove('oculto');
     });
   }
-  $('#btnClave').addEventListener('click', function () { st.clave = $('#clave').value.trim(); entrar(); });
-  $('#clave').addEventListener('keydown', function (e) { if (e.key === 'Enter') { st.clave = $('#clave').value.trim(); entrar(); } });
+  $('#btnClave').addEventListener('click', function () { st.clave = limpiarClave($('#clave').value); entrar(); });
+  $('#clave').addEventListener('keydown', function (e) { if (e.key === 'Enter') { st.clave = limpiarClave($('#clave').value); entrar(); } });
+  $('#btnCambiarClave').addEventListener('click', function () {
+    var n1 = $('#nuevaClave').value, n2 = $('#nuevaClave2').value;
+    if (n1.length < 8) return aviso('La contraseña debe tener al menos 8 caracteres', 'mal');
+    if (n1 !== n2) return aviso('Las dos contraseñas no coinciden', 'mal');
+    api('/clave', { method: 'POST', body: { nueva: n1 } }).then(function () {
+      st.clave = n1; try { localStorage.setItem('al_clave', n1); } catch (e) {}
+      $('#nuevaClave').value = ''; $('#nuevaClave2').value = '';
+      aviso('Contraseña cambiada. Úsala desde ahora en todos tus dispositivos.');
+    }).catch(function (e) { aviso(e.message, 'mal'); });
+  });
   $('#btnSalir').addEventListener('click', function () { try { localStorage.removeItem('al_clave'); } catch (e) {} location.reload(); });
 
   // ---------- Ajustes (se guardan en el servidor: valen igual en celular y computadora) ----------

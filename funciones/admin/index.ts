@@ -90,6 +90,18 @@ Deno.serve(async (req: Request) => {
     // ---------- Verificación de clave ----------
     if (recurso === "ping") return json({ ok: true, base: BASE, base_links: await baseLinks() });
 
+    // ---------- Cambiar la contraseña de administrador (ya autenticado con la actual) ----------
+    if (recurso === "clave" && m === "POST") {
+      const b = await leerJson(req);
+      const nueva = String(b.nueva ?? "");
+      if (nueva.length < 8 || nueva.length > 200) return json({ error: "La contraseña debe tener entre 8 y 200 caracteres" }, 400);
+      const h = await sha256hex(nueva);
+      const { error } = await supabase.from("config").upsert({ clave: "admin_key_sha256", valor: h });
+      if (error) throw error;
+      hashGuardado = h;
+      return json({ ok: true });
+    }
+
     // ---------- Configuración ----------
     if (recurso === "config" && m === "GET") {
       const { data } = await supabase.from("config").select("clave, valor").neq("clave", "admin_key_sha256");
