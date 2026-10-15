@@ -136,23 +136,25 @@
     </section>
 
     <section id="secEnviados" class="tarjeta oculto">
-      <h2>Enviados en esta clase <span id="resumen" class="mut" style="text-transform:none;letter-spacing:0;font-weight:500"></span></h2>
+      <h2>Links activos de hoy <span id="resumen" class="mut" style="text-transform:none;letter-spacing:0;font-weight:500"></span></h2>
       <div id="enviados"></div>
-    </section>
-
-    <section class="tarjeta" id="secPass">
-      <h2>Contraseña de acceso</h2>
-      <p class="mut" style="margin-top:0">Elige una contraseña fácil de recordar (mínimo 8 caracteres). Con ella entras desde cualquier dispositivo. La clave del archivo CLAVES.txt seguirá funcionando siempre como respaldo.</p>
-      <div class="fila">
-        <input id="nuevaClave" type="password" placeholder="Nueva contraseña" autocomplete="new-password">
-        <input id="nuevaClave2" type="password" placeholder="Repítela" autocomplete="new-password">
-      </div>
-      <button id="btnGuardarClave" style="margin-top:10px;width:100%">Guardar contraseña</button>
+      <details id="anteriores" class="oculto" style="margin-top:10px">
+        <summary class="mut" id="anterioresTitulo">Ver anteriores</summary>
+        <div id="enviadosAnteriores"></div>
+      </details>
     </section>
 
     <section class="tarjeta">
       <details>
         <summary>Ajustes</summary>
+        <label style="margin-top:12px;font-weight:600;color:var(--tx)">Contraseña de acceso</label>
+        <p class="mut" style="margin:0 0 6px">Mínimo 8 caracteres. Con ella entras desde cualquier dispositivo. La clave del archivo CLAVES.txt sigue funcionando siempre como respaldo.</p>
+        <div class="fila">
+          <input id="nuevaClave" type="password" placeholder="Nueva contraseña" autocomplete="new-password">
+          <input id="nuevaClave2" type="password" placeholder="Repítela" autocomplete="new-password">
+          <button id="btnGuardarClave">Guardar contraseña</button>
+        </div>
+        <hr style="border:0;border-top:1px solid var(--borde);margin:16px 0">
         <label>Horas que vive el link desde que lo compartes</label>
         <input id="cfgVigencia" type="number" min="1" max="720" step="1" inputmode="numeric">
         <label>Minutos que sigue vivo después de que lo abren (para recargar o reconectar)</label>
@@ -508,23 +510,46 @@
   });
 
   // ---------- Enviados ----------
+  // Momento en que un link activo deja de servir: su vigencia, o pocos minutos después de que entraron.
+  function finDe(a) {
+    var fin = new Date(a.expira_en).getTime();
+    if (a.primer_uso_en) fin = Math.min(fin, new Date(a.primer_uso_en).getTime() + a.minutos_tras_apertura * 60000);
+    return fin;
+  }
+  function cuentaAtras(ms) {
+    if (ms <= 0) return 'terminó';
+    var s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), seg = s % 60;
+    if (h > 0) return h + ' h ' + (m < 10 ? '0' : '') + m + ' min';
+    if (m > 0) return m + ' min ' + (seg < 10 ? '0' : '') + seg + ' s';
+    return seg + ' s';
+  }
+  function filaEnviado(a, vivo) {
+    return '<div class="enviado"><div class="info"><span class="num">' + esc(a.alumno) + '</span> <span class="mut">· enviado ' + hora(a.enviado_en) + (a.primer_uso_en ? ' · entró ' + hora(a.primer_uso_en) : '') + '</span>' +
+      (vivo ? '<div class="mut">⏱ <strong class="cuenta" data-fin="' + finDe(a) + '">' + cuentaAtras(finDe(a) - Date.now()) + '</strong> ' + (a.primer_uso_en ? 'para que se cierre' : 'de vigencia') + '</div>' : '<div class="mut">venció ' + fecha(a.expira_en) + '</div>') +
+      '</div>' + chip(a.estado) +
+      (vivo ? '<button class="sec chica" data-msg="' + a.id + '">Mensaje</button><button class="sec chica" data-qr="' + a.id + '">QR</button><button class="peligro chica" data-rev="' + a.id + '">Revocar</button>' : '') + '</div>';
+  }
   function cargarEnviados() {
     if (!st.clase) return Promise.resolve();
     return api('/accesos?clase_id=' + st.clase.id).then(function (as) {
       st.enviados = as.filter(function (a) { return a.enviado_en; });
+      var vivos = st.enviados.filter(function (a) { return a.estado === 'pendiente' || a.estado === 'abierto'; });
+      var otros = st.enviados.filter(function (a) { return !(a.estado === 'pendiente' || a.estado === 'abierto'); });
       var entraron = st.enviados.filter(function (a) { return a.primer_uso_en; }).length;
-      $('#resumen').textContent = st.enviados.length ? '· ' + st.enviados.length + ' enviados · ' + entraron + ' entraron' : '';
-      var html = st.enviados.length ? '' : '<p class="mut" style="margin:0">Todavía no has compartido ningún link de esta clase.</p>';
-      st.enviados.forEach(function (a) {
-        var vivo = a.estado === 'pendiente' || a.estado === 'abierto';
-        html += '<div class="enviado"><div class="info"><span class="num">' + esc(a.alumno) + '</span> <span class="mut">· enviado ' + hora(a.enviado_en) + (a.primer_uso_en ? ' · entró ' + hora(a.primer_uso_en) : '') + ' · vence ' + fecha(a.expira_en) + '</span></div>' +
-          chip(a.estado) +
-          (vivo ? '<button class="sec chica" data-msg="' + a.id + '">Mensaje</button><button class="sec chica" data-qr="' + a.id + '">QR</button><button class="peligro chica" data-rev="' + a.id + '">Revocar</button>' : '') + '</div>';
-      });
-      $('#enviados').innerHTML = html;
+      $('#resumen').textContent = st.enviados.length ? '· ' + vivos.length + ' activos · ' + entraron + ' entraron' : '';
+      $('#enviados').innerHTML = vivos.length ? vivos.map(function (a) { return filaEnviado(a, true); }).join('') : '<p class="mut" style="margin:0">' + (st.enviados.length ? 'Ningún link activo en este momento.' : 'Todavía no has compartido ningún link de esta clase.') + '</p>';
+      $('#anteriores').classList.toggle('oculto', !otros.length);
+      $('#anterioresTitulo').textContent = 'Ver anteriores (' + otros.length + ')';
+      $('#enviadosAnteriores').innerHTML = otros.map(function (a) { return filaEnviado(a, false); }).join('');
     }).catch(function () {});
   }
-  $('#enviados').addEventListener('click', function (ev) {
+  // Contrarreloj en vivo; cuando uno llega a cero, se recarga la lista para que cambie de estado.
+  setInterval(function () {
+    var ahora = Date.now(), vencido = false;
+    document.querySelectorAll('.cuenta').forEach(function (el) { var ms = Number(el.dataset.fin) - ahora; el.textContent = cuentaAtras(ms); if (ms <= 0) vencido = true; });
+    if (vencido && document.visibilityState === 'visible') cargarEnviados();
+  }, 1000);
+  $('#secEnviados').addEventListener('click', function (ev) {
     var b = ev.target.closest('button'); if (!b) return;
     var id = b.dataset.rev || b.dataset.qr || b.dataset.msg;
     var a = st.enviados.filter(function (x) { return x.id === id; })[0]; if (!a) return;
