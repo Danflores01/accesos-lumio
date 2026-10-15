@@ -131,7 +131,7 @@
         <button class="sec chica" id="btnCopiarLink">Copiar solo el link</button>
       </div>
       <p class="mut" id="notaSiguiente" style="margin-bottom:0"></p>
-      <p class="mut" style="margin:6px 0 0">El link solo se gasta cuando alguien pulsa "Entrar a la clase". El QR es el mismo link en imagen, con las mismas reglas: sirve para que un hijo lo escanee desde su iPad o tablet. Cada link enviado tiene su botón QR en la lista de abajo.</p>
+      <p class="mut" style="margin:6px 0 0">En el celular, el botón manda el mensaje con el link y la foto del QR en un solo envío. En la computadora abre WhatsApp con el mensaje y deja la foto del QR copiada: pégala en el chat con Ctrl+V. El link solo se gasta cuando alguien pulsa "Entrar a la clase"; el QR es el mismo link en imagen, con las mismas reglas.</p>
       <div id="fallo" class="oculto" style="margin-top:10px"></div>
     </section>
 
@@ -159,7 +159,7 @@
         <input id="cfgMinutos" type="number" min="1" max="1440" inputmode="numeric">
         <label>Clics máximos</label>
         <input id="cfgMaxUsos" type="number" min="1" max="50" inputmode="numeric">
-        <label>Mensaje de WhatsApp. Variables: {link} {hasta} {horas}</label>
+        <label>Mensaje de WhatsApp. Variables: {link} {hasta} {horas}. El link va siempre: si no escribes {link}, se agrega al final.</label>
         <textarea id="cfgPlantilla"></textarea>
         <div class="fila" style="margin-top:10px">
           <button id="btnGuardarCfg">Guardar ajustes</button>
@@ -240,7 +240,12 @@
     var fallback = function () { var t = document.createElement('textarea'); t.value = texto; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { aviso('No se pudo copiar', 'mal'); } document.body.removeChild(t); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(done, fallback); else fallback();
   }
-  function mensaje(link, hasta) { return st.cfg.plantilla.replace(/\{link\}/g, link).replace(/\{hasta\}/g, fecha(hasta)).replace(/\{horas\}/g, st.cfg.vigencia_horas); }
+  // El mensaje SIEMPRE lleva el link: si la plantilla no tiene {link}, se agrega al final.
+  function mensaje(link, hasta) {
+    var t = st.cfg.plantilla;
+    if (t.indexOf('{link}') === -1) t = t.replace(/\s+$/, '') + '\n\n👉 Tu acceso: {link}';
+    return t.replace(/\{link\}/g, link).replace(/\{hasta\}/g, fecha(hasta)).replace(/\{horas\}/g, st.cfg.vigencia_horas);
+  }
 
   // ---------- Arranque ----------
   // Acepta la clave aunque venga pegada con "ADMIN_KEY=", comillas o espacios.
@@ -416,8 +421,20 @@
   function siguiente() {
     if (!st.clase) return Promise.resolve();
     return api('/siguiente', { method: 'POST', body: { clase_id: st.clase.id, minutos_tras_apertura: st.cfg.minutos_tras_apertura, max_usos: st.cfg.max_usos } })
-      .then(function (b) { st.borrador = b; pintarSiguiente(); })
+      .then(function (b) { st.borrador = b; prepararQR(); pintarSiguiente(); })
       .catch(function (e) { aviso(e.message, 'mal'); });
+  }
+  // La imagen del QR del siguiente link se prepara por adelantado para que "Compartir" sea instantáneo
+  // (en el celular la hoja de compartir debe abrirse justo al tocar). Se refresca cada 5 min.
+  function prepararQR() {
+    var b = st.borrador; if (!b || !st.clase) { st.qrBorrador = null; return; }
+    var hasta = new Date(Date.now() + st.cfg.vigencia_horas * 3600 * 1000);
+    var p = tarjetaQR(b.link, st.clase.nombre, hasta); p.catch(function () {});
+    st.qrBorrador = { id: b.id, promesa: p, creado: Date.now() };
+  }
+  function qrDelBorrador(b, hasta) {
+    if (st.qrBorrador && st.qrBorrador.id === b.id && Date.now() - st.qrBorrador.creado < 10 * 60 * 1000) return st.qrBorrador.promesa;
+    return tarjetaQR(b.link, st.clase.nombre, hasta);
   }
   function pintarSiguiente() {
     var b = st.borrador;
@@ -454,12 +471,24 @@
       activar(b).then(function () { st.compartiendo = false; return siguiente(); }).then(cargarEnviados);
     };
     var cancelado = function () { st.compartiendo = false; pintarSiguiente(); };
+    var qr = qrDelBorrador(b, hasta);
     if (esMovil && navigator.share) {
-      // En el celular: hoja de compartir del sistema. Solo se activa si de verdad se compartió (si cancelas, no se gasta).
-      navigator.share({ text: msg }).then(despues, cancelado);
+      // En el celular: hoja de compartir del sistema con la foto del QR y el mensaje (link + reglas).
+      // Solo se activa si de verdad se compartió (si cancelas, no se gasta).
+      var soloTexto = function () { navigator.share({ text: msg }).then(despues, cancelado); };
+      if (puedeCompartirArchivos()) {
+        qr.then(function (blob) {
+          var f = new File([blob], nombreArchivo(b), { type: 'image/png' });
+          return navigator.share({ files: [f], text: msg, title: 'Acceso a la clase' });
+        }).then(despues, function (e) { if (e && e.name === 'AbortError') cancelado(); else soloTexto(); });
+      } else soloTexto();
     } else {
-      // En la computadora: WhatsApp Web / Escritorio con el mensaje listo para elegir el chat.
+      // En la computadora: WhatsApp Web / Escritorio con el mensaje listo; la foto del QR queda copiada para pegarla.
       window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+      var datos = { id: b.id, alumno: b.alumno, link: b.link, clase: st.clase.nombre, expira_en: hasta.toISOString() };
+      copiarPNG(qr).then(
+        function () { aviso('Mensaje listo en WhatsApp. La foto del QR quedó copiada: en el chat, pégala con Ctrl+V y envía.', 'info', 12000); },
+        function () { abrirQR(datos); aviso('Mensaje listo en WhatsApp. Manda también la foto del QR desde esta ventana (Copiar imagen o Descargar).', 'info', 12000); });
       despues();
     }
   }
@@ -518,7 +547,12 @@
   });
 
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && st.clase) { cargarEnviados(); if (!st.borrador && !st.compartiendo) siguiente(); } });
-  setInterval(function () { if (document.visibilityState === 'visible' && st.clase) cargarEnviados(); }, 30000);
+  setInterval(function () {
+    if (document.visibilityState !== 'visible' || !st.clase) return;
+    cargarEnviados();
+    if (st.borrador && (!st.qrBorrador || st.qrBorrador.id !== st.borrador.id || Date.now() - st.qrBorrador.creado > 5 * 60 * 1000)) prepararQR();
+  }, 30000);
+  window.addEventListener('load', function () { if (st.borrador && !st.qrBorrador) prepararQR(); });
 
   entrar();
 })();
