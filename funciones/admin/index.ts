@@ -37,16 +37,23 @@ async function leerConfig(clave: string): Promise<string | null> {
   return data?.valor ?? null;
 }
 
-let hashGuardado: string | null = null;
+// Dos llaves válidas: la contraseña que elige el administrador (admin_key_sha256) y la clave de
+// respaldo del archivo CLAVES.txt (recovery_key_sha256), que nunca cambia desde la app.
+const CLAVES_CONFIG = ["admin_key_sha256", "recovery_key_sha256"];
+let hashes: string[] | null = null;
+async function cargarHashes(): Promise<string[]> {
+  const { data } = await supabase.from("config").select("valor").in("clave", CLAVES_CONFIG);
+  return (data ?? []).map((r) => r.valor);
+}
 async function autorizado(req: Request): Promise<boolean> {
   const clave = req.headers.get("x-admin-key") ?? "";
   if (!clave) return false;
   const h = await sha256hex(clave);
-  if (!hashGuardado) hashGuardado = await leerConfig("admin_key_sha256");
-  if (hashGuardado && h === hashGuardado) return true;
-  // Por si la clave se rotó desde la base: recargar una vez.
-  hashGuardado = await leerConfig("admin_key_sha256");
-  return !!hashGuardado && h === hashGuardado;
+  if (!hashes) hashes = await cargarHashes();
+  if (hashes.includes(h)) return true;
+  // Por si la contraseña cambió desde otra instancia: recargar una vez.
+  hashes = await cargarHashes();
+  return hashes.includes(h);
 }
 
 const json = (body: unknown, status = 200) =>
@@ -98,13 +105,13 @@ Deno.serve(async (req: Request) => {
       const h = await sha256hex(nueva);
       const { error } = await supabase.from("config").upsert({ clave: "admin_key_sha256", valor: h });
       if (error) throw error;
-      hashGuardado = h;
+      hashes = null;
       return json({ ok: true });
     }
 
     // ---------- Configuración ----------
     if (recurso === "config" && m === "GET") {
-      const { data } = await supabase.from("config").select("clave, valor").neq("clave", "admin_key_sha256");
+      const { data } = await supabase.from("config").select("clave, valor").not("clave", "in", `(${CLAVES_CONFIG.map((c) => `"${c}"`).join(",")})`);
       return json(Object.fromEntries((data ?? []).map((r) => [r.clave, r.valor])));
     }
     if (recurso === "config" && m === "POST") {
