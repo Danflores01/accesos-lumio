@@ -39,7 +39,7 @@ Todo corre en planes gratuitos (GitHub Pages y Supabase Free).
 
 ## Ajustes (se guardan en el servidor, valen igual en celular y computadora)
 
-- **Horas que vive el link desde que lo compartes** (24 por defecto). Si no entran en ese
+- **Horas que vive el link desde que lo compartes** (8 por defecto). Si no entran en ese
   tiempo, el link vence: "ya es problema del cliente".
 - **Minutos que sigue vivo después de abrirlo** (10 por defecto): para que puedan recargar o
   reconectarse, pero no para que lo compartan después.
@@ -94,3 +94,18 @@ termine la cohorte para que ese link también cambie).
 - Supabase no sirve HTML desde su dominio gratuito (lo convierte a texto plano), por eso las páginas
   viven en GitHub Pages y el servidor solo responde JSON o redirecciones.
 - Paleta tomada del sitio de Lumio: amarillo `#FECC4F`, crema `#F9F5EA`, morado `#6A448E`, texto `#2A2A2A`.
+
+## Código QR (opcional)
+
+El QR es **el mismo link personal dibujado como imagen**, no un código distinto, así que al
+escanearlo aplican las mismas reglas: abre la página amarilla, el acceso se gasta solo al pulsar
+"Entrar a la clase", y valen la misma vigencia, el mismo límite de clics y la revocación.
+
+Sirve para el caso típico: el link llega al teléfono de la mamá y el hijo entrará desde su iPad o
+tablet. La mamá le muestra la imagen y el hijo la escanea con la cámara.
+
+- **Para un link ya enviado:** en la lista "Enviados en esta clase", botón **QR** > Compartir (en el
+  celular), Copiar imagen (para pegarla con Ctrl+V en WhatsApp Web) o Descargar.
+- **Para el siguiente link, sin mandar mensaje:** botón **Mostrar QR** en "Siguiente persona". Lo
+  activa (cuenta como enviado) y lo muestra en grande, listo para que lo escaneen o para mandarlo.
+- El QR solo se genera para links activos: no hay forma de mostrar un QR que "todavía no sirva".
