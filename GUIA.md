@@ -9,12 +9,12 @@ link, el otro lo encuentra cerrado.
 
 | Pieza | Dónde |
 |---|---|
-| **La app** (celular y computadora) | https://danyungla01.github.io/accesos-lumio/ |
+| **La app** (celular y computadora) | https://danflores01.github.io/accesos-lumio/ |
 | Clave de administrador | `CLAVES.txt` (archivo privado; nunca está en internet) |
-| Lo que ve el alumno | `https://danyungla01.github.io/accesos-lumio/entrar.html#<código>` |
-| Código fuente | https://github.com/DanYungla01/accesos-lumio |
+| Lo que ve el alumno | `https://danflores01.github.io/accesos-lumio/entrar.html#<código>` |
+| Código fuente | https://github.com/Danflores01/accesos-lumio |
 | Servidor (base de datos y funciones) | Supabase, proyecto `accesos-lumio`: https://supabase.com/dashboard/project/wfqfqfsbkqbaejnkhidz |
-| Panel avanzado (con nombres y teléfonos) | https://danyungla01.github.io/accesos-lumio/panel.html |
+| Panel avanzado (con nombres y teléfonos) | https://danflores01.github.io/accesos-lumio/panel.html |
 
 Todo corre en planes gratuitos (GitHub Pages y Supabase Free).
 
