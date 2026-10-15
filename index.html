@@ -107,8 +107,10 @@
         <div id="claseUrl" class="url"></div>
         <div class="fila" style="margin-top:10px">
           <button class="sec chica" id="btnCambiar">Cambiar link</button>
+          <button class="peligro chica" id="btnCerrarClase">Cerrar clase</button>
           <select id="selClases" class="oculto" style="flex:1;min-width:160px;padding:8px 12px"></select>
         </div>
+        <p class="mut" style="margin:8px 0 0">Cerrar la clase apaga al instante todos los links que compartiste de ella.</p>
       </div>
       <div id="claseNueva">
         <label>Pega aquí el link de Lumio de la clase de hoy</label>
@@ -360,6 +362,19 @@
   $('#selClases').addEventListener('change', function () { st.claseId = this.value; try { localStorage.setItem('al_clase', st.claseId); } catch (e) {} st.borrador = null; cargarClases(); });
   $('#btnCambiar').addEventListener('click', function () { $('#claseActual').classList.add('oculto'); $('#claseNueva').classList.remove('oculto'); $('#nuevaUrl').focus(); });
   $('#btnCancelarClase').addEventListener('click', function () { pintarClase(); });
+  // Cerrar la clase: queda inactiva y TODOS sus links (enviados o no) dejan de servir al instante.
+  $('#btnCerrarClase').addEventListener('click', function () {
+    var c = st.clase; if (!c) return;
+    var vivos = st.enviados.filter(function (a) { return a.estado === 'pendiente' || a.estado === 'abierto'; }).length;
+    if (!confirm('¿Cerrar "' + c.nombre + '"? ' + (vivos ? 'Sus ' + vivos + ' links activos dejarán de funcionar al instante.' : 'Todos sus links dejarán de funcionar.') + ' Para la siguiente clase pegarás un link nuevo.')) return;
+    $('#btnCerrarClase').disabled = true;
+    api('/clases/' + c.id, { method: 'PATCH', body: { activa: false } }).then(function () {
+      st.claseId = ''; st.clase = null; st.borrador = null; st.qrBorrador = null; st.enviados = [];
+      try { localStorage.removeItem('al_clase'); } catch (e) {}
+      aviso('Clase cerrada. Todos sus links quedaron apagados.', 'ok', 8000);
+      return cargarClases();
+    }).catch(function (e) { aviso(e.message, 'mal'); }).then(function () { $('#btnCerrarClase').disabled = false; });
+  });
   $('#btnGuardarClase').addEventListener('click', function () {
     var url = $('#nuevaUrl').value.trim();
     if (!/^https?:\/\//i.test(url)) return aviso('Pega el link completo de Lumio (empieza con https://)', 'mal');
