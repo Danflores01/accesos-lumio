@@ -21,7 +21,7 @@ Todo corre en planes gratuitos (GitHub Pages y Supabase Free).
 ## Cómo se usa, paso a paso
 
 1. **Primera vez:** abre la app y pega la primera línea de `CLAVES.txt` (solo la clave). Luego, en la tarjeta "Contraseña de acceso", guarda una contraseña fácil: con ella entras desde cualquier dispositivo. La clave del archivo sigue funcionando siempre como respaldo.
-   Para el celular: abre la misma dirección y escribe tu contraseña, o en la computadora abre Ajustes > "Abrir en mi celular (QR)" y escanea el código
+   Para el celular: abre la misma dirección en el navegador del teléfono y escribe tu contraseña
    con la cámara del teléfono. Luego agrégala a la pantalla de inicio (Compartir > "Agregar a
    inicio" en iPhone; menú > "Agregar a pantalla principal" en Android).
 2. **Cada día de clase:** en Lumio copia el link de "Compartir" de la clase y pégalo en la app

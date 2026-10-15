@@ -169,13 +169,10 @@
         </div>
         <hr style="border:0;border-top:1px solid var(--borde);margin:16px 0">
         <p class="mut" id="baseLinks" style="word-break:break-all"></p>
+        <p class="mut">Para usar la app en el celular: abre esta misma dirección en el navegador del teléfono, escribe tu contraseña y elige "Agregar a pantalla de inicio".</p>
         <div class="fila">
-          <button class="sec" id="btnQR">📱 Abrir en mi celular (QR)</button>
+          <button class="sec" id="btnCopiarApp">Copiar dirección de la app</button>
           <button class="sec" id="btnSalir">Cerrar sesión en este dispositivo</button>
-        </div>
-        <div id="qrCaja" class="oculto" style="margin-top:12px">
-          <p class="mut">Escanea este código con la cámara del celular: abre la app ya con tu contraseña puesta. Luego, en el navegador del celular, elige "Agregar a pantalla de inicio" para tenerla como app.</p>
-          <div id="qr"></div>
         </div>
       </details>
     </section>
@@ -216,9 +213,8 @@
   };
   try { st.clave = localStorage.getItem('al_clave') || ''; st.claseId = localStorage.getItem('al_clase') || ''; } catch (e) {}
 
-  // Contraseña que llega por QR: #clave=XXXX
-  var h = (location.hash || '').match(/clave=([^&]+)/);
-  if (h) { try { st.clave = decodeURIComponent(h[1]); localStorage.setItem('al_clave', st.clave); } catch (e) {} history.replaceState(null, '', location.pathname + location.search); }
+  // Si la dirección trae algo después de "#", se limpia (nunca se acepta una contraseña por la dirección).
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function fecha(iso) { if (!iso) return '—'; return new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\.\s*,/, ','); }
@@ -242,11 +238,13 @@
     var fallback = function () { var t = document.createElement('textarea'); t.value = texto; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { aviso('No se pudo copiar', 'mal'); } document.body.removeChild(t); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(done, fallback); else fallback();
   }
-  // El mensaje SIEMPRE lleva el link: si la plantilla no tiene {link}, se agrega al final.
+  // Quita del texto cualquier dirección web (la del panel, por ejemplo). La única que puede ir es el link del alumno.
+  function sinDirecciones(t) { return String(t || '').replace(/https?:\/\/\S+/gi, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n'); }
+  // El mensaje SIEMPRE lleva el link del alumno, una sola vez: si la plantilla no tiene {link}, se agrega al final.
   function mensaje(link, hasta) {
-    var t = st.cfg.plantilla;
+    var t = sinDirecciones(st.cfg.plantilla);
     if (t.indexOf('{link}') === -1) t = t.replace(/\s+$/, '') + '\n\n👉 Tu acceso: {link}';
-    return t.replace(/\{link\}/g, link).replace(/\{hasta\}/g, fecha(hasta)).replace(/\{horas\}/g, st.cfg.vigencia_horas);
+    return t.replace(/\{link\}/g, link).replace(/\{hasta\}/g, fecha(hasta)).replace(/\{horas\}/g, st.cfg.vigencia_horas).trim();
   }
 
   // ---------- Arranque ----------
@@ -308,14 +306,30 @@
     $('#cfgMaxUsos').value = st.cfg.max_usos; $('#cfgPlantilla').value = st.cfg.plantilla;
     $('#notaSiguiente').textContent = 'Al compartir, el link se activa y vive ' + st.cfg.vigencia_horas + ' h. Después de que entran, se cierra a los ' + st.cfg.minutos_tras_apertura + ' min. Enseguida aparece uno nuevo para la siguiente persona.';
   }
+  // "Guardar ajustes" guarda todo lo de la sección, incluida la contraseña si se escribió.
   $('#btnGuardarCfg').addEventListener('click', function () {
+    var plantilla = $('#cfgPlantilla').value.trim() || PLANTILLA_DEF;
+    var teniaDireccion = /https?:\/\//i.test(plantilla);
+    plantilla = sinDirecciones(plantilla).trim() || PLANTILLA_DEF;
     var c = {
       vigencia_horas: String(Math.max(1, Number($('#cfgVigencia').value) || 8)),
       minutos_tras_apertura: String(Math.max(1, Number($('#cfgMinutos').value) || 10)),
       max_usos: String(Math.max(1, Number($('#cfgMaxUsos').value) || 3)),
-      plantilla: $('#cfgPlantilla').value.trim() || PLANTILLA_DEF
+      plantilla: plantilla
     };
-    api('/config', { method: 'POST', body: c }).then(function () { aviso('Ajustes guardados'); return cargarCfg(); }).then(siguiente).catch(function (e) { aviso(e.message, 'mal'); });
+    var n1 = $('#nuevaClave').value, n2 = $('#nuevaClave2').value;
+    if (n1 || n2) {
+      if (n1.length < 8) return aviso('La contraseña debe tener al menos 8 caracteres', 'mal');
+      if (n1 !== n2) return aviso('Las dos contraseñas no coinciden', 'mal');
+    }
+    $('#btnGuardarCfg').disabled = true;
+    api('/config', { method: 'POST', body: c })
+      .then(function () { return n1 ? api('/clave', { method: 'POST', body: { nueva: n1 } }).then(function () { st.clave = n1; try { localStorage.setItem('al_clave', n1); } catch (e) {} $('#nuevaClave').value = ''; $('#nuevaClave2').value = ''; }) : null; })
+      .then(function () {
+        aviso(teniaDireccion ? 'Ajustes guardados. Se quitó una dirección web del mensaje: el link del alumno se agrega solo (o donde pongas {link}).' : (n1 ? 'Ajustes y contraseña guardados.' : 'Ajustes guardados.'), 'ok', 8000);
+        return cargarCfg();
+      })
+      .then(siguiente).catch(function (e) { aviso(e.message, 'mal'); }).then(function () { $('#btnGuardarCfg').disabled = false; });
   });
   $('#btnPlantillaDef').addEventListener('click', function () { $('#cfgPlantilla').value = PLANTILLA_DEF; });
 
@@ -395,6 +409,14 @@
   function puedeCompartirArchivos() {
     try { return esMovil && !!navigator.share && !!navigator.canShare && navigator.canShare({ files: [new File([new Blob(['x'])], 'x.png', { type: 'image/png' })] }); } catch (e) { return false; }
   }
+  // Qué se entrega a la hoja de compartir del celular. El link del alumno va declarado como "url" (el único
+  // enlace del envío). En Android el sistema lo pega al final del texto, así que ahí el texto va sin el link
+  // para que aparezca una sola vez; en iPhone el texto conserva el link por si el sistema omite "url".
+  var esAndroid = /Android/i.test(navigator.userAgent);
+  function datosCompartir(msg, link) {
+    var texto = esAndroid ? msg.replace(/👉 Tu acceso:\s*/g, '').split(link).join('').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim() : msg;
+    return { text: texto, url: link, title: 'Acceso a la clase' };
+  }
   function nombreArchivo(a) { return 'acceso-clase-' + String(a.alumno || '').replace(/[^0-9a-zA-Z]/g, '') + '.png'; }
   function abrirQR(a) {
     var p = tarjetaQR(a.link, a.clase || (st.clase && st.clase.nombre) || '', a.expira_en);
@@ -415,7 +437,9 @@
     var a = st.qrAbierto.acceso;
     st.qrAbierto.promesa.then(function (blob) {
       var f = new File([blob], nombreArchivo(a), { type: 'image/png' });
-      return navigator.share({ files: [f], text: mensaje(a.link, a.expira_en), title: 'Acceso a la clase' });
+      var msg = mensaje(a.link, a.expira_en);
+      var conTodo = Object.assign({ files: [f] }, datosCompartir(msg, a.link));
+      return navigator.share((navigator.canShare && navigator.canShare(conTodo)) ? conTodo : { files: [f], text: msg, title: 'Acceso a la clase' });
     }).catch(function () {});
   });
 
@@ -476,12 +500,16 @@
     var qr = qrDelBorrador(b, hasta);
     if (esMovil && navigator.share) {
       // En el celular: hoja de compartir del sistema con la foto del QR y el mensaje (link + reglas).
-      // Solo se activa si de verdad se compartió (si cancelas, no se gasta).
-      var soloTexto = function () { navigator.share({ text: msg }).then(despues, cancelado); };
+      // Se declara el link del alumno como único enlace del envío (url), para que ningún sistema
+      // agregue por su cuenta la dirección de esta página. Solo se activa si de verdad se compartió.
+      var datosTexto = datosCompartir(msg, b.link);
+      var soloTexto = function () { navigator.share(datosTexto).catch(function () { return navigator.share({ text: msg }); }).then(despues, cancelado); };
       if (puedeCompartirArchivos()) {
         qr.then(function (blob) {
           var f = new File([blob], nombreArchivo(b), { type: 'image/png' });
-          return navigator.share({ files: [f], text: msg, title: 'Acceso a la clase' });
+          var conTodo = Object.assign({ files: [f] }, datosTexto);
+          var datos = (navigator.canShare && navigator.canShare(conTodo)) ? conTodo : { files: [f], text: msg, title: 'Acceso a la clase' };
+          return navigator.share(datos);
         }).then(despues, function (e) { if (e && e.name === 'AbortError') cancelado(); else soloTexto(); });
       } else soloTexto();
     } else {
@@ -560,15 +588,9 @@
   });
   $('#btnRefrescar').addEventListener('click', function () { cargarClases(); });
 
-  // ---------- QR para abrir la app en el celular con la contraseña puesta ----------
-  $('#btnQR').addEventListener('click', function () {
-    if (location.protocol === 'file:') return aviso('Esto funciona cuando la app está publicada en internet, no desde un archivo local.', 'mal');
-    var url = location.origin + location.pathname + '#clave=' + encodeURIComponent(st.clave);
-    var caja = $('#qrCaja'); caja.classList.toggle('oculto');
-    if (caja.classList.contains('oculto')) return;
-    var cont = $('#qr'); cont.innerHTML = '';
-    var q = qrCanvas(url, 220);
-    if (q) cont.appendChild(q); else cont.innerHTML = '<code>' + esc(url) + '</code>';
+  // ---------- Dirección de la app (sin contraseña) para abrirla en otro dispositivo ----------
+  $('#btnCopiarApp').addEventListener('click', function () {
+    copiar(location.origin + location.pathname.replace(/[^/]*$/, ''), 'Dirección de la app copiada. En el celular la abres y escribes tu contraseña.');
   });
 
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && st.clase) { cargarEnviados(); if (!st.borrador && !st.compartiendo) siguiente(); } });
