@@ -20,8 +20,8 @@ Todo corre en planes gratuitos (GitHub Pages y Supabase Free).
 
 ## Cómo se usa, paso a paso
 
-1. **Primera vez en cada dispositivo:** abre la app y pega la primera línea de `CLAVES.txt` (solo la clave). Queda guardada. Luego, en Ajustes, cámbiala por una contraseña tuya.
-   Para el celular: en la computadora, abre Ajustes > "Usar en mi celular" y escanea el código QR
+1. **Primera vez:** abre la app y pega la primera línea de `CLAVES.txt` (solo la clave). Luego, en la tarjeta "Contraseña de acceso", guarda una contraseña fácil: con ella entras desde cualquier dispositivo. La clave del archivo sigue funcionando siempre como respaldo.
+   Para el celular: abre la misma dirección y escribe tu contraseña, o en la computadora abre Ajustes > "Abrir en mi celular (QR)" y escanea el código
    con la cámara del teléfono. Luego agrégala a la pantalla de inicio (Compartir > "Agregar a
    inicio" en iPhone; menú > "Agregar a pantalla principal" en Android).
 2. **Cada día de clase:** en Lumio copia el link de "Compartir" de la clase y pégalo en la app
@@ -72,7 +72,7 @@ termine la cohorte para que ese link también cambie).
 - **"Clave de administrador incorrecta"**: revisa `CLAVES.txt`; sin espacios al inicio o al final.
 - **El link se compartió pero "no se pudo activar"**: la app muestra un botón "Reintentar". Si
   sigue fallando, revisa tu conexión; el link no sirve hasta activarse.
-- **Cambiar la contraseña**: en la app, Ajustes > "Cambiar la contraseña de administrador". Si la pierdes, genera una nueva y su SHA-256, y en Supabase > SQL Editor ejecuta
+- **Cambiar la contraseña**: en la app, tarjeta "Contraseña de acceso" > Guardar contraseña. Si la olvidas, entra con la clave de `CLAVES.txt` (respaldo permanente) y pon otra. Si pierdes las dos, genera una nueva y su SHA-256, y en Supabase > SQL Editor ejecuta
   `update public.config set valor = '<hash>' where clave = 'admin_key_sha256';`.
   En PowerShell:
   ```powershell
