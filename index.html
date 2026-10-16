@@ -135,6 +135,21 @@
       <p class="mut" id="notaSiguiente" style="margin-bottom:0"></p>
       <p class="mut" style="margin:6px 0 0">En el celular, el botón manda el mensaje con el link y la foto del QR en un solo envío. En la computadora abre WhatsApp con el mensaje y deja la foto del QR copiada: pégala en el chat con Ctrl+V. El link solo se gasta cuando alguien pulsa "Entrar a la clase"; el QR es el mismo link en imagen, con las mismas reglas.</p>
       <div id="fallo" class="oculto" style="margin-top:10px"></div>
+      <div id="pasoQR" class="oculto" style="margin-top:12px;background:#FFFFFF;border:1px solid var(--borde);border-radius:14px;padding:12px">
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <img id="pasoQRImg" alt="Foto del QR" style="width:88px;height:110px;object-fit:cover;border-radius:10px;border:1px solid var(--borde);background:#FECC4F">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600" id="pasoQRTitulo"></div>
+            <p class="mut" id="pasoQRTexto" style="margin:4px 0 8px"></p>
+            <div class="fila">
+              <button class="chica" id="pasoQRCopiar">Copiar la foto</button>
+              <button class="sec chica" id="pasoQRDescargar">Descargar</button>
+              <button class="sec chica" id="pasoQRAbrir">Abrir WhatsApp</button>
+              <button class="sec chica" id="pasoQRListo">Listo</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section id="secEnviados" class="tarjeta oculto">
@@ -528,15 +543,35 @@
         }).then(despues, function (e) { if (e && e.name === 'AbortError') cancelado(); else soloTexto(); });
       } else soloTexto();
     } else {
-      // En la computadora: WhatsApp Web / Escritorio con el mensaje listo; la foto del QR queda copiada para pegarla.
-      window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+      // En la computadora, en este orden: 1) copiar la foto del QR mientras la app aún tiene el foco,
+      // 2) abrir WhatsApp Web/Escritorio con el mensaje, 3) dejar un recuadro fijo con la foto y el paso a paso.
       var datos = { id: b.id, alumno: b.alumno, link: b.link, clase: st.clase.nombre, expira_en: hasta.toISOString() };
-      copiarPNG(qr).then(
-        function () { aviso('Mensaje listo en WhatsApp. La foto del QR quedó copiada: en el chat, pégala con Ctrl+V y envía.', 'info', 12000); },
-        function () { abrirQR(datos); aviso('Mensaje listo en WhatsApp. Manda también la foto del QR desde esta ventana (Copiar imagen o Descargar).', 'info', 12000); });
-      despues();
+      copiarPNG(qr).then(function () { return true; }, function () { return false; }).then(function (copiado) {
+        var ventana = null;
+        try { ventana = window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); } catch (e) {}
+        mostrarPasoQR(datos, msg, qr, copiado, !!ventana);
+        despues();
+      });
     }
   }
+  // Recuadro fijo para la computadora: la foto del QR a la vista hasta que la mandes.
+  function mostrarPasoQR(datos, msg, promesa, copiado, abierto) {
+    st.paso = { datos: datos, msg: msg, promesa: promesa };
+    $('#pasoQRImg').removeAttribute('src');
+    promesa.then(function (blob) { $('#pasoQRImg').src = URL.createObjectURL(blob); }).catch(function () {});
+    $('#pasoQRTitulo').textContent = (abierto ? 'Mensaje listo en WhatsApp. ' : 'El navegador bloqueó la ventana de WhatsApp: pulsa "Abrir WhatsApp". ') + 'Falta mandar la foto del QR del link ' + datos.alumno + '.';
+    $('#pasoQRTexto').textContent = copiado
+      ? 'La foto ya está copiada: en WhatsApp Web abre el chat, presiona Ctrl+V y luego Enter. Si no aparece, pulsa "Copiar la foto" y vuelve a pegar.'
+      : 'Pulsa "Copiar la foto"; luego en WhatsApp Web abre el chat, presiona Ctrl+V y Enter. O descárgala y arrástrala al chat.';
+    $('#pasoQR').classList.remove('oculto');
+  }
+  $('#pasoQRCopiar').addEventListener('click', function () {
+    if (!st.paso) return;
+    copiarPNG(st.paso.promesa).then(function () { aviso('Foto copiada. En el chat de WhatsApp presiona Ctrl+V y Enter.', 'ok', 8000); }, function (e) { aviso(e.message, 'mal'); });
+  });
+  $('#pasoQRDescargar').addEventListener('click', function () { if (st.paso) descargarPNG(st.paso.promesa, nombreArchivo(st.paso.datos)).catch(function (e) { aviso(e.message, 'mal'); }); });
+  $('#pasoQRAbrir').addEventListener('click', function () { if (st.paso) window.open('https://wa.me/?text=' + encodeURIComponent(st.paso.msg), '_blank'); });
+  $('#pasoQRListo').addEventListener('click', function () { $('#pasoQR').classList.add('oculto'); st.paso = null; });
   $('#btnCompartir').addEventListener('click', compartir);
   $('#btnCopiarMsg').addEventListener('click', function () {
     var b = st.borrador; if (!b) return;
