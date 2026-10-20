@@ -76,7 +76,7 @@ function ajustesDe(b: Record<string, unknown>, base?: Record<string, unknown>) {
   };
   return {
     libre,
-    vigencia_horas: num("vigencia_horas", 0.1, 87600, 8),
+    vigencia_horas: num("vigencia_horas", 1 / 60, 87600, 8),
     minutos_tras_apertura: Math.round(num("minutos_tras_apertura", 1, 5256000, 10)),
     max_usos: Math.round(num("max_usos", 1, 1000000, 3)),
   };

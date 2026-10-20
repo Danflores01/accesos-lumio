@@ -51,7 +51,10 @@
   button:disabled { opacity:.5; cursor:default; }
   .fila { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .fila > input { flex:1; min-width:160px; }
-  .grid3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px; }
+  .grid3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; }
+  .unidad { display:flex; gap:6px; }
+  .unidad input { flex:1; min-width:64px; }
+  .unidad select { width:auto; padding:10px 8px; }
   .grande { width:100%; min-height:72px; font-size:1.2rem; background:var(--amarillo); color:#111; display:flex; align-items:center; justify-content:center; gap:10px; border-radius:999px; box-shadow:0 8px 18px rgba(255,212,0,.45); }
   .grande:active { transform:scale(.99); }
   .grande .num { font-size:.8rem; font-weight:600; background:#FFFFFF; color:#111; padding:3px 10px; border-radius:999px; }
@@ -120,8 +123,8 @@
         <input id="nUrl" placeholder="https://..." inputmode="url">
         <label class="check" style="margin-top:12px"><input type="checkbox" id="nLibre"> Acceso libre: sin límite de tiempo ni de clics</label>
         <div class="grid3" id="nLimites">
-          <div><label>Horas que vive el link</label><input id="nHoras" type="number" min="1" max="8760" value="8" inputmode="numeric"></div>
-          <div><label>Minutos tras abrirlo</label><input id="nMinutos" type="number" min="1" max="525600" value="10" inputmode="numeric"></div>
+          <div><label>Vigencia del link desde que lo compartes</label><div class="unidad"><input id="nHoras" type="number" min="1" max="525600" value="8" inputmode="numeric"><select id="nHorasU"><option value="h">horas</option><option value="min">minutos</option></select></div></div>
+          <div><label>Sigue vivo después de entrar</label><div class="unidad"><input id="nMinutos" type="number" min="1" max="525600" value="10" inputmode="numeric"><select id="nMinutosU"><option value="min">minutos</option><option value="h">horas</option></select></div></div>
           <div><label>Clics máximos</label><input id="nClics" type="number" min="1" max="999999" value="3" inputmode="numeric"></div>
         </div>
         <button id="btnCrearClase" style="margin-top:12px">Crear clase</button>
@@ -136,8 +139,8 @@
       <div id="cUrlForm" class="oculto" style="margin-top:8px"><input id="cUrlNueva" placeholder="https://..." inputmode="url"></div>
       <label class="check" style="margin-top:12px"><input type="checkbox" id="cLibre"> Acceso libre: sin límite de tiempo ni de clics</label>
       <div class="grid3" id="cLimites">
-        <div><label>Horas que vive el link</label><input id="cHoras" type="number" min="1" max="8760" inputmode="numeric"></div>
-        <div><label>Minutos tras abrirlo</label><input id="cMinutos" type="number" min="1" max="525600" inputmode="numeric"></div>
+        <div><label>Vigencia del link desde que lo compartes</label><div class="unidad"><input id="cHoras" type="number" min="1" max="525600" inputmode="numeric"><select id="cHorasU"><option value="h">horas</option><option value="min">minutos</option></select></div></div>
+        <div><label>Sigue vivo después de entrar</label><div class="unidad"><input id="cMinutos" type="number" min="1" max="525600" inputmode="numeric"><select id="cMinutosU"><option value="min">minutos</option><option value="h">horas</option></select></div></div>
         <div><label>Clics máximos</label><input id="cClics" type="number" min="1" max="999999" inputmode="numeric"></div>
       </div>
       <div class="fila" style="margin-top:12px">
@@ -268,7 +271,20 @@
   function chip(estado) { var e = ESTADOS[estado] || [estado, 'gris']; return '<span class="chip ' + e[1] + '">' + esc(e[0]) + '</span>'; }
   function aviso(texto, tipo, ms) { $('#msg').innerHTML = texto ? '<div class="aviso ' + (tipo || 'ok') + '">' + esc(texto) + '</div>' : ''; if (texto) setTimeout(function () { $('#msg').innerHTML = ''; }, ms || 4000); }
   function esLibre(c) { return !!(c && c.libre); }
-  function resumenAjustes(c) { return esLibre(c) ? 'Acceso libre · sin límite de tiempo ni de clics' : (c.vigencia_horas + ' h · se cierra ' + c.minutos_tras_apertura + ' min después de entrar · ' + c.max_usos + ' clics'); }
+  // Duraciones: por dentro todo va en minutos (la vigencia se guarda en horas, puede tener fracción).
+  function duracion(min) {
+    min = Number(min) || 0;
+    if (min >= 1440 && min % 1440 === 0) return (min / 1440) + (min === 1440 ? ' día' : ' días');
+    if (min >= 60) { var h = min / 60; return (Number.isInteger(h) ? h : Math.round(h * 10) / 10) + ' h'; }
+    return Math.round(min) + ' min';
+  }
+  function aMinutos(valor, unidad) { var v = Number(valor) || 0; return unidad === 'h' ? v * 60 : v; }
+  function ponerDuracion(inputSel, unidadSel, minutos) {
+    minutos = Number(minutos) || 0;
+    if (minutos >= 60 && Number.isInteger(minutos / 60)) { $(inputSel).value = minutos / 60; $(unidadSel).value = 'h'; }
+    else { $(inputSel).value = Math.round(minutos); $(unidadSel).value = 'min'; }
+  }
+  function resumenAjustes(c) { return esLibre(c) ? 'Acceso libre · sin límite de tiempo ni de clics' : (duracion(c.vigencia_horas * 60) + ' de vigencia · se cierra ' + duracion(c.minutos_tras_apertura) + ' después de entrar · ' + c.max_usos + ' clics'); }
 
   function api(path, opts) {
     opts = opts || {};
@@ -292,7 +308,7 @@
     clase = clase || st.clase || {};
     var t = sinDirecciones(st.cfg.plantilla);
     if (t.indexOf('{link}') === -1) t = t.replace(/\s+$/, '') + '\n\n👉 Tu acceso: {link}';
-    return t.replace(/\{link\}/g, link).replace(/\{clase\}/g, clase.nombre || 'la clase').replace(/\{hasta\}/g, esLibre(clase) ? 'sin límite' : fecha(hasta)).replace(/\{horas\}/g, esLibre(clase) ? 'sin límite' : clase.vigencia_horas).trim();
+    return t.replace(/\{link\}/g, link).replace(/\{clase\}/g, clase.nombre || 'la clase').replace(/\{hasta\}/g, esLibre(clase) ? 'sin límite' : fecha(hasta)).replace(/\{horas\}/g, esLibre(clase) ? 'sin límite' : duracion(clase.vigencia_horas * 60)).trim();
   }
   function datosCompartir(msg, link) {
     var texto = esAndroid ? msg.replace(/👉 Tu acceso:\s*/g, '').split(link).join('').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim() : msg;
@@ -422,10 +438,10 @@
     if (!hay) return;
     var c = st.clase;
     $('#cNombre').value = c.nombre; $('#cUrl').textContent = c.url_destino; $('#cUrlForm').classList.add('oculto'); $('#cUrlNueva').value = '';
-    $('#cLibre').checked = !!c.libre; $('#cHoras').value = c.vigencia_horas; $('#cMinutos').value = c.minutos_tras_apertura; $('#cClics').value = c.max_usos;
+    $('#cLibre').checked = !!c.libre; ponerDuracion('#cHoras', '#cHorasU', c.vigencia_horas * 60); ponerDuracion('#cMinutos', '#cMinutosU', c.minutos_tras_apertura); $('#cClics').value = c.max_usos;
     $('#cLimites').style.opacity = c.libre ? '.4' : '1';
     $('#siguienteClase').textContent = c.nombre; $('#enviadosClase').textContent = c.nombre;
-    $('#notaSiguiente').textContent = esLibre(c) ? 'Acceso libre: el link no vence ni se agota. Se activa al compartir y enseguida aparece uno nuevo.' : ('Al compartir, el link se activa y vive ' + c.vigencia_horas + ' h. Después de que entran, se cierra a los ' + c.minutos_tras_apertura + ' min (' + c.max_usos + ' clics). Enseguida aparece uno nuevo.');
+    $('#notaSiguiente').textContent = esLibre(c) ? 'Acceso libre: el link no vence ni se agota. Se activa al compartir y enseguida aparece uno nuevo.' : ('Al compartir, el link se activa y vive ' + duracion(c.vigencia_horas * 60) + '. Después de que entran, se cierra a los ' + duracion(c.minutos_tras_apertura) + ' (' + c.max_usos + ' clics). Enseguida aparece uno nuevo.');
   }
   $('#cLibre').addEventListener('change', function () { $('#cLimites').style.opacity = this.checked ? '.4' : '1'; });
   $('#nLibre').addEventListener('change', function () { $('#nLimites').style.opacity = this.checked ? '.4' : '1'; });
@@ -434,7 +450,7 @@
     var nombre = $('#nNombre').value.trim() || ('Clase ' + fecha(new Date().toISOString()));
     var url = $('#nUrl').value.trim();
     if (!/^https?:\/\//i.test(url)) return aviso('Pega el link completo de Lumio (empieza con https://)', 'mal');
-    var body = { nombre: nombre, url_destino: url, libre: $('#nLibre').checked, vigencia_horas: Number($('#nHoras').value) || 8, minutos_tras_apertura: Number($('#nMinutos').value) || 10, max_usos: Number($('#nClics').value) || 3 };
+    var body = { nombre: nombre, url_destino: url, libre: $('#nLibre').checked, vigencia_horas: (aMinutos($('#nHoras').value, $('#nHorasU').value) || 480) / 60, minutos_tras_apertura: aMinutos($('#nMinutos').value, $('#nMinutosU').value) || 10, max_usos: Number($('#nClics').value) || 3 };
     $('#btnCrearClase').disabled = true;
     api('/clases', { method: 'POST', body: body }).then(function (c) {
       $('#nNombre').value = ''; $('#nUrl').value = ''; $('#nLibre').checked = false; $('#nLimites').style.opacity = '1';
@@ -443,7 +459,7 @@
   });
   $('#btnGuardarClase').addEventListener('click', function () {
     var c = st.clase; if (!c) return;
-    var body = { nombre: $('#cNombre').value.trim() || c.nombre, libre: $('#cLibre').checked, vigencia_horas: Number($('#cHoras').value) || 8, minutos_tras_apertura: Number($('#cMinutos').value) || 10, max_usos: Number($('#cClics').value) || 3 };
+    var body = { nombre: $('#cNombre').value.trim() || c.nombre, libre: $('#cLibre').checked, vigencia_horas: (aMinutos($('#cHoras').value, $('#cHorasU').value) || 480) / 60, minutos_tras_apertura: aMinutos($('#cMinutos').value, $('#cMinutosU').value) || 10, max_usos: Number($('#cClics').value) || 3 };
     var nueva = $('#cUrlNueva').value.trim();
     if (nueva) { if (!/^https?:\/\//i.test(nueva)) return aviso('El link de Lumio debe empezar con https://', 'mal'); body.url_destino = nueva; }
     $('#btnGuardarClase').disabled = true;
@@ -488,7 +504,7 @@
     }); return lineas;
   }
   function textoGuia(c) {
-    return st.cfg.guia_texto.replace(/\{clics\}/g, esLibre(c) ? 'ilimitados' : String(c.max_usos)).replace(/\{horas\}/g, esLibre(c) ? 'sin límite' : String(c.vigencia_horas));
+    return st.cfg.guia_texto.replace(/\{clics\}/g, esLibre(c) ? 'ilimitados' : String(c.max_usos)).replace(/\{horas\}/g, esLibre(c) ? 'sin límite' : duracion(c.vigencia_horas * 60));
   }
   // Devuelve una promesa con el PNG de la imagen completa (720 px de ancho).
   function imagenEnvio(link, c, hasta) {
