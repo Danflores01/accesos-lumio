@@ -53,7 +53,8 @@ Todo corre en planes gratuitos (GitHub Pages y Supabase Free).
    usaron: la familia entra con el link que ya tiene, sin que mandes otro.
    Si en un link ves **⚠️ 3 intentos desde otros aparatos**, alguien intentó entrar con él desde más
    aparatos de los permitidos: otra familia, o la misma desde un tercer aparato.
-5. **Al día siguiente:** pega el link nuevo de Lumio. Los links viejos vencen solos.
+5. **Al día siguiente:** pega el link nuevo de Lumio. Los links viejos vencen solos. Si la clase tenía
+   "Válido hasta", al llegar esa hora se cierra sola y pasa a "Clases anteriores".
 
 ## Ajustes de cada clase (se guardan en el servidor, valen igual en celular y computadora)
 
@@ -61,6 +62,12 @@ Todo corre en planes gratuitos (GitHub Pages y Supabase Free).
   abierta).
 - **Vigencia del link** (8 horas por defecto): horas que vive el link desde que lo compartes. Si no
   entran en ese tiempo, vence: "ya es problema del cliente".
+- **Válido hasta** (opcional): una hora fija en la que termina la clase, por ejemplo las 19:00 del 21 de
+  octubre. Con ella, cada link vale **hasta esa hora** (en vez de contar horas desde el envío), el mensaje
+  y la imagen dicen "vence el 21 oct, 19:00", y al llegar la hora la clase se cierra sola: todos sus links
+  quedan como "Clase cerrada" sin que hagas nada, y la app ya no deja preparar ni enviar más links de esa
+  clase ("La clase ya terminó"). Déjalo vacío para que cada link cuente sus horas desde que lo compartes,
+  como siempre. Las clases de acceso libre no lo usan.
 - **Vivo después de entrar** (10 minutos por defecto): cuenta desde la primera entrada de la familia
   y sirve para que puedan recargar o reconectarse, pero no para que lo compartan después.
 - **Clics máximos** (3 por defecto).
@@ -124,7 +131,10 @@ termine la cohorte para que ese link también cambie).
   ($([System.Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($k))) | % { $_.ToString('x2') }) -join ''
   ```
 - **Volver a publicar la app** (si cambias algo en `index.html` o `entrar.html`): sube los cambios
-  al repositorio de GitHub; Pages se actualiza solo en unos minutos (hasta diez).
+  al repositorio de GitHub; Pages se actualiza solo en unos minutos (hasta diez). **En cada publicación
+  sube la versión en los dos lugares a la vez**: la constante `VERSION` al inicio del script de
+  `index.html` y el archivo `version.json` (formato `AAAA-MM-DD.n`, donde `n` cuenta las publicaciones de ese
+  día). Si solo cambias uno, la app avisará de una versión nueva que nunca llega, o no avisará nunca.
 
 ## Para quien le dé mantenimiento (técnico)
 
@@ -136,18 +146,26 @@ termine la cohorte para que ese link también cambie).
   Estados: `ok`, `pendiente`, `abierto`, `borrador`, `expirado`, `cerrado`, `agotado`, `revocado`,
   `clase_inactiva`, `otro_dispositivo`, `inexistente`.
 - `funciones/admin/index.ts`: API del panel (cabecera `x-admin-key`): `clases` (con
-  `max_dispositivos`), `siguiente`, `accesos` (`PATCH accesos/:id {alumno}` para el nombre;
+  `max_dispositivos` y `valido_hasta`; `GET /clases` devuelve todas, también las terminadas, cada una con
+  `terminada: true|false`; una hora de "Válido hasta" en el pasado se rechaza con 400), `siguiente`, `accesos` (`PATCH accesos/:id {alumno}` para el nombre;
   `accesos/:id/enviar|revocar|reactivar`; `reactivar` = Renovar: vigencia y límites de la clase, usos
   en cero y borra los aparatos), `eventos`, `config` (`base_links`, `url_error`, `vigencia_horas`,
-  `minutos_tras_apertura`, `max_usos`, `plantilla`, `guia_texto`, `url_reglas`).
+  `minutos_tras_apertura`, `max_usos`, `plantilla`, `guia_texto`, `url_reglas`). Con "Válido hasta" en una clase
+  limitada, `siguiente`, `enviar` y `reactivar` fijan `expira_en = valido_hasta` y, si la hora ya pasó, responden
+  400 "La clase ya terminó".
 - SQL: tablas `clases`, `accesos`, `acceso_dispositivos` (aparatos por link, solo hashes),
   `eventos`, `config`; funciones `consumir_acceso(p_token, p_ip, p_ua, p_dispositivo)`,
   `consultar_acceso`, `enviar_acceso`, `estado_acceso`; vista `accesos_vista` con `estado`,
-  `dispositivos` y `otros_dispositivos`. `sql/esquema.sql` es el esquema inicial; las migraciones
-  posteriores están aplicadas en Supabase y la de aparatos está guardada en `sql/migraciones/`.
+  `dispositivos` y `otros_dispositivos`. `clases.valido_hasta` (hora fija de fin, nula por defecto): `estado_acceso`
+  devuelve `clase_inactiva` para toda clase limitada cuya hora ya pasó, así que sus links se apagan solos.
+  `sql/esquema.sql` es el esquema inicial; las migraciones posteriores están aplicadas en Supabase y las de
+  aparatos y de "Válido hasta" están guardadas en `sql/migraciones/`.
 - Supabase no sirve HTML desde su dominio gratuito (lo convierte a texto plano), por eso las páginas
   viven en GitHub Pages y el servidor solo responde JSON o redirecciones.
 - Paleta SparkEd: amarillo `#FFD400`, texto `#111111`, fondo blanco.
+- Versión: constante `VERSION` en `index.html` y `version.json` con el mismo valor. La app baja
+  `version.json` sin caché al abrirse; si difiere, muestra la banda "Hay una versión nueva" y el botón
+  Actualizar recarga la página saltándose la caché.
 
 ## Código QR (opcional)
 
@@ -177,6 +195,23 @@ abajo aparecen su "Siguiente persona" y sus links activos. Cada clase tiene sus 
 
 Los ajustes aplican a los links nuevos de esa clase y a los renovados. "Cerrar clase" apaga al
 instante todos sus links.
+
+## Clases anteriores
+
+Las clases que ya terminaron (llegó su "Válido hasta") y las que cerraste tú desaparecen de "Clases
+activas" y quedan en el desplegable **Clases anteriores**, con cuántos links se enviaron. Una clase
+terminada se puede volver a abrir: tócala, pon una hora futura en "Válido hasta" y guarda; desde ese
+momento los links nuevos valen hasta la nueva hora, y los que ya habían vencido se pueden **Renovar**.
+Las clases cerradas con "Cerrar clase" solo se muestran.
+
+## Versión de la app y botón Actualizar
+
+Al final de "Ajustes generales" aparece la versión de la app que tienes abierta (por ejemplo
+"Versión 2026-10-20.1"). Cuando se publica una versión nueva, la app lo detecta al abrirse (o al volver
+a ella) y muestra una banda amarilla **"Hay una versión nueva"** con el botón **Actualizar**, que baja la
+app nueva y la recarga. GitHub Pages tarda hasta 10 minutos en servir lo recién publicado: si al
+actualizar la banda sigue ahí, espera un rato y vuelve a pulsar. Si no ves la banda, ya tienes la
+última versión.
 
 ## Imagen única con la guía de estudio y el QR (marca SparkEd)
 
