@@ -89,6 +89,28 @@ const limitesDe = (c: Record<string, unknown>) => c.libre ? LIBRE : {
   max_usos: Number(c.max_usos) || 3,
 };
 
+// "Válido hasta": hora fija opcional en la que termina la clase. Solo aplica a clases limitadas (no libres);
+// sin ella, cada link vive vigencia_horas desde que se envía (como siempre).
+type Clase = Record<string, unknown> | null | undefined;
+function finDeClase(c: Clase): Date | null {
+  if (!c || c.libre || !c.valido_hasta) return null;
+  const d = new Date(String(c.valido_hasta));
+  return isNaN(d.getTime()) ? null : d;
+}
+const claseTerminada = (c: Clase) => { const f = finDeClase(c); return !!f && f.getTime() <= Date.now(); };
+const conTerminada = (c: Record<string, unknown>) => ({ ...c, terminada: claseTerminada(c) });
+const ERROR_TERMINADA = "La clase ya terminó";
+const ERROR_HASTA_PASADA = "La hora de 'Válido hasta' ya pasó; elige una futura";
+// valido_hasta en el cuerpo: ausente = no cambiar; "" o null = quitar; cualquier otra cosa debe ser una fecha.
+function validoHastaDe(b: Record<string, unknown>): { valor?: string | null; error?: string } {
+  if (!("valido_hasta" in b)) return {};
+  const v = b.valido_hasta;
+  if (v === null || v === "") return { valor: null };
+  const d = new Date(String(v));
+  if (isNaN(d.getTime())) return { error: "La hora de 'Válido hasta' no es válida" };
+  return { valor: d.toISOString() };
+}
+
 async function leerJson(req: Request): Promise<Record<string, unknown>> {
   try { return (await req.json()) ?? {}; } catch { return {}; }
 }
@@ -202,7 +224,7 @@ Deno.serve(async (req: Request) => {
         conteo[a.clase_id] ??= {};
         conteo[a.clase_id][a.estado] = (conteo[a.clase_id][a.estado] ?? 0) + 1;
       }
-      return json((clases ?? []).map((c) => ({ ...c, conteo: conteo[c.id] ?? {} })));
+      return json((clases ?? []).map((c) => ({ ...conTerminada(c), conteo: conteo[c.id] ?? {} })));
     }
     if (recurso === "clases" && !id && m === "POST") {
       const b = await leerJson(req);
@@ -210,9 +232,12 @@ Deno.serve(async (req: Request) => {
       const url_destino = String(b.url_destino ?? "").trim();
       if (!nombre) return json({ error: "Falta el nombre de la clase" }, 400);
       if (!esUrl(url_destino)) return json({ error: "El link de Lumio debe empezar con http:// o https://" }, 400);
-      const { data, error } = await supabase.from("clases").insert({ nombre, url_destino, ...ajustesDe(b) }).select().single();
+      const vh = validoHastaDe(b);
+      if (vh.error) return json({ error: vh.error }, 400);
+      if (vh.valor && new Date(vh.valor).getTime() <= Date.now()) return json({ error: ERROR_HASTA_PASADA }, 400);
+      const { data, error } = await supabase.from("clases").insert({ nombre, url_destino, ...ajustesDe(b), valido_hasta: vh.valor ?? null }).select().single();
       if (error) throw error;
-      return json(data, 201);
+      return json(conTerminada(data), 201);
     }
     if (recurso === "clases" && esUuid(id) && m === "PATCH") {
       const b = await leerJson(req);
@@ -226,9 +251,18 @@ Deno.serve(async (req: Request) => {
       }
       if (typeof b.activa === "boolean") cambios.activa = b.activa;
       if (["libre", "vigencia_horas", "minutos_tras_apertura", "max_usos", "max_dispositivos"].some((k) => k in b)) Object.assign(cambios, ajustesDe(b, actual));
+      const vh = validoHastaDe(b);
+      if (vh.error) return json({ error: vh.error }, 400);
+      if ("valor" in vh) {
+        // Solo se exige una hora futura cuando la hora cambia: guardar otros ajustes de una clase ya terminada sigue valiendo.
+        const antes = actual.valido_hasta ? new Date(actual.valido_hasta).getTime() : null;
+        const nueva = vh.valor ? new Date(vh.valor).getTime() : null;
+        if (nueva !== null && nueva !== antes && nueva <= Date.now()) return json({ error: ERROR_HASTA_PASADA }, 400);
+        cambios.valido_hasta = vh.valor;
+      }
       const { data, error } = await supabase.from("clases").update(cambios).eq("id", id).select().single();
       if (error) throw error;
-      return json(data);
+      return json(conTerminada(data));
     }
     if (recurso === "clases" && esUuid(id) && m === "DELETE") {
       const { error } = await supabase.from("clases").delete().eq("id", id);
@@ -278,13 +312,14 @@ Deno.serve(async (req: Request) => {
       const b = await leerJson(req);
       if (!esUuid(b.clase_id)) return json({ error: "Falta la clase" }, 400);
       const base = await baseLinks();
+      const { data: clase } = await supabase.from("clases").select("*").eq("id", b.clase_id).maybeSingle();
+      if (!clase) return json({ error: "Esa clase no existe" }, 404);
+      if (claseTerminada(clase)) return json({ error: ERROR_TERMINADA }, 400);
       const { data: borrador } = await supabase
         .from("accesos").select("*")
         .eq("clase_id", b.clase_id).is("enviado_en", null).eq("revocado", false)
         .order("creado_en", { ascending: false }).limit(1).maybeSingle();
       if (borrador) return json({ ...borrador, estado: "borrador", link: linkDe(base, borrador.token) });
-      const { data: clase } = await supabase.from("clases").select("*").eq("id", b.clase_id).maybeSingle();
-      if (!clase) return json({ error: "Esa clase no existe" }, 404);
       const lim = limitesDe(clase);
       const { count } = await supabase.from("accesos").select("id", { count: "exact", head: true }).eq("clase_id", b.clase_id);
       const fila = {
@@ -292,7 +327,7 @@ Deno.serve(async (req: Request) => {
         clase_id: b.clase_id,
         alumno: `#${(count ?? 0) + 1}`,
         enviado_en: null,
-        expira_en: new Date(Date.now() + 30 * 86400 * 1000).toISOString(), // se fija de verdad al enviar
+        expira_en: (finDeClase(clase) ?? new Date(Date.now() + 30 * 86400 * 1000)).toISOString(), // se fija de verdad al enviar
         minutos_tras_apertura: lim.minutos_tras_apertura,
         max_usos: lim.max_usos,
       };
@@ -321,22 +356,32 @@ Deno.serve(async (req: Request) => {
       const { data: fila } = await supabase.from("accesos_vista").select("*").eq("id", id).maybeSingle();
       return json({ ...(fila ?? acc), link: linkDe(await baseLinks(), acc.token) });
     }
-    // Marca el borrador como enviado: desde este momento vive "vigencia_horas".
+    // Marca el borrador como enviado: desde este momento vive "vigencia_horas" (o hasta la hora fija de la clase).
     if (recurso === "accesos" && esUuid(id) && m === "POST" && accion === "enviar") {
       // La vigencia la dicta la clase del acceso (acceso libre = 10 años).
       const { data: acc } = await supabase.from("accesos").select("clase_id, minutos_tras_apertura, max_usos").eq("id", id).maybeSingle();
       if (!acc) return json({ error: "Ese link no existe" }, 404);
       const { data: clase } = await supabase.from("clases").select("*").eq("id", acc.clase_id).maybeSingle();
       const lim = clase ? limitesDe(clase) : { vigencia_horas: 8, minutos_tras_apertura: acc.minutos_tras_apertura, max_usos: acc.max_usos };
+      if (claseTerminada(clase)) return json({ error: ERROR_TERMINADA }, 400);
       if (clase && (acc.minutos_tras_apertura !== lim.minutos_tras_apertura || acc.max_usos !== lim.max_usos)) {
         await supabase.from("accesos").update({ minutos_tras_apertura: lim.minutos_tras_apertura, max_usos: lim.max_usos }).eq("id", id).is("enviado_en", null);
       }
-      const horas = lim.vigencia_horas;
-      const { data, error } = await supabase.rpc("enviar_acceso", { p_id: id, p_vigencia_horas: horas });
-      if (error) throw error;
+      // Con "Válido hasta", el link vale exactamente hasta que termina la clase; si no, vigencia_horas desde ahora.
+      const fin = finDeClase(clase);
+      let enviados: unknown[] | null;
+      if (fin) {
+        const r = await supabase.from("accesos").update({ enviado_en: new Date().toISOString(), expira_en: fin.toISOString() }).eq("id", id).is("enviado_en", null).select();
+        if (r.error) throw r.error;
+        enviados = r.data;
+      } else {
+        const r = await supabase.rpc("enviar_acceso", { p_id: id, p_vigencia_horas: lim.vigencia_horas });
+        if (r.error) throw r.error;
+        enviados = r.data;
+      }
       const { data: fila } = await supabase.from("accesos_vista").select("*").eq("id", id).maybeSingle();
       if (!fila) return json({ error: "Ese link no existe" }, 404);
-      return json({ ...fila, recien_enviado: (data?.length ?? 0) > 0, link: linkDe(await baseLinks(), fila.token) });
+      return json({ ...fila, recien_enviado: (enviados?.length ?? 0) > 0, link: linkDe(await baseLinks(), fila.token) });
     }
     if (recurso === "accesos" && esUuid(id) && m === "POST" && accion === "revocar") {
       const { error } = await supabase.from("accesos").update({ revocado: true }).eq("id", id);
@@ -351,8 +396,12 @@ Deno.serve(async (req: Request) => {
       if (!acc) return json({ error: "Ese link no existe" }, 404);
       const { data: clase } = await supabase.from("clases").select("*").eq("id", acc.clase_id).maybeSingle();
       const lim = clase ? limitesDe(clase) : { vigencia_horas: 8, minutos_tras_apertura: acc.minutos_tras_apertura, max_usos: acc.max_usos };
+      if (claseTerminada(clase)) return json({ error: ERROR_TERMINADA }, 400);
       let expira = new Date(String(b.expira_en ?? ""));
       if (isNaN(expira.getTime()) || expira.getTime() < Date.now()) expira = new Date(Date.now() + lim.vigencia_horas * 3600 * 1000);
+      // Con "Válido hasta", el link renovado vale hasta que termina la clase.
+      const finClase = finDeClase(clase);
+      if (finClase) expira = finClase;
       const { error: errDisp } = await supabase.from("acceso_dispositivos").delete().eq("acceso_id", id);
       if (errDisp) throw errDisp;
       const { error } = await supabase
