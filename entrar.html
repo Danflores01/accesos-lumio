@@ -4,6 +4,10 @@
   gratuito de Supabase convierte todo HTML a texto plano.
   Los links de alumnos son  https://<sitio>/entrar.html#TOKEN  : el token va después de "#", así que
   las vistas previas de WhatsApp nunca lo ven ni lo consumen.
+  Regla de familia: la primera vez que este aparato entra, el servidor le asigna un secreto que se guarda
+  aquí (localStorage, clave "disp_" + token) y se manda en cada entrada; así cada link acepta solo los
+  aparatos permitidos por la clase. Sin almacenamiento (navegación privada) la entrada funciona igual,
+  pero cada vez cuenta como un aparato nuevo.
 -->
 <html lang="es">
 <head>
@@ -30,6 +34,7 @@
   h1 { font-size: 1.4rem; margin: 0 0 8px; font-weight: 700; }
   p { margin: 8px 0; line-height: 1.5; }
   .nota { font-size: .85rem; color: #6B6B6B; margin-top: 20px; }
+  .familia { background: #FFF7CC; border-radius: 14px; padding: 10px 14px; font-size: .9rem; margin-top: 14px; }
   button { margin-top: 20px; width: 100%; padding: 18px; font-size: 1.1rem; font-weight: 600; border: 0; border-radius: 999px; background: #FFD400; color: #111; cursor: pointer; font-family: inherit; box-shadow: 0 8px 18px rgba(255,212,0,.45); }
   button:disabled { opacity: .6; }
   .icono { font-size: 2.2rem; margin-bottom: 6px; }
@@ -49,27 +54,38 @@
     agotado: ['🔒', 'Enlace agotado', 'Este enlace ya se usó el máximo de veces permitido.'],
     revocado: ['⛔', 'Acceso cancelado', 'Este acceso fue cancelado por el profesor.'],
     clase_inactiva: ['📕', 'Clase cerrada', 'Esta clase ya no está disponible.'],
+    otro_dispositivo: ['📵', 'Acceso en uso en otros aparatos', 'Este acceso ya se usa en los aparatos permitidos. Si es tu propio aparato, cierra la navegación privada y vuelve a abrir el link; si no, pídele al profesor un link nuevo.'],
     error: ['⚠️', 'Algo falló', 'No se pudo validar el enlace. Intenta de nuevo en un momento.']
   };
   var t = document.getElementById('t');
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function mostrar(estado) {
     var m = MENSAJES[estado] || MENSAJES.inexistente;
-    t.innerHTML = MARCA + '<div class="icono">' + m[0] + '</div><h1>' + esc(m[1]) + '</h1><p>' + esc(m[2]) + '</p>' +
-      '<p class="nota">Si eres el alumno, pídele al profesor un enlace nuevo. Los enlaces son personales y no se pueden compartir.</p>';
+    var pie = estado === 'otro_dispositivo' ? 'Cada link es de una sola familia y acepta pocos aparatos.' : 'Si eres el alumno, pídele al profesor un enlace nuevo. Los enlaces son de una sola familia y no se pueden compartir.';
+    t.innerHTML = MARCA + '<div class="icono">' + m[0] + '</div><h1>' + esc(m[1]) + '</h1><p>' + esc(m[2]) + '</p><p class="nota">' + esc(pie) + '</p>';
   }
   var token = (location.hash || '').replace(/^#/, '') || new URLSearchParams(location.search).get('t') || '';
   if (!/^[A-Za-z0-9]{8,64}$/.test(token)) { mostrar('inexistente'); return; }
 
+  // Secreto de este aparato para este link. Si el navegador no guarda nada, la entrada funciona igual.
+  var CLAVE_DISP = 'disp_' + token;
+  function leerSecreto() { try { return localStorage.getItem(CLAVE_DISP) || ''; } catch (e) { return ''; } }
+  function guardarSecreto(s) { try { if (s) localStorage.setItem(CLAVE_DISP, s); } catch (e) {} }
+
   fetch(IR + token + '?json=1').then(function (r) { return r.json(); }).then(function (r) {
     if (r.estado !== 'pendiente' && r.estado !== 'abierto') return mostrar(r.estado);
     t.innerHTML = MARCA + '<div class="icono">🎓</div><h1>Tu acceso está listo</h1><p>Clase: <strong>' + esc(r.clase) + '</strong></p>' +
-      '<button id="b">Entrar a la clase</button><p class="nota">Este enlace es personal e intransferible.</p>';
+      (r.alumno ? '<p>Acceso de: <strong>' + esc(r.alumno) + '</strong></p>' : '') +
+      '<p class="familia">Este acceso es para el alumno. Si eres mamá o papá, reenvíaselo a tu hijo o deja que escanee el código; no hace falta que presiones Entrar.</p>' +
+      '<button id="b">Entrar a la clase</button><p class="nota">Este enlace es de tu familia: no lo compartas con otras personas.</p>';
     document.getElementById('b').addEventListener('click', function () {
       var b = this; b.disabled = true; b.textContent = 'Entrando…';
-      fetch(IR + token + '?json=1', { method: 'POST' }).then(function (r) { return r.json(); }).then(function (r) {
-        if (r.estado === 'ok' && r.url) location.replace(r.url); else mostrar(r.estado);
-      }).catch(function () { mostrar('error'); });
+      var secreto = leerSecreto();
+      fetch(IR + token + '?json=1', { method: 'POST', body: JSON.stringify(secreto ? { dispositivo: secreto } : {}) })
+        .then(function (r) { return r.json(); }).then(function (r) {
+          if (r.dispositivo) guardarSecreto(r.dispositivo);
+          if (r.estado === 'ok' && r.url) location.replace(r.url); else mostrar(r.estado);
+        }).catch(function () { mostrar('error'); });
     });
   }).catch(function () { mostrar('error'); });
 })();

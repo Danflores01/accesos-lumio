@@ -79,6 +79,8 @@ function ajustesDe(b: Record<string, unknown>, base?: Record<string, unknown>) {
     vigencia_horas: num("vigencia_horas", 1 / 60, 87600, 8),
     minutos_tras_apertura: Math.round(num("minutos_tras_apertura", 1, 5256000, 10)),
     max_usos: Math.round(num("max_usos", 1, 1000000, 3)),
+    // Aparatos distintos que pueden entrar con un mismo link (regla de familia; las clases libres no la aplican).
+    max_dispositivos: Math.round(num("max_dispositivos", 1, 100, 2)),
   };
 }
 const limitesDe = (c: Record<string, unknown>) => c.libre ? LIBRE : {
@@ -223,7 +225,7 @@ Deno.serve(async (req: Request) => {
         cambios.url_destino = b.url_destino.trim();
       }
       if (typeof b.activa === "boolean") cambios.activa = b.activa;
-      if (["libre", "vigencia_horas", "minutos_tras_apertura", "max_usos"].some((k) => k in b)) Object.assign(cambios, ajustesDe(b, actual));
+      if (["libre", "vigencia_horas", "minutos_tras_apertura", "max_usos", "max_dispositivos"].some((k) => k in b)) Object.assign(cambios, ajustesDe(b, actual));
       const { data, error } = await supabase.from("clases").update(cambios).eq("id", id).select().single();
       if (error) throw error;
       return json(data);
@@ -298,6 +300,27 @@ Deno.serve(async (req: Request) => {
       if (error) throw error;
       return json({ ...data, estado: "borrador", link: linkDe(base, data.token) }, 201);
     }
+    // Nombre del link ("Para:"): se guarda en la columna alumno. Sin nombre, vuelve a su número de orden (#N).
+    if (recurso === "accesos" && esUuid(id) && m === "PATCH" && !accion) {
+      const b = await leerJson(req);
+      const { data: acc } = await supabase.from("accesos").select("id, token, clase_id, creado_en").eq("id", id).maybeSingle();
+      if (!acc) return json({ error: "Ese link no existe" }, 404);
+      const cambios: Record<string, unknown> = {};
+      if ("alumno" in b) {
+        let nombre = String(b.alumno ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+        if (!nombre) {
+          const { count } = await supabase.from("accesos").select("id", { count: "exact", head: true }).eq("clase_id", acc.clase_id).lte("creado_en", acc.creado_en);
+          nombre = "#" + (count || 1);
+        }
+        cambios.alumno = nombre;
+      }
+      if (typeof b.nota === "string") cambios.nota = b.nota.trim().slice(0, 300) || null;
+      if (!Object.keys(cambios).length) return json({ error: "Nada que cambiar" }, 400);
+      const { error } = await supabase.from("accesos").update(cambios).eq("id", id);
+      if (error) throw error;
+      const { data: fila } = await supabase.from("accesos_vista").select("*").eq("id", id).maybeSingle();
+      return json({ ...(fila ?? acc), link: linkDe(await baseLinks(), acc.token) });
+    }
     // Marca el borrador como enviado: desde este momento vive "vigencia_horas".
     if (recurso === "accesos" && esUuid(id) && m === "POST" && accion === "enviar") {
       // La vigencia la dicta la clase del acceso (acceso libre = 10 años).
@@ -320,18 +343,29 @@ Deno.serve(async (req: Request) => {
       if (error) throw error;
       return json({ ok: true });
     }
+    // Renovar: el mismo link vuelve a nacer con los ajustes actuales de su clase (vigencia desde ahora, usos en
+    // cero, límites de la clase) y olvida los aparatos que lo usaron.
     if (recurso === "accesos" && esUuid(id) && m === "POST" && accion === "reactivar") {
       const b = await leerJson(req);
+      const { data: acc } = await supabase.from("accesos").select("id, token, clase_id, enviado_en, minutos_tras_apertura, max_usos").eq("id", id).maybeSingle();
+      if (!acc) return json({ error: "Ese link no existe" }, 404);
+      const { data: clase } = await supabase.from("clases").select("*").eq("id", acc.clase_id).maybeSingle();
+      const lim = clase ? limitesDe(clase) : { vigencia_horas: 8, minutos_tras_apertura: acc.minutos_tras_apertura, max_usos: acc.max_usos };
       let expira = new Date(String(b.expira_en ?? ""));
-      if (isNaN(expira.getTime()) || expira.getTime() < Date.now()) expira = new Date(Date.now() + 3 * 3600 * 1000);
-      const { data, error } = await supabase
+      if (isNaN(expira.getTime()) || expira.getTime() < Date.now()) expira = new Date(Date.now() + lim.vigencia_horas * 3600 * 1000);
+      const { error: errDisp } = await supabase.from("acceso_dispositivos").delete().eq("acceso_id", id);
+      if (errDisp) throw errDisp;
+      const { error } = await supabase
         .from("accesos")
-        .update({ revocado: false, usos: 0, primer_uso_en: null, ultimo_uso_en: null, expira_en: expira.toISOString() })
-        .eq("id", id)
-        .select()
-        .single();
+        .update({
+          revocado: false, usos: 0, primer_uso_en: null, ultimo_uso_en: null,
+          expira_en: expira.toISOString(), enviado_en: acc.enviado_en ?? new Date().toISOString(),
+          minutos_tras_apertura: lim.minutos_tras_apertura, max_usos: lim.max_usos,
+        })
+        .eq("id", id);
       if (error) throw error;
-      return json({ ...data, link: linkDe(await baseLinks(), data.token) });
+      const { data: fila } = await supabase.from("accesos_vista").select("*").eq("id", id).maybeSingle();
+      return json({ ...(fila ?? acc), link: linkDe(await baseLinks(), acc.token) });
     }
     if (recurso === "accesos" && esUuid(id) && m === "DELETE") {
       const { error } = await supabase.from("accesos").delete().eq("id", id);

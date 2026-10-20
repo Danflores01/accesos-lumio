@@ -85,6 +85,7 @@
   .enviado:last-child { border-bottom:0; }
   .enviado .info { flex:1 1 220px; min-width:0; }
   .enviado .num { font-weight:600; }
+  .alerta { color:#9B1C1C; font-size:.85rem; font-weight:500; }
   .oculto { display:none !important; }
   details summary { cursor:pointer; font-weight:600; padding:4px 0; list-style:none; }
   details summary::-webkit-details-marker { display:none; }
@@ -138,6 +139,7 @@
           <div><label>Vigencia del link</label><div class="unidad"><input id="nHoras" type="number" min="1" max="525600" value="8" inputmode="numeric"><select id="nHorasU"><option value="h">horas</option><option value="min">minutos</option></select></div></div>
           <div><label>Vivo después de entrar</label><div class="unidad"><input id="nMinutos" type="number" min="1" max="525600" value="10" inputmode="numeric"><select id="nMinutosU"><option value="min">minutos</option><option value="h">horas</option></select></div></div>
           <div><label>Clics máximos</label><input class="solo" id="nClics" type="number" min="1" max="999999" value="3" inputmode="numeric"></div>
+          <div><label>Aparatos por link</label><input class="solo" id="nAparatos" type="number" min="1" max="100" value="2" inputmode="numeric"></div>
         </div>
         <button id="btnCrearClase" style="margin-top:12px">Crear clase</button>
       </details>
@@ -154,16 +156,19 @@
         <div><label>Vigencia del link</label><div class="unidad"><input id="cHoras" type="number" min="1" max="525600" inputmode="numeric"><select id="cHorasU"><option value="h">horas</option><option value="min">minutos</option></select></div></div>
         <div><label>Vivo después de entrar</label><div class="unidad"><input id="cMinutos" type="number" min="1" max="525600" inputmode="numeric"><select id="cMinutosU"><option value="min">minutos</option><option value="h">horas</option></select></div></div>
         <div><label>Clics máximos</label><input class="solo" id="cClics" type="number" min="1" max="999999" inputmode="numeric"></div>
+        <div><label>Aparatos por link</label><input class="solo" id="cAparatos" type="number" min="1" max="100" inputmode="numeric"></div>
       </div>
       <div class="fila" style="margin-top:12px">
         <button id="btnGuardarClase">Guardar ajustes de esta clase</button>
         <button class="peligro chica" id="btnCerrarClase">Cerrar clase</button>
       </div>
-      <p class="mut" style="margin:8px 0 0">Los ajustes aplican a los links nuevos de esta clase. Cerrar la clase apaga al instante todos sus links.</p>
+      <p class="mut" style="margin:8px 0 0">Los ajustes aplican a los links nuevos de esta clase y a los que renueves. "Aparatos por link": cuántos teléfonos, tablets o computadoras distintos pueden entrar con un mismo link (por ejemplo, el del papá y el del hijo). Cerrar la clase apaga al instante todos sus links.</p>
     </section>
 
     <section id="secSiguiente" class="tarjeta amarilla oculto">
       <h2>Siguiente persona · <span id="siguienteClase"></span></h2>
+      <label style="margin-top:0">Para (opcional): nombre del alumno o de la familia</label>
+      <input id="paraNombre" placeholder="Ej. Familia Pérez" maxlength="60" autocomplete="off" style="margin-bottom:12px">
       <button class="grande" id="btnCompartir">
         <span>Compartir por WhatsApp</span><span class="num" id="numSiguiente"></span>
       </button>
@@ -213,7 +218,7 @@
         </div>
         <hr style="border:0;border-top:1px solid var(--borde);margin:16px 0">
         <label style="font-weight:600;color:var(--tx)">Texto del mensaje de WhatsApp (va como pie de la imagen)</label>
-        <p class="mut" style="margin:0 0 6px">Variables: {link} {clase} {hasta} {horas}. El link va siempre; cualquier otra dirección web se quita.</p>
+        <p class="mut" style="margin:0 0 6px">Variables: {link} {clase} {hasta} {horas} {nombre}. El link va siempre; cualquier otra dirección web se quita.</p>
         <textarea id="cfgPlantilla" style="min-height:80px"></textarea>
         <hr style="border:0;border-top:1px solid var(--borde);margin:16px 0">
         <label style="font-weight:600;color:var(--tx)">Guía de estudio (la parte de arriba de la imagen)</label>
@@ -260,10 +265,16 @@
   var API = 'https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/admin/api';
   var PLANTILLA_DEF = 'Tu acceso a {clase} 👇\n{link}';
   var GUIA_DEF = '1. Prepárate en un espacio tranquilo y con buena conexión wifi antes de dar click al enlace. Tienes {clics} accesos en caso de fallas técnicas.\n---\n2. El código QR y el enlace son la misma forma de acceso. Escanear el código equivale a dar click en el enlace.\n---\nDisfruta de tu guía de estudio y tómate todo el tiempo que necesites. ¡Aprovéchala al máximo!';
+  // Estados de un link, en lenguaje claro.
   var ESTADOS = {
-    pendiente: ['Sin abrir', 'ambar'], abierto: ['Entró', 'verde'], cerrado: ['Cerrado', 'gris'],
-    expirado: ['Vencido', 'gris'], agotado: ['Agotado', 'morado'], revocado: ['Revocado', 'rojo'], clase_inactiva: ['Clase cerrada', 'gris']
+    pendiente: ['Enviado, sin abrir', 'ambar'], abierto: ['En clase', 'verde'], cerrado: ['Terminó su tiempo', 'gris'],
+    expirado: ['Venció sin abrirse', 'gris'], agotado: ['Se acabaron sus entradas', 'morado'], revocado: ['Cancelado', 'rojo'], clase_inactiva: ['Clase cerrada', 'gris']
   };
+  // Links que se pueden renovar (vuelven a activarse con el mismo link).
+  var RENOVABLES = { expirado: true, cerrado: true, agotado: true };
+  // "#7" es solo el número de orden del link; un nombre real es cualquier otra cosa.
+  function nombreDe(a) { var s = String(a && a.alumno || '').trim(); return /^#\d+$/.test(s) ? '' : s; }
+  function aparatos(n) { n = Number(n) || 0; return n + (n === 1 ? ' aparato' : ' aparatos'); }
   var AMARILLO = '#FFD400', NEGRO = '#111111', GRIS = '#555555';
   var $ = function (s) { return document.querySelector(s); };
   var esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
@@ -296,7 +307,7 @@
     if (minutos >= 60 && Number.isInteger(minutos / 60)) { $(inputSel).value = minutos / 60; $(unidadSel).value = 'h'; }
     else { $(inputSel).value = Math.round(minutos); $(unidadSel).value = 'min'; }
   }
-  function resumenAjustes(c) { return esLibre(c) ? 'Acceso libre · sin límite de tiempo ni de clics' : (duracion(c.vigencia_horas * 60) + ' de vigencia · se cierra ' + duracion(c.minutos_tras_apertura) + ' después de entrar · ' + c.max_usos + ' clics'); }
+  function resumenAjustes(c) { return esLibre(c) ? 'Acceso libre · sin límite de tiempo ni de clics' : (duracion(c.vigencia_horas * 60) + ' de vigencia · se cierra ' + duracion(c.minutos_tras_apertura) + ' después de entrar · ' + c.max_usos + ' clics · ' + aparatos(c.max_dispositivos || 2)); }
 
   function api(path, opts) {
     opts = opts || {};
@@ -316,11 +327,11 @@
   }
   function sinDirecciones(t) { return String(t || '').replace(/https?:\/\/\S+/gi, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n'); }
   // El mensaje SIEMPRE lleva el link del alumno, una sola vez, y ninguna otra dirección.
-  function mensaje(link, hasta, clase) {
+  function mensaje(link, hasta, clase, nombre) {
     clase = clase || st.clase || {};
     var t = sinDirecciones(st.cfg.plantilla);
     if (t.indexOf('{link}') === -1) t = t.replace(/\s+$/, '') + '\n\n👉 Tu acceso: {link}';
-    return t.replace(/\{link\}/g, link).replace(/\{clase\}/g, clase.nombre || 'la clase').replace(/\{hasta\}/g, esLibre(clase) ? 'sin límite' : fecha(hasta)).replace(/\{horas\}/g, esLibre(clase) ? 'sin límite' : duracion(clase.vigencia_horas * 60)).trim();
+    return t.replace(/\{link\}/g, link).replace(/\{clase\}/g, clase.nombre || 'la clase').replace(/\{hasta\}/g, esLibre(clase) ? 'sin límite' : fecha(hasta)).replace(/\{horas\}/g, esLibre(clase) ? 'sin límite' : duracion(clase.vigencia_horas * 60)).replace(/\{nombre\}/g, nombre || '').replace(/[ \t]+\n/g, '\n').trim();
   }
   function datosCompartir(msg, link) {
     var texto = esAndroid ? msg.replace(/👉 Tu acceso:\s*/g, '').split(link).join('').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim() : msg;
@@ -450,10 +461,10 @@
     if (!hay) return;
     var c = st.clase;
     $('#cNombre').value = c.nombre; $('#cUrl').textContent = c.url_destino; $('#cUrlForm').classList.add('oculto'); $('#cUrlNueva').value = '';
-    $('#cLibre').checked = !!c.libre; ponerDuracion('#cHoras', '#cHorasU', c.vigencia_horas * 60); ponerDuracion('#cMinutos', '#cMinutosU', c.minutos_tras_apertura); $('#cClics').value = c.max_usos;
+    $('#cLibre').checked = !!c.libre; ponerDuracion('#cHoras', '#cHorasU', c.vigencia_horas * 60); ponerDuracion('#cMinutos', '#cMinutosU', c.minutos_tras_apertura); $('#cClics').value = c.max_usos; $('#cAparatos').value = c.max_dispositivos || 2;
     $('#cLimites').style.opacity = c.libre ? '.4' : '1';
     $('#siguienteClase').textContent = c.nombre; $('#enviadosClase').textContent = c.nombre;
-    $('#notaSiguiente').textContent = esLibre(c) ? 'Acceso libre: el link no vence ni se agota. Se activa al compartir y enseguida aparece uno nuevo.' : ('Al compartir, el link se activa y vive ' + duracion(c.vigencia_horas * 60) + '. Después de que entran, se cierra a los ' + duracion(c.minutos_tras_apertura) + ' (' + c.max_usos + ' clics). Enseguida aparece uno nuevo.');
+    $('#notaSiguiente').textContent = esLibre(c) ? 'Acceso libre: el link no vence ni se agota. Se activa al compartir y enseguida aparece uno nuevo.' : ('Al compartir, el link se activa y vive ' + duracion(c.vigencia_horas * 60) + '. Después de que entran, se cierra a los ' + duracion(c.minutos_tras_apertura) + ' (' + c.max_usos + ' clics, hasta ' + aparatos(c.max_dispositivos || 2) + '). Enseguida aparece uno nuevo.');
   }
   $('#cLibre').addEventListener('change', function () { $('#cLimites').style.opacity = this.checked ? '.4' : '1'; });
   $('#nLibre').addEventListener('change', function () { $('#nLimites').style.opacity = this.checked ? '.4' : '1'; });
@@ -462,7 +473,7 @@
     var nombre = $('#nNombre').value.trim() || ('Clase ' + fecha(new Date().toISOString()));
     var url = $('#nUrl').value.trim();
     if (!/^https?:\/\//i.test(url)) return aviso('Pega el link completo de Lumio (empieza con https://)', 'mal');
-    var body = { nombre: nombre, url_destino: url, libre: $('#nLibre').checked, vigencia_horas: (aMinutos($('#nHoras').value, $('#nHorasU').value) || 480) / 60, minutos_tras_apertura: aMinutos($('#nMinutos').value, $('#nMinutosU').value) || 10, max_usos: Number($('#nClics').value) || 3 };
+    var body = { nombre: nombre, url_destino: url, libre: $('#nLibre').checked, vigencia_horas: (aMinutos($('#nHoras').value, $('#nHorasU').value) || 480) / 60, minutos_tras_apertura: aMinutos($('#nMinutos').value, $('#nMinutosU').value) || 10, max_usos: Number($('#nClics').value) || 3, max_dispositivos: Number($('#nAparatos').value) || 2 };
     $('#btnCrearClase').disabled = true;
     api('/clases', { method: 'POST', body: body }).then(function (c) {
       $('#nNombre').value = ''; $('#nUrl').value = ''; $('#nLibre').checked = false; $('#nLimites').style.opacity = '1';
@@ -471,7 +482,7 @@
   });
   $('#btnGuardarClase').addEventListener('click', function () {
     var c = st.clase; if (!c) return;
-    var body = { nombre: $('#cNombre').value.trim() || c.nombre, libre: $('#cLibre').checked, vigencia_horas: (aMinutos($('#cHoras').value, $('#cHorasU').value) || 480) / 60, minutos_tras_apertura: aMinutos($('#cMinutos').value, $('#cMinutosU').value) || 10, max_usos: Number($('#cClics').value) || 3 };
+    var body = { nombre: $('#cNombre').value.trim() || c.nombre, libre: $('#cLibre').checked, vigencia_horas: (aMinutos($('#cHoras').value, $('#cHorasU').value) || 480) / 60, minutos_tras_apertura: aMinutos($('#cMinutos').value, $('#cMinutosU').value) || 10, max_usos: Number($('#cClics').value) || 3, max_dispositivos: Number($('#cAparatos').value) || 2 };
     var nueva = $('#cUrlNueva').value.trim();
     if (nueva) { if (!/^https?:\/\//i.test(nueva)) return aviso('El link de Lumio debe empezar con https://', 'mal'); body.url_destino = nueva; }
     $('#btnGuardarClase').disabled = true;
@@ -519,7 +530,7 @@
     return st.cfg.guia_texto.replace(/\{clics\}/g, esLibre(c) ? 'ilimitados' : String(c.max_usos)).replace(/\{horas\}/g, esLibre(c) ? 'sin límite' : duracion(c.vigencia_horas * 60));
   }
   // Devuelve una promesa con el PNG de la imagen completa (720 px de ancho).
-  function imagenEnvio(link, c, hasta) {
+  function imagenEnvio(link, c, hasta, nombre) {
     return new Promise(function (resolve, reject) {
       var q = qrCanvas(link, 440);
       if (!q) return reject(new Error('El generador de QR no cargó. Revisa tu conexión y recarga la app.'));
@@ -557,7 +568,8 @@
       x.fillStyle = NEGRO; x.font = '600 26px Poppins, system-ui, sans-serif'; x.fillText('Tu código QR de acceso', W / 2, y + 44); y += 60;
       x.drawImage(q, (W - 440) / 2, y, 440, 440); y += 440 + 20;
       x.fillStyle = GRIS; x.font = '400 22px Poppins, system-ui, sans-serif';
-      x.fillText(esLibre(c) ? 'Acceso libre · ' + (c.nombre || '') : 'Personal · vence el ' + fecha(hasta), W / 2, y + 24);
+      var quien = nombre ? String(nombre).slice(0, 30) + ' · ' : '';
+      x.fillText(esLibre(c) ? 'Acceso libre · ' + quien + (c.nombre || '') : 'Personal · ' + quien + 'vence el ' + fecha(hasta), W / 2, y + 24);
       canvas.toBlob(function (b) { b ? resolve(b) : reject(new Error('No se pudo crear la imagen')); }, 'image/png');
     });
   }
@@ -577,7 +589,7 @@
   function nombreArchivo(a) { return 'acceso-' + String(a.alumno || '').replace(/[^0-9a-zA-Z]/g, '') + '.png'; }
   function abrirImagen(a) {
     var c = st.clases.filter(function (x) { return x.id === a.clase_id; })[0] || st.clase;
-    var p = imagenEnvio(a.link, c, a.expira_en);
+    var p = imagenEnvio(a.link, c, a.expira_en, nombreDe(a));
     st.qrAbierto = { acceso: a, promesa: p, clase: c };
     $('#qrTitulo').textContent = 'Imagen del link ' + a.alumno + (esLibre(c) ? ' (acceso libre)' : ' (vence el ' + fecha(a.expira_en) + ')');
     $('#qrGrande').removeAttribute('src');
@@ -593,7 +605,7 @@
     var a = st.qrAbierto.acceso, c = st.qrAbierto.clase;
     st.qrAbierto.promesa.then(function (blob) {
       var f = new File([blob], nombreArchivo(a), { type: 'image/png' });
-      var msg = mensaje(a.link, a.expira_en, c);
+      var msg = mensaje(a.link, a.expira_en, c, nombreDe(a));
       var conTodo = Object.assign({ files: [f] }, datosCompartir(msg, a.link));
       return navigator.share((navigator.canShare && navigator.canShare(conTodo)) ? conTodo : { files: [f], text: msg, title: 'Acceso a la clase' });
     }).catch(function () {});
@@ -606,27 +618,45 @@
       .then(function (b) { st.borrador = b; prepararImagen(); pintarSiguiente(); })
       .catch(function (e) { aviso(e.message, 'mal'); });
   }
+  function nombreCampo() { return $('#paraNombre').value.replace(/\s+/g, ' ').trim().slice(0, 60); }
   function prepararImagen() {
     var b = st.borrador; if (!b || !st.clase) { st.imagenBorrador = null; return; }
+    var nombre = nombreCampo() || nombreDe(b);
     var hasta = new Date(Date.now() + (st.clase.vigencia_horas || 8) * 3600 * 1000);
-    var p = imagenEnvio(b.link, st.clase, hasta); p.catch(function () {});
-    st.imagenBorrador = { id: b.id, promesa: p, creado: Date.now() };
+    var p = imagenEnvio(b.link, st.clase, hasta, nombre); p.catch(function () {});
+    st.imagenBorrador = { id: b.id, promesa: p, creado: Date.now(), nombre: nombre || '' };
   }
-  function imagenDelBorrador(b, hasta) {
-    if (st.imagenBorrador && st.imagenBorrador.id === b.id && Date.now() - st.imagenBorrador.creado < 10 * 60 * 1000) return st.imagenBorrador.promesa;
-    return imagenEnvio(b.link, st.clase, hasta);
+  function imagenDelBorrador(b, hasta, nombre) {
+    if (st.imagenBorrador && st.imagenBorrador.id === b.id && st.imagenBorrador.nombre === (nombre || '') && Date.now() - st.imagenBorrador.creado < 10 * 60 * 1000) return st.imagenBorrador.promesa;
+    return imagenEnvio(b.link, st.clase, hasta, nombre);
   }
   function pintarSiguiente() {
     var b = st.borrador;
     $('#btnCompartir').disabled = !b || st.compartiendo;
     $('#numSiguiente').textContent = b ? 'link ' + b.alumno : 'preparando…';
     $('#btnMostrarImagen').disabled = !b || st.compartiendo;
+    $('#paraNombre').disabled = !b || st.compartiendo;
+    if (document.activeElement !== $('#paraNombre')) $('#paraNombre').value = b ? nombreDe(b) : '';
   }
+  // Nombre opcional del siguiente link ("Para:"): se guarda en el borrador y se usa en la lista, en el mensaje ({nombre}) y en la imagen.
+  function guardarNombre() {
+    var b = st.borrador; if (!b) return Promise.resolve();
+    var nombre = nombreCampo();
+    if (nombre === nombreDe(b) || b.nombreEnviando === nombre) return Promise.resolve();
+    b.nombreEnviando = nombre;
+    return api('/accesos/' + b.id, { method: 'PATCH', body: { alumno: nombre }, keepalive: true }).then(function (r) {
+      b.alumno = r.alumno;
+      if (st.borrador && st.borrador.id === b.id) pintarSiguiente();
+    }).catch(function (e) { aviso('No se pudo guardar el nombre: ' + e.message, 'mal'); }).then(function () { delete b.nombreEnviando; });
+  }
+  $('#paraNombre').addEventListener('change', function () { prepararImagen(); guardarNombre(); });
   $('#btnMostrarImagen').addEventListener('click', function () {
     var b = st.borrador; if (!b || st.compartiendo) return;
     var hasta = new Date(Date.now() + (st.clase.vigencia_horas || 8) * 3600 * 1000);
+    var nombre = nombreCampo() || nombreDe(b);
+    guardarNombre();
     st.borrador = null; pintarSiguiente();
-    abrirImagen({ id: b.id, alumno: b.alumno, link: b.link, clase_id: st.clase.id, expira_en: hasta.toISOString() });
+    abrirImagen({ id: b.id, alumno: nombre || b.alumno, link: b.link, clase_id: st.clase.id, expira_en: hasta.toISOString() });
     activar(b).then(siguiente).then(cargarEnviados);
   });
   function activar(b) {
@@ -642,11 +672,13 @@
     var b = st.borrador, c = st.clase;
     if (!b || !c || st.compartiendo) return;
     var hasta = new Date(Date.now() + (c.vigencia_horas || 8) * 3600 * 1000);
-    var msg = mensaje(b.link, hasta, c);
+    var nombre = nombreCampo() || nombreDe(b);
+    guardarNombre();
+    var msg = mensaje(b.link, hasta, c, nombre);
     st.compartiendo = true; pintarSiguiente();
     var despues = function () { st.borrador = null; pintarSiguiente(); activar(b).then(function () { st.compartiendo = false; return siguiente(); }).then(cargarEnviados); };
     var cancelado = function () { st.compartiendo = false; pintarSiguiente(); };
-    var img = imagenDelBorrador(b, hasta);
+    var img = imagenDelBorrador(b, hasta, nombre);
     if (esMovil && navigator.share) {
       var datosTexto = datosCompartir(msg, b.link);
       var soloTexto = function () { navigator.share(datosTexto).catch(function () { return navigator.share({ text: msg }); }).then(despues, cancelado); };
@@ -658,7 +690,7 @@
         }).then(despues, function (e) { if (e && e.name === 'AbortError') cancelado(); else soloTexto(); });
       } else soloTexto();
     } else {
-      var datos = { id: b.id, alumno: b.alumno, link: b.link, clase_id: c.id, expira_en: hasta.toISOString() };
+      var datos = { id: b.id, alumno: nombre || b.alumno, link: b.link, clase_id: c.id, expira_en: hasta.toISOString() };
       copiarPNG(img).then(function () { return true; }, function () { return false; }).then(function (copiado) {
         var ventana = null;
         try { ventana = window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); } catch (e) {}
@@ -685,11 +717,14 @@
   $('#btnCopiarMsg').addEventListener('click', function () {
     var b = st.borrador; if (!b) return;
     var hasta = new Date(Date.now() + (st.clase.vigencia_horas || 8) * 3600 * 1000);
-    copiar(mensaje(b.link, hasta, st.clase), 'Mensaje copiado. Al pegarlo y enviarlo, el link queda activo.');
+    var nombre = nombreCampo() || nombreDe(b);
+    guardarNombre();
+    copiar(mensaje(b.link, hasta, st.clase, nombre), 'Mensaje copiado. Al pegarlo y enviarlo, el link queda activo.');
     st.borrador = null; pintarSiguiente(); activar(b).then(siguiente).then(cargarEnviados);
   });
   $('#btnCopiarLink').addEventListener('click', function () {
     var b = st.borrador; if (!b) return;
+    guardarNombre();
     copiar(b.link, 'Link copiado y activado.');
     st.borrador = null; pintarSiguiente(); activar(b).then(siguiente).then(cargarEnviados);
   });
@@ -711,8 +746,13 @@
   function filaEnviado(a, vivo) {
     var tiempo = a.clase_libre ? '<div class="mut">♾️ acceso libre, sin vencimiento</div>'
       : (vivo ? '<div class="mut">⏱ <strong class="cuenta" data-fin="' + finDe(a) + '">' + cuentaAtras(finDe(a) - Date.now()) + '</strong> ' + (a.primer_uso_en ? 'para que se cierre' : 'de vigencia') + '</div>' : '<div class="mut">venció ' + fecha(a.expira_en) + '</div>');
-    return '<div class="enviado"><div class="info"><span class="num">' + esc(a.alumno) + '</span> <span class="mut">· enviado ' + hora(a.enviado_en) + (a.primer_uso_en ? ' · entró ' + hora(a.primer_uso_en) + ' (' + a.usos + ' clics)' : '') + '</span>' + tiempo + '</div>' + chip(a.estado) +
-      (vivo ? '<button class="sec chica" data-msg="' + a.id + '">Mensaje</button><button class="sec chica" data-qr="' + a.id + '">Imagen</button><button class="peligro chica" data-rev="' + a.id + '">Revocar</button>' : '') + '</div>';
+    var n = Number(a.otros_dispositivos) || 0;
+    var alerta = n ? '<div class="alerta">⚠️ ' + (n === 1 ? '1 intento desde otro aparato' : n + ' intentos desde otros aparatos') + '</div>' : '';
+    var detalle = '· enviado ' + hora(a.enviado_en) + (a.primer_uso_en ? ' · entró ' + hora(a.primer_uso_en) + ' (' + a.usos + ' clics)' : '') + (!a.clase_libre && Number(a.dispositivos) ? ' · ' + aparatos(a.dispositivos) : '');
+    var botones = vivo
+      ? '<button class="sec chica" data-msg="' + a.id + '">Mensaje</button><button class="sec chica" data-qr="' + a.id + '">Imagen</button><button class="peligro chica" data-rev="' + a.id + '">Revocar</button>'
+      : (RENOVABLES[a.estado] ? '<button class="chica" data-ren="' + a.id + '">Renovar</button>' : '');
+    return '<div class="enviado"><div class="info"><span class="num">' + esc(a.alumno) + '</span> <span class="mut">' + detalle + '</span>' + tiempo + alerta + '</div>' + chip(a.estado) + botones + '</div>';
   }
   function cargarEnviados() {
     if (!st.clase) return Promise.resolve();
@@ -735,10 +775,17 @@
   }, 1000);
   $('#secEnviados').addEventListener('click', function (ev) {
     var b = ev.target.closest('button'); if (!b) return;
-    var id = b.dataset.rev || b.dataset.qr || b.dataset.msg;
+    var id = b.dataset.rev || b.dataset.qr || b.dataset.msg || b.dataset.ren;
     var a = st.enviados.filter(function (x) { return x.id === id; })[0]; if (!a) return;
-    if (b.dataset.msg) return copiar(mensaje(a.link, a.expira_en), 'Mensaje del link ' + a.alumno + ' copiado');
+    if (b.dataset.msg) return copiar(mensaje(a.link, a.expira_en, null, nombreDe(a)), 'Mensaje del link ' + a.alumno + ' copiado');
     if (b.dataset.qr) return abrirImagen(a);
+    if (b.dataset.ren) {
+      if (!confirm('¿Renovar el link ' + a.alumno + '? Vuelve a quedar activo desde ahora con los ajustes de la clase (' + resumenAjustes(st.clase || {}) + '), con sus clics en cero y olvidando los aparatos que lo usaron. La persona entra con el mismo link que ya tiene.')) return;
+      b.disabled = true;
+      return api('/accesos/' + a.id + '/reactivar', { method: 'POST', body: {} })
+        .then(function () { aviso('Link ' + a.alumno + ' renovado: ya puede volver a entrar con el mismo link.', 'ok', 6000); return cargarEnviados(); })
+        .catch(function (e) { b.disabled = false; aviso(e.message, 'mal'); });
+    }
     if (!confirm('¿Cancelar el link ' + a.alumno + '? La persona ya no podrá entrar con él.')) return;
     api('/accesos/' + a.id + '/revocar', { method: 'POST' }).then(cargarEnviados).catch(function (e) { aviso(e.message, 'mal'); });
   });
