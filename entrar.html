@@ -1,42 +1,46 @@
 <!doctype html>
 <!--
-  Página de entrada para los alumnos. Se hospeda fuera de Supabase (GitHub Pages) porque el dominio
+  Página de entrada para los alumnos (marca SparkEd). Se hospeda en GitHub Pages porque el dominio
   gratuito de Supabase convierte todo HTML a texto plano.
   Los links de alumnos son  https://<sitio>/entrar.html#TOKEN  : el token va después de "#", así que
-  las vistas previas de WhatsApp nunca lo ven ni lo consumen. La app lo configura en "base_links".
+  las vistas previas de WhatsApp nunca lo ven ni lo consumen.
 -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#FECC4F">
-<meta property="og:title" content="Acceso a tu clase">
+<meta name="theme-color" content="#FFD400">
+<meta property="og:title" content="SparkEd · Acceso a tu clase">
 <meta property="og:description" content="Enlace personal. Ábrelo para entrar a la clase.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23FECC4F'/%3E%3Ctext x='50' y='70' font-size='56' text-anchor='middle' font-family='Arial' font-weight='700' fill='%232a2a2a'%3EA%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap">
-<title>Entrar a la clase</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<title>SparkEd · Acceso a tu clase</title>
 <style>
-  /* Paleta de Lumio: amarillo #FECC4F, texto #2A2A2A, morado #6A448E */
+  /* Marca SparkEd: amarillo #FFD400, texto negro, fondo blanco */
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
-         font-family: Poppins, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #FECC4F; color: #2A2A2A; }
-  .tarjeta { background: #fff; border-radius: 24px; padding: 32px 24px; max-width: 420px; width: 100%; box-shadow: 0 16px 40px rgba(0,0,0,.14); text-align: center; }
-  .logo { width: 56px; height: 56px; border-radius: 16px; background: #FECC4F; color: #2A2A2A; display: grid; place-items: center; font-weight: 700; font-size: 1.6rem; margin: 0 auto 14px; }
-  h1 { font-size: 1.5rem; margin: 0 0 8px; font-weight: 700; }
+         font-family: Poppins, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #FFFFFF; color: #111111; }
+  .tarjeta { background: #fff; border: 1px solid #EBE6D2; border-top: 6px solid #FFD400; border-radius: 24px; padding: 32px 24px; max-width: 420px; width: 100%; box-shadow: 0 16px 40px rgba(0,0,0,.08); text-align: center; }
+  .marca { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 14px; }
+  .marca svg { width: 36px; height: 60px; }
+  .marca .nombre { font-weight: 700; font-size: 1.5rem; letter-spacing: -.02em; }
+  .marca .nombre span { color: #FFD400; }
+  h1 { font-size: 1.4rem; margin: 0 0 8px; font-weight: 700; }
   p { margin: 8px 0; line-height: 1.5; }
   .nota { font-size: .85rem; color: #6B6B6B; margin-top: 20px; }
-  button { margin-top: 20px; width: 100%; padding: 18px; font-size: 1.1rem; font-weight: 600; border: 0; border-radius: 999px; background: #FECC4F; color: #2A2A2A; cursor: pointer; font-family: inherit; box-shadow: 0 8px 18px rgba(254,204,79,.55); }
+  button { margin-top: 20px; width: 100%; padding: 18px; font-size: 1.1rem; font-weight: 600; border: 0; border-radius: 999px; background: #FFD400; color: #111; cursor: pointer; font-family: inherit; box-shadow: 0 8px 18px rgba(255,212,0,.45); }
   button:disabled { opacity: .6; }
-  .icono { font-size: 2.4rem; margin-bottom: 6px; }
+  .icono { font-size: 2.2rem; margin-bottom: 6px; }
 </style>
 </head>
 <body>
-<div class="tarjeta" id="t"><div class="logo">A</div><div class="icono">⏳</div><h1>Verificando tu acceso…</h1></div>
+<div class="tarjeta" id="t"><div class="marca"><svg viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg><div class="nombre">Spark<span>Ed</span></div></div><div class="icono">⏳</div><h1>Verificando tu acceso…</h1></div>
 <script>
 (function () {
   var IR = 'https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/ir/';
+  var MARCA = '<div class="marca"><svg viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg><div class="nombre">Spark<span>Ed</span></div></div>';
   var MENSAJES = {
     inexistente: ['🔗', 'Enlace no válido', 'Este enlace no existe o está incompleto. Revisa que lo hayas abierto completo.'],
     borrador: ['⏳', 'Enlace aún no activo', 'Este enlace todavía no está activo. Pídele al profesor que te lo envíe de nuevo.'],
@@ -51,7 +55,7 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function mostrar(estado) {
     var m = MENSAJES[estado] || MENSAJES.inexistente;
-    t.innerHTML = '<div class="logo">A</div><div class="icono">' + m[0] + '</div><h1>' + esc(m[1]) + '</h1><p>' + esc(m[2]) + '</p>' +
+    t.innerHTML = MARCA + '<div class="icono">' + m[0] + '</div><h1>' + esc(m[1]) + '</h1><p>' + esc(m[2]) + '</p>' +
       '<p class="nota">Si eres el alumno, pídele al profesor un enlace nuevo. Los enlaces son personales y no se pueden compartir.</p>';
   }
   var token = (location.hash || '').replace(/^#/, '') || new URLSearchParams(location.search).get('t') || '';
@@ -59,8 +63,8 @@
 
   fetch(IR + token + '?json=1').then(function (r) { return r.json(); }).then(function (r) {
     if (r.estado !== 'pendiente' && r.estado !== 'abierto') return mostrar(r.estado);
-    t.innerHTML = '<div class="logo">A</div><div class="icono">🎓</div><h1>Tu acceso está listo</h1><p>Clase: <strong>' + esc(r.clase) + '</strong></p>' +
-      '<button id="b">Entrar a la clase</button><p class="nota">Este enlace es personal e intransferible. Se desactiva pocos minutos después de abrirlo.</p>';
+    t.innerHTML = MARCA + '<div class="icono">🎓</div><h1>Tu acceso está listo</h1><p>Clase: <strong>' + esc(r.clase) + '</strong></p>' +
+      '<button id="b">Entrar a la clase</button><p class="nota">Este enlace es personal e intransferible.</p>';
     document.getElementById('b').addEventListener('click', function () {
       var b = this; b.disabled = true; b.textContent = 'Entrando…';
       fetch(IR + token + '?json=1', { method: 'POST' }).then(function (r) { return r.json(); }).then(function (r) {

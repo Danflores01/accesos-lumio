@@ -66,6 +66,27 @@ const esUrl = (u: unknown) => typeof u === "string" && /^https?:\/\/\S+$/i.test(
 const esUuid = (u: unknown) => typeof u === "string" && /^[0-9a-f-]{36}$/i.test(u);
 const limpiarTel = (t: unknown) => String(t ?? "").replace(/\D/g, "") || null;
 
+// Ajustes por clase. "libre" = sin límite de tiempo ni de clics (se representa con valores enormes).
+const LIBRE = { vigencia_horas: 87600, minutos_tras_apertura: 5256000, max_usos: 1000000 };
+function ajustesDe(b: Record<string, unknown>, base?: Record<string, unknown>) {
+  const libre = typeof b.libre === "boolean" ? b.libre : !!base?.libre;
+  const num = (k: string, min: number, max: number, def: number) => {
+    const v = Number(b[k] ?? base?.[k] ?? def);
+    return Math.min(max, Math.max(min, isFinite(v) && v > 0 ? v : def));
+  };
+  return {
+    libre,
+    vigencia_horas: num("vigencia_horas", 0.1, 87600, 8),
+    minutos_tras_apertura: Math.round(num("minutos_tras_apertura", 1, 5256000, 10)),
+    max_usos: Math.round(num("max_usos", 1, 1000000, 3)),
+  };
+}
+const limitesDe = (c: Record<string, unknown>) => c.libre ? LIBRE : {
+  vigencia_horas: Number(c.vigencia_horas) || 8,
+  minutos_tras_apertura: Number(c.minutos_tras_apertura) || 10,
+  max_usos: Number(c.max_usos) || 3,
+};
+
 async function leerJson(req: Request): Promise<Record<string, unknown>> {
   try { return (await req.json()) ?? {}; } catch { return {}; }
 }
@@ -116,7 +137,7 @@ Deno.serve(async (req: Request) => {
     }
     if (recurso === "config" && m === "POST") {
       const b = await leerJson(req);
-      const permitidas = ["base_links", "url_error", "vigencia_horas", "minutos_tras_apertura", "max_usos", "plantilla"];
+      const permitidas = ["base_links", "url_error", "vigencia_horas", "minutos_tras_apertura", "max_usos", "plantilla", "url_reglas", "guia_texto"];
       const filas = permitidas.filter((k) => typeof b[k] === "string").map((k) => ({ clave: k, valor: String(b[k]) }));
       if (!filas.length) return json({ error: "Nada que guardar" }, 400);
       const { error } = await supabase.from("config").upsert(filas);
@@ -129,9 +150,18 @@ Deno.serve(async (req: Request) => {
     if (recurso === "publicar" && m === "POST") {
       const b = await leerJson(req);
       const rutaArchivo = String(b.ruta ?? "").replace(/^\/+/, "");
-      const contenido = String(b.contenido ?? "");
       const tipo = String(b.tipo ?? "text/plain; charset=utf-8");
       if (!/^[\w./-]+$/.test(rutaArchivo) || rutaArchivo.includes("..")) return json({ error: "Ruta no válida" }, 400);
+      // Contenido como texto, o como base64 (imágenes): máximo 4 MB.
+      let cuerpo: Blob;
+      if (typeof b.base64 === "string") {
+        const limpio = b.base64.replace(/^data:[^,]*,/, "");
+        const bytes = Uint8Array.from(atob(limpio), (c) => c.charCodeAt(0));
+        if (bytes.length > 4 * 1024 * 1024) return json({ error: "La imagen pesa más de 4 MB; usa una más ligera" }, 400);
+        cuerpo = new Blob([bytes], { type: tipo });
+      } else {
+        cuerpo = new Blob([String(b.contenido ?? "")], { type: tipo });
+      }
       const { data: buckets } = await supabase.storage.listBuckets();
       if (!buckets?.some((x) => x.name === BUCKET)) {
         const { error } = await supabase.storage.createBucket(BUCKET, { public: true });
@@ -139,7 +169,7 @@ Deno.serve(async (req: Request) => {
       }
       const { error } = await supabase.storage
         .from(BUCKET)
-        .upload(rutaArchivo, new Blob([contenido], { type: tipo }), { contentType: tipo, upsert: true, cacheControl: "60" });
+        .upload(rutaArchivo, cuerpo, { contentType: tipo, upsert: true, cacheControl: "60" });
       if (error) throw error;
       return json({ ok: true, url: `${BASE}/storage/v1/object/public/${BUCKET}/${rutaArchivo}` });
     }
@@ -178,12 +208,14 @@ Deno.serve(async (req: Request) => {
       const url_destino = String(b.url_destino ?? "").trim();
       if (!nombre) return json({ error: "Falta el nombre de la clase" }, 400);
       if (!esUrl(url_destino)) return json({ error: "El link de Lumio debe empezar con http:// o https://" }, 400);
-      const { data, error } = await supabase.from("clases").insert({ nombre, url_destino }).select().single();
+      const { data, error } = await supabase.from("clases").insert({ nombre, url_destino, ...ajustesDe(b) }).select().single();
       if (error) throw error;
       return json(data, 201);
     }
     if (recurso === "clases" && esUuid(id) && m === "PATCH") {
       const b = await leerJson(req);
+      const { data: actual } = await supabase.from("clases").select("*").eq("id", id).maybeSingle();
+      if (!actual) return json({ error: "Esa clase no existe" }, 404);
       const cambios: Record<string, unknown> = {};
       if (typeof b.nombre === "string" && b.nombre.trim()) cambios.nombre = b.nombre.trim();
       if (typeof b.url_destino === "string") {
@@ -191,6 +223,7 @@ Deno.serve(async (req: Request) => {
         cambios.url_destino = b.url_destino.trim();
       }
       if (typeof b.activa === "boolean") cambios.activa = b.activa;
+      if (["libre", "vigencia_horas", "minutos_tras_apertura", "max_usos"].some((k) => k in b)) Object.assign(cambios, ajustesDe(b, actual));
       const { data, error } = await supabase.from("clases").update(cambios).eq("id", id).select().single();
       if (error) throw error;
       return json(data);
@@ -248,17 +281,18 @@ Deno.serve(async (req: Request) => {
         .eq("clase_id", b.clase_id).is("enviado_en", null).eq("revocado", false)
         .order("creado_en", { ascending: false }).limit(1).maybeSingle();
       if (borrador) return json({ ...borrador, estado: "borrador", link: linkDe(base, borrador.token) });
+      const { data: clase } = await supabase.from("clases").select("*").eq("id", b.clase_id).maybeSingle();
+      if (!clase) return json({ error: "Esa clase no existe" }, 404);
+      const lim = limitesDe(clase);
       const { count } = await supabase.from("accesos").select("id", { count: "exact", head: true }).eq("clase_id", b.clase_id);
-      const minutos = Math.min(1440, Math.max(1, Number(b.minutos_tras_apertura ?? 10) || 10));
-      const maxUsos = Math.min(50, Math.max(1, Number(b.max_usos ?? 3) || 3));
       const fila = {
         token: nuevoToken(),
         clase_id: b.clase_id,
         alumno: `#${(count ?? 0) + 1}`,
         enviado_en: null,
         expira_en: new Date(Date.now() + 30 * 86400 * 1000).toISOString(), // se fija de verdad al enviar
-        minutos_tras_apertura: minutos,
-        max_usos: maxUsos,
+        minutos_tras_apertura: lim.minutos_tras_apertura,
+        max_usos: lim.max_usos,
       };
       const { data, error } = await supabase.from("accesos").insert(fila).select().single();
       if (error) throw error;
@@ -266,8 +300,15 @@ Deno.serve(async (req: Request) => {
     }
     // Marca el borrador como enviado: desde este momento vive "vigencia_horas".
     if (recurso === "accesos" && esUuid(id) && m === "POST" && accion === "enviar") {
-      const b = await leerJson(req);
-      const horas = Math.min(24 * 30, Math.max(0.1, Number(b.vigencia_horas ?? 24) || 24));
+      // La vigencia la dicta la clase del acceso (acceso libre = 10 años).
+      const { data: acc } = await supabase.from("accesos").select("clase_id, minutos_tras_apertura, max_usos").eq("id", id).maybeSingle();
+      if (!acc) return json({ error: "Ese link no existe" }, 404);
+      const { data: clase } = await supabase.from("clases").select("*").eq("id", acc.clase_id).maybeSingle();
+      const lim = clase ? limitesDe(clase) : { vigencia_horas: 8, minutos_tras_apertura: acc.minutos_tras_apertura, max_usos: acc.max_usos };
+      if (clase && (acc.minutos_tras_apertura !== lim.minutos_tras_apertura || acc.max_usos !== lim.max_usos)) {
+        await supabase.from("accesos").update({ minutos_tras_apertura: lim.minutos_tras_apertura, max_usos: lim.max_usos }).eq("id", id).is("enviado_en", null);
+      }
+      const horas = lim.vigencia_horas;
       const { data, error } = await supabase.rpc("enviar_acceso", { p_id: id, p_vigencia_horas: horas });
       if (error) throw error;
       const { data: fila } = await supabase.from("accesos_vista").select("*").eq("id", id).maybeSingle();

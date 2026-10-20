@@ -4,59 +4,68 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#FECC4F">
+<meta name="theme-color" content="#FFD400">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Accesos">
+<meta name="apple-mobile-web-app-title" content="SparkEd">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=swap">
-<title>Accesos Lumio</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<title>SparkEd · Accesos</title>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-  /* Interfaz clara: fondo blanco, amarillo Lumio #FECC4F como acento, texto gris oscuro, sin negros. */
+  /* Marca SparkEd: amarillo #FFD400, texto negro #111, fondos blancos. */
   :root {
     color-scheme: light;
-    --amarillo:#FECC4F; --amarillo-oscuro:#E6B531; --crema:#FFF6D6; --morado:#6A448E; --morado-suave:#E8E2ED;
-    --fondo:#FFFFFF; --tarj:#FFFFFF; --tx:#2A2A2A; --mut:#6B6B6B; --borde:#E9E3D2; --campo:#FAF8F2; --mal:#C62828;
+    --amarillo:#FFD400; --amarillo-oscuro:#E6BF00; --crema:#FFF7CC;
+    --fondo:#FFFFFF; --tarj:#FFFFFF; --tx:#111111; --mut:#6B6B6B; --borde:#EBE6D2; --campo:#FAF9F3; --mal:#C62828;
   }
   * { box-sizing: border-box; }
   html { background:#FFFFFF; }
   body { margin:0; font-family: Poppins, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--fondo); color:var(--tx); padding-bottom: env(safe-area-inset-bottom); }
-  header { display:flex; align-items:center; gap:10px; padding:12px 16px; padding-top: calc(12px + env(safe-area-inset-top)); background:var(--amarillo); color:#2A2A2A; position:sticky; top:0; z-index:5; box-shadow:0 2px 10px rgba(0,0,0,.08); }
-  header h1 { font-size:1.1rem; margin:0; flex:1; font-weight:700; letter-spacing:-.01em; }
-  header .logo { width:34px; height:34px; border-radius:10px; background:#FFFFFF; color:#2A2A2A; display:grid; place-items:center; font-weight:700; font-size:1.1rem; }
+  header { display:flex; align-items:center; gap:10px; padding:10px 16px; padding-top: calc(10px + env(safe-area-inset-top)); background:#FFFFFF; color:#111; position:sticky; top:0; z-index:5; border-bottom:3px solid var(--amarillo); }
+  header .marca { display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+  header .marca svg { width:26px; height:34px; flex:0 0 auto; }
+  header .marca .nombre { font-weight:700; font-size:1.25rem; letter-spacing:-.02em; line-height:1; }
+  header .marca .nombre span { color:var(--amarillo); }
+  header .marca .sub { font-size:.75rem; color:var(--mut); margin-top:2px; }
   main { max-width:560px; margin:0 auto; padding:16px; display:grid; gap:14px; }
   .tarjeta { background:var(--tarj); border:1px solid var(--borde); border-radius:20px; padding:18px; box-shadow:0 2px 12px rgba(0,0,0,.04); }
   .tarjeta h2 { font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin:0 0 10px; font-weight:600; }
   .tarjeta.amarilla { background:var(--crema); border-color:var(--amarillo); }
   label { display:block; font-size:.8rem; color:var(--mut); margin:8px 0 4px; }
   input, textarea, select { width:100%; padding:12px 14px; border:1px solid var(--borde); border-radius:14px; background:var(--campo); color:var(--tx); font:inherit; font-size:1rem; }
+  input[type=checkbox] { width:auto; }
   input:focus, textarea:focus, select:focus { outline:2px solid var(--amarillo); outline-offset:1px; }
   textarea { min-height:120px; resize:vertical; }
-  button { padding:12px 18px; min-height:44px; border:0; border-radius:999px; background:var(--amarillo); color:#2A2A2A; font:inherit; font-size:1rem; font-weight:600; cursor:pointer; }
+  button { padding:12px 18px; min-height:44px; border:0; border-radius:999px; background:var(--amarillo); color:#111; font:inherit; font-size:1rem; font-weight:600; cursor:pointer; }
   button:hover { background:var(--amarillo-oscuro); }
-  button.sec { background:#FFFFFF; color:#2A2A2A; border:1.5px solid #D9D2BE; }
+  button.sec { background:#FFFFFF; color:#111; border:1.5px solid #D9D2BE; }
   button.sec:hover { background:var(--campo); }
   button.peligro { background:#FFFFFF; color:var(--mal); border:1.5px solid #F3B8B8; }
   button.chica { padding:6px 12px; min-height:36px; font-size:.85rem; font-weight:500; }
-  button.icono { background:transparent; color:#2A2A2A; font-size:1.4rem; padding:4px 8px; min-height:0; }
+  button.icono { background:transparent; color:#111; font-size:1.4rem; padding:4px 8px; min-height:0; }
   button:disabled { opacity:.5; cursor:default; }
   .fila { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .fila > input { flex:1; min-width:160px; }
-  .grande { width:100%; min-height:72px; font-size:1.2rem; background:var(--amarillo); color:#2A2A2A; display:flex; align-items:center; justify-content:center; gap:10px; border-radius:999px; box-shadow:0 8px 18px rgba(254,204,79,.5); }
+  .grid3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px; }
+  .grande { width:100%; min-height:72px; font-size:1.2rem; background:var(--amarillo); color:#111; display:flex; align-items:center; justify-content:center; gap:10px; border-radius:999px; box-shadow:0 8px 18px rgba(255,212,0,.45); }
   .grande:active { transform:scale(.99); }
-  .grande .num { font-size:.8rem; font-weight:600; background:#FFFFFF; color:#2A2A2A; padding:3px 10px; border-radius:999px; }
+  .grande .num { font-size:.8rem; font-weight:600; background:#FFFFFF; color:#111; padding:3px 10px; border-radius:999px; }
   .mut { color:var(--mut); font-size:.85rem; }
   .url { font-size:.85rem; color:var(--mut); word-break:break-all; }
   .chip { display:inline-block; padding:3px 10px; border-radius:999px; font-size:.75rem; font-weight:600; white-space:nowrap; }
   .chip.gris { background:#EFEFEF; color:#555; } .chip.verde { background:#DDF2E4; color:#1F6B3A; }
-  .chip.rojo { background:#FBE1E1; color:#9B1C1C; } .chip.ambar { background:#FFF1C6; color:#7A5A00; } .chip.morado { background:var(--morado-suave); color:var(--morado); }
+  .chip.rojo { background:#FBE1E1; color:#9B1C1C; } .chip.ambar { background:#FFF1B8; color:#6B5A00; } .chip.morado { background:#E8E2ED; color:#6A448E; }
   .aviso { padding:10px 14px; border-radius:14px; font-size:.9rem; }
-  .aviso.ok { background:#DDF2E4; color:#1F6B3A; } .aviso.mal { background:#FBE1E1; color:#9B1C1C; } .aviso.info { background:var(--crema); color:#5A4A1A; }
+  .aviso.ok { background:#DDF2E4; color:#1F6B3A; } .aviso.mal { background:#FBE1E1; color:#9B1C1C; } .aviso.info { background:var(--crema); color:#5A4A00; }
+  .clase { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1.5px solid var(--borde); border-radius:14px; cursor:pointer; margin-bottom:8px; }
+  .clase.sel { border-color:var(--amarillo); background:var(--crema); }
+  .clase .info { flex:1; min-width:0; }
+  .clase .nombre { font-weight:600; }
   .enviado { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 0; border-bottom:1px solid var(--borde); }
   .enviado:last-child { border-bottom:0; }
   .enviado .info { flex:1 1 220px; min-width:0; }
@@ -66,23 +75,23 @@
   details summary::-webkit-details-marker { display:none; }
   details summary::before { content:'▸ '; color:var(--mut); } details[open] summary::before { content:'▾ '; }
   code { font-size:.8rem; word-break:break-all; }
-  #qr { display:flex; justify-content:center; padding:12px; background:#fff; border-radius:14px; border:1px solid var(--borde); }
-  #qr img, #qr canvas { max-width:100%; }
-  .velo { position:fixed; inset:0; background:rgba(42,42,42,.45); display:flex; align-items:center; justify-content:center; padding:16px; z-index:50; }
+  .velo { position:fixed; inset:0; background:rgba(17,17,17,.45); display:flex; align-items:center; justify-content:center; padding:16px; z-index:50; }
   .modal { background:#FFFFFF; border-radius:20px; padding:16px; max-width:420px; width:100%; max-height:95vh; overflow:auto; }
-  .modal img { width:100%; border-radius:12px; background:#fff; display:block; }
+  .modal img { width:100%; border-radius:12px; background:#fff; display:block; border:1px solid var(--borde); }
+  .check { display:flex; align-items:center; gap:8px; font-size:.95rem; margin:8px 0; }
   @media (max-width: 480px) {
     main { padding:12px; }
     .tarjeta { padding:14px; border-radius:16px; }
     .grande { font-size:1.05rem; min-height:64px; }
-    header h1 { font-size:1rem; }
   }
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">A</div>
-  <h1>Accesos Lumio</h1>
+  <div class="marca">
+    <svg viewBox="0 0 60 100" aria-hidden="true"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>
+    <div><div class="nombre">Spark<span>Ed</span></div><div class="sub">Accesos a clases</div></div>
+  </div>
   <button class="icono" id="btnRefrescar" title="Actualizar">⟳</button>
 </header>
 
@@ -91,7 +100,7 @@
 
   <section id="secClave" class="tarjeta oculto">
     <h2>Contraseña de acceso</h2>
-    <p class="mut" style="margin-top:0">Entra con tu contraseña desde cualquier dispositivo: computadora, celular o tablet. Si todavía no has puesto una, usa la clave de la primera línea de CLAVES.txt; esa clave siempre funciona, también como respaldo.</p>
+    <p class="mut" style="margin-top:0">Entra con tu contraseña desde cualquier dispositivo. Si todavía no has puesto una, usa la clave de la primera línea de CLAVES.txt; esa clave siempre funciona, también como respaldo.</p>
     <div class="fila">
       <input id="clave" type="password" placeholder="Contraseña o clave" autocomplete="current-password">
       <button id="btnClave">Entrar</button>
@@ -101,48 +110,64 @@
   <div id="app" class="oculto" style="display:grid;gap:14px">
 
     <section class="tarjeta">
-      <h2>Clase de hoy</h2>
-      <div id="claseActual" class="oculto">
-        <div id="claseNombre" style="font-weight:600"></div>
-        <div id="claseUrl" class="url"></div>
-        <div class="fila" style="margin-top:10px">
-          <button class="sec chica" id="btnCambiar">Cambiar link</button>
-          <button class="peligro chica" id="btnCerrarClase">Cerrar clase</button>
-          <select id="selClases" class="oculto" style="flex:1;min-width:160px;padding:8px 12px"></select>
+      <h2>Clases activas</h2>
+      <div id="listaClases"></div>
+      <details id="detNueva">
+        <summary>➕ Nueva clase</summary>
+        <label>Nombre de la clase</label>
+        <input id="nNombre" placeholder="Ej. Guía de estudio Álgebra">
+        <label>Link de Lumio (el que te da "Compartir")</label>
+        <input id="nUrl" placeholder="https://..." inputmode="url">
+        <label class="check" style="margin-top:12px"><input type="checkbox" id="nLibre"> Acceso libre: sin límite de tiempo ni de clics</label>
+        <div class="grid3" id="nLimites">
+          <div><label>Horas que vive el link</label><input id="nHoras" type="number" min="1" max="8760" value="8" inputmode="numeric"></div>
+          <div><label>Minutos tras abrirlo</label><input id="nMinutos" type="number" min="1" max="525600" value="10" inputmode="numeric"></div>
+          <div><label>Clics máximos</label><input id="nClics" type="number" min="1" max="999999" value="3" inputmode="numeric"></div>
         </div>
-        <p class="mut" style="margin:8px 0 0">Cerrar la clase apaga al instante todos los links que compartiste de ella.</p>
+        <button id="btnCrearClase" style="margin-top:12px">Crear clase</button>
+      </details>
+    </section>
+
+    <section id="secClase" class="tarjeta oculto">
+      <h2>Clase seleccionada</h2>
+      <input id="cNombre" style="font-weight:600">
+      <div id="cUrl" class="url" style="margin:6px 0 4px"></div>
+      <div class="fila"><button class="sec chica" id="btnCambiarUrl">Cambiar link de Lumio</button></div>
+      <div id="cUrlForm" class="oculto" style="margin-top:8px"><input id="cUrlNueva" placeholder="https://..." inputmode="url"></div>
+      <label class="check" style="margin-top:12px"><input type="checkbox" id="cLibre"> Acceso libre: sin límite de tiempo ni de clics</label>
+      <div class="grid3" id="cLimites">
+        <div><label>Horas que vive el link</label><input id="cHoras" type="number" min="1" max="8760" inputmode="numeric"></div>
+        <div><label>Minutos tras abrirlo</label><input id="cMinutos" type="number" min="1" max="525600" inputmode="numeric"></div>
+        <div><label>Clics máximos</label><input id="cClics" type="number" min="1" max="999999" inputmode="numeric"></div>
       </div>
-      <div id="claseNueva">
-        <label>Pega aquí el link de Lumio de la clase de hoy</label>
-        <div class="fila">
-          <input id="nuevaUrl" placeholder="https://..." inputmode="url">
-          <button id="btnGuardarClase">Guardar</button>
-          <button class="sec oculto" id="btnCancelarClase">Cancelar</button>
-        </div>
+      <div class="fila" style="margin-top:12px">
+        <button id="btnGuardarClase">Guardar ajustes de esta clase</button>
+        <button class="peligro chica" id="btnCerrarClase">Cerrar clase</button>
       </div>
+      <p class="mut" style="margin:8px 0 0">Los ajustes aplican a los links nuevos de esta clase. Cerrar la clase apaga al instante todos sus links.</p>
     </section>
 
     <section id="secSiguiente" class="tarjeta amarilla oculto">
-      <h2>Siguiente persona</h2>
+      <h2>Siguiente persona · <span id="siguienteClase"></span></h2>
       <button class="grande" id="btnCompartir">
         <span>Compartir por WhatsApp</span><span class="num" id="numSiguiente"></span>
       </button>
       <div class="fila" style="margin-top:12px">
+        <button class="sec chica" id="btnMostrarImagen">Ver imagen</button>
         <button class="sec chica" id="btnCopiarMsg">Copiar mensaje</button>
-        <button class="sec chica" id="btnMostrarQR">Mostrar QR</button>
         <button class="sec chica" id="btnCopiarLink">Copiar solo el link</button>
       </div>
       <p class="mut" id="notaSiguiente" style="margin-bottom:0"></p>
-      <p class="mut" style="margin:6px 0 0">En el celular, el botón manda el mensaje con el link y la foto del QR en un solo envío. En la computadora abre WhatsApp con el mensaje y deja la foto del QR copiada: pégala en el chat con Ctrl+V. El link solo se gasta cuando alguien pulsa "Entrar a la clase"; el QR es el mismo link en imagen, con las mismas reglas.</p>
+      <p class="mut" style="margin:6px 0 0">Un solo mensaje: la imagen con tu guía de estudio y el código QR, y el link como pie de foto. En la laptop se abre WhatsApp con el link escrito; pegas la imagen con Ctrl+V y Enter.</p>
       <div id="fallo" class="oculto" style="margin-top:10px"></div>
       <div id="pasoQR" class="oculto" style="margin-top:12px;background:#FFFFFF;border:1px solid var(--borde);border-radius:14px;padding:12px">
         <div style="display:flex;gap:12px;align-items:flex-start">
-          <img id="pasoQRImg" alt="Foto del QR" style="width:88px;height:110px;object-fit:cover;border-radius:10px;border:1px solid var(--borde);background:#FECC4F">
+          <img id="pasoQRImg" alt="Imagen del acceso" style="width:88px;height:140px;object-fit:cover;object-position:top;border-radius:10px;border:1px solid var(--borde);background:#fff">
           <div style="flex:1;min-width:0">
             <div style="font-weight:600" id="pasoQRTitulo"></div>
             <p class="mut" id="pasoQRTexto" style="margin:4px 0 8px"></p>
             <div class="fila">
-              <button class="chica" id="pasoQRCopiar">Copiar la foto</button>
+              <button class="chica" id="pasoQRCopiar">Copiar la imagen</button>
               <button class="sec chica" id="pasoQRDescargar">Descargar</button>
               <button class="sec chica" id="pasoQRAbrir">Abrir WhatsApp</button>
               <button class="sec chica" id="pasoQRListo">Listo</button>
@@ -153,7 +178,7 @@
     </section>
 
     <section id="secEnviados" class="tarjeta oculto">
-      <h2>Links activos de hoy <span id="resumen" class="mut" style="text-transform:none;letter-spacing:0;font-weight:500"></span></h2>
+      <h2>Links activos · <span id="enviadosClase"></span> <span id="resumen" class="mut" style="text-transform:none;letter-spacing:0;font-weight:500"></span></h2>
       <div id="enviados"></div>
       <details id="anteriores" class="oculto" style="margin-top:10px">
         <summary class="mut" id="anterioresTitulo">Ver anteriores</summary>
@@ -163,7 +188,7 @@
 
     <section class="tarjeta">
       <details>
-        <summary>Ajustes</summary>
+        <summary>Ajustes generales</summary>
         <label style="margin-top:12px;font-weight:600;color:var(--tx)">Contraseña de acceso</label>
         <p class="mut" style="margin:0 0 6px">Mínimo 8 caracteres. Con ella entras desde cualquier dispositivo. La clave del archivo CLAVES.txt sigue funcionando siempre como respaldo.</p>
         <div class="fila">
@@ -172,17 +197,21 @@
           <button id="btnGuardarClave">Guardar contraseña</button>
         </div>
         <hr style="border:0;border-top:1px solid var(--borde);margin:16px 0">
-        <label>Horas que vive el link desde que lo compartes</label>
-        <input id="cfgVigencia" type="number" min="1" max="720" step="1" inputmode="numeric">
-        <label>Minutos que sigue vivo después de que lo abren (para recargar o reconectar)</label>
-        <input id="cfgMinutos" type="number" min="1" max="1440" inputmode="numeric">
-        <label>Clics máximos</label>
-        <input id="cfgMaxUsos" type="number" min="1" max="50" inputmode="numeric">
-        <label>Mensaje de WhatsApp. Variables: {link} {hasta} {horas}. El link va siempre: si no escribes {link}, se agrega al final.</label>
-        <textarea id="cfgPlantilla"></textarea>
+        <label style="font-weight:600;color:var(--tx)">Texto del mensaje de WhatsApp (va como pie de la imagen)</label>
+        <p class="mut" style="margin:0 0 6px">Variables: {link} {clase} {hasta} {horas}. El link va siempre; cualquier otra dirección web se quita.</p>
+        <textarea id="cfgPlantilla" style="min-height:80px"></textarea>
+        <hr style="border:0;border-top:1px solid var(--borde);margin:16px 0">
+        <label style="font-weight:600;color:var(--tx)">Guía de estudio (la parte de arriba de la imagen)</label>
+        <p class="mut" style="margin:0 0 6px">Se dibuja con tu logo y este texto. Separa párrafos con una línea "---". Variables: {clics} {horas}. O sube tu propia imagen abajo y se usará en vez del texto.</p>
+        <textarea id="cfgGuia" style="min-height:140px"></textarea>
+        <div class="fila" style="margin-top:8px">
+          <input type="file" id="archivoGuia" accept="image/png,image/jpeg" style="flex:1">
+          <button class="sec chica" id="btnQuitarGuia">Usar el texto en vez de la imagen</button>
+        </div>
+        <p class="mut" id="estadoGuia"></p>
         <div class="fila" style="margin-top:10px">
-          <button id="btnGuardarCfg">Guardar ajustes</button>
-          <button class="sec" id="btnPlantillaDef">Restaurar mensaje</button>
+          <button id="btnGuardarCfg">Guardar ajustes generales</button>
+          <button class="sec" id="btnPlantillaDef">Restaurar textos</button>
         </div>
         <hr style="border:0;border-top:1px solid var(--borde);margin:16px 0">
         <p class="mut" id="baseLinks" style="word-break:break-all"></p>
@@ -200,7 +229,7 @@
 <div id="velo" class="velo oculto">
   <div class="modal">
     <h3 id="qrTitulo" style="margin:0 0 10px;font-size:1rem"></h3>
-    <img id="qrGrande" alt="Código QR del acceso">
+    <img id="qrGrande" alt="Imagen del acceso">
     <div class="fila" style="margin-top:12px">
       <button id="btnQRCompartir" class="oculto">Compartir</button>
       <button class="sec chica" id="btnQRCopiar">Copiar imagen</button>
@@ -214,23 +243,23 @@
 (function () {
   // Dirección de la API (proyecto accesos-lumio en Supabase).
   var API = 'https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/admin/api';
-  var PLANTILLA_DEF = 'Hola 👋 Aquí está tu acceso a la clase:\n{link}\n\nReglas rápidas:\n1️⃣ Es personal, de un solo uso, y vence en {horas} horas.\n2️⃣ Pulsa "Entrar" solo cuando tú o tu hijo estén listos para la clase: al entrar, el link se cierra poco después.\n3️⃣ ¿Entrará desde un iPad o tablet? Pídeme el código QR y lo escanea con la cámara.\n4️⃣ Si lo compartes con alguien más, deja de funcionar.';
+  var PLANTILLA_DEF = 'Tu acceso a {clase} 👇\n{link}';
+  var GUIA_DEF = '1. Prepárate en un espacio tranquilo y con buena conexión wifi antes de dar click al enlace. Tienes {clics} accesos en caso de fallas técnicas.\n---\n2. El código QR y el enlace son la misma forma de acceso. Escanear el código equivale a dar click en el enlace.\n---\nDisfruta de tu guía de estudio y tómate todo el tiempo que necesites. ¡Aprovéchala al máximo!';
   var ESTADOS = {
     pendiente: ['Sin abrir', 'ambar'], abierto: ['Entró', 'verde'], cerrado: ['Cerrado', 'gris'],
     expirado: ['Vencido', 'gris'], agotado: ['Agotado', 'morado'], revocado: ['Revocado', 'rojo'], clase_inactiva: ['Clase cerrada', 'gris']
   };
+  var AMARILLO = '#FFD400', NEGRO = '#111111', GRIS = '#555555';
   var $ = function (s) { return document.querySelector(s); };
   var esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+  var esAndroid = /Android/i.test(navigator.userAgent);
 
   var st = {
-    clave: '', claseId: '',
-    clases: [], clase: null, borrador: null, enviados: [],
-    cfg: { vigencia_horas: 8, minutos_tras_apertura: 10, max_usos: 3, plantilla: PLANTILLA_DEF },
-    compartiendo: false
+    clave: '', claseId: '', clases: [], clase: null, borrador: null, enviados: [],
+    cfg: { plantilla: PLANTILLA_DEF, guia_texto: GUIA_DEF, url_reglas: '' },
+    guiaImg: null, compartiendo: false
   };
   try { st.clave = localStorage.getItem('al_clave') || ''; st.claseId = localStorage.getItem('al_clase') || ''; } catch (e) {}
-
-  // Si la dirección trae algo después de "#", se limpia (nunca se acepta una contraseña por la dirección).
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -238,6 +267,8 @@
   function hora(iso) { if (!iso) return '—'; return new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }); }
   function chip(estado) { var e = ESTADOS[estado] || [estado, 'gris']; return '<span class="chip ' + e[1] + '">' + esc(e[0]) + '</span>'; }
   function aviso(texto, tipo, ms) { $('#msg').innerHTML = texto ? '<div class="aviso ' + (tipo || 'ok') + '">' + esc(texto) + '</div>' : ''; if (texto) setTimeout(function () { $('#msg').innerHTML = ''; }, ms || 4000); }
+  function esLibre(c) { return !!(c && c.libre); }
+  function resumenAjustes(c) { return esLibre(c) ? 'Acceso libre · sin límite de tiempo ni de clics' : (c.vigencia_horas + ' h · se cierra ' + c.minutos_tras_apertura + ' min después de entrar · ' + c.max_usos + ' clics'); }
 
   function api(path, opts) {
     opts = opts || {};
@@ -255,17 +286,20 @@
     var fallback = function () { var t = document.createElement('textarea'); t.value = texto; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { aviso('No se pudo copiar', 'mal'); } document.body.removeChild(t); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(done, fallback); else fallback();
   }
-  // Quita del texto cualquier dirección web (la del panel, por ejemplo). La única que puede ir es el link del alumno.
   function sinDirecciones(t) { return String(t || '').replace(/https?:\/\/\S+/gi, '').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n'); }
-  // El mensaje SIEMPRE lleva el link del alumno, una sola vez: si la plantilla no tiene {link}, se agrega al final.
-  function mensaje(link, hasta) {
+  // El mensaje SIEMPRE lleva el link del alumno, una sola vez, y ninguna otra dirección.
+  function mensaje(link, hasta, clase) {
+    clase = clase || st.clase || {};
     var t = sinDirecciones(st.cfg.plantilla);
     if (t.indexOf('{link}') === -1) t = t.replace(/\s+$/, '') + '\n\n👉 Tu acceso: {link}';
-    return t.replace(/\{link\}/g, link).replace(/\{hasta\}/g, fecha(hasta)).replace(/\{horas\}/g, st.cfg.vigencia_horas).trim();
+    return t.replace(/\{link\}/g, link).replace(/\{clase\}/g, clase.nombre || 'la clase').replace(/\{hasta\}/g, esLibre(clase) ? 'sin límite' : fecha(hasta)).replace(/\{horas\}/g, esLibre(clase) ? 'sin límite' : clase.vigencia_horas).trim();
+  }
+  function datosCompartir(msg, link) {
+    var texto = esAndroid ? msg.replace(/👉 Tu acceso:\s*/g, '').split(link).join('').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim() : msg;
+    return { text: texto, url: link, title: 'Acceso a la clase' };
   }
 
   // ---------- Arranque ----------
-  // Acepta la clave aunque venga pegada con "ADMIN_KEY=", comillas o espacios.
   function limpiarClave(v) { return String(v || '').trim().replace(/^ADMIN_KEY\s*=\s*/i, '').replace(/^["']+|["']+$/g, '').trim(); }
   function pareceClaveArchivo(v) { return /^[a-zA-Z0-9]{32}$/.test(v); }
   function entrar() {
@@ -273,7 +307,7 @@
     api('/ping').then(function () {
       try { localStorage.setItem('al_clave', st.clave); } catch (e) {}
       $('#secClave').classList.add('oculto'); $('#app').classList.remove('oculto');
-      if (pareceClaveArchivo(st.clave)) aviso('Entraste con la clave del archivo. Ponte una contraseña fácil en la tarjeta "Contraseña de acceso" (más abajo).', 'info', 12000);
+      if (pareceClaveArchivo(st.clave)) aviso('Entraste con la clave del archivo. Ponte una contraseña fácil en Ajustes generales.', 'info', 12000);
       return cargarCfg().then(cargarClases);
     }).catch(function (e) {
       var m = /incorrecta/i.test(e.message) ? 'Contraseña incorrecta. Si no has puesto una, usa la clave de la primera línea de CLAVES.txt, sin espacios.' : e.message;
@@ -296,59 +330,67 @@
       st.clave = n1; try { localStorage.setItem('al_clave', n1); } catch (e) {}
       $('#nuevaClave').value = ''; $('#nuevaClave2').value = '';
       aviso('Contraseña guardada. Úsala desde ahora en cualquier dispositivo; la clave del archivo sigue valiendo como respaldo.', 'ok', 8000);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }).catch(function (e) { aviso(e.message, 'mal'); }).then(function () { $('#btnGuardarClave').disabled = false; });
   });
 
-  // ---------- Ajustes (se guardan en el servidor: valen igual en celular y computadora) ----------
+  // ---------- Ajustes generales ----------
   function cargarCfg() {
     return api('/config').then(function (c) {
-      if (c.vigencia_horas) st.cfg.vigencia_horas = Number(c.vigencia_horas) || 8;
-      if (c.minutos_tras_apertura) st.cfg.minutos_tras_apertura = Number(c.minutos_tras_apertura) || 10;
-      if (c.max_usos) st.cfg.max_usos = Number(c.max_usos) || 3;
       if (c.plantilla) st.cfg.plantilla = c.plantilla;
-      pintarCfg();
-      // Primera vez que la app corre publicada en internet: los links de alumnos pasan a usar
-      // la página entrar.html de este mismo sitio (el código va después de "#").
+      if (c.guia_texto) st.cfg.guia_texto = c.guia_texto;
+      st.cfg.url_reglas = c.url_reglas || '';
+      pintarCfg(); cargarGuiaImg();
       var aqui = /^https:$/.test(location.protocol) && !/localhost|127\.0\.0\.1/.test(location.hostname)
         ? location.href.split('#')[0].split('?')[0].replace(/[^/]*$/, '') + 'entrar.html#' : '';
       if (aqui && !c.base_links) {
         return api('/config', { method: 'POST', body: { base_links: aqui } }).then(function () { $('#baseLinks').textContent = 'Los alumnos abren: ' + aqui + '…'; }).catch(function () {});
       }
-      $('#baseLinks').textContent = c.base_links ? 'Los alumnos abren: ' + c.base_links + '…' : 'Los alumnos abren el link directo del servidor (se cambiará solo cuando la app esté publicada).';
+      $('#baseLinks').textContent = c.base_links ? 'Los alumnos abren: ' + c.base_links + '…' : '';
     }).catch(function () { pintarCfg(); });
   }
   function pintarCfg() {
-    $('#cfgVigencia').value = st.cfg.vigencia_horas; $('#cfgMinutos').value = st.cfg.minutos_tras_apertura;
-    $('#cfgMaxUsos').value = st.cfg.max_usos; $('#cfgPlantilla').value = st.cfg.plantilla;
-    $('#notaSiguiente').textContent = 'Al compartir, el link se activa y vive ' + st.cfg.vigencia_horas + ' h. Después de que entran, se cierra a los ' + st.cfg.minutos_tras_apertura + ' min. Enseguida aparece uno nuevo para la siguiente persona.';
+    $('#cfgPlantilla').value = st.cfg.plantilla; $('#cfgGuia').value = st.cfg.guia_texto;
+    $('#estadoGuia').textContent = st.cfg.url_reglas ? 'Se usa tu imagen subida como guía.' : 'Se dibuja la guía con tu logo y el texto de arriba.';
   }
-  // "Guardar ajustes" guarda todo lo de la sección, incluida la contraseña si se escribió.
+  function cargarGuiaImg() {
+    st.guiaImg = null;
+    if (!st.cfg.url_reglas) { prepararImagen(); return; }
+    var im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = function () { st.guiaImg = im; prepararImagen(); };
+    im.onerror = function () { st.guiaImg = null; $('#estadoGuia').textContent = 'No se pudo cargar tu imagen subida; se usa el texto.'; prepararImagen(); };
+    im.src = st.cfg.url_reglas;
+  }
   $('#btnGuardarCfg').addEventListener('click', function () {
     var plantilla = $('#cfgPlantilla').value.trim() || PLANTILLA_DEF;
     var teniaDireccion = /https?:\/\//i.test(plantilla);
     plantilla = sinDirecciones(plantilla).trim() || PLANTILLA_DEF;
-    var c = {
-      vigencia_horas: String(Math.max(1, Number($('#cfgVigencia').value) || 8)),
-      minutos_tras_apertura: String(Math.max(1, Number($('#cfgMinutos').value) || 10)),
-      max_usos: String(Math.max(1, Number($('#cfgMaxUsos').value) || 3)),
-      plantilla: plantilla
-    };
+    var guia = $('#cfgGuia').value.trim() || GUIA_DEF;
     var n1 = $('#nuevaClave').value, n2 = $('#nuevaClave2').value;
-    if (n1 || n2) {
-      if (n1.length < 8) return aviso('La contraseña debe tener al menos 8 caracteres', 'mal');
-      if (n1 !== n2) return aviso('Las dos contraseñas no coinciden', 'mal');
-    }
+    if (n1 || n2) { if (n1.length < 8) return aviso('La contraseña debe tener al menos 8 caracteres', 'mal'); if (n1 !== n2) return aviso('Las dos contraseñas no coinciden', 'mal'); }
     $('#btnGuardarCfg').disabled = true;
-    api('/config', { method: 'POST', body: c })
+    api('/config', { method: 'POST', body: { plantilla: plantilla, guia_texto: guia } })
       .then(function () { return n1 ? api('/clave', { method: 'POST', body: { nueva: n1 } }).then(function () { st.clave = n1; try { localStorage.setItem('al_clave', n1); } catch (e) {} $('#nuevaClave').value = ''; $('#nuevaClave2').value = ''; }) : null; })
-      .then(function () {
-        aviso(teniaDireccion ? 'Ajustes guardados. Se quitó una dirección web del mensaje: el link del alumno se agrega solo (o donde pongas {link}).' : (n1 ? 'Ajustes y contraseña guardados.' : 'Ajustes guardados.'), 'ok', 8000);
-        return cargarCfg();
-      })
-      .then(siguiente).catch(function (e) { aviso(e.message, 'mal'); }).then(function () { $('#btnGuardarCfg').disabled = false; });
+      .then(function () { aviso(teniaDireccion ? 'Guardado. Se quitó una dirección web del mensaje: el link del alumno se agrega solo.' : (n1 ? 'Ajustes y contraseña guardados.' : 'Ajustes guardados.'), 'ok', 8000); return cargarCfg(); })
+      .catch(function (e) { aviso(e.message, 'mal'); }).then(function () { $('#btnGuardarCfg').disabled = false; });
   });
-  $('#btnPlantillaDef').addEventListener('click', function () { $('#cfgPlantilla').value = PLANTILLA_DEF; });
+  $('#btnPlantillaDef').addEventListener('click', function () { $('#cfgPlantilla').value = PLANTILLA_DEF; $('#cfgGuia').value = GUIA_DEF; });
+  $('#archivoGuia').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    if (f.size > 4 * 1024 * 1024) return aviso('La imagen pesa más de 4 MB; usa una más ligera', 'mal');
+    var lector = new FileReader();
+    lector.onload = function () {
+      var ext = /png/i.test(f.type) ? 'png' : 'jpg';
+      aviso('Subiendo imagen…', 'info', 20000);
+      api('/publicar', { method: 'POST', body: { ruta: 'guia.' + ext, base64: lector.result, tipo: f.type } })
+        .then(function (r) { return api('/config', { method: 'POST', body: { url_reglas: r.url + '?v=' + Date.now() } }); })
+        .then(function () { aviso('Imagen de la guía guardada. Se usará en los envíos.', 'ok', 6000); return cargarCfg(); })
+        .catch(function (e) { aviso(e.message, 'mal'); });
+    };
+    lector.readAsDataURL(f);
+  });
+  $('#btnQuitarGuia').addEventListener('click', function () {
+    api('/config', { method: 'POST', body: { url_reglas: '' } }).then(function () { aviso('Se usará el texto de la guía.'); return cargarCfg(); }).catch(function (e) { aviso(e.message, 'mal'); });
+  });
 
   // ---------- Clases ----------
   function cargarClases() {
@@ -356,74 +398,139 @@
       st.clases = cs.filter(function (c) { return c.activa; });
       st.clase = st.clases.filter(function (c) { return c.id === st.claseId; })[0] || st.clases[0] || null;
       if (st.clase) { st.claseId = st.clase.id; try { localStorage.setItem('al_clase', st.claseId); } catch (e) {} }
-      pintarClase();
+      pintarClases(); pintarClase();
       if (st.clase) { siguiente(); cargarEnviados(); }
     }).catch(function (e) { aviso(e.message, 'mal'); });
   }
+  function pintarClases() {
+    var html = st.clases.length ? '' : '<p class="mut" style="margin:0 0 8px">No hay clases activas. Crea una con el link de Lumio.</p>';
+    st.clases.forEach(function (c) {
+      var n = c.conteo || {};
+      html += '<div class="clase' + (st.clase && c.id === st.clase.id ? ' sel' : '') + '" data-id="' + c.id + '"><div class="info"><div class="nombre">' + esc(c.nombre) + '</div><div class="mut">' + esc(resumenAjustes(c)) + '</div><div class="mut">' + ((n.pendiente || 0) + (n.abierto || 0)) + ' links activos</div></div>' + (st.clase && c.id === st.clase.id ? '<span class="chip ambar">seleccionada</span>' : '<span class="chip gris">elegir</span>') + '</div>';
+    });
+    $('#listaClases').innerHTML = html;
+    $('#detNueva').open = !st.clases.length;
+  }
+  $('#listaClases').addEventListener('click', function (ev) {
+    var el = ev.target.closest('.clase'); if (!el) return;
+    st.claseId = el.dataset.id; try { localStorage.setItem('al_clase', st.claseId); } catch (e) {}
+    st.borrador = null; st.imagenBorrador = null; cargarClases();
+  });
   function pintarClase() {
     var hay = !!st.clase;
-    $('#claseActual').classList.toggle('oculto', !hay);
-    $('#claseNueva').classList.toggle('oculto', hay);
-    $('#btnCancelarClase').classList.toggle('oculto', !hay);
-    $('#secSiguiente').classList.toggle('oculto', !hay);
-    $('#secEnviados').classList.toggle('oculto', !hay);
+    ['#secClase', '#secSiguiente', '#secEnviados'].forEach(function (s) { $(s).classList.toggle('oculto', !hay); });
     if (!hay) return;
-    $('#claseNombre').textContent = st.clase.nombre;
-    $('#claseUrl').textContent = st.clase.url_destino;
-    var sel = $('#selClases');
-    sel.classList.toggle('oculto', st.clases.length < 2);
-    sel.innerHTML = st.clases.map(function (c) { return '<option value="' + c.id + '"' + (c.id === st.clase.id ? ' selected' : '') + '>' + esc(c.nombre) + '</option>'; }).join('');
+    var c = st.clase;
+    $('#cNombre').value = c.nombre; $('#cUrl').textContent = c.url_destino; $('#cUrlForm').classList.add('oculto'); $('#cUrlNueva').value = '';
+    $('#cLibre').checked = !!c.libre; $('#cHoras').value = c.vigencia_horas; $('#cMinutos').value = c.minutos_tras_apertura; $('#cClics').value = c.max_usos;
+    $('#cLimites').style.opacity = c.libre ? '.4' : '1';
+    $('#siguienteClase').textContent = c.nombre; $('#enviadosClase').textContent = c.nombre;
+    $('#notaSiguiente').textContent = esLibre(c) ? 'Acceso libre: el link no vence ni se agota. Se activa al compartir y enseguida aparece uno nuevo.' : ('Al compartir, el link se activa y vive ' + c.vigencia_horas + ' h. Después de que entran, se cierra a los ' + c.minutos_tras_apertura + ' min (' + c.max_usos + ' clics). Enseguida aparece uno nuevo.');
   }
-  $('#selClases').addEventListener('change', function () { st.claseId = this.value; try { localStorage.setItem('al_clase', st.claseId); } catch (e) {} st.borrador = null; cargarClases(); });
-  $('#btnCambiar').addEventListener('click', function () { $('#claseActual').classList.add('oculto'); $('#claseNueva').classList.remove('oculto'); $('#nuevaUrl').focus(); });
-  $('#btnCancelarClase').addEventListener('click', function () { pintarClase(); });
-  // Cerrar la clase: queda inactiva y TODOS sus links (enviados o no) dejan de servir al instante.
+  $('#cLibre').addEventListener('change', function () { $('#cLimites').style.opacity = this.checked ? '.4' : '1'; });
+  $('#nLibre').addEventListener('change', function () { $('#nLimites').style.opacity = this.checked ? '.4' : '1'; });
+  $('#btnCambiarUrl').addEventListener('click', function () { $('#cUrlForm').classList.toggle('oculto'); $('#cUrlNueva').focus(); });
+  $('#btnCrearClase').addEventListener('click', function () {
+    var nombre = $('#nNombre').value.trim() || ('Clase ' + fecha(new Date().toISOString()));
+    var url = $('#nUrl').value.trim();
+    if (!/^https?:\/\//i.test(url)) return aviso('Pega el link completo de Lumio (empieza con https://)', 'mal');
+    var body = { nombre: nombre, url_destino: url, libre: $('#nLibre').checked, vigencia_horas: Number($('#nHoras').value) || 8, minutos_tras_apertura: Number($('#nMinutos').value) || 10, max_usos: Number($('#nClics').value) || 3 };
+    $('#btnCrearClase').disabled = true;
+    api('/clases', { method: 'POST', body: body }).then(function (c) {
+      $('#nNombre').value = ''; $('#nUrl').value = ''; $('#nLibre').checked = false; $('#nLimites').style.opacity = '1';
+      st.claseId = c.id; st.borrador = null; st.imagenBorrador = null; aviso('Clase creada'); return cargarClases();
+    }).catch(function (e) { aviso(e.message, 'mal'); }).then(function () { $('#btnCrearClase').disabled = false; });
+  });
+  $('#btnGuardarClase').addEventListener('click', function () {
+    var c = st.clase; if (!c) return;
+    var body = { nombre: $('#cNombre').value.trim() || c.nombre, libre: $('#cLibre').checked, vigencia_horas: Number($('#cHoras').value) || 8, minutos_tras_apertura: Number($('#cMinutos').value) || 10, max_usos: Number($('#cClics').value) || 3 };
+    var nueva = $('#cUrlNueva').value.trim();
+    if (nueva) { if (!/^https?:\/\//i.test(nueva)) return aviso('El link de Lumio debe empezar con https://', 'mal'); body.url_destino = nueva; }
+    $('#btnGuardarClase').disabled = true;
+    api('/clases/' + c.id, { method: 'PATCH', body: body }).then(function () {
+      st.borrador = null; st.imagenBorrador = null; aviso('Ajustes de la clase guardados. Aplican a los links nuevos.'); return cargarClases();
+    }).catch(function (e) { aviso(e.message, 'mal'); }).then(function () { $('#btnGuardarClase').disabled = false; });
+  });
   $('#btnCerrarClase').addEventListener('click', function () {
     var c = st.clase; if (!c) return;
     var vivos = st.enviados.filter(function (a) { return a.estado === 'pendiente' || a.estado === 'abierto'; }).length;
-    if (!confirm('¿Cerrar "' + c.nombre + '"? ' + (vivos ? 'Sus ' + vivos + ' links activos dejarán de funcionar al instante.' : 'Todos sus links dejarán de funcionar.') + ' Para la siguiente clase pegarás un link nuevo.')) return;
+    if (!confirm('¿Cerrar "' + c.nombre + '"? ' + (vivos ? 'Sus ' + vivos + ' links activos dejarán de funcionar al instante.' : 'Todos sus links dejarán de funcionar.'))) return;
     $('#btnCerrarClase').disabled = true;
     api('/clases/' + c.id, { method: 'PATCH', body: { activa: false } }).then(function () {
-      st.claseId = ''; st.clase = null; st.borrador = null; st.qrBorrador = null; st.enviados = [];
+      st.claseId = ''; st.clase = null; st.borrador = null; st.imagenBorrador = null; st.enviados = [];
       try { localStorage.removeItem('al_clase'); } catch (e) {}
       aviso('Clase cerrada. Todos sus links quedaron apagados.', 'ok', 8000);
       return cargarClases();
     }).catch(function (e) { aviso(e.message, 'mal'); }).then(function () { $('#btnCerrarClase').disabled = false; });
   });
-  $('#btnGuardarClase').addEventListener('click', function () {
-    var url = $('#nuevaUrl').value.trim();
-    if (!/^https?:\/\//i.test(url)) return aviso('Pega el link completo de Lumio (empieza con https://)', 'mal');
-    var nombre = 'Clase ' + fecha(new Date().toISOString());
-    api('/clases', { method: 'POST', body: { nombre: nombre, url_destino: url } }).then(function (c) {
-      $('#nuevaUrl').value = ''; st.claseId = c.id; st.borrador = null; aviso('Clase guardada'); return cargarClases();
-    }).catch(function (e) { aviso(e.message, 'mal'); });
-  });
 
-  // ---------- Código QR ----------
+  // ---------- Imagen del envío: guía de estudio + código QR, con la marca SparkEd ----------
   function qrCanvas(texto, tam) {
     if (!window.QRCode) return null;
     var d = document.createElement('div');
-    new QRCode(d, { text: texto, width: tam, height: tam, colorDark: '#2A2A2A', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    new QRCode(d, { text: texto, width: tam, height: tam, colorDark: NEGRO, colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
     return d.querySelector('canvas');
   }
-  function redondo(x, px, py, w, h, r) { x.beginPath(); x.moveTo(px + r, py); x.arcTo(px + w, py, px + w, py + h, r); x.arcTo(px + w, py + h, px, py + h, r); x.arcTo(px, py + h, px, py, r); x.arcTo(px, py, px + w, py, r); x.closePath(); }
-  function recortar(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
-  // Imagen lista para WhatsApp: tarjeta amarilla con el QR, la clase y las instrucciones.
-  function tarjetaQR(link, clase, hasta) {
+  function rayo(x, cx, top, alto) {
+    var w = alto * 0.6, p = [[.42, 0], [.72, 0], [.55, .36], [.75, .36], [.28, 1], [.40, .56], [.25, .56]];
+    x.beginPath(); p.forEach(function (q, i) { var px = cx - w / 2 + q[0] * w, py = top + q[1] * alto; i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.closePath(); x.fillStyle = AMARILLO; x.fill();
+  }
+  function marca(x, cx, top, tam) {
+    x.font = '700 ' + tam + 'px Poppins, system-ui, sans-serif'; x.textBaseline = 'alphabetic';
+    var a = x.measureText('Spark').width, b = x.measureText('Ed').width, ini = cx - (a + b) / 2;
+    x.textAlign = 'left'; x.fillStyle = NEGRO; x.fillText('Spark', ini, top); x.fillStyle = AMARILLO; x.fillText('Ed', ini + a, top); x.textAlign = 'center';
+  }
+  function envolver(x, texto, maxW) {
+    var lineas = []; texto.split('\n').forEach(function (parrafo) {
+      var palabras = parrafo.split(/\s+/), linea = '';
+      palabras.forEach(function (p) { var t = linea ? linea + ' ' + p : p; if (x.measureText(t).width > maxW && linea) { lineas.push(linea); linea = p; } else linea = t; });
+      lineas.push(linea);
+    }); return lineas;
+  }
+  function textoGuia(c) {
+    return st.cfg.guia_texto.replace(/\{clics\}/g, esLibre(c) ? 'ilimitados' : String(c.max_usos)).replace(/\{horas\}/g, esLibre(c) ? 'sin límite' : String(c.vigencia_horas));
+  }
+  // Devuelve una promesa con el PNG de la imagen completa (720 px de ancho).
+  function imagenEnvio(link, c, hasta) {
     return new Promise(function (resolve, reject) {
-      var q = qrCanvas(link, 520);
+      var q = qrCanvas(link, 440);
       if (!q) return reject(new Error('El generador de QR no cargó. Revisa tu conexión y recarga la app.'));
-      var c = document.createElement('canvas'); c.width = 720; c.height = 900; var x = c.getContext('2d');
-      x.fillStyle = '#FECC4F'; x.fillRect(0, 0, c.width, c.height);
-      x.fillStyle = '#ffffff'; redondo(x, 40, 40, 640, 820, 32); x.fill();
-      x.textAlign = 'center';
-      x.fillStyle = '#2A2A2A'; x.font = '700 40px Poppins, system-ui, sans-serif'; x.fillText('Acceso a tu clase', 360, 120);
-      x.fillStyle = '#6B6B6B'; x.font = '500 26px Poppins, system-ui, sans-serif'; x.fillText(recortar(clase, 34), 360, 162);
-      x.drawImage(q, 100, 200, 520, 520);
-      x.fillStyle = '#2A2A2A'; x.font = '600 26px Poppins, system-ui, sans-serif'; x.fillText('Escanea con la cámara del iPad o tablet', 360, 770);
-      x.fillStyle = '#6B6B6B'; x.font = '500 22px Poppins, system-ui, sans-serif'; x.fillText('o toca el link del mensaje. Es personal.', 360, 806);
-      x.fillText('Vence el ' + fecha(hasta), 360, 842);
-      c.toBlob(function (b) { b ? resolve(b) : reject(new Error('No se pudo crear la imagen del QR')); }, 'image/png');
+      var W = 720, M = 60, medida = document.createElement('canvas').getContext('2d');
+      // 1) Altura de la parte de la guía.
+      var bloques = [], altoGuia;
+      if (st.guiaImg) { altoGuia = Math.round(W * st.guiaImg.height / st.guiaImg.width); }
+      else {
+        medida.font = '400 27px Poppins, system-ui, sans-serif';
+        textoGuia(c).split(/\n\s*---\s*\n/).forEach(function (p) { bloques.push(envolver(medida, p.trim(), W - 2 * M)); });
+        altoGuia = 40 + 90 + 24 + 60 + 20 + 50 + 52 + 24;
+        bloques.forEach(function (ls, i) { altoGuia += ls.length * 38 + (i < bloques.length - 1 ? 44 : 10); });
+        altoGuia += 10;
+      }
+      var altoQR = 60 + 440 + 20 + 34 + 40;
+      var canvas = document.createElement('canvas'); canvas.width = W; canvas.height = altoGuia + altoQR; var x = canvas.getContext('2d');
+      x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, canvas.height);
+      x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+      var y = 0;
+      if (st.guiaImg) { x.drawImage(st.guiaImg, 0, 0, W, altoGuia); y = altoGuia; }
+      else {
+        y = 40; rayo(x, W / 2, y, 90); y += 90 + 24;
+        marca(x, W / 2, y + 48, 56); y += 60 + 20;
+        x.fillStyle = NEGRO; x.font = '400 44px Poppins, system-ui, sans-serif'; x.fillText('Guía de Estudio:', W / 2, y + 40); y += 50;
+        x.fillStyle = AMARILLO; x.font = '500 44px Poppins, system-ui, sans-serif'; x.fillText('Instrucciones', W / 2, y + 40); y += 52 + 24;
+        x.fillStyle = NEGRO; x.font = '400 27px Poppins, system-ui, sans-serif';
+        bloques.forEach(function (ls, i) {
+          ls.forEach(function (l) { x.fillText(l, W / 2, y + 28); y += 38; });
+          if (i < bloques.length - 1) { x.fillStyle = AMARILLO; x.fillRect(W / 2 - 35, y + 18, 70, 4); x.fillStyle = NEGRO; y += 44; } else y += 10;
+        });
+        y += 10;
+      }
+      // 2) Parte del QR.
+      x.fillStyle = AMARILLO; x.fillRect(0, y, W, 4);
+      x.fillStyle = NEGRO; x.font = '600 26px Poppins, system-ui, sans-serif'; x.fillText('Tu código QR de acceso', W / 2, y + 44); y += 60;
+      x.drawImage(q, (W - 440) / 2, y, 440, 440); y += 440 + 20;
+      x.fillStyle = GRIS; x.font = '400 22px Poppins, system-ui, sans-serif';
+      x.fillText(esLibre(c) ? 'Acceso libre · ' + (c.nombre || '') : 'Personal · vence el ' + fecha(hasta), W / 2, y + 24);
+      canvas.toBlob(function (b) { b ? resolve(b) : reject(new Error('No se pudo crear la imagen')); }, 'image/png');
     });
   }
   function copiarPNG(promesaBlob) {
@@ -439,19 +546,12 @@
   function puedeCompartirArchivos() {
     try { return esMovil && !!navigator.share && !!navigator.canShare && navigator.canShare({ files: [new File([new Blob(['x'])], 'x.png', { type: 'image/png' })] }); } catch (e) { return false; }
   }
-  // Qué se entrega a la hoja de compartir del celular. El link del alumno va declarado como "url" (el único
-  // enlace del envío). En Android el sistema lo pega al final del texto, así que ahí el texto va sin el link
-  // para que aparezca una sola vez; en iPhone el texto conserva el link por si el sistema omite "url".
-  var esAndroid = /Android/i.test(navigator.userAgent);
-  function datosCompartir(msg, link) {
-    var texto = esAndroid ? msg.replace(/👉 Tu acceso:\s*/g, '').split(link).join('').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim() : msg;
-    return { text: texto, url: link, title: 'Acceso a la clase' };
-  }
-  function nombreArchivo(a) { return 'acceso-clase-' + String(a.alumno || '').replace(/[^0-9a-zA-Z]/g, '') + '.png'; }
-  function abrirQR(a) {
-    var p = tarjetaQR(a.link, a.clase || (st.clase && st.clase.nombre) || '', a.expira_en);
-    st.qrAbierto = { acceso: a, promesa: p };
-    $('#qrTitulo').textContent = 'QR del link ' + a.alumno + ' (vence el ' + fecha(a.expira_en) + ')';
+  function nombreArchivo(a) { return 'acceso-' + String(a.alumno || '').replace(/[^0-9a-zA-Z]/g, '') + '.png'; }
+  function abrirImagen(a) {
+    var c = st.clases.filter(function (x) { return x.id === a.clase_id; })[0] || st.clase;
+    var p = imagenEnvio(a.link, c, a.expira_en);
+    st.qrAbierto = { acceso: a, promesa: p, clase: c };
+    $('#qrTitulo').textContent = 'Imagen del link ' + a.alumno + (esLibre(c) ? ' (acceso libre)' : ' (vence el ' + fecha(a.expira_en) + ')');
     $('#qrGrande').removeAttribute('src');
     p.then(function (blob) { $('#qrGrande').src = URL.createObjectURL(blob); }, function (e) { aviso(e.message, 'mal'); });
     $('#btnQRCompartir').classList.toggle('oculto', !puedeCompartirArchivos());
@@ -459,15 +559,13 @@
   }
   $('#btnQRCerrar').addEventListener('click', function () { $('#velo').classList.add('oculto'); });
   $('#velo').addEventListener('click', function (ev) { if (ev.target === $('#velo')) $('#velo').classList.add('oculto'); });
-  $('#btnQRCopiar').addEventListener('click', function () {
-    copiarPNG(st.qrAbierto.promesa).then(function () { aviso('QR copiado. Pégalo en el chat con Ctrl+V.'); }, function (e) { aviso(e.message, 'mal'); });
-  });
+  $('#btnQRCopiar').addEventListener('click', function () { copiarPNG(st.qrAbierto.promesa).then(function () { aviso('Imagen copiada. Pégala en el chat con Ctrl+V.'); }, function (e) { aviso(e.message, 'mal'); }); });
   $('#btnQRDescargar').addEventListener('click', function () { descargarPNG(st.qrAbierto.promesa, nombreArchivo(st.qrAbierto.acceso)).catch(function (e) { aviso(e.message, 'mal'); }); });
   $('#btnQRCompartir').addEventListener('click', function () {
-    var a = st.qrAbierto.acceso;
+    var a = st.qrAbierto.acceso, c = st.qrAbierto.clase;
     st.qrAbierto.promesa.then(function (blob) {
       var f = new File([blob], nombreArchivo(a), { type: 'image/png' });
-      var msg = mensaje(a.link, a.expira_en);
+      var msg = mensaje(a.link, a.expira_en, c);
       var conTodo = Object.assign({ files: [f] }, datosCompartir(msg, a.link));
       return navigator.share((navigator.canShare && navigator.canShare(conTodo)) ? conTodo : { files: [f], text: msg, title: 'Acceso a la clase' });
     }).catch(function () {});
@@ -476,38 +574,35 @@
   // ---------- Siguiente link ----------
   function siguiente() {
     if (!st.clase) return Promise.resolve();
-    return api('/siguiente', { method: 'POST', body: { clase_id: st.clase.id, minutos_tras_apertura: st.cfg.minutos_tras_apertura, max_usos: st.cfg.max_usos } })
-      .then(function (b) { st.borrador = b; prepararQR(); pintarSiguiente(); })
+    return api('/siguiente', { method: 'POST', body: { clase_id: st.clase.id } })
+      .then(function (b) { st.borrador = b; prepararImagen(); pintarSiguiente(); })
       .catch(function (e) { aviso(e.message, 'mal'); });
   }
-  // La imagen del QR del siguiente link se prepara por adelantado para que "Compartir" sea instantáneo
-  // (en el celular la hoja de compartir debe abrirse justo al tocar). Se refresca cada 5 min.
-  function prepararQR() {
-    var b = st.borrador; if (!b || !st.clase) { st.qrBorrador = null; return; }
-    var hasta = new Date(Date.now() + st.cfg.vigencia_horas * 3600 * 1000);
-    var p = tarjetaQR(b.link, st.clase.nombre, hasta); p.catch(function () {});
-    st.qrBorrador = { id: b.id, promesa: p, creado: Date.now() };
+  function prepararImagen() {
+    var b = st.borrador; if (!b || !st.clase) { st.imagenBorrador = null; return; }
+    var hasta = new Date(Date.now() + (st.clase.vigencia_horas || 8) * 3600 * 1000);
+    var p = imagenEnvio(b.link, st.clase, hasta); p.catch(function () {});
+    st.imagenBorrador = { id: b.id, promesa: p, creado: Date.now() };
   }
-  function qrDelBorrador(b, hasta) {
-    if (st.qrBorrador && st.qrBorrador.id === b.id && Date.now() - st.qrBorrador.creado < 10 * 60 * 1000) return st.qrBorrador.promesa;
-    return tarjetaQR(b.link, st.clase.nombre, hasta);
+  function imagenDelBorrador(b, hasta) {
+    if (st.imagenBorrador && st.imagenBorrador.id === b.id && Date.now() - st.imagenBorrador.creado < 10 * 60 * 1000) return st.imagenBorrador.promesa;
+    return imagenEnvio(b.link, st.clase, hasta);
   }
   function pintarSiguiente() {
     var b = st.borrador;
     $('#btnCompartir').disabled = !b || st.compartiendo;
     $('#numSiguiente').textContent = b ? 'link ' + b.alumno : 'preparando…';
-    $('#btnMostrarQR').disabled = !b || st.compartiendo;
+    $('#btnMostrarImagen').disabled = !b || st.compartiendo;
   }
-  // Mostrar QR: activa el link (como compartirlo) y lo enseña en grande, listo para escanear, copiar o mandar.
-  $('#btnMostrarQR').addEventListener('click', function () {
+  $('#btnMostrarImagen').addEventListener('click', function () {
     var b = st.borrador; if (!b || st.compartiendo) return;
-    var hasta = new Date(Date.now() + st.cfg.vigencia_horas * 3600 * 1000);
+    var hasta = new Date(Date.now() + (st.clase.vigencia_horas || 8) * 3600 * 1000);
     st.borrador = null; pintarSiguiente();
-    abrirQR({ id: b.id, alumno: b.alumno, link: b.link, clase: st.clase.nombre, expira_en: hasta.toISOString() });
+    abrirImagen({ id: b.id, alumno: b.alumno, link: b.link, clase_id: st.clase.id, expira_en: hasta.toISOString() });
     activar(b).then(siguiente).then(cargarEnviados);
   });
   function activar(b) {
-    return api('/accesos/' + b.id + '/enviar', { method: 'POST', body: { vigencia_horas: st.cfg.vigencia_horas }, keepalive: true })
+    return api('/accesos/' + b.id + '/enviar', { method: 'POST', body: {}, keepalive: true })
       .then(function () { $('#fallo').classList.add('oculto'); $('#fallo').innerHTML = ''; })
       .catch(function (e) {
         $('#fallo').classList.remove('oculto');
@@ -516,79 +611,62 @@
       });
   }
   function compartir() {
-    var b = st.borrador;
-    if (!b || st.compartiendo) return;
-    var hasta = new Date(Date.now() + st.cfg.vigencia_horas * 3600 * 1000);
-    var msg = mensaje(b.link, hasta);
+    var b = st.borrador, c = st.clase;
+    if (!b || !c || st.compartiendo) return;
+    var hasta = new Date(Date.now() + (c.vigencia_horas || 8) * 3600 * 1000);
+    var msg = mensaje(b.link, hasta, c);
     st.compartiendo = true; pintarSiguiente();
-    var despues = function () {
-      // Activar el link recién compartido y preparar el siguiente.
-      st.borrador = null; pintarSiguiente();
-      activar(b).then(function () { st.compartiendo = false; return siguiente(); }).then(cargarEnviados);
-    };
+    var despues = function () { st.borrador = null; pintarSiguiente(); activar(b).then(function () { st.compartiendo = false; return siguiente(); }).then(cargarEnviados); };
     var cancelado = function () { st.compartiendo = false; pintarSiguiente(); };
-    var qr = qrDelBorrador(b, hasta);
+    var img = imagenDelBorrador(b, hasta);
     if (esMovil && navigator.share) {
-      // En el celular: hoja de compartir del sistema con la foto del QR y el mensaje (link + reglas).
-      // Se declara el link del alumno como único enlace del envío (url), para que ningún sistema
-      // agregue por su cuenta la dirección de esta página. Solo se activa si de verdad se compartió.
       var datosTexto = datosCompartir(msg, b.link);
       var soloTexto = function () { navigator.share(datosTexto).catch(function () { return navigator.share({ text: msg }); }).then(despues, cancelado); };
       if (puedeCompartirArchivos()) {
-        qr.then(function (blob) {
+        img.then(function (blob) {
           var f = new File([blob], nombreArchivo(b), { type: 'image/png' });
           var conTodo = Object.assign({ files: [f] }, datosTexto);
-          var datos = (navigator.canShare && navigator.canShare(conTodo)) ? conTodo : { files: [f], text: msg, title: 'Acceso a la clase' };
-          return navigator.share(datos);
+          return navigator.share((navigator.canShare && navigator.canShare(conTodo)) ? conTodo : { files: [f], text: msg, title: 'Acceso a la clase' });
         }).then(despues, function (e) { if (e && e.name === 'AbortError') cancelado(); else soloTexto(); });
       } else soloTexto();
     } else {
-      // En la computadora, en este orden: 1) copiar la foto del QR mientras la app aún tiene el foco,
-      // 2) abrir WhatsApp Web/Escritorio con el mensaje, 3) dejar un recuadro fijo con la foto y el paso a paso.
-      var datos = { id: b.id, alumno: b.alumno, link: b.link, clase: st.clase.nombre, expira_en: hasta.toISOString() };
-      copiarPNG(qr).then(function () { return true; }, function () { return false; }).then(function (copiado) {
+      var datos = { id: b.id, alumno: b.alumno, link: b.link, clase_id: c.id, expira_en: hasta.toISOString() };
+      copiarPNG(img).then(function () { return true; }, function () { return false; }).then(function (copiado) {
         var ventana = null;
         try { ventana = window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); } catch (e) {}
-        mostrarPasoQR(datos, msg, qr, copiado, !!ventana);
+        mostrarPaso(datos, msg, img, copiado, !!ventana);
         despues();
       });
     }
   }
-  // Recuadro fijo para la computadora: la foto del QR a la vista hasta que la mandes.
-  function mostrarPasoQR(datos, msg, promesa, copiado, abierto) {
+  function mostrarPaso(datos, msg, promesa, copiado, abierto) {
     st.paso = { datos: datos, msg: msg, promesa: promesa };
     $('#pasoQRImg').removeAttribute('src');
     promesa.then(function (blob) { $('#pasoQRImg').src = URL.createObjectURL(blob); }).catch(function () {});
-    $('#pasoQRTitulo').textContent = (abierto ? 'Mensaje listo en WhatsApp. ' : 'El navegador bloqueó la ventana de WhatsApp: pulsa "Abrir WhatsApp". ') + 'Falta mandar la foto del QR del link ' + datos.alumno + '.';
+    $('#pasoQRTitulo').textContent = (abierto ? 'WhatsApp abierto con el link escrito. ' : 'El navegador bloqueó la ventana de WhatsApp: pulsa "Abrir WhatsApp". ') + 'Falta pegar la imagen del link ' + datos.alumno + '.';
     $('#pasoQRTexto').textContent = copiado
-      ? 'La foto ya está copiada: en WhatsApp Web abre el chat, presiona Ctrl+V y luego Enter. Si no aparece, pulsa "Copiar la foto" y vuelve a pegar.'
-      : 'Pulsa "Copiar la foto"; luego en WhatsApp Web abre el chat, presiona Ctrl+V y Enter. O descárgala y arrástrala al chat.';
+      ? 'La imagen ya está copiada: en el chat presiona Ctrl+V (el link queda como pie de foto) y luego Enter. Si no aparece, pulsa "Copiar la imagen" y vuelve a pegar.'
+      : 'Pulsa "Copiar la imagen"; en el chat presiona Ctrl+V (el link queda como pie de foto) y Enter. O descárgala y arrástrala al chat.';
     $('#pasoQR').classList.remove('oculto');
   }
-  $('#pasoQRCopiar').addEventListener('click', function () {
-    if (!st.paso) return;
-    copiarPNG(st.paso.promesa).then(function () { aviso('Foto copiada. En el chat de WhatsApp presiona Ctrl+V y Enter.', 'ok', 8000); }, function (e) { aviso(e.message, 'mal'); });
-  });
+  $('#pasoQRCopiar').addEventListener('click', function () { if (!st.paso) return; copiarPNG(st.paso.promesa).then(function () { aviso('Imagen copiada. En el chat presiona Ctrl+V y Enter.', 'ok', 8000); }, function (e) { aviso(e.message, 'mal'); }); });
   $('#pasoQRDescargar').addEventListener('click', function () { if (st.paso) descargarPNG(st.paso.promesa, nombreArchivo(st.paso.datos)).catch(function (e) { aviso(e.message, 'mal'); }); });
   $('#pasoQRAbrir').addEventListener('click', function () { if (st.paso) window.open('https://wa.me/?text=' + encodeURIComponent(st.paso.msg), '_blank'); });
   $('#pasoQRListo').addEventListener('click', function () { $('#pasoQR').classList.add('oculto'); st.paso = null; });
   $('#btnCompartir').addEventListener('click', compartir);
   $('#btnCopiarMsg').addEventListener('click', function () {
     var b = st.borrador; if (!b) return;
-    var hasta = new Date(Date.now() + st.cfg.vigencia_horas * 3600 * 1000);
-    copiar(mensaje(b.link, hasta), 'Mensaje copiado. Al pegarlo y enviarlo, el link queda activo.');
-    st.borrador = null; pintarSiguiente();
-    activar(b).then(siguiente).then(cargarEnviados);
+    var hasta = new Date(Date.now() + (st.clase.vigencia_horas || 8) * 3600 * 1000);
+    copiar(mensaje(b.link, hasta, st.clase), 'Mensaje copiado. Al pegarlo y enviarlo, el link queda activo.');
+    st.borrador = null; pintarSiguiente(); activar(b).then(siguiente).then(cargarEnviados);
   });
   $('#btnCopiarLink').addEventListener('click', function () {
     var b = st.borrador; if (!b) return;
     copiar(b.link, 'Link copiado y activado.');
-    st.borrador = null; pintarSiguiente();
-    activar(b).then(siguiente).then(cargarEnviados);
+    st.borrador = null; pintarSiguiente(); activar(b).then(siguiente).then(cargarEnviados);
   });
 
-  // ---------- Enviados ----------
-  // Momento en que un link activo deja de servir: su vigencia, o pocos minutos después de que entraron.
+  // ---------- Links activos ----------
   function finDe(a) {
     var fin = new Date(a.expira_en).getTime();
     if (a.primer_uso_en) fin = Math.min(fin, new Date(a.primer_uso_en).getTime() + a.minutos_tras_apertura * 60000);
@@ -597,15 +675,16 @@
   function cuentaAtras(ms) {
     if (ms <= 0) return 'terminó';
     var s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), seg = s % 60;
+    if (h > 48) return Math.floor(h / 24) + ' días';
     if (h > 0) return h + ' h ' + (m < 10 ? '0' : '') + m + ' min';
     if (m > 0) return m + ' min ' + (seg < 10 ? '0' : '') + seg + ' s';
     return seg + ' s';
   }
   function filaEnviado(a, vivo) {
-    return '<div class="enviado"><div class="info"><span class="num">' + esc(a.alumno) + '</span> <span class="mut">· enviado ' + hora(a.enviado_en) + (a.primer_uso_en ? ' · entró ' + hora(a.primer_uso_en) : '') + '</span>' +
-      (vivo ? '<div class="mut">⏱ <strong class="cuenta" data-fin="' + finDe(a) + '">' + cuentaAtras(finDe(a) - Date.now()) + '</strong> ' + (a.primer_uso_en ? 'para que se cierre' : 'de vigencia') + '</div>' : '<div class="mut">venció ' + fecha(a.expira_en) + '</div>') +
-      '</div>' + chip(a.estado) +
-      (vivo ? '<button class="sec chica" data-msg="' + a.id + '">Mensaje</button><button class="sec chica" data-qr="' + a.id + '">QR</button><button class="peligro chica" data-rev="' + a.id + '">Revocar</button>' : '') + '</div>';
+    var tiempo = a.clase_libre ? '<div class="mut">♾️ acceso libre, sin vencimiento</div>'
+      : (vivo ? '<div class="mut">⏱ <strong class="cuenta" data-fin="' + finDe(a) + '">' + cuentaAtras(finDe(a) - Date.now()) + '</strong> ' + (a.primer_uso_en ? 'para que se cierre' : 'de vigencia') + '</div>' : '<div class="mut">venció ' + fecha(a.expira_en) + '</div>');
+    return '<div class="enviado"><div class="info"><span class="num">' + esc(a.alumno) + '</span> <span class="mut">· enviado ' + hora(a.enviado_en) + (a.primer_uso_en ? ' · entró ' + hora(a.primer_uso_en) + ' (' + a.usos + ' clics)' : '') + '</span>' + tiempo + '</div>' + chip(a.estado) +
+      (vivo ? '<button class="sec chica" data-msg="' + a.id + '">Mensaje</button><button class="sec chica" data-qr="' + a.id + '">Imagen</button><button class="peligro chica" data-rev="' + a.id + '">Revocar</button>' : '') + '</div>';
   }
   function cargarEnviados() {
     if (!st.clase) return Promise.resolve();
@@ -621,7 +700,6 @@
       $('#enviadosAnteriores').innerHTML = otros.map(function (a) { return filaEnviado(a, false); }).join('');
     }).catch(function () {});
   }
-  // Contrarreloj en vivo; cuando uno llega a cero, se recarga la lista para que cambie de estado.
   setInterval(function () {
     var ahora = Date.now(), vencido = false;
     document.querySelectorAll('.cuenta').forEach(function (el) { var ms = Number(el.dataset.fin) - ahora; el.textContent = cuentaAtras(ms); if (ms <= 0) vencido = true; });
@@ -632,24 +710,20 @@
     var id = b.dataset.rev || b.dataset.qr || b.dataset.msg;
     var a = st.enviados.filter(function (x) { return x.id === id; })[0]; if (!a) return;
     if (b.dataset.msg) return copiar(mensaje(a.link, a.expira_en), 'Mensaje del link ' + a.alumno + ' copiado');
-    if (b.dataset.qr) return abrirQR(a);
+    if (b.dataset.qr) return abrirImagen(a);
     if (!confirm('¿Cancelar el link ' + a.alumno + '? La persona ya no podrá entrar con él.')) return;
     api('/accesos/' + a.id + '/revocar', { method: 'POST' }).then(cargarEnviados).catch(function (e) { aviso(e.message, 'mal'); });
   });
   $('#btnRefrescar').addEventListener('click', function () { cargarClases(); });
-
-  // ---------- Dirección de la app (sin contraseña) para abrirla en otro dispositivo ----------
-  $('#btnCopiarApp').addEventListener('click', function () {
-    copiar(location.origin + location.pathname.replace(/[^/]*$/, ''), 'Dirección de la app copiada. En el celular la abres y escribes tu contraseña.');
-  });
+  $('#btnCopiarApp').addEventListener('click', function () { copiar(location.origin + location.pathname.replace(/[^/]*$/, ''), 'Dirección de la app copiada. En el celular la abres y escribes tu contraseña.'); });
 
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && st.clase) { cargarEnviados(); if (!st.borrador && !st.compartiendo) siguiente(); } });
   setInterval(function () {
     if (document.visibilityState !== 'visible' || !st.clase) return;
     cargarEnviados();
-    if (st.borrador && (!st.qrBorrador || st.qrBorrador.id !== st.borrador.id || Date.now() - st.qrBorrador.creado > 5 * 60 * 1000)) prepararQR();
+    if (st.borrador && (!st.imagenBorrador || st.imagenBorrador.id !== st.borrador.id || Date.now() - st.imagenBorrador.creado > 5 * 60 * 1000)) prepararImagen();
   }, 30000);
-  window.addEventListener('load', function () { if (st.borrador && !st.qrBorrador) prepararQR(); });
+  window.addEventListener('load', function () { if (st.borrador && !st.imagenBorrador) prepararImagen(); });
 
   entrar();
 })();
