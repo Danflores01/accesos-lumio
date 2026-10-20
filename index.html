@@ -63,6 +63,11 @@
   .unidad select { flex:0 0 112px; width:112px; height:100%; border:0; border-left:1px solid var(--borde); border-radius:0; color:#111; font-size:.95rem; font-weight:600; padding:0 32px 0 12px; -webkit-appearance:none; appearance:none; cursor:pointer;
     background:#FFFFFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%23111' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center; }
   .limites input.solo { height:50px; font-size:1.1rem; font-weight:600; }
+  .limites input.solo[type=datetime-local] { font-size:.98rem; font-weight:500; padding:0 12px; }
+  /* Banda de "hay una versión nueva" y filas de clases anteriores. */
+  .banda { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 14px; border-radius:14px; background:var(--crema); border:1.5px solid var(--amarillo); font-size:.9rem; font-weight:500; }
+  .banda span { flex:1; min-width:160px; }
+  .clase.pasada { cursor:default; opacity:.75; }
   @media (max-width: 600px) {
     .limites { grid-template-columns:1fr; }
     .limites label { white-space:normal; }
@@ -112,6 +117,7 @@
 </header>
 
 <main>
+  <div id="bandaVersion" class="banda oculto"><span id="bandaVersionTexto">Hay una versión nueva de la app.</span><button class="chica" id="btnActualizar">Actualizar</button></div>
   <div id="msg"></div>
 
   <section id="secClave" class="tarjeta oculto">
@@ -128,6 +134,10 @@
     <section class="tarjeta">
       <h2>Clases activas</h2>
       <div id="listaClases"></div>
+      <details id="detAnteriores" class="oculto" style="margin-bottom:8px">
+        <summary class="mut" id="tituloAnteriores">Clases anteriores</summary>
+        <div id="listaAnteriores" style="margin-top:8px"></div>
+      </details>
       <details id="detNueva">
         <summary>➕ Nueva clase</summary>
         <label>Nombre de la clase</label>
@@ -137,16 +147,19 @@
         <label class="check" style="margin-top:12px"><input type="checkbox" id="nLibre"> Acceso libre: sin límite de tiempo ni de clics</label>
         <div class="limites" id="nLimites">
           <div><label>Vigencia del link</label><div class="unidad"><input id="nHoras" type="number" min="1" max="525600" value="8" inputmode="numeric"><select id="nHorasU"><option value="h">horas</option><option value="min">minutos</option></select></div></div>
+          <div><label>Válido hasta (opcional)</label><input class="solo" id="nHasta" type="datetime-local"></div>
           <div><label>Vivo después de entrar</label><div class="unidad"><input id="nMinutos" type="number" min="1" max="525600" value="10" inputmode="numeric"><select id="nMinutosU"><option value="min">minutos</option><option value="h">horas</option></select></div></div>
           <div><label>Clics máximos</label><input class="solo" id="nClics" type="number" min="1" max="999999" value="3" inputmode="numeric"></div>
           <div><label>Aparatos por link</label><input class="solo" id="nAparatos" type="number" min="1" max="100" value="2" inputmode="numeric"></div>
         </div>
+        <p class="mut" style="margin:8px 0 0">Con "Válido hasta", todos los links de la clase valen hasta esa hora (en vez de contar horas desde el envío) y la clase se cierra sola al llegar.</p>
         <button id="btnCrearClase" style="margin-top:12px">Crear clase</button>
       </details>
     </section>
 
     <section id="secClase" class="tarjeta oculto">
       <h2>Clase seleccionada</h2>
+      <div id="notaTerminada" class="aviso info oculto" style="margin-bottom:10px"></div>
       <input id="cNombre" style="font-weight:600">
       <div id="cUrl" class="url" style="margin:6px 0 4px"></div>
       <div class="fila"><button class="sec chica" id="btnCambiarUrl">Cambiar link de Lumio</button></div>
@@ -154,6 +167,7 @@
       <label class="check" style="margin-top:12px"><input type="checkbox" id="cLibre"> Acceso libre: sin límite de tiempo ni de clics</label>
       <div class="limites" id="cLimites">
         <div><label>Vigencia del link</label><div class="unidad"><input id="cHoras" type="number" min="1" max="525600" inputmode="numeric"><select id="cHorasU"><option value="h">horas</option><option value="min">minutos</option></select></div></div>
+        <div><label>Válido hasta (opcional)</label><input class="solo" id="cHasta" type="datetime-local"></div>
         <div><label>Vivo después de entrar</label><div class="unidad"><input id="cMinutos" type="number" min="1" max="525600" inputmode="numeric"><select id="cMinutosU"><option value="min">minutos</option><option value="h">horas</option></select></div></div>
         <div><label>Clics máximos</label><input class="solo" id="cClics" type="number" min="1" max="999999" inputmode="numeric"></div>
         <div><label>Aparatos por link</label><input class="solo" id="cAparatos" type="number" min="1" max="100" inputmode="numeric"></div>
@@ -162,7 +176,7 @@
         <button id="btnGuardarClase">Guardar ajustes de esta clase</button>
         <button class="peligro chica" id="btnCerrarClase">Cerrar clase</button>
       </div>
-      <p class="mut" style="margin:8px 0 0">Los ajustes aplican a los links nuevos de esta clase y a los que renueves. "Aparatos por link": cuántos teléfonos, tablets o computadoras distintos pueden entrar con un mismo link (por ejemplo, el del papá y el del hijo). Cerrar la clase apaga al instante todos sus links.</p>
+      <p class="mut" style="margin:8px 0 0">Los ajustes aplican a los links nuevos de esta clase y a los que renueves. "Aparatos por link": cuántos teléfonos, tablets o computadoras distintos pueden entrar con un mismo link (por ejemplo, el del papá y el del hijo). Con "Válido hasta", los links valen hasta esa hora y la clase se cierra sola al llegar; déjalo vacío para contar horas desde el envío. Cerrar la clase apaga al instante todos sus links.</p>
     </section>
 
     <section id="secSiguiente" class="tarjeta amarilla oculto">
@@ -240,6 +254,7 @@
           <button class="sec" id="btnCopiarApp">Copiar dirección de la app</button>
           <button class="sec" id="btnSalir">Cerrar sesión en este dispositivo</button>
         </div>
+        <p class="mut" id="version" style="margin:12px 0 0"></p>
       </details>
     </section>
 
@@ -263,6 +278,8 @@
 (function () {
   // Dirección de la API (proyecto accesos-lumio en Supabase).
   var API = 'https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/admin/api';
+  // Versión de la app (AAAA-MM-DD.n). Debe coincidir con version.json: en cada publicación se suben los dos a la vez.
+  var VERSION = '2026-10-20.1';
   var PLANTILLA_DEF = 'Tu acceso a {clase} 👇\n{link}';
   var GUIA_DEF = '1. Prepárate en un espacio tranquilo y con buena conexión wifi antes de dar click al enlace. Tienes {clics} accesos en caso de fallas técnicas.\n---\n2. El código QR y el enlace son la misma forma de acceso. Escanear el código equivale a dar click en el enlace.\n---\nDisfruta de tu guía de estudio y tómate todo el tiempo que necesites. ¡Aprovéchala al máximo!';
   // Estados de un link, en lenguaje claro.
@@ -283,7 +300,7 @@
   var st = {
     clave: '', claseId: '', clases: [], clase: null, borrador: null, enviados: [],
     cfg: { plantilla: PLANTILLA_DEF, guia_texto: GUIA_DEF, url_reglas: '' },
-    guiaImg: null, compartiendo: false
+    guiaImg: null, compartiendo: false, anteriores: [], elegida: '', finPintado: false
   };
   try { st.clave = localStorage.getItem('al_clave') || ''; st.claseId = localStorage.getItem('al_clase') || ''; } catch (e) {}
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
@@ -307,7 +324,16 @@
     if (minutos >= 60 && Number.isInteger(minutos / 60)) { $(inputSel).value = minutos / 60; $(unidadSel).value = 'h'; }
     else { $(inputSel).value = Math.round(minutos); $(unidadSel).value = 'min'; }
   }
-  function resumenAjustes(c) { return esLibre(c) ? 'Acceso libre · sin límite de tiempo ni de clics' : (duracion(c.vigencia_horas * 60) + ' de vigencia · se cierra ' + duracion(c.minutos_tras_apertura) + ' después de entrar · ' + c.max_usos + ' clics · ' + aparatos(c.max_dispositivos || 2)); }
+  // "Válido hasta": hora fija en la que termina la clase (solo clases limitadas). Sin ella, el link vive horas desde el envío.
+  function tieneHasta(c) { return !!(c && !esLibre(c) && c.valido_hasta); }
+  function terminada(c) { return tieneHasta(c) && new Date(c.valido_hasta).getTime() <= Date.now(); }
+  function hastaDe(c) { return tieneHasta(c) ? new Date(c.valido_hasta) : new Date(Date.now() + ((c && c.vigencia_horas) || 8) * 3600 * 1000); }
+  function horaCorta(iso) { return hora(iso) + ' del ' + new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }).replace(/\./g, '').replace(/ de /, ' '); }
+  // El campo datetime-local trabaja en hora local ("2026-10-21T19:00"); el servidor guarda la hora exacta (ISO).
+  function aEntradaLocal(iso) { if (!iso) return ''; var d = new Date(iso), p = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function deEntradaLocal(v) { if (!v) return null; var d = new Date(v); return isNaN(d.getTime()) ? null : d.toISOString(); }
+  function pintarHasta(hastaSel, horasSel) { $(horasSel).parentNode.style.opacity = $(hastaSel).value ? '.4' : '1'; }
+  function resumenAjustes(c) { return esLibre(c) ? 'Acceso libre · sin límite de tiempo ni de clics' : ((tieneHasta(c) ? 'hasta las ' + horaCorta(c.valido_hasta) : duracion(c.vigencia_horas * 60) + ' de vigencia') + ' · se cierra ' + duracion(c.minutos_tras_apertura) + ' después de entrar · ' + c.max_usos + ' clics · ' + aparatos(c.max_dispositivos || 2)); }
 
   function api(path, opts) {
     opts = opts || {};
@@ -436,11 +462,16 @@
   // ---------- Clases ----------
   function cargarClases() {
     return api('/clases').then(function (cs) {
-      st.clases = cs.filter(function (c) { return c.activa; });
-      st.clase = st.clases.filter(function (c) { return c.id === st.claseId; })[0] || st.clases[0] || null;
+      // Vigentes: activas y sin terminar. Las terminadas (por "Válido hasta") y las cerradas van a "Clases anteriores".
+      var vigente = function (c) { return c.activa && !c.terminada && !terminada(c); };
+      st.clases = cs.filter(vigente);
+      st.anteriores = cs.filter(function (c) { return !vigente(c); });
+      var guardada = cs.filter(function (c) { return c.id === st.claseId && c.activa; })[0] || null;
+      // Una clase terminada solo sigue seleccionada si se eligió a mano (para alargarla) o si no hay otra vigente.
+      st.clase = guardada && (!terminada(guardada) || st.elegida === guardada.id || !st.clases.length) ? guardada : (st.clases[0] || guardada);
       if (st.clase) { st.claseId = st.clase.id; try { localStorage.setItem('al_clase', st.claseId); } catch (e) {} }
       pintarClases(); pintarClase();
-      if (st.clase) { siguiente(); cargarEnviados(); }
+      if (st.clase) { cargarEnviados(); if (terminada(st.clase)) { st.borrador = null; st.imagenBorrador = null; pintarSiguiente(); } else siguiente(); }
     }).catch(function (e) { aviso(e.message, 'mal'); });
   }
   function pintarClases() {
@@ -451,40 +482,60 @@
     });
     $('#listaClases').innerHTML = html;
     $('#detNueva').open = !st.clases.length;
+    // Clases anteriores: terminadas (se pueden abrir para alargarlas) y cerradas (solo se ven).
+    var ant = st.anteriores || [];
+    $('#detAnteriores').classList.toggle('oculto', !ant.length);
+    $('#tituloAnteriores').textContent = 'Clases anteriores (' + ant.length + ')';
+    $('#listaAnteriores').innerHTML = ant.map(function (c) {
+      var n = c.conteo || {}, enviados = 0; Object.keys(n).forEach(function (k) { if (k !== 'borrador') enviados += n[k]; });
+      var sel = st.clase && c.id === st.clase.id, abrible = !!c.activa;
+      var detalle = (abrible ? 'terminó a las ' + horaCorta(c.valido_hasta) : 'cerrada') + ' · ' + enviados + (enviados === 1 ? ' link enviado' : ' links enviados');
+      return '<div class="clase' + (abrible ? '' : ' pasada') + (sel ? ' sel' : '') + '"' + (abrible ? ' data-id="' + c.id + '"' : '') + '><div class="info"><div class="nombre">' + esc(c.nombre) + '</div><div class="mut">' + esc(detalle) + '</div></div>' + (sel ? '<span class="chip ambar">seleccionada</span>' : '<span class="chip gris">' + (abrible ? 'ver' : 'cerrada') + '</span>') + '</div>';
+    }).join('');
   }
-  $('#listaClases').addEventListener('click', function (ev) {
-    var el = ev.target.closest('.clase'); if (!el) return;
-    st.claseId = el.dataset.id; try { localStorage.setItem('al_clase', st.claseId); } catch (e) {}
+  function elegirClase(ev) {
+    var el = ev.target.closest('.clase'); if (!el || !el.dataset.id) return;
+    st.claseId = el.dataset.id; st.elegida = el.dataset.id; try { localStorage.setItem('al_clase', st.claseId); } catch (e) {}
     st.borrador = null; st.imagenBorrador = null; cargarClases();
-  });
+  }
+  $('#listaClases').addEventListener('click', elegirClase);
+  $('#listaAnteriores').addEventListener('click', elegirClase);
   function pintarClase() {
     var hay = !!st.clase;
     ['#secClase', '#secSiguiente', '#secEnviados'].forEach(function (s) { $(s).classList.toggle('oculto', !hay); });
     if (!hay) return;
-    var c = st.clase;
+    var c = st.clase, fin = terminada(c);
     $('#cNombre').value = c.nombre; $('#cUrl').textContent = c.url_destino; $('#cUrlForm').classList.add('oculto'); $('#cUrlNueva').value = '';
     $('#cLibre').checked = !!c.libre; ponerDuracion('#cHoras', '#cHorasU', c.vigencia_horas * 60); ponerDuracion('#cMinutos', '#cMinutosU', c.minutos_tras_apertura); $('#cClics').value = c.max_usos; $('#cAparatos').value = c.max_dispositivos || 2;
+    $('#cHasta').value = aEntradaLocal(c.valido_hasta); pintarHasta('#cHasta', '#cHoras');
     $('#cLimites').style.opacity = c.libre ? '.4' : '1';
+    // Clase terminada: se avisa, se oculta "Siguiente persona" y se puede alargar cambiando "Válido hasta".
+    st.finPintado = fin;
+    $('#notaTerminada').classList.toggle('oculto', !fin);
+    $('#notaTerminada').textContent = fin ? 'Esta clase terminó a las ' + horaCorta(c.valido_hasta) + ': sus links ya no abren. Para volver a usarla, pon una hora futura en "Válido hasta" y guarda.' : '';
+    $('#secSiguiente').classList.toggle('oculto', fin);
     $('#siguienteClase').textContent = c.nombre; $('#enviadosClase').textContent = c.nombre;
-    $('#notaSiguiente').textContent = esLibre(c) ? 'Acceso libre: el link no vence ni se agota. Se activa al compartir y enseguida aparece uno nuevo.' : ('Al compartir, el link se activa y vive ' + duracion(c.vigencia_horas * 60) + '. Después de que entran, se cierra a los ' + duracion(c.minutos_tras_apertura) + ' (' + c.max_usos + ' clics, hasta ' + aparatos(c.max_dispositivos || 2) + '). Enseguida aparece uno nuevo.');
+    $('#notaSiguiente').textContent = esLibre(c) ? 'Acceso libre: el link no vence ni se agota. Se activa al compartir y enseguida aparece uno nuevo.' : ('Al compartir, el link se activa y ' + (tieneHasta(c) ? 'vale hasta las ' + horaCorta(c.valido_hasta) : 'vive ' + duracion(c.vigencia_horas * 60)) + '. Después de que entran, se cierra a los ' + duracion(c.minutos_tras_apertura) + ' (' + c.max_usos + ' clics, hasta ' + aparatos(c.max_dispositivos || 2) + '). Enseguida aparece uno nuevo.');
   }
   $('#cLibre').addEventListener('change', function () { $('#cLimites').style.opacity = this.checked ? '.4' : '1'; });
   $('#nLibre').addEventListener('change', function () { $('#nLimites').style.opacity = this.checked ? '.4' : '1'; });
+  $('#nHasta').addEventListener('input', function () { pintarHasta('#nHasta', '#nHoras'); });
+  $('#cHasta').addEventListener('input', function () { pintarHasta('#cHasta', '#cHoras'); });
   $('#btnCambiarUrl').addEventListener('click', function () { $('#cUrlForm').classList.toggle('oculto'); $('#cUrlNueva').focus(); });
   $('#btnCrearClase').addEventListener('click', function () {
     var nombre = $('#nNombre').value.trim() || ('Clase ' + fecha(new Date().toISOString()));
     var url = $('#nUrl').value.trim();
     if (!/^https?:\/\//i.test(url)) return aviso('Pega el link completo de Lumio (empieza con https://)', 'mal');
-    var body = { nombre: nombre, url_destino: url, libre: $('#nLibre').checked, vigencia_horas: (aMinutos($('#nHoras').value, $('#nHorasU').value) || 480) / 60, minutos_tras_apertura: aMinutos($('#nMinutos').value, $('#nMinutosU').value) || 10, max_usos: Number($('#nClics').value) || 3, max_dispositivos: Number($('#nAparatos').value) || 2 };
+    var body = { nombre: nombre, url_destino: url, libre: $('#nLibre').checked, vigencia_horas: (aMinutos($('#nHoras').value, $('#nHorasU').value) || 480) / 60, minutos_tras_apertura: aMinutos($('#nMinutos').value, $('#nMinutosU').value) || 10, max_usos: Number($('#nClics').value) || 3, max_dispositivos: Number($('#nAparatos').value) || 2, valido_hasta: deEntradaLocal($('#nHasta').value) };
     $('#btnCrearClase').disabled = true;
     api('/clases', { method: 'POST', body: body }).then(function (c) {
-      $('#nNombre').value = ''; $('#nUrl').value = ''; $('#nLibre').checked = false; $('#nLimites').style.opacity = '1';
+      $('#nNombre').value = ''; $('#nUrl').value = ''; $('#nHasta').value = ''; pintarHasta('#nHasta', '#nHoras'); $('#nLibre').checked = false; $('#nLimites').style.opacity = '1';
       st.claseId = c.id; st.borrador = null; st.imagenBorrador = null; aviso('Clase creada'); return cargarClases();
     }).catch(function (e) { aviso(e.message, 'mal'); }).then(function () { $('#btnCrearClase').disabled = false; });
   });
   $('#btnGuardarClase').addEventListener('click', function () {
     var c = st.clase; if (!c) return;
-    var body = { nombre: $('#cNombre').value.trim() || c.nombre, libre: $('#cLibre').checked, vigencia_horas: (aMinutos($('#cHoras').value, $('#cHorasU').value) || 480) / 60, minutos_tras_apertura: aMinutos($('#cMinutos').value, $('#cMinutosU').value) || 10, max_usos: Number($('#cClics').value) || 3, max_dispositivos: Number($('#cAparatos').value) || 2 };
+    var body = { nombre: $('#cNombre').value.trim() || c.nombre, libre: $('#cLibre').checked, vigencia_horas: (aMinutos($('#cHoras').value, $('#cHorasU').value) || 480) / 60, minutos_tras_apertura: aMinutos($('#cMinutos').value, $('#cMinutosU').value) || 10, max_usos: Number($('#cClics').value) || 3, max_dispositivos: Number($('#cAparatos').value) || 2, valido_hasta: deEntradaLocal($('#cHasta').value) };
     var nueva = $('#cUrlNueva').value.trim();
     if (nueva) { if (!/^https?:\/\//i.test(nueva)) return aviso('El link de Lumio debe empezar con https://', 'mal'); body.url_destino = nueva; }
     $('#btnGuardarClase').disabled = true;
@@ -624,7 +675,7 @@
   function prepararImagen() {
     var b = st.borrador; if (!b || !st.clase) { st.imagenBorrador = null; return; }
     var nombre = nombreCampo() || nombreDe(b);
-    var hasta = new Date(Date.now() + (st.clase.vigencia_horas || 8) * 3600 * 1000);
+    var hasta = hastaDe(st.clase);
     var p = imagenEnvio(b.link, st.clase, hasta, nombre); p.catch(function () {});
     st.imagenBorrador = { id: b.id, promesa: p, creado: Date.now(), nombre: nombre || '' };
   }
@@ -654,7 +705,7 @@
   $('#paraNombre').addEventListener('change', function () { prepararImagen(); guardarNombre(); });
   $('#btnMostrarImagen').addEventListener('click', function () {
     var b = st.borrador; if (!b || st.compartiendo) return;
-    var hasta = new Date(Date.now() + (st.clase.vigencia_horas || 8) * 3600 * 1000);
+    var hasta = hastaDe(st.clase);
     var nombre = nombreCampo() || nombreDe(b);
     guardarNombre();
     st.borrador = null; pintarSiguiente();
@@ -673,7 +724,7 @@
   function compartir() {
     var b = st.borrador, c = st.clase;
     if (!b || !c || st.compartiendo) return;
-    var hasta = new Date(Date.now() + (c.vigencia_horas || 8) * 3600 * 1000);
+    var hasta = hastaDe(c);
     var nombre = nombreCampo() || nombreDe(b);
     guardarNombre();
     var msg = mensaje(b.link, hasta, c, nombre);
@@ -718,7 +769,7 @@
   $('#btnCompartir').addEventListener('click', compartir);
   $('#btnCopiarMsg').addEventListener('click', function () {
     var b = st.borrador; if (!b) return;
-    var hasta = new Date(Date.now() + (st.clase.vigencia_horas || 8) * 3600 * 1000);
+    var hasta = hastaDe(st.clase);
     var nombre = nombreCampo() || nombreDe(b);
     guardarNombre();
     copiar(mensaje(b.link, hasta, st.clase, nombre), 'Mensaje copiado. Al pegarlo y enviarlo, el link queda activo.');
@@ -797,10 +848,37 @@
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && st.clase) { cargarEnviados(); if (!st.borrador && !st.compartiendo) siguiente(); } });
   setInterval(function () {
     if (document.visibilityState !== 'visible' || !st.clase) return;
+    // Si la clase seleccionada acaba de terminar (o se alargó), se vuelve a pintar todo sin cambiar de clase.
+    if (terminada(st.clase) !== !!st.finPintado) { st.elegida = st.clase.id; cargarClases(); return; }
     cargarEnviados();
     if (st.borrador && (!st.imagenBorrador || st.imagenBorrador.id !== st.borrador.id || Date.now() - st.imagenBorrador.creado > 5 * 60 * 1000)) prepararImagen();
   }, 30000);
   window.addEventListener('load', function () { if (st.borrador && !st.imagenBorrador) prepararImagen(); });
+
+  // ---------- Versión de la app y aviso de actualización ----------
+  // version.json se publica junto con este archivo; si trae otra versión, GitHub Pages ya tiene una app más nueva.
+  $('#version').textContent = 'Versión ' + VERSION;
+  var versionAvisada = false;
+  function revisarVersion() {
+    fetch('version.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+      var recienActualizada = '';
+      try { recienActualizada = sessionStorage.getItem('al_actualizando') || ''; sessionStorage.removeItem('al_actualizando'); } catch (e) {}
+      if (!j || !j.version || String(j.version) === VERSION) return;
+      versionAvisada = true;
+      $('#bandaVersionTexto').textContent = recienActualizada
+        ? 'La versión nueva (' + j.version + ') todavía se está publicando; GitHub tarda hasta 10 minutos. Vuelve a pulsar Actualizar en un rato.'
+        : 'Hay una versión nueva de la app (' + j.version + '); esta es la ' + VERSION + '.';
+      $('#bandaVersion').classList.remove('oculto');
+    }).catch(function () {});
+  }
+  $('#btnActualizar').addEventListener('click', function () {
+    var b = this; b.disabled = true; b.textContent = 'Actualizando…';
+    try { sessionStorage.setItem('al_actualizando', '1'); } catch (e) {}
+    // Se vuelve a bajar esta página saltándose la caché y luego se recarga.
+    fetch(location.href, { cache: 'reload' }).catch(function () {}).then(function () { location.reload(); });
+  });
+  revisarVersion();
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && !versionAvisada) revisarVersion(); });
 
   entrar();
 })();
