@@ -109,3 +109,26 @@ tablet. La mamá le muestra la imagen y el hijo la escanea con la cámara.
 - **Para el siguiente link, sin mandar mensaje:** botón **Mostrar QR** en "Siguiente persona". Lo
   activa (cuenta como enviado) y lo muestra en grande, listo para que lo escaneen o para mandarlo.
 - El QR solo se genera para links activos: no hay forma de mostrar un QR que "todavía no sirva".
+
+## Varias clases activas, cada una con sus ajustes
+
+Puedes tener activas varias clases al mismo tiempo. En "Clases activas" eliges con cuál trabajas;
+abajo aparecen su "Siguiente persona" y sus links activos. Cada clase tiene sus propios ajustes:
+
+- **Acceso libre**: sin límite de tiempo ni de clics (ideal para una guía de estudio abierta).
+- **Limitada**: horas que vive el link desde que lo compartes, minutos que sigue vivo después de
+  que entran, y clics máximos.
+
+Los ajustes aplican a los links nuevos de esa clase. "Cerrar clase" apaga al instante todos sus links.
+
+## Imagen única con la guía de estudio y el QR (marca SparkEd)
+
+"Compartir por WhatsApp" manda **un solo mensaje**: una imagen con tu guía de estudio (logo SparkEd,
+instrucciones) arriba y el código QR abajo, y el link del alumno como pie de foto.
+
+- El texto de la guía se edita en Ajustes generales (separa párrafos con una línea `---`; `{clics}`
+  y `{horas}` se rellenan con los ajustes de la clase).
+- Si prefieres tu propia imagen de guía, súbela ahí mismo (PNG o JPG, menos de 4 MB) y se usará en
+  lugar del texto. "Usar el texto en vez de la imagen" la quita.
+- En la computadora: la imagen queda copiada al pulsar Compartir; en el chat de WhatsApp Web pegas con
+  Ctrl+V (el link ya está escrito y queda como pie de foto) y Enter.
