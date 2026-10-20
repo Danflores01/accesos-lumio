@@ -748,7 +748,7 @@
       : (vivo ? '<div class="mut">⏱ <strong class="cuenta" data-fin="' + finDe(a) + '">' + cuentaAtras(finDe(a) - Date.now()) + '</strong> ' + (a.primer_uso_en ? 'para que se cierre' : 'de vigencia') + '</div>' : '<div class="mut">venció ' + fecha(a.expira_en) + '</div>');
     var n = Number(a.otros_dispositivos) || 0;
     var alerta = n ? '<div class="alerta">⚠️ ' + (n === 1 ? '1 intento desde otro aparato' : n + ' intentos desde otros aparatos') + '</div>' : '';
-    var detalle = '· enviado ' + hora(a.enviado_en) + (a.primer_uso_en ? ' · entró ' + hora(a.primer_uso_en) + ' (' + a.usos + ' clics)' : '') + (!a.clase_libre && Number(a.dispositivos) ? ' · ' + aparatos(a.dispositivos) : '');
+    var detalle = '· enviado ' + hora(a.enviado_en) + (a.primer_uso_en ? ' · entró ' + hora(a.primer_uso_en) + ' (' + a.usos + (a.usos === 1 ? ' clic' : ' clics') + ')' : '') + (!a.clase_libre && Number(a.dispositivos) ? ' · ' + aparatos(a.dispositivos) : '');
     var botones = vivo
       ? '<button class="sec chica" data-msg="' + a.id + '">Mensaje</button><button class="sec chica" data-qr="' + a.id + '">Imagen</button><button class="peligro chica" data-rev="' + a.id + '">Revocar</button>'
       : (RENOVABLES[a.estado] ? '<button class="chica" data-ren="' + a.id + '">Renovar</button>' : '');
