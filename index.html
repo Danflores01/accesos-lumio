@@ -167,7 +167,7 @@
 
     <section id="secSiguiente" class="tarjeta amarilla oculto">
       <h2>Siguiente persona · <span id="siguienteClase"></span></h2>
-      <label style="margin-top:0">Para (opcional): nombre del alumno o de la familia</label>
+      <label style="margin-top:0">¿Quién pide el link? (mamá, papá o alumno; opcional)</label>
       <input id="paraNombre" placeholder="Ej. Familia Pérez" maxlength="60" autocomplete="off" style="margin-bottom:12px">
       <button class="grande" id="btnCompartir">
         <span>Compartir por WhatsApp</span><span class="num" id="numSiguiente"></span>
@@ -218,7 +218,7 @@
         </div>
         <hr style="border:0;border-top:1px solid var(--borde);margin:16px 0">
         <label style="font-weight:600;color:var(--tx)">Texto del mensaje de WhatsApp (va como pie de la imagen)</label>
-        <p class="mut" style="margin:0 0 6px">Variables: {link} {clase} {hasta} {horas} {nombre}. El link va siempre; cualquier otra dirección web se quita.</p>
+        <p class="mut" style="margin:0 0 6px">Variables: {link} {clase} {hasta} {horas} {nombre}. Si escribes quién pide el link y el texto no usa {nombre}, el mensaje empieza con "Hola (nombre),". El link va siempre; cualquier otra dirección web se quita.</p>
         <textarea id="cfgPlantilla" style="min-height:80px"></textarea>
         <hr style="border:0;border-top:1px solid var(--borde);margin:16px 0">
         <label style="font-weight:600;color:var(--tx)">Guía de estudio (la parte de arriba de la imagen)</label>
@@ -331,6 +331,8 @@
     clase = clase || st.clase || {};
     var t = sinDirecciones(st.cfg.plantilla);
     if (t.indexOf('{link}') === -1) t = t.replace(/\s+$/, '') + '\n\n👉 Tu acceso: {link}';
+    // Si hay nombre y el texto no lo coloca con {nombre}, el mensaje empieza con "Hola <nombre>, ".
+    if (nombre && t.indexOf('{nombre}') === -1) t = 'Hola ' + nombre + ', ' + t.replace(/^\s+/, '').replace(/^([A-ZÁÉÍÓÚÑ])(?=[a-záéíóúñ])/, function (c) { return c.toLowerCase(); });
     return t.replace(/\{link\}/g, link).replace(/\{clase\}/g, clase.nombre || 'la clase').replace(/\{hasta\}/g, esLibre(clase) ? 'sin límite' : fecha(hasta)).replace(/\{horas\}/g, esLibre(clase) ? 'sin límite' : duracion(clase.vigencia_horas * 60)).replace(/\{nombre\}/g, nombre || '').replace(/[ \t]+\n/g, '\n').trim();
   }
   function datosCompartir(msg, link) {

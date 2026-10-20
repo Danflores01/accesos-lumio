@@ -27,15 +27,16 @@ Todo corre en planes gratuitos (GitHub Pages y Supabase Free).
    inicio" en iPhone; menú > "Agregar a pantalla principal" en Android).
 2. **Cada día de clase:** en Lumio copia el link de "Compartir" de la clase y pégalo en la app
    en "Clase de hoy" > Guardar.
-3. **Cuando alguien te contacta:** si quieres, escribe su nombre en **Para** (por ejemplo "Familia
-   Pérez"; es opcional) y pulsa **Compartir por WhatsApp**.
+3. **Cuando alguien te contacta:** si quieres, escribe quién pide el link en **¿Quién pide el link?**
+   (mamá, papá o alumno; por ejemplo "Familia Pérez"; es opcional) y pulsa **Compartir por WhatsApp**.
    - En el celular se abre la hoja de compartir: eliges WhatsApp y el chat. El link se activa solo
      si de verdad compartiste (si cancelas, no se gasta).
    - En la computadora se abre WhatsApp Web o Escritorio con el mensaje listo; eliges el chat.
    - También puedes "Copiar mensaje" o "Copiar solo el link" y pegarlo donde quieras (eso también
      activa el link).
-   El nombre aparece en la lista de links, en la imagen que se manda y en el mensaje si usas
-   `{nombre}`; el alumno también lo ve en su página ("Acceso de: Familia Pérez").
+   El nombre aparece en la lista de links, en la imagen que se manda y al inicio del mensaje ("Hola
+   Familia Pérez, tu acceso a…"; si tu texto usa `{nombre}`, va donde tú lo pongas); el alumno también lo ve
+   en su página ("Acceso de: Familia Pérez"). Después de compartir, el campo queda vacío para el siguiente.
 4. **Durante el día:** en "Links activos" ves cada link con su nombre (o su número), su estado y
    cuántos aparatos ya entraron con él:
    - **Enviado, sin abrir**: lo compartiste y nadie lo ha abierto.
@@ -67,7 +68,8 @@ Todo corre en planes gratuitos (GitHub Pages y Supabase Free).
   entrar con el mismo link. Dos alcanza para el caso típico: el papá recibe el link, lo abre o se lo
   reenvía al hijo, y el hijo entra desde su iPad. Un tercer aparato ya no entra.
 - **Mensaje de WhatsApp** (en Ajustes generales): `{link}`, `{clase}`, `{hasta}`, `{horas}` y
-  `{nombre}` (lo que escribiste en "Para"; queda vacío si no pusiste nombre) se rellenan solos.
+  `{nombre}` (lo que escribiste en "¿Quién pide el link?") se rellenan solos. Si hay nombre y el texto no
+  usa `{nombre}`, el mensaje empieza con "Hola (nombre),"; sin nombre, el mensaje sale como siempre.
 
 Los ajustes aplican a los links nuevos de la clase y a los que renueves.
 
