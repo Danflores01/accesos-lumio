@@ -52,9 +52,21 @@
   .fila { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .fila > input { flex:1; min-width:160px; }
   .grid3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; }
-  .unidad { display:flex; gap:6px; }
-  .unidad input { flex:1; min-width:64px; }
-  .unidad select { width:auto; padding:10px 8px; }
+  /* Campos de tiempo: número + unidad como un solo control, del mismo alto. */
+  .limites { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+  .limites label { margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .unidad { display:flex; align-items:stretch; height:50px; border:1px solid var(--borde); border-radius:14px; background:var(--campo); overflow:hidden; }
+  .unidad:focus-within { border-color:var(--amarillo); box-shadow:0 0 0 2px rgba(255,212,0,.35); }
+  .unidad input { flex:1 1 auto; min-width:0; height:100%; border:0; border-radius:0; background:transparent; padding:0 14px; font-size:1.1rem; font-weight:600; -moz-appearance:textfield; appearance:textfield; }
+  .unidad input::-webkit-outer-spin-button, .unidad input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+  .unidad input:focus, .unidad select:focus { outline:none; }
+  .unidad select { flex:0 0 118px; width:118px; height:100%; border:0; border-left:1px solid var(--borde); border-radius:0; color:#111; font-size:.95rem; font-weight:600; padding:0 32px 0 12px; -webkit-appearance:none; appearance:none; cursor:pointer;
+    background:#FFFFFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%23111' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center; }
+  .limites input.solo { height:50px; font-size:1.1rem; font-weight:600; }
+  @media (max-width: 600px) {
+    .limites { grid-template-columns:1fr; }
+    .limites label { white-space:normal; }
+  }
   .grande { width:100%; min-height:72px; font-size:1.2rem; background:var(--amarillo); color:#111; display:flex; align-items:center; justify-content:center; gap:10px; border-radius:999px; box-shadow:0 8px 18px rgba(255,212,0,.45); }
   .grande:active { transform:scale(.99); }
   .grande .num { font-size:.8rem; font-weight:600; background:#FFFFFF; color:#111; padding:3px 10px; border-radius:999px; }
@@ -122,10 +134,10 @@
         <label>Link de Lumio (el que te da "Compartir")</label>
         <input id="nUrl" placeholder="https://..." inputmode="url">
         <label class="check" style="margin-top:12px"><input type="checkbox" id="nLibre"> Acceso libre: sin límite de tiempo ni de clics</label>
-        <div class="grid3" id="nLimites">
-          <div><label>Vigencia del link desde que lo compartes</label><div class="unidad"><input id="nHoras" type="number" min="1" max="525600" value="8" inputmode="numeric"><select id="nHorasU"><option value="h">horas</option><option value="min">minutos</option></select></div></div>
-          <div><label>Sigue vivo después de entrar</label><div class="unidad"><input id="nMinutos" type="number" min="1" max="525600" value="10" inputmode="numeric"><select id="nMinutosU"><option value="min">minutos</option><option value="h">horas</option></select></div></div>
-          <div><label>Clics máximos</label><input id="nClics" type="number" min="1" max="999999" value="3" inputmode="numeric"></div>
+        <div class="limites" id="nLimites">
+          <div><label>Vigencia del link</label><div class="unidad"><input id="nHoras" type="number" min="1" max="525600" value="8" inputmode="numeric"><select id="nHorasU"><option value="h">horas</option><option value="min">minutos</option></select></div></div>
+          <div><label>Vivo después de entrar</label><div class="unidad"><input id="nMinutos" type="number" min="1" max="525600" value="10" inputmode="numeric"><select id="nMinutosU"><option value="min">minutos</option><option value="h">horas</option></select></div></div>
+          <div><label>Clics máximos</label><input class="solo" id="nClics" type="number" min="1" max="999999" value="3" inputmode="numeric"></div>
         </div>
         <button id="btnCrearClase" style="margin-top:12px">Crear clase</button>
       </details>
@@ -138,10 +150,10 @@
       <div class="fila"><button class="sec chica" id="btnCambiarUrl">Cambiar link de Lumio</button></div>
       <div id="cUrlForm" class="oculto" style="margin-top:8px"><input id="cUrlNueva" placeholder="https://..." inputmode="url"></div>
       <label class="check" style="margin-top:12px"><input type="checkbox" id="cLibre"> Acceso libre: sin límite de tiempo ni de clics</label>
-      <div class="grid3" id="cLimites">
-        <div><label>Vigencia del link desde que lo compartes</label><div class="unidad"><input id="cHoras" type="number" min="1" max="525600" inputmode="numeric"><select id="cHorasU"><option value="h">horas</option><option value="min">minutos</option></select></div></div>
-        <div><label>Sigue vivo después de entrar</label><div class="unidad"><input id="cMinutos" type="number" min="1" max="525600" inputmode="numeric"><select id="cMinutosU"><option value="min">minutos</option><option value="h">horas</option></select></div></div>
-        <div><label>Clics máximos</label><input id="cClics" type="number" min="1" max="999999" inputmode="numeric"></div>
+      <div class="limites" id="cLimites">
+        <div><label>Vigencia del link</label><div class="unidad"><input id="cHoras" type="number" min="1" max="525600" inputmode="numeric"><select id="cHorasU"><option value="h">horas</option><option value="min">minutos</option></select></div></div>
+        <div><label>Vivo después de entrar</label><div class="unidad"><input id="cMinutos" type="number" min="1" max="525600" inputmode="numeric"><select id="cMinutosU"><option value="min">minutos</option><option value="h">horas</option></select></div></div>
+        <div><label>Clics máximos</label><input class="solo" id="cClics" type="number" min="1" max="999999" inputmode="numeric"></div>
       </div>
       <div class="fila" style="margin-top:12px">
         <button id="btnGuardarClase">Guardar ajustes de esta clase</button>
