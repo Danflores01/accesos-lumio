@@ -79,6 +79,63 @@ function cuerpoCoche(color) {
 export const coche = (color = "rojo", escala = 3, flip = false) => envoltura(24, 10, escala, "coche", flip ? `<g transform="translate(24 0) scale(-1 1)">${cuerpoCoche(color)}</g>` : cuerpoCoche(color));
 export const capaCoche = (color, dx, dy) => grupo(dx, dy, cuerpoCoche(color));
 
+// Otros corredores para la misma carrera (24 × 10): nave, caballo y dragón. Mismos cinco colores.
+function cuerpoNave(color) {
+  const [c1, c2] = COLORES_COCHE[color] ?? COLORES_COCHE.rojo;
+  return `
+    <ellipse cx="12" cy="9.4" rx="9" ry=".6" fill="${C.sombra}"/>
+    <path d="M3 5.2 L0 7.2 L0 3.2 Z" fill="#FFB347"/><path d="M3 5.2 L1.2 6.3 L1.2 4.1 Z" fill="#FFE066"/>
+    <path d="M6.5 2.6 L4.2 .6 L9.4 2.6 Z" fill="${c2}" ${o(.4)}/>
+    <path d="M6.5 7.8 L4.2 9.8 L9.4 7.8 Z" fill="${c2}" ${o(.4)}/>
+    <path d="M2.4 5.2 Q3 2.4 7 2.4 L17.5 2.4 Q23.4 2.9 23.4 5.2 Q23.4 7.5 17.5 8 L7 8 Q3 8 2.4 5.2 Z" fill="${c1}" ${o(.5)}/>
+    <path d="M4.2 4.4 Q5 3.1 7.4 3.1 L17 3.1 Q20.6 3.3 22 4.6 L4.6 4.6 Z" fill="#fff" opacity=".35"/>
+    <path d="M9.8 2.6 Q11.6 .4 14.6 .7 Q16.6 1 17.3 2.6 Z" fill="#BFE3FF" ${o(.4)}/>
+    <circle cx="13" cy="1.9" r=".5" fill="#fff" opacity=".9"/>
+    <rect x="2.2" y="4" width="2.2" height="2.6" rx=".8" fill="${C.linea}"/>
+    <circle cx="20.6" cy="5.2" r=".9" fill="#FFD400" ${o(.3)}/>
+    <rect x="9" y="6" width="7" height="1" rx=".5" fill="${c2}" opacity=".6"/>`;
+}
+function cuerpoCaballo(color) {
+  const [c1, c2] = COLORES_COCHE[color] ?? COLORES_COCHE.rojo;
+  return `
+    <ellipse cx="12" cy="9.5" rx="9" ry=".6" fill="${C.sombra}"/>
+    <path d="M6 5.6 Q2.4 4.2 1 6.8 Q2.8 5.8 4.4 7.6 Q4.6 6.4 6.4 6.6 Z" fill="${c2}" ${o(.4)}/>
+    <rect x="6.2" y="6.4" width="1.8" height="3.2" rx=".8" fill="${c1}" ${o(.4)} transform="rotate(18 7.1 6.4)"/>
+    <rect x="8.2" y="6.4" width="1.8" height="3.2" rx=".8" fill="${c2}" ${o(.4)} transform="rotate(-12 9.1 6.4)"/>
+    <rect x="15.4" y="6.4" width="1.8" height="3.2" rx=".8" fill="${c2}" ${o(.4)} transform="rotate(14 16.3 6.4)"/>
+    <rect x="17.2" y="6.4" width="1.8" height="3.2" rx=".8" fill="${c1}" ${o(.4)} transform="rotate(-22 18.1 6.4)"/>
+    <ellipse cx="12" cy="5.4" rx="6.6" ry="2.6" fill="${c1}" ${o(.5)}/>
+    <ellipse cx="12" cy="6.4" rx="5.4" ry="1.3" fill="#fff" opacity=".2"/>
+    <path d="M16.2 3.6 L19.6 .9 L21.8 2.4 L18.6 5.6 Z" fill="${c1}" ${o(.5)}/>
+    <path d="M17.2 3 Q18.8 1.6 20.4 1.2 L20.2 2.2 Q18.8 2.6 17.6 3.6 Z" fill="${c2}" ${o(.3)}/>
+    <ellipse cx="21.6" cy="2.4" rx="2.6" ry="1.35" fill="${c1}" ${o(.5)} transform="rotate(-24 21.6 2.4)"/>
+    <circle cx="23.2" cy="1.9" r=".55" fill="${c2}"/>
+    <path d="M20.2 1.4 L19.8 -.2 L21.2 1 Z" fill="${c1}" ${o(.3)}/>
+    <circle cx="21.4" cy="1.8" r=".35" fill="${C.linea}"/>
+    <rect x="9.6" y="3" width="4.2" height="2" rx=".9" fill="#FFD400" ${o(.4)}/>
+    <rect x="11.2" y="2.4" width="1" height="3.4" rx=".5" fill="${C.linea}" opacity=".5"/>`;
+}
+function cuerpoDragon(color) {
+  const [c1, c2] = COLORES_COCHE[color] ?? COLORES_COCHE.rojo;
+  return `
+    <ellipse cx="12" cy="9.5" rx="9" ry=".6" fill="${C.sombra}"/>
+    <path d="M10.5 4 Q7.5 -.5 3.2 .4 Q8 .2 10.8 4.6 Z" fill="${c2}" ${o(.4)}/>
+    <path d="M6.4 5.6 Q2.6 4.4 .6 6.6 Q2.4 5.8 3.6 7.2 Q4.4 6.2 6.6 6.8 Z" fill="${c1}" ${o(.4)}/>
+    <path d="M1.2 6.4 L-.2 5.6 L.2 7.6 Z" fill="${c2}" ${o(.3)}/>
+    <ellipse cx="12" cy="5.8" rx="6.2" ry="2.5" fill="${c1}" ${o(.5)}/>
+    <ellipse cx="12" cy="6.9" rx="5" ry="1.1" fill="#FFE9A8" opacity=".55"/>
+    <rect x="9" y="7.4" width="1.8" height="2.2" rx=".8" fill="${c1}" ${o(.35)}/><rect x="13.4" y="7.4" width="1.8" height="2.2" rx=".8" fill="${c1}" ${o(.35)}/>
+    <path d="M16.4 4.6 L19.6 2.2 L23 2.6 L23.6 4.1 L21 5 L17.8 5.9 Z" fill="${c1}" ${o(.5)}/>
+    <path d="M19.8 2.2 L19.4 .6 L21 2.2 Z" fill="${c2}" ${o(.3)}/><path d="M21.4 2.4 L21.6 .9 L22.6 2.5 Z" fill="${c2}" ${o(.3)}/>
+    <circle cx="21.6" cy="3.3" r=".6" fill="#fff"/><circle cx="21.8" cy="3.3" r=".3" fill="${C.linea}"/>
+    <path d="M23.6 3.6 L25 3.1 L25.2 3.9 L24.2 4.3 Z" fill="#FF8A3D"/><path d="M23.8 3.7 L24.8 3.4 L24.6 4 Z" fill="#FFE066"/>
+    <path d="M11.2 4.2 Q9.8 -.6 5.6 -.4 Q10 .6 12.6 4.4 Z" fill="${c2}" ${o(.45)}/>
+    <path d="M7 3.4 L8.4 2.4 L9 3.8 L10.4 2.8 L11 4.2" fill="none" stroke="${c2}" stroke-width=".5"/>`;
+}
+const CUERPOS = { coche: cuerpoCoche, nave: cuerpoNave, caballo: cuerpoCaballo, dragon: cuerpoDragon };
+export const vehiculo = (tipo = "coche", color = "rojo", escala = 3, flip = false) => { const f = CUERPOS[tipo] ?? cuerpoCoche; return envoltura(24, 10, escala, "vehiculo " + tipo, flip ? `<g transform="translate(24 0) scale(-1 1)">${f(color)}</g>` : f(color)); };
+export const capaVehiculo = (tipo, color, dx, dy) => grupo(dx, dy, (CUERPOS[tipo] ?? cuerpoCoche)(color));
+
 // ---------- Soldado y arquero (12 × 16) y escalador (Sparky compacto, 12 × 16) ----------
 function cuerpoSoldado() {
   return `
@@ -157,33 +214,52 @@ const degradado = (id, c1, c2, c3) => `<linearGradient id="${id}" x1="0" y1="0" 
 const estrellas = (r, w, h, n, color = "#ffffff") => { let s = ""; for (let i = 0; i < n; i++) s += `<circle cx="${(r() * w).toFixed(1)}" cy="${(r() * h).toFixed(1)}" r="${(.3 + r() * .5).toFixed(2)}" fill="${color}" opacity="${(.4 + r() * .6).toFixed(2)}"/>`; return s; };
 const solRetro = (cx, cy, R, id) => `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE066"/><stop offset="1" stop-color="#FF6B9D"/></linearGradient><clipPath id="${id}c"><circle cx="${cx}" cy="${cy}" r="${R}"/></clipPath></defs><circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#${id})"/><g clip-path="url(#${id}c)">${[0, 1, 2, 3].map((k) => `<rect x="${cx - R}" y="${cy + R * (.15 + k * .22)}" width="${2 * R}" height="${(.9 + k * .4).toFixed(1)}" fill="#B8336A" opacity=".55"/>`).join("")}</g>`;
 
-// Ciudad de noche (pista de la carrera). Devuelve el fondo y los ids de las capas que se mueven.
+// Pista de la carrera. Estilos: "ciudad" (neón, coches), "espacio" (naves), "hipodromo" (caballos), "cielo" (dragones).
+// Devuelve el fondo y los ids de las capas que se mueven (lejos, cerca, rayas) para el parallax.
 export function escenaCiudad(w = 172, h = 140, semilla = 7, tema = {}) {
-  const T = { cielo1: "#1B1340", cielo2: "#4C1D95", cielo3: "#B8336A", estrellas: true, edif1: "#2A1659", edif2: "#3B1F7A", ventana: "#F0ABFC", ventana2: "#67E8F9", neon: "#FF6B9D", carretera: "#1E1B4B", linea: "#F9A8D4", borde: "#FF6B9D", carriles: 4, sol: true, ...tema };
+  const estilo = tema.estilo ?? "ciudad";
+  const ESTILOS = {
+    ciudad: {},
+    espacio: { cielo1: "#05030F", cielo2: "#1B1340", cielo3: "#2E1A6E", estrellas: true, sol: false, carretera: "#0B1026", linea: "#67E8F9", borde: "#7C4DFF", neon: "#2EE6FF" },
+    hipodromo: { cielo1: "#38BDF8", cielo2: "#BAE6FD", cielo3: "#FDE68A", estrellas: false, sol: false, carretera: "#3E9B3A", carretera2: "#55B04E", linea: "#FFFFFF", borde: "#C98B4D", neon: "#FFFFFF" },
+    cielo: { cielo1: "#1B1340", cielo2: "#7C3AED", cielo3: "#FF8A3D", estrellas: true, sol: true, carretera: "#E9EDF5", carretera2: "#DDE3F0", linea: "#FFFFFF", borde: "#C4B5FD", neon: "#FFB347" },
+  };
+  const T = { cielo1: "#1B1340", cielo2: "#4C1D95", cielo3: "#B8336A", estrellas: true, edif1: "#2A1659", edif2: "#3B1F7A", ventana: "#F0ABFC", ventana2: "#67E8F9", neon: "#FF6B9D", carretera: "#1E1B4B", carretera2: null, linea: "#F9A8D4", borde: "#FF6B9D", carriles: 4, sol: true, ...(ESTILOS[estilo] ?? {}), ...tema };
   const r = azar(semilla); const id = "c" + semilla;
   const suelo = Math.floor(h * 0.62);
   let s = `<defs>${degradado(id + "k", T.cielo1, T.cielo2, T.cielo3)}</defs><rect width="${w}" height="${h}" fill="url(#${id}k)"/>`;
-  if (T.estrellas) s += estrellas(r, w, h * .5, 50, "#E9D5FF");
+  if (T.estrellas) s += estrellas(r, w, h * .5, estilo === "espacio" ? 90 : 50, "#E9D5FF");
   if (T.sol) s += solRetro(w - 40, 34, 18, id + "s");
-  // edificios lejanos (dos copias para que puedan desplazarse en bucle)
-  const capa = (fill, ventana, minW, maxW, minH, maxH, paso, idCapa) => {
-    let g = `<g id="${idCapa}">`;
-    for (let copia = 0; copia < 2; copia++) {
-      let x = copia * w;
-      while (x < (copia + 1) * w) {
-        const bw = minW + Math.floor(r() * (maxW - minW)), bh = minH + Math.floor(r() * (maxH - minH));
-        g += `<rect x="${x}" y="${suelo - bh}" width="${bw}" height="${bh}" rx="1.2" fill="${fill}"/><rect x="${x}" y="${suelo - bh}" width="${bw}" height="1" rx=".5" fill="${T.neon}" opacity=".9"/>`;
-        for (let yy = suelo - bh + 3; yy < suelo - 3; yy += paso) for (let xx = x + 1.5; xx < x + bw - 2; xx += paso) if (r() > .5) g += `<rect x="${xx.toFixed(1)}" y="${yy}" width="1.4" height="1.4" rx=".3" fill="${r() > .6 ? ventana : T.ventana2}" opacity=".9"/>`;
-        x += bw + 1 + Math.floor(r() * 3);
-      }
+  // Capas lejana y cercana (dos copias de ancho w para que se desplacen en bucle).
+  const dosCopias = (idCapa, dibujar) => { let g = `<g id="${idCapa}">`; for (let copia = 0; copia < 2; copia++) g += dibujar(copia * w); return g + "</g>"; };
+  const edificios = (fill, ventana, minW, maxW, minH, maxH, paso) => (x0) => {
+    let g = ""; let x = x0;
+    while (x < x0 + w) {
+      const bw = minW + Math.floor(r() * (maxW - minW)), bh = minH + Math.floor(r() * (maxH - minH));
+      g += `<rect x="${x}" y="${suelo - bh}" width="${bw}" height="${bh}" rx="1.2" fill="${fill}"/><rect x="${x}" y="${suelo - bh}" width="${bw}" height="1" rx=".5" fill="${T.neon}" opacity=".9"/>`;
+      for (let yy = suelo - bh + 3; yy < suelo - 3; yy += paso) for (let xx = x + 1.5; xx < x + bw - 2; xx += paso) if (r() > .5) g += `<rect x="${xx.toFixed(1)}" y="${yy}" width="1.4" height="1.4" rx=".3" fill="${r() > .6 ? ventana : T.ventana2}" opacity=".9"/>`;
+      x += bw + 1 + Math.floor(r() * 3);
     }
-    return g + "</g>";
+    return g;
   };
-  s += capa(T.edif1, T.ventana, 7, 16, 20, 52, 3.4, id + "lejos");
-  s += capa(T.edif2, T.ventana, 12, 26, 8, 26, 3.8, id + "cerca");
-  // carretera
-  s += `<rect x="0" y="${suelo}" width="${w}" height="${h - suelo}" fill="${T.carretera}"/><rect x="0" y="${suelo}" width="${w}" height="1.6" fill="${T.neon}"/>`;
+  if (estilo === "espacio") {
+    s += dosCopias(id + "lejos", (x0) => { let g = ""; for (let k = 0; k < 3; k++) { const cx = x0 + 20 + k * 58 + r() * 20, cy = 18 + r() * 40, R = 5 + r() * 7; const col = ["#60A5FA", "#F472B6", "#FBBF24", "#A78BFA"][Math.floor(r() * 4)]; g += `<g transform="rotate(-18 ${cx} ${cy})"><ellipse cx="${cx}" cy="${cy}" rx="${R * 1.9}" ry="${R * .45}" fill="none" stroke="#C4B5FD" stroke-width="1.4" opacity=".8"/></g><circle cx="${cx}" cy="${cy}" r="${R}" fill="${col}" ${o(.5)}/><circle cx="${cx - R * .35}" cy="${cy - R * .35}" r="${R * .25}" fill="#fff" opacity=".55"/>`; } return g; });
+    s += dosCopias(id + "cerca", (x0) => { let g = ""; for (let k = 0; k < 7; k++) { const cx = x0 + r() * w, cy = suelo - 6 - r() * 40, R = 2 + r() * 3.5; g += `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${R.toFixed(1)}" ry="${(R * .75).toFixed(1)}" fill="#6B7280" ${o(.4)}/><circle cx="${(cx - R * .3).toFixed(1)}" cy="${(cy - R * .2).toFixed(1)}" r="${(R * .25).toFixed(1)}" fill="#4B5563"/>`; } return g; });
+  } else if (estilo === "hipodromo") {
+    s += dosCopias(id + "lejos", (x0) => { let g = ""; for (let k = 0; k < 2; k++) { const x = x0 + 10 + k * 90; g += `<rect x="${x}" y="${suelo - 30}" width="64" height="30" rx="2" fill="#E9EDF5" ${o(.5)}/><rect x="${x - 2}" y="${suelo - 34}" width="68" height="5" rx="1.5" fill="#E53935" ${o(.4)}/>`; for (let yy = suelo - 26; yy < suelo - 4; yy += 5) for (let xx = x + 3; xx < x + 62; xx += 4) g += `<rect x="${xx}" y="${yy}" width="2.4" height="2.4" rx=".6" fill="${["#2F6DF6", "#FFD400", "#FF6B9D", "#27C4B4"][Math.floor(r() * 4)]}"/>`; } for (let k = 0; k < 4; k++) { const x = x0 + r() * w, R = 6 + r() * 5; g += `<rect x="${(x - 1.2).toFixed(1)}" y="${suelo - 10}" width="2.4" height="10" fill="#8B5A2B"/><circle cx="${x.toFixed(1)}" cy="${suelo - 12}" r="${R.toFixed(1)}" fill="#2BB673" ${o(.45)}/><circle cx="${(x - R * .3).toFixed(1)}" cy="${(suelo - 14 - R * .2).toFixed(1)}" r="${(R * .35).toFixed(1)}" fill="#7CCF4F" opacity=".8"/>`; } return g; });
+    s += dosCopias(id + "cerca", (x0) => { let g = `<rect x="${x0}" y="${suelo - 7}" width="${w}" height="1.4" fill="#fff" ${o(.3)}/><rect x="${x0}" y="${suelo - 3.5}" width="${w}" height="1.4" fill="#fff" ${o(.3)}/>`; for (let xx = x0; xx < x0 + w; xx += 12) g += `<rect x="${xx}" y="${suelo - 9}" width="1.8" height="9" rx=".6" fill="#fff" ${o(.3)}/>`; return g; });
+  } else if (estilo === "cielo") {
+    s += dosCopias(id + "lejos", (x0) => `<polygon points="${x0},${suelo} ${x0 + 24},${suelo - 26} ${x0 + 50},${suelo - 10} ${x0 + 86},${suelo - 34} ${x0 + 110},${suelo - 16} ${x0 + 140},${suelo - 30} ${x0 + 172},${suelo - 8} ${x0 + 172},${suelo}" fill="#2E1A6E"/><polygon points="${x0 + 78},${suelo - 34} ${x0 + 86},${suelo - 40} ${x0 + 94},${suelo - 34}" fill="#FF8A3D"/><circle cx="${x0 + 86}" cy="${suelo - 40}" r="2.2" fill="#FFE066" opacity=".9"/>`);
+    s += dosCopias(id + "cerca", (x0) => { let g = ""; for (let k = 0; k < 5; k++) { const cx = x0 + r() * w, cy = 30 + r() * 34; g += `<g opacity=".92"><ellipse cx="${cx.toFixed(1)}" cy="${cy}" rx="10" ry="3.4" fill="#fff"/><ellipse cx="${(cx - 4).toFixed(1)}" cy="${cy - 2.2}" rx="5.5" ry="3.6" fill="#fff"/><ellipse cx="${(cx + 4.5).toFixed(1)}" cy="${cy - 1.6}" rx="6" ry="3.4" fill="#fff"/></g>`; } return g; });
+  } else {
+    s += dosCopias(id + "lejos", edificios(T.edif1, T.ventana, 7, 16, 20, 52, 3.4));
+    s += dosCopias(id + "cerca", edificios(T.edif2, T.ventana, 12, 26, 8, 26, 3.8));
+  }
+  // pista con carriles
   const carriles = T.carriles, alturaCarril = Math.floor((h - suelo - 6) / carriles);
+  s += `<rect x="0" y="${suelo}" width="${w}" height="${h - suelo}" fill="${T.carretera}"/>`;
+  if (T.carretera2) for (let c = 0; c < carriles; c++) if (c % 2) s += `<rect x="0" y="${suelo + 4 + c * alturaCarril}" width="${w}" height="${alturaCarril}" fill="${T.carretera2}"/>`;
+  s += `<rect x="0" y="${suelo}" width="${w}" height="1.6" fill="${T.neon}"/>`;
   let rayas = `<g id="${id}rayas">`;
   for (let c = 1; c < carriles; c++) { const y = suelo + 4 + c * alturaCarril; for (let xx = -12; xx < w + 12; xx += 12) rayas += `<rect x="${xx}" y="${y - .6}" width="6" height="1.2" rx=".6" fill="${T.linea}" opacity=".9"/>`; }
   s += rayas + "</g>";

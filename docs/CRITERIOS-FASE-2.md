@@ -312,3 +312,23 @@ moderno).
 transparente sobre el juego con una tarjeta: Sparky, "¿Cómo se juega?", la instrucción propia de ese juego (por ejemplo
 "Lee la tarjeta y clasifícala con tu dedo: deslízala a la derecha si es verdadera…" o "Elige tu coche y a correr…") y el
 botón **Iniciar**. Aplica a los diez juegos y existe en español, inglés y francés (`TEXTOS.instr_*` en `cartucho.js`).
+
+## 18. Juego de puertas, verdadero o falso express y plantillas por actividad (Daniel, 6 de noviembre de 2026, noche)
+
+**Juego de puertas (nuevo, tipo Donkey Kong).** Una torre en zigzag de 2 a 4 pisos con escaleras. El personaje se mueve con las
+flechas del teclado (o WASD) o con flechas digitales en pantalla (teléfono y tablet): ◀ ▶ camina, ▲ ▼ sube y baja escaleras.
+Cada puerta se abre contestando una pregunta del temario: la respuesta correcta es la llave; si falla, se muestra la llave
+correcta, se abre de todos modos y se pierde una vida. Guardias patrullan cada piso (más rápidos arriba); si lo atrapan,
+pierde una vida y vuelve al inicio del piso. Tres vidas, GAME OVER y reinicio con las preguntas revueltas. Gana al llegar a
+la SALIDA del piso de arriba con todas las puertas abiertas. Plantillas: torre, mansión, bodega. Entra en la rotación de
+juegos de preguntas: carrera → puertas → montaña → castillo.
+
+**Verdadero o falso express.** El swipe ahora es contra reloj: 7 segundos por tarjeta, sumados para todas (10 tarjetas =
+70 s), con reloj grande que se pone rojo en los últimos 10 s y tic en los últimos 5. Lo que no se contesta a tiempo cuenta
+como error. Objetivo: leer rápido y decidir con lo que se sabe.
+
+**Plantillas distintas por actividad (regla).** Cada actividad tiene varias plantillas con el mismo formato y mecánica pero
+distinto personaje o escenario, para que el tema sea unisex y nunca se repita dentro de una guía: la carrera corre con
+coches (ciudad de neón), naves (espacio), caballos (hipódromo) o dragones (cielo), con su propio sonido (motor, galope,
+viento). El estante elige sin repetir plantilla dentro de la misma guía; la IA que genera las guías debe respetar esa
+biblioteca y alternar: por ejemplo carrera con coches → puertas → teoría → mix and match → carrera con caballos.

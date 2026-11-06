@@ -61,6 +61,43 @@ export const sonido = {
   nivel() { [523, 659, 784, 1047].forEach((f, i) => { tono({ f, dur: .18, vol: .06, inicio: i * .09 }); tono({ f: f / 2, dur: .2, tipo: "triangle", vol: .03, inicio: i * .09 }); }); },
   gameover() { [392, 349, 311, 262].forEach((f, i) => tono({ f, dur: .3, tipo: "triangle", vol: .07, inicio: i * .2 })); rafaga({ dur: .9, vol: .04, tipo: "lowpass", f: 900, f2: 120, inicio: .1 }); },
   victoria() { [523, 523, 523, 659, 784, 659, 784, 1047].forEach((f, i) => { tono({ f, dur: i === 7 ? .6 : .14, vol: .07, inicio: i * .11 }); tono({ f: f * 2, dur: i === 7 ? .6 : .14, tipo: "triangle", vol: .025, inicio: i * .11 }); }); },
+  // Galope para la carrera de caballos: cascos rítmicos que se aceleran.
+  galopeIniciar() {
+    const c = audio();
+    if (!c || silencio) return { acelerar() {}, impulso() {}, frenar() {}, detener() {} };
+    let intervalo = 520, vivo = true, timer = null;
+    const casco = () => { if (!vivo) return; rafaga({ dur: .07, vol: .05, tipo: "lowpass", f: 420 }); rafaga({ dur: .05, vol: .035, tipo: "lowpass", f: 300, inicio: .09 }); timer = setTimeout(casco, intervalo); };
+    casco();
+    const m = {
+      acelerar(v = .5) { intervalo = 620 - v * 320; },
+      impulso() { intervalo = 240; setTimeout(() => m.acelerar(.55), 750); },
+      frenar() { intervalo = 760; rafaga({ dur: .25, vol: .04, f: 700, f2: 250 }); setTimeout(() => m.acelerar(.4), 900); },
+      detener() { if (!vivo) return; vivo = false; clearTimeout(timer); motores.delete(m); },
+    };
+    motores.add(m);
+    return m;
+  },
+  // Viento y aleteo para la carrera de dragones.
+  vientoIniciar() {
+    const c = audio();
+    if (!c || silencio) return { acelerar() {}, impulso() {}, frenar() {}, detener() {} };
+    const s = c.createBufferSource(); s.buffer = ruido(c); s.loop = true;
+    const fl = c.createBiquadFilter(); fl.type = "bandpass"; fl.frequency.value = 500; fl.Q.value = .7;
+    const g = c.createGain(); g.gain.value = 0.0001;
+    s.connect(fl).connect(g).connect(c.destination); s.start();
+    g.gain.exponentialRampToValueAtTime(0.03, c.currentTime + .5);
+    let vivo = true, timer = null, intervalo = 900;
+    const aleteo = () => { if (!vivo) return; rafaga({ dur: .3, vol: .045, f: 260, f2: 900, q: .6 }); timer = setTimeout(aleteo, intervalo); };
+    aleteo();
+    const m = {
+      acelerar(v = .5) { fl.frequency.setTargetAtTime(350 + v * 900, c.currentTime, .3); intervalo = 1100 - v * 500; },
+      impulso() { g.gain.setTargetAtTime(0.06, c.currentTime, .05); intervalo = 380; setTimeout(() => { g.gain.setTargetAtTime(0.03, c.currentTime, .4); m.acelerar(.55); }, 750); },
+      frenar() { fl.frequency.setTargetAtTime(250, c.currentTime, .1); intervalo = 1300; setTimeout(() => m.acelerar(.4), 900); },
+      detener() { if (!vivo) return; vivo = false; clearTimeout(timer); motores.delete(m); g.gain.setTargetAtTime(0.0001, c.currentTime, .3); setTimeout(() => { try { s.stop(); } catch {} }, 900); },
+    };
+    motores.add(m);
+    return m;
+  },
   // motor corto (compatibilidad) y motor continuo para la carrera
   motor() { tono({ f: 90, f2: 200, dur: .5, tipo: "sawtooth", vol: .035, filtro: 700, q: 2 }); },
   motorIniciar() {

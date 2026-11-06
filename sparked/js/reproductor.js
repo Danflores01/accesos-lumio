@@ -31,7 +31,7 @@ const ctx = {
   desbloquear: () => { const volver = params.get("volver"); if (volver) location.href = volver; else if (ctx.guiaId) location.href = `biblioteca.html?guia=${encodeURIComponent(ctx.guiaId)}&paso=pagar`; else location.href = "index.html"; },
 };
 
-const R = { portada, tutorial, teoria, resultados, candado, carrera: J.carrera, montana: J.montana, castillo: J.castillo, swipe: J.swipe, superdato: J.superdato, match: J.match, sort: J.sort, rank: J.rank, ruleta: J.ruleta, quiz: J.quiz };
+const R = { portada, tutorial, teoria, resultados, candado, carrera: J.carrera, puertas: J.puertas, montana: J.montana, castillo: J.castillo, swipe: J.swipe, superdato: J.superdato, match: J.match, sort: J.sort, rank: J.rank, ruleta: J.ruleta, quiz: J.quiz };
 
 function limpiar() { timers.forEach(clearTimeout); timers = []; rafs.forEach(cancelAnimationFrame); rafs = []; }
 function ajustar() { const vp = document.getElementById("vp").getBoundingClientRect(); escala = Math.min(vp.width / 1280, vp.height / 720) * 0.985; escenario.style.transform = `scale(${escala})`; }
@@ -78,7 +78,9 @@ document.getElementById("reportar").onclick = async () => {
   try { await fetch(`${CONFIG.api}/reporte`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: esToken ? token : null, guia_id: ctx.guiaId, slide: cur + 1, comentario }) }); alert("¡Gracias! Lo revisamos."); } catch { alert("No se pudo enviar. Intenta de nuevo."); }
 };
 addEventListener("keydown", (e) => {
-  if (e.target.matches("input, textarea")) return;
+  if (e.target?.matches?.("input, textarea")) return;
+  // Un juego que se controla con las flechas (data-teclas) se queda con ellas; las slides no cambian.
+  if (e.key.startsWith("Arrow") && escenario.querySelector("[data-teclas]")) return;
   if (e.key === "ArrowDown" || e.key === "PageDown") ctx.go(cur + 1);
   if (e.key === "ArrowUp" || e.key === "PageUp") ctx.go(cur - 1);
   if (e.key === "Escape") document.getElementById("miniaturas").classList.add("oculto");

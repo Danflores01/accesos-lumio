@@ -41,7 +41,11 @@ export const TEXTOS = {
     instr_sort: "Clasifica cada tarjeta en su grupo: tócala y luego toca el grupo, o arrástrala.",
     instr_rank: "Pon los pasos en orden: toca una tarjeta y luego la casilla con su número, o arrástrala. Al terminar, pulsa Revisar mi orden.",
     instr_ruleta: "Gira la ruleta con el dedo para ver cuántos puntos vale la pregunta y contéstala. ¡Es el reto final!",
-    instr_quiz: "Mini-examen: una pregunta a la vez, sin tiempo. Al final verás tu calificación y lo que te conviene repasar." },
+    instr_quiz: "Mini-examen: una pregunta a la vez, sin tiempo. Al final verás tu calificación y lo que te conviene repasar.",
+    vf_express: "Verdadero o falso express", contrarreloj: "Contra reloj", instr_swipe: "Contra reloj: tienes 7 segundos por tarjeta y el reloj corre para todas. Lee rápido y clasifica con tu dedo: a la derecha si es verdadera, a la izquierda si es falsa (o usa los botones).",
+    instr_puertas: "Muévete con las flechas del teclado o con las flechas de la pantalla: ◀ ▶ para caminar y ▲ ▼ en las escaleras. Cada puerta se abre contestando una pregunta: la respuesta correcta es la llave. Cuidado con los guardias; tienes 3 vidas. Llega a la salida de arriba.",
+    puertas: "Puertas", puertas_ok: "¡Escapaste de la torre!", puertas_mal: "Te atraparon…", llega_puerta: "Camina hasta la puerta y contesta para abrirla", controles: "◀ ▶ caminar · ▲ ▼ escaleras · teclado o flechas de la pantalla", salida: "SALIDA",
+    elige_nave: "Elige tu nave", elige_caballo: "Elige tu caballo", elige_dragon: "Elige tu dragón" },
   en: { portada_tag: "Study guide", aprender: "What will you learn today?", bloque: "Block", pista: "Clue", antes: "Before you start", como_usar: "How to use this lesson",
     mover: "Move forward and back", abajo: "Down arrow = next slide", arriba: "Up arrow = previous slide", barrita: "Use the toolbar", cuadritos: "Squares = see all slides",
     lupa: "Drag with your finger or mouse", juega: "Play!", start: "Press START, then drag or tap", reintenta: "Play again to beat your score", importante: "Important:", termina: "finish each game before you move to the next slide.",
@@ -60,7 +64,11 @@ export const TEXTOS = {
     instr_sort: "Sort each card into its group: tap it and then the group, or drag it.",
     instr_rank: "Put the steps in order: tap a card and then its numbered slot, or drag it. When you finish, press Check my order.",
     instr_ruleta: "Spin the wheel with your finger to see how many points the question is worth, then answer it. It's the final challenge!",
-    instr_quiz: "Mini-exam: one question at a time, no timer. At the end you'll see your grade and what to review." },
+    instr_quiz: "Mini-exam: one question at a time, no timer. At the end you'll see your grade and what to review.",
+    vf_express: "True or false express", contrarreloj: "Against the clock", instr_swipe: "Against the clock: you get 7 seconds per card and the timer runs for all of them. Read fast and sort with your finger: right if it is true, left if it is false (or use the buttons).",
+    instr_puertas: "Move with the keyboard arrows or the on-screen arrows: ◀ ▶ to walk and ▲ ▼ on the ladders. Each door opens by answering a question: the right answer is the key. Watch out for the guards; you have 3 lives. Reach the exit at the top.",
+    puertas: "Doors", puertas_ok: "You escaped the tower!", puertas_mal: "They caught you…", llega_puerta: "Walk to the door and answer to open it", controles: "◀ ▶ walk · ▲ ▼ ladders · keyboard or on-screen arrows", salida: "EXIT",
+    elige_nave: "Choose your ship", elige_caballo: "Choose your horse", elige_dragon: "Choose your dragon" },
   fr: { portada_tag: "Guide d'étude", aprender: "Qu'est-ce que tu vas apprendre ?", bloque: "Bloc", pista: "Indice", antes: "Avant de commencer", como_usar: "Comment utiliser ce guide",
     mover: "Avance et recule", abajo: "Flèche en bas = slide suivante", arriba: "Flèche en haut = slide précédente", barrita: "Utilise la barre", cuadritos: "Carrés = voir toutes les slides",
     lupa: "Glisse avec le doigt ou la souris", juega: "Joue !", start: "Appuie sur START, puis glisse ou touche", reintenta: "Rejoue pour battre ton score", importante: "Important :", termina: "termine chaque jeu avant de passer à la slide suivante.",
@@ -79,7 +87,11 @@ export const TEXTOS = {
     instr_sort: "Classe chaque carte dans son groupe : touche-la puis le groupe, ou glisse-la.",
     instr_rank: "Mets les étapes dans l'ordre : touche une carte puis sa case numérotée, ou glisse-la. À la fin, appuie sur Vérifier mon ordre.",
     instr_ruleta: "Fais tourner la roue avec le doigt pour voir combien de points vaut la question, puis réponds. C'est le défi final !",
-    instr_quiz: "Mini-examen : une question à la fois, sans chrono. À la fin, tu verras ta note et ce qu'il faut revoir." },
+    instr_quiz: "Mini-examen : une question à la fois, sans chrono. À la fin, tu verras ta note et ce qu'il faut revoir.",
+    vf_express: "Vrai ou faux express", contrarreloj: "Contre la montre", instr_swipe: "Contre la montre : tu as 7 secondes par carte et le chrono tourne pour toutes. Lis vite et classe avec ton doigt : à droite si c'est vrai, à gauche si c'est faux (ou utilise les boutons).",
+    instr_puertas: "Déplace-toi avec les flèches du clavier ou celles de l'écran : ◀ ▶ pour marcher et ▲ ▼ sur les échelles. Chaque porte s'ouvre en répondant à une question : la bonne réponse est la clé. Attention aux gardes ; tu as 3 vies. Rejoins la sortie en haut.",
+    puertas: "Portes", puertas_ok: "Tu t'es échappé de la tour !", puertas_mal: "Ils t'ont attrapé…", llega_puerta: "Marche jusqu'à la porte et réponds pour l'ouvrir", controles: "◀ ▶ marcher · ▲ ▼ échelles · clavier ou flèches de l'écran", salida: "SORTIE",
+    elige_nave: "Choisis ton vaisseau", elige_caballo: "Choisis ton cheval", elige_dragon: "Choisis ton dragon" },
 };
 export const t = (idioma, clave) => (TEXTOS[idioma] ?? TEXTOS.es)[clave] ?? TEXTOS.es[clave] ?? clave;
 
@@ -136,9 +148,10 @@ function aplanar(obj) {
 // ---------- Estante de juegos: qué contenido va a qué juego ----------
 // Plantillas por mecánica (las de pixel art). Se eligen al azar sin repetir dentro de la guía.
 export const PLANTILLAS = {
-  carrera: ["ciudad_neon", "formula1", "callejera"],
+  carrera: ["ciudad_neon", "espacio", "hipodromo", "dragones"], // coches, naves, caballos y dragones: misma mecánica, distinto personaje
   montana: ["nevada", "volcan", "aurora"],
   castillo: ["noche", "amanecer", "dragon"],
+  puertas: ["torre", "mansion", "bodega"],
   swipe: ["arcade", "cartas", "neon"],
   superdato: ["laboratorio", "pergamino", "terminal"],
   match: ["planeta", "estacion", "luna"],
@@ -164,7 +177,7 @@ export function armarSlides(c) {
   S.push({ k: "portada", t: c.plan.identidad.titulo, blk: -1 });
   S.push({ k: "tutorial", t: t(idioma, "como_usar"), blk: -1 });
   if (c.calentamiento.length) S.push({ k: "carrera", t: `🔥 ${t(idioma, "calentamiento")}`, ids: c.calentamiento, tag: t(idioma, "calentamiento"), blk: 0, plantilla: elegir("carrera"), calentamiento: true });
-  const quizJuegos = ["carrera", "montana", "castillo"];
+  const quizJuegos = ["carrera", "puertas", "montana", "castillo"];
   c.bloques.forEach((b, bi) => {
     const nb = bi + 1;
     // teoría: 2 o 3 pistas por slide; la última slide de teoría del bloque lleva "Ojo" y "Palabras clave"
@@ -178,9 +191,9 @@ export function armarSlides(c) {
     grupos.forEach((g, gi) => S.push({ k: "teoria", t: `${t(idioma, "pista")} · ${b.titulo}${grupos.length > 1 ? ` (${gi + 1})` : ""}`, b, bi, pistas: g, parte: gi + 1, ultima: gi === grupos.length - 1, tag: `${t(idioma, "pista")} · ${t(idioma, "bloque")} ${nb}`, blk: bi }));
     const acts = b.actividades;
     const mc = acts.filter((a) => a.tipo === "opcion_multiple" || a.tipo === "completar").map((a) => a.id);
-    if (mc.length) { const juego = quizJuegos[bi % quizJuegos.length]; S.push({ k: juego, t: `${{ carrera: "🏎️", montana: "🧗", castillo: "🏰" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
+    if (mc.length) { const juego = quizJuegos[bi % quizJuegos.length]; S.push({ k: juego, t: `${{ carrera: "🏎️", puertas: "🚪", montana: "🧗", castillo: "🏰" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
     const vf = acts.filter((a) => a.tipo === "verdadero_falso");
-    if (vf.length) S.push({ k: "swipe", t: `👉 ${t(idioma, "verdadero")} / ${t(idioma, "falso")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("swipe") });
+    if (vf.length) S.push({ k: "swipe", t: `⏱ ${t(idioma, "vf_express")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("swipe") });
     acts.filter((a) => a.tipo === "super_dato").forEach((a) => S.push({ k: "superdato", t: "⭐ Súper dato", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("superdato") }));
     acts.filter((a) => a.tipo === "conceptos").forEach((a) => S.push({ k: "match", t: "🧩 Mix & match", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match") }));
     acts.filter((a) => a.tipo === "quien_es_quien").forEach((a) => S.push({ k: "match", t: "🖼️ ¿Quién es quién?", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match"), retratos: true }));

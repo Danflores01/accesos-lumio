@@ -1,26 +1,35 @@
-// Los juegos del estante (Documento 2 + mecánicas que pidió Daniel): carrera, montaña, castillo, swipe, súper dato,
-// mix & match, super sort, rank order, ruleta y mini-examen. Todos se califican solos y dan retroalimentación al instante.
-// Versión "videojuego actual" (6 nov 2026): movimiento continuo, motor que acelera, saltos, flechas en arco, parejas
-// que se juntan con animación y todo se puede jugar tocando (tarjeta → destino) o arrastrando.
+// Los juegos del estante (Documento 2 + mecánicas que pidió Daniel): carrera, puertas, montaña, castillo, verdadero o
+// falso express, súper dato, mix & match, super sort, rank order, ruleta y mini-examen. Todos se califican solos y dan
+// retroalimentación al instante. Versión "videojuego actual" (6 nov 2026): movimiento continuo, motor que acelera,
+// saltos, flechas en arco, parejas que se juntan con animación y todo se puede jugar tocando o arrastrando.
+// Cada actividad tiene plantillas distintas (vehículos, escenarios, colores) para que ninguna guía repita la misma.
 import { esc, h, mezclar, toast, inicio, fin, gameOver, arrastrable, panelPregunta, temporizador } from "./ui.js";
 import { marco } from "./teoria.js";
 import { sonido } from "./sonido.js";
-import { escenaCiudad, escenaMontana, escenaCastillo, escenaPlaneta, escenaSvg, capaCoche, capaEscalador, capaSoldado, capaArquero, capaIcono, capaSparky, coche, icono, COLORES_DE_COCHE } from "./arte.js";
+import { escenaCiudad, escenaMontana, escenaCastillo, escenaPlaneta, escenaSvg, capaVehiculo, vehiculo, capaEscalador, capaSoldado, capaArquero, capaIcono, capaSparky, icono, COLORES_DE_COCHE } from "./arte.js";
 
 const W = 172, H = 140;
 const TEMAS = {
   ciudad_neon: {}, formula1: { cielo1: "#38BDF8", cielo2: "#BAE6FD", cielo3: "#FDE68A", estrellas: false, sol: false, edif1: "#E11D48", edif2: "#F8FAFC", ventana: "#1F2937", ventana2: "#64748B", neon: "#111827", carretera: "#374151", linea: "#F8FAFC", borde: "#EF4444" },
   callejera: { cielo1: "#3B0A0A", cielo2: "#9A3412", cielo3: "#F97316", estrellas: true, edif1: "#431407", edif2: "#7C2D12", ventana: "#FDE68A", ventana2: "#FB923C", neon: "#FB923C", carretera: "#1C1917", linea: "#FBBF24", borde: "#F97316" },
+  espacio: { estilo: "espacio" }, hipodromo: { estilo: "hipodromo" }, dragones: { estilo: "cielo" },
   nevada: {}, volcan: { cielo1: "#3B0A0A", cielo2: "#7F1D1D", cielo3: "#F97316", fondo1: "#7F1D1D", fondo2: "#991B1B", roca: "#44403C", rocaOscura: "#1C1917", nieve: "#F97316", pasto: "#57534E", pastoOscuro: "#292524", sol: "#FCA5A5" },
   aurora: { cielo1: "#052E16", cielo2: "#065F46", cielo3: "#34D399", fondo1: "#065F46", fondo2: "#047857", roca: "#365314", rocaOscura: "#1A2E05", nieve: "#A7F3D0", pasto: "#86EFAC", pastoOscuro: "#166534", sol: "#D9F99D" },
   noche: {}, amanecer: { cielo1: "#FDBA74", cielo2: "#FDE68A", cielo3: "#BAE6FD", luna: "#FFF7ED", colinas: "#9A3412", colinas2: "#C2410C", suelo: "#65A30D", piedra: "#A8A29E", piedra2: "#D6D3D1", piedraOscura: "#78716C" },
   dragon: { cielo1: "#1C0A0A", cielo2: "#450A0A", cielo3: "#B91C1C", luna: "#EF4444", colinas: "#450A0A", colinas2: "#7F1D1D", suelo: "#3F3F46", piedra: "#52525B", piedra2: "#71717A", piedraOscura: "#27272A" },
 };
+// Qué corre en cada plantilla de la carrera (misma mecánica, distinto personaje).
+const VEHICULOS = { ciudad_neon: "coche", formula1: "coche", callejera: "coche", espacio: "nave", hipodromo: "caballo", dragones: "dragon" };
+const TEMAS_PUERTAS = {
+  torre: { pared1: "#2E2566", pared2: "#4C1D95", piedra: "#8E97AD", piedra2: "#B7BFD1", madera: "#D9A066", puerta: "#8B5A2B", marco: "#5C3A1A", luz: "#FFE9A8", cielo: "#1B1340" },
+  mansion: { pared1: "#1C0A1A", pared2: "#4A1D4A", piedra: "#6B5B6B", piedra2: "#8C7B8C", madera: "#A0522D", puerta: "#3B2314", marco: "#20120A", luz: "#FF6B9D", cielo: "#0B0A1A" },
+  bodega: { pared1: "#0B2545", pared2: "#13315C", piedra: "#5F7A8A", piedra2: "#8DA7B8", madera: "#C98B4D", puerta: "#3F5E80", marco: "#1E3A5F", luz: "#7DD3FC", cielo: "#061A2E" },
+};
 
 const hudPill = (txt, id = "", px = false) => `<span class="hud-pill ${px ? "px" : ""}" ${id ? `id="${id}"` : ""}>${txt}</span>`;
 // Un <g> de SVG de verdad (crearlo con innerHTML en un div lo volvería un elemento HTML que no se dibuja).
 function gSvg(inner, style = "") { const g = document.createElementNS("http://www.w3.org/2000/svg", "g"); if (style) g.setAttribute("style", style); g.innerHTML = inner; return g; }
-// Fondo de la escena visible desde antes de START.
+// Fondo de la escena visible desde antes de Iniciar.
 function fondoPrevio(el, svg) { const caja = el.querySelector("#caja"); if (caja) caja.innerHTML = svg; }
 const panel = (ctx, extra = "") => `<div class="panel-q"><div class="barra-tiempo"><i id="tm"></i></div><div class="pill" id="qn"></div><div id="qbox"></div>${extra}</div>`;
 // Pantalla de instrucciones (estilo Lumio) antes de cada actividad, con el texto propio de ese juego.
@@ -32,6 +41,7 @@ function bucle(el, ctx, paso) {
   ctx.raf(requestAnimationFrame(tick));
 }
 const suave = (t) => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // Juego por toques: una tarjeta seleccionada espera a que se toque un destino.
 function seleccion(el) {
   let activa = null;
@@ -46,9 +56,11 @@ function seleccion(el) {
 }
 const juntar = (c, zona) => { zona.appendChild(c); c.classList.add("locked", "pop"); zona.classList.add("ok"); zona.classList.remove("listo"); sonido.pop(); setTimeout(() => c.classList.remove("pop"), 450); };
 
-// ---------- CARRERA: los coches corren todo el tiempo; acierto = acelerón y rebase, error = te rebasan ----------
+// ---------- CARRERA: los corredores avanzan todo el tiempo; acierto = acelerón y rebase, error = te rebasan ----------
+// Plantillas: ciudad de neón con coches, espacio con naves, hipódromo con caballos, cielo con dragones.
 export function carrera(s, ctx) {
   const el = marco(s, ctx); const ids = s.ids; const T = ctx.t; const N = ids.length;
+  const tipo = VEHICULOS[s.plantilla] ?? "coche";
   const tema = { ...(TEMAS[s.plantilla] ?? {}), carriles: 5 };
   const fondo = escenaCiudad(W, H, ctx.c.semilla + ctx.cur, tema);
   const colores = COLORES_DE_COCHE.slice(0, 5);
@@ -62,7 +74,7 @@ export function carrera(s, ctx) {
     let lugar = [5, 1, 2, 3, 4]; // el jugador arranca al final
     let i = 0, aciertos = 0, timer = null, terminado = false;
     const caja = el.querySelector("#caja");
-    const capas = coches.map((c, k) => `<g id="c${k}">${capaCoche(c, 0, 0)}${k === 0 ? `<rect x="6" y="-4.6" width="12" height="3.4" rx="1.4" fill="#FFD400" stroke="#2A2340" stroke-width=".5"/><text x="12" y="-2" font-size="2.6" font-weight="800" fill="#2A2340" text-anchor="middle" font-family="Outfit, Arial, sans-serif">TÚ</text>` : ""}</g>`).join("");
+    const capas = coches.map((c, k) => `<g id="c${k}">${capaVehiculo(tipo, c, 0, 0)}${k === 0 ? `<rect x="6" y="-4.6" width="12" height="3.4" rx="1.4" fill="#FFD400" stroke="#2A2340" stroke-width=".5"/><text x="12" y="-2" font-size="2.6" font-weight="800" fill="#2A2340" text-anchor="middle" font-family="Outfit, Arial, sans-serif">TÚ</text>` : ""}</g>`).join("");
     const meta = `<defs><pattern id="cuadros" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="1.5" height="1.5" fill="#fff"/><rect x="1.5" y="1.5" width="1.5" height="1.5" fill="#fff"/><rect x="1.5" width="1.5" height="1.5" fill="#2A2340"/><rect y="1.5" width="1.5" height="1.5" fill="#2A2340"/></pattern></defs><rect x="151" y="${fondo.suelo + 2}" width="4" height="${H - fondo.suelo - 2}" fill="url(#cuadros)"/>`;
     caja.innerHTML = escenaSvg(fondo.svg + meta, W, H, capas) + `<div style="position:absolute;left:12px;top:10px;display:flex;gap:8px">${hudPill("LAP 1", "lap")}${hudPill("", "hudpos")}</div>`;
     const svg = caja.querySelector("svg");
@@ -70,9 +82,10 @@ export function carrera(s, ctx) {
     const ys = (k) => fondo.suelo + 3 + (k % fondo.carriles) * fondo.alturaCarril;
     const estado = coches.map((_, k) => ({ x: 6 + (5 - lugar[k]) * 8, objetivo: 6 + (5 - lugar[k]) * 8, fase: Math.random() * 6 }));
     let velocidad = 46, impulso = 0, desplazamiento = 0; // unidades por segundo
-    const motor = sonido.motorIniciar(); motor.acelerar(.5);
+    const motor = tipo === "caballo" ? sonido.galopeIniciar() : tipo === "dragon" ? sonido.vientoIniciar() : sonido.motorIniciar(); motor.acelerar(.5);
     const objetivo = (final = false) => { const prog = i / N; coches.forEach((c, k) => { estado[k].objetivo = 6 + prog * 112 + (5 - lugar[k]) * 8 + (final ? 36 : 0); }); el.querySelector("#hudpos").textContent = `P${lugar[0]} / 5`; el.querySelector("#pos").textContent = `${T("pregunta")} ${Math.min(i + 1, N)} ${T("de")} ${N} · ${aciertos} ✓`; };
     const swap = (a, b) => { const ka = lugar.indexOf(a), kb = lugar.indexOf(b); lugar[ka] = b; lugar[kb] = a; };
+    const amplitud = tipo === "caballo" ? 1.1 : tipo === "dragon" ? 1.6 : .35, ritmo = tipo === "caballo" ? 60 : tipo === "dragon" ? 160 : 90;
     bucle(el, ctx, (dt, t, fuera) => {
       if (fuera) { motor.detener(); return false; }
       const v = velocidad + impulso; impulso *= Math.pow(.2, dt);
@@ -80,7 +93,7 @@ export function carrera(s, ctx) {
       rayas?.setAttribute("transform", `translate(${-(desplazamiento % fondo.periodoRayas)} 0)`);
       cerca?.setAttribute("transform", `translate(${-((desplazamiento * .35) % W)} 0)`);
       lejos?.setAttribute("transform", `translate(${-((desplazamiento * .12) % W)} 0)`);
-      coches.forEach((c, k) => { const e = estado[k]; e.x += (e.objetivo - e.x) * Math.min(1, dt * 3.2); const bob = Math.sin(t / 90 + e.fase) * .35; const g = svg.querySelector(`#c${k}`); if (g) g.setAttribute("transform", `translate(${e.x.toFixed(2)} ${(ys(k) - 2 + bob).toFixed(2)})`); });
+      coches.forEach((c, k) => { const e = estado[k]; e.x += (e.objetivo - e.x) * Math.min(1, dt * 3.2); const bob = Math.sin(t / ritmo + e.fase) * amplitud; const g = svg.querySelector(`#c${k}`); if (g) g.setAttribute("transform", `translate(${e.x.toFixed(2)} ${(ys(k) - 2 + bob).toFixed(2)})`); });
       return !terminado || t < 0;
     });
     const preguntar = () => {
@@ -100,11 +113,109 @@ export function carrera(s, ctx) {
     objetivo(); preguntar();
   };
 
-  // Elegir coche antes de empezar: "para sentir que tiene su personaje".
+  // Elegir personaje antes de empezar: "para sentir que tiene su personaje".
   const elegidoAntes = ctx.coche();
-  const selector = `<div class="elige">${colores.map((c) => `<button data-c="${c}" class="${c === elegidoAntes ? "sel" : ""}">${coche(c, 3)}<span>${c.toUpperCase()}</span></button>`).join("")}</div>`;
-  const ov = arranque(el, T, "carrera", () => correr(ctx.coche() ?? colores[0]), `<div class="ayuda" style="font-weight:800;color:#2A2340">${esc(T("elige_coche"))}</div>${selector}`);
+  const selector = `<div class="ayuda" style="font-weight:800;color:#2A2340">${esc(T("elige_" + tipo))}</div><div class="elige">${colores.map((c) => `<button data-c="${c}" class="${c === elegidoAntes ? "sel" : ""}">${vehiculo(tipo, c, 3)}<span>${c.toUpperCase()}</span></button>`).join("")}</div>`;
+  const ov = arranque(el, T, "carrera", () => correr(ctx.coche() ?? colores[0]), selector);
   ov.querySelectorAll(".elige button").forEach((b) => b.onclick = () => { ov.querySelectorAll(".elige button").forEach((x) => x.classList.remove("sel")); b.classList.add("sel"); ctx.setCoche(b.dataset.c); sonido.toque(); });
+  return el;
+}
+
+// ---------- PUERTAS: torre en zigzag (estilo Donkey Kong); flechas para moverse, cada puerta se abre contestando ----------
+export function puertas(s, ctx) {
+  const el = marco(s, ctx); const T = ctx.t; const N = s.ids.length; const TL = 15;
+  const tema = TEMAS_PUERTAS[s.plantilla] ?? TEMAS_PUERTAS.torre;
+  el.setAttribute("data-teclas", "1");
+  const F = Math.max(2, Math.min(4, Math.ceil(N / 2)));
+  const altura = (H - 24) / F;
+  const fy = (i) => Math.round(H - 8 - i * altura);
+  const dir = (i) => (i % 2 === 0 ? 1 : -1);
+  const sx = (i) => (dir(i) > 0 ? 10 : W - 10);
+  const ex = (i) => (dir(i) > 0 ? W - 10 : 10);
+  el.appendChild(h(`<div class="juego"><div class="escena-caja" id="caja"></div>${panel(ctx, `<div class="pill" id="st"></div>`)}</div>`));
+  const sem = ctx.c.semilla + ctx.cur;
+  let fondo = `<defs><linearGradient id="pt${sem}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${tema.pared1}"/><stop offset="1" stop-color="${tema.pared2}"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#pt${sem})"/>`;
+  for (let i = 0; i < F; i++) { const cx = W / 2 + (i % 2 ? -30 : 30), y = fy(i) - 6; fondo += `<path d="M${cx - 6} ${y - 14} a6 6 0 0 1 12 0 v13 h-12 z" fill="${tema.cielo}" stroke="${tema.marco}" stroke-width=".8"/><circle cx="${cx + 2}" cy="${y - 10}" r="2" fill="#FFE9A8"/><circle cx="${cx - 3}" cy="${y - 6}" r=".5" fill="#fff"/>`; }
+  for (let i = 0; i < F; i++) { const y = fy(i); if (i === 0) fondo += `<rect x="0" y="${y}" width="${W}" height="${H - y}" fill="${tema.piedra}"/>`; fondo += `<rect x="0" y="${y}" width="${W}" height="4" fill="${tema.piedra}" stroke="#2A2340" stroke-width=".6"/>`; for (let xx = (i % 2 ? 4 : 0); xx < W; xx += 10) fondo += `<rect x="${xx}" y="${y + 1}" width="6" height="2" rx=".6" fill="${tema.piedra2}" opacity=".9"/>`; }
+  for (let i = 0; i < F - 1; i++) { const x = ex(i); const y0 = fy(i + 1), y1 = fy(i) + 4; fondo += `<rect x="${x - 3.6}" y="${y0}" width="1.6" height="${y1 - y0}" fill="${tema.madera}" stroke="#2A2340" stroke-width=".4"/><rect x="${x + 2}" y="${y0}" width="1.6" height="${y1 - y0}" fill="${tema.madera}" stroke="#2A2340" stroke-width=".4"/>`; for (let yy = y0 + 3; yy < y1 - 2; yy += 4.5) fondo += `<rect x="${x - 3.2}" y="${yy}" width="6.4" height="1.2" rx=".6" fill="${tema.madera}" stroke="#2A2340" stroke-width=".3"/>`; }
+  const xs = ex(F - 1), ysal = fy(F - 1);
+  fondo += `<rect x="${xs - 7}" y="${ysal - 20}" width="14" height="20" rx="2" fill="${tema.luz}" stroke="#2A2340" stroke-width=".7"/><rect x="${xs - 5}" y="${ysal - 18}" width="10" height="18" rx="1.5" fill="#fff" opacity=".7"/><text x="${xs}" y="${ysal - 22}" font-size="4" font-weight="800" text-anchor="middle" fill="${tema.luz}" font-family="Outfit, Arial, sans-serif">${esc(T("salida"))}</text>`;
+  fondoPrevio(el, escenaSvg(fondo, W, H, `<g transform="translate(${sx(0) - 6} ${fy(0) - 16})">${capaEscalador(0, 0)}</g>`));
+
+  const jugar = (ids) => {
+    const porPiso = Array.from({ length: F }, (_, i) => Math.floor(N / F) + (i < N % F ? 1 : 0));
+    const doors = []; let k = 0;
+    for (let i = 0; i < F; i++) for (let j = 0; j < porPiso[i]; j++) { const m = porPiso[i]; const x = Math.round(sx(i) + dir(i) * (Math.abs(ex(i) - sx(i)) - 18) * ((j + 1) / (m + 1))); doors.push({ x, floor: i, id: ids[k++], abierta: false, ang: 0, pendiente: false }); }
+    const enemigos = [];
+    for (let i = 0; i < F; i++) { enemigos.push({ floor: i, x: i === 0 ? W - 30 : clamp(sx(i) + dir(i) * (30 + (i * 17) % 60), 14, W - 14), d: dir(i), vel: 14 + i * 5, paso: 0 }); if (N >= 7 && i >= 2) enemigos.push({ floor: i, x: W / 2, d: -dir(i), vel: 16 + i * 4, paso: 2 }); }
+    const hero = { x: sx(0), floor: 0, y: fy(0), climbing: null, facing: 1, paso: 0, invuln: 0 };
+    let vidas = 3, aciertos = 0, puntos = 0, pausa = false, terminado = false, temblor = 0, timer = null;
+    const caja = el.querySelector("#caja");
+    const capas = doors.map((d, k2) => { const y = fy(d.floor); const lado = dir(d.floor); return `<g id="pu${k2}"><rect x="${d.x - 6.5}" y="${y - 19}" width="13" height="19" rx="1.5" fill="${tema.marco}" stroke="#2A2340" stroke-width=".6"/><rect x="${d.x - 5}" y="${y - 17.5}" width="10" height="17.5" fill="#0B0A1A"/><g class="hoja"><rect x="${d.x - 5}" y="${y - 17.5}" width="10" height="17.5" rx="1" fill="${tema.puerta}" stroke="#2A2340" stroke-width=".6"/><rect x="${d.x - 3.6}" y="${y - 16}" width="7.2" height="6" rx=".8" fill="none" stroke="#2A2340" stroke-width=".4" opacity=".6"/><circle cx="${d.x + 3 * lado}" cy="${y - 8.5}" r="1" fill="#FFD400" stroke="#2A2340" stroke-width=".4"/><circle class="cerradura" cx="${d.x}" cy="${y - 5.5}" r="1.3" fill="#E53935" opacity=".9"/></g></g>`; }).join("")
+      + enemigos.map((e, k2) => `<g id="en${k2}">${capaSoldado(0, 0)}</g>`).join("")
+      + `<g id="heroe">${capaEscalador(0, 0)}</g>`;
+    caja.innerHTML = escenaSvg(fondo, W, H, capas) + `<div style="position:absolute;left:12px;top:10px;display:flex;gap:8px;align-items:center"><span class="vidas" id="vidas"></span>${hudPill("", "hudpu")}${hudPill("", "hudpt")}</div><div class="dpad" aria-label="Controles"><button type="button" data-d="up" aria-label="Arriba">▲</button><button type="button" data-d="left" aria-label="Izquierda">◀</button><button type="button" data-d="down" aria-label="Abajo">▼</button><button type="button" data-d="right" aria-label="Derecha">▶</button></div>`;
+    const svg = caja.querySelector("svg"); const heroeG = svg.querySelector("#heroe");
+    const keys = { left: false, right: false, up: false, down: false };
+    const mapa = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", a: "left", d: "right", w: "up", s: "down", A: "left", D: "right", W: "up", S: "down" };
+    const kd = (e) => { const t2 = mapa[e.key]; if (t2) { keys[t2] = true; e.preventDefault(); } };
+    const ku = (e) => { const t2 = mapa[e.key]; if (t2) { keys[t2] = false; e.preventDefault(); } };
+    addEventListener("keydown", kd); addEventListener("keyup", ku);
+    const quitarTeclas = () => { removeEventListener("keydown", kd); removeEventListener("keyup", ku); };
+    caja.querySelectorAll(".dpad button").forEach((b) => { const d = b.dataset.d; const on = (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch {} keys[d] = true; b.classList.add("on"); }; const off = () => { keys[d] = false; b.classList.remove("on"); }; b.addEventListener("pointerdown", on); b.addEventListener("pointerup", off); b.addEventListener("pointercancel", off); b.addEventListener("pointerleave", off); });
+    const hud = () => { el.querySelector("#vidas").innerHTML = [0, 1, 2].map((k2) => icono(k2 < vidas ? "corazon" : "corazon_vacio", 3)).join(""); el.querySelector("#hudpu").textContent = `🚪 ${doors.filter((d) => d.abierta).length}/${N}`; el.querySelector("#hudpt").textContent = `★ ${puntos}`; el.querySelector("#st").textContent = `${T("vidas")}: ${vidas} · ${aciertos} ✓`; };
+    const pista = () => { const qb = el.querySelector("#qbox"); qb.innerHTML = `<div class="qcard"><div class="q">🚪 ${esc(T("llega_puerta"))}</div><div class="ayuda" style="font-size:15px">${esc(T("controles"))}</div></div>`; el.querySelector("#qn").textContent = `${T("puertas")} ${doors.filter((d) => d.abierta).length} ${T("de")} ${N}`; el.querySelector("#tm").style.width = "100%"; };
+    const perder = () => { terminado = true; quitarTeclas(); gameOver(el, ctx, puntos, s.blk + 1, () => jugar(mezclar(ids))); };
+    const ganar = () => { terminado = true; quitarTeclas(); fin(el, ctx, T("puertas_ok"), `${aciertos}/${N}`, T("correctas"), () => jugar(mezclar(ids)), aciertos >= N / 2); };
+    const abrir = (d) => {
+      if (d.pendiente || d.abierta) return; d.pendiente = true; pausa = true; keys.left = keys.right = keys.up = keys.down = false;
+      const qb = el.querySelector("#qbox"); qb.innerHTML = ""; const a = ctx.c.porId[d.id];
+      el.querySelector("#qn").textContent = `🔑 ${T("puertas")} ${doors.filter((x) => x.abierta).length + 1} ${T("de")} ${N}`;
+      const q = panelPregunta(a, ctx, (ok, txt) => {
+        timer?.detener();
+        if (ok) { aciertos++; puntos += 100; sonido.pop(); } else { vidas--; sonido.golpe(); temblor = .4; }
+        d.abierta = true; hud(); toast(el, ok, txt, ok ? 1500 : 3000);
+        ctx.luego(() => { if (vidas <= 0) { perder(); return; } pausa = false; pista(); }, ok ? 1200 : 3000);
+      });
+      qb.appendChild(q); timer = temporizador(el.querySelector("#tm"), TL, () => q.agotar(), ctx);
+    };
+    const golpe = () => { vidas--; sonido.golpe(); temblor = .5; hero.invuln = 1.8; hero.climbing = null; hero.x = sx(hero.floor); hero.y = fy(hero.floor); enemigos.filter((e) => e.floor === hero.floor).forEach((e) => { e.x = clamp(ex(hero.floor) - dir(hero.floor) * 12, 14, W - 14); e.d = -dir(hero.floor); }); hud(); if (vidas <= 0) perder(); };
+    const mover = (dt) => {
+      if (hero.climbing) {
+        const desde = fy(hero.climbing.desde), hasta = fy(hero.climbing.to); const dy = (keys.up ? -1 : keys.down ? 1 : 0) * 36 * dt;
+        hero.y = clamp(hero.y + dy, Math.min(desde, hasta), Math.max(desde, hasta)); if (dy) hero.paso += dt * 10;
+        if (hero.y === hasta) { hero.floor = hero.climbing.to; hero.climbing = null; } else if (hero.y === desde) { hero.floor = hero.climbing.desde; hero.climbing = null; }
+        return;
+      }
+      const vx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+      if (vx) {
+        hero.facing = vx; let nx = hero.x + vx * 48 * dt; const lado = dir(hero.floor);
+        for (const d of doors) if (d.floor === hero.floor && !d.abierta) { if (lado > 0 && hero.x <= d.x - 7 && nx > d.x - 7) { nx = d.x - 7; abrir(d); } if (lado < 0 && hero.x >= d.x + 7 && nx < d.x + 7) { nx = d.x + 7; abrir(d); } }
+        hero.x = clamp(nx, 8, W - 8); hero.paso += dt * 10;
+      }
+      if (keys.up && hero.floor < F - 1 && Math.abs(hero.x - ex(hero.floor)) < 5) { hero.climbing = { desde: hero.floor, to: hero.floor + 1 }; hero.x = ex(hero.floor); }
+      else if (keys.down && hero.floor > 0 && Math.abs(hero.x - ex(hero.floor - 1)) < 5) { hero.climbing = { desde: hero.floor, to: hero.floor - 1 }; hero.x = ex(hero.floor - 1); }
+      if (hero.floor === F - 1 && Math.abs(hero.x - ex(F - 1)) < 6 && doors.every((d) => d.abierta)) ganar();
+    };
+    bucle(el, ctx, (dt, t, fuera) => {
+      if (fuera) { quitarTeclas(); return false; }
+      if (terminado) return false;
+      doors.forEach((d, k2) => { if (d.abierta && d.ang < 78) { d.ang = Math.min(78, d.ang + 260 * dt); const hoja = svg.querySelector(`#pu${k2} .hoja`); hoja.setAttribute("transform", `rotate(${-d.ang * dir(d.floor)} ${d.x - 5 * dir(d.floor)} ${fy(d.floor)})`); hoja.querySelector(".cerradura").setAttribute("fill", "#2BB673"); } });
+      if (!pausa) {
+        mover(dt);
+        if (!terminado) enemigos.forEach((e) => { e.x += e.d * e.vel * dt; e.paso += dt * 9; if (e.x < 14) { e.x = 14; e.d = 1; } if (e.x > W - 14) { e.x = W - 14; e.d = -1; } if (!hero.climbing && hero.invuln <= 0 && e.floor === hero.floor && Math.abs(e.x - hero.x) < 7 && !terminado) golpe(); });
+      }
+      if (hero.invuln > 0) hero.invuln -= dt;
+      enemigos.forEach((e, k2) => { const g = svg.querySelector(`#en${k2}`); const bob = Math.abs(Math.sin(e.paso)) * 1.2; g.setAttribute("transform", `translate(${(e.x - 6).toFixed(2)} ${(fy(e.floor) - 16 - bob).toFixed(2)})${e.d < 0 ? " translate(12 0) scale(-1 1)" : ""}`); });
+      const bob = hero.climbing || keys.left || keys.right ? Math.abs(Math.sin(hero.paso)) * 1.1 : 0;
+      heroeG.setAttribute("transform", `translate(${(hero.x - 6).toFixed(2)} ${(hero.y - 16 - bob).toFixed(2)})${hero.facing < 0 ? " translate(12 0) scale(-1 1)" : ""}`);
+      heroeG.setAttribute("opacity", hero.invuln > 0 && Math.floor(t / 100) % 2 ? ".35" : "1");
+      if (temblor > 0) { temblor -= dt; svg.style.transform = `translate(${(Math.random() * 4 - 2).toFixed(1)}px, ${(Math.random() * 4 - 2).toFixed(1)}px)`; } else svg.style.transform = "";
+      return true;
+    });
+    hud(); pista();
+  };
+  arranque(el, T, "puertas", () => jugar(s.ids.slice()));
   return el;
 }
 
@@ -211,27 +322,41 @@ export function castillo(s, ctx) {
   return el;
 }
 
-// ---------- SWIPE: verdadero a la derecha, falso a la izquierda ----------
+// ---------- VERDADERO O FALSO EXPRESS: contra reloj, 7 segundos por tarjeta para todas ----------
 export function swipe(s, ctx) {
-  const el = marco(s, ctx); const T = ctx.t; const items = s.items; let i = 0, aciertos = 0;
+  const el = marco(s, ctx); const T = ctx.t; const items = s.items; let i = 0, aciertos = 0, acabado = false, fin0 = 0, ultimo = -1;
+  const TOTAL = 7 * items.length;
   el.classList.add("pl-" + (s.plantilla ?? "arcade"));
-  el.appendChild(h(`<div class="cuerpo" style="display:flex;flex-direction:column;align-items:center;gap:14px"><div class="swipe-marcas"><span style="color:var(--mal)">👈 ${esc(T("falso")).toUpperCase()}</span><span class="pill" id="cnt"></span><span style="color:var(--ok)">${esc(T("verdadero")).toUpperCase()} 👉</span></div><div class="mazo" id="mazo"></div><div style="display:flex;gap:16px"><button class="btn mal" id="bf">✗ ${esc(T("falso"))}</button><button class="btn ok" id="bt">✓ ${esc(T("verdadero"))}</button></div></div>`));
-  const mazo = el.querySelector("#mazo");
+  el.appendChild(h(`<div class="cuerpo" style="display:flex;flex-direction:column;align-items:center;gap:12px"><div class="swipe-marcas"><span style="color:var(--mal)">👈 ${esc(T("falso")).toUpperCase()}</span><span class="reloj" id="reloj">⏱ ${TOTAL} s</span><span style="color:var(--ok)">${esc(T("verdadero")).toUpperCase()} 👉</span></div><div class="barra-tiempo" style="width:640px"><i id="tm" style="width:100%"></i></div><div class="mazo" id="mazo"></div><div style="display:flex;gap:16px;align-items:center"><button class="btn mal" id="bf">✗ ${esc(T("falso"))}</button><span class="pill" id="cnt"></span><button class="btn ok" id="bt">✓ ${esc(T("verdadero"))}</button></div></div>`));
+  const mazo = el.querySelector("#mazo"), reloj = el.querySelector("#reloj"), barra = el.querySelector("#tm");
+  const terminar = (porTiempo) => { if (acabado) return; acabado = true; for (let k = i; k < items.length; k++) ctx.registrar(items[k].id, false); fin(el, ctx, porTiempo ? T("tiempo") : T("vf_express"), `${aciertos}/${items.length}`, T("correctas"), () => ctx.go(ctx.cur), aciertos >= items.length * .7); };
   const sig = () => {
     mazo.innerHTML = ""; el.querySelector("#cnt").textContent = `${Math.min(i + 1, items.length)} ${T("de")} ${items.length}`;
-    if (i >= items.length) { fin(el, ctx, "Swipe master!", `${aciertos}/${items.length}`, T("correctas"), () => ctx.go(ctx.cur), aciertos >= items.length * .7); return; }
+    if (i >= items.length) { terminar(false); return; }
     const a = items[i];
     const c = h(`<div class="carta-swipe"><div class="em">${esc(a.emoji ?? "🤔")}</div><div class="afirmacion">${esc(a.afirmacion)}</div>${a.afirmacion_apoyo ? `<div style="color:var(--gris);font-style:italic">${esc(a.afirmacion_apoyo)}</div>` : ""}</div>`);
     mazo.appendChild(c);
     let hecho = false;
-    const juzgar = (v) => { if (hecho) return; hecho = true; const ok = v === !!a.es_verdadera; ctx.registrar(a.id, ok); if (ok) aciertos++; sonido.whoosh(); c.style.transition = "transform .45s cubic-bezier(.3,.8,.4,1), opacity .45s"; c.style.transform = `translateX(${v ? 760 : -760}px) rotate(${v ? 28 : -28}deg)`; c.style.opacity = 0; toast(el, ok, ok ? a.retro_correcta : a.retro_incorrecta, ok ? 1800 : 3200); i++; ctx.luego(sig, ok ? 900 : 2400); };
+    const juzgar = (v) => { if (hecho || acabado) return; hecho = true; const ok = v === !!a.es_verdadera; ctx.registrar(a.id, ok); if (ok) aciertos++; sonido.whoosh(); c.style.transition = "transform .4s cubic-bezier(.3,.8,.4,1), opacity .4s"; c.style.transform = `translateX(${v ? 760 : -760}px) rotate(${v ? 28 : -28}deg)`; c.style.opacity = 0; toast(el, ok, ok ? a.retro_correcta : a.retro_incorrecta, ok ? 1200 : 2200); i++; ctx.luego(sig, ok ? 500 : 1400); };
     el.querySelector("#bt").onclick = () => juzgar(true); el.querySelector("#bf").onclick = () => juzgar(false);
     c.addEventListener("pointerdown", (e) => { e.preventDefault(); c.setPointerCapture(e.pointerId); const sx = e.clientX;
       const mv = (ev) => { const dx = (ev.clientX - sx) / ctx.escala(); c.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; c.style.borderColor = dx > 40 ? "var(--ok)" : dx < -40 ? "var(--mal)" : "#2A2340"; };
       const up = (ev) => { c.removeEventListener("pointermove", mv); c.removeEventListener("pointerup", up); const dx = (ev.clientX - sx) / ctx.escala(); if (Math.abs(dx) > 120) juzgar(dx > 0); else { c.style.transition = "transform .3s cubic-bezier(.3,1.5,.6,1)"; c.style.transform = ""; c.style.borderColor = "#2A2340"; ctx.luego(() => c.style.transition = "", 320); } };
       c.addEventListener("pointermove", mv); c.addEventListener("pointerup", up); });
   };
-  sig(); arranque(el, T, "swipe", () => {}); return el;
+  sig();
+  arranque(el, T, "swipe", () => {
+    fin0 = performance.now() + TOTAL * 1000;
+    bucle(el, ctx, (dt, t, fuera) => {
+      if (fuera || acabado) return false;
+      const resta = Math.max(0, fin0 - t); const seg = Math.ceil(resta / 1000);
+      reloj.textContent = `⏱ ${seg} s`; reloj.classList.toggle("urgente", seg <= 10); barra.style.width = (100 * resta / (TOTAL * 1000)) + "%";
+      if (seg <= 5 && seg !== ultimo) { ultimo = seg; sonido.tic(); }
+      if (resta <= 0) { terminar(true); return false; }
+      return true;
+    });
+  });
+  return el;
 }
 
 // ---------- SÚPER DATO: toca o arrastra cada palabra a su hueco ----------
