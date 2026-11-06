@@ -223,3 +223,28 @@ Referencia: la lección **Historia de México 2 · El encuentro de dos mundos** 
 - Los seis juegos de fotos de prueba: Historia 3°, English 3° v2, Español 2° Regina, Ética I Cumbres, Francés 1° y Civics III.
 - El prompt final de Daniel con sus criterios de razonamiento.
 - Referencias de Pinterest adicionales conforme las vaya mandando.
+
+## 15. Estado de construcción (6 de noviembre de 2026)
+
+Con la autorización de Daniel ("ya tienes autorización de empezar a mover las cosas… no rompas nada… enfócate en el
+arte… haz todo ya de una vez") la fase 2 quedó construida y publicada en el mismo repositorio y el mismo Supabase:
+
+- **Sitio** `sparked/` (GitHub Pages): landing con dibujos de Sparky y los dos servicios; `biblioteca.html`
+  (Servicio 1), `crear.html` (Servicio 2, hasta 15 páginas, fotos y PDF convertidos en el navegador), `listo.html`
+  (QR, link, reglas del acceso), `guia.html` (reproductor con los juegos en pixel art y la vista previa con candado)
+  y `panel.html` (panel de guías con la misma contraseña del panel de accesos).
+- **Servidor**: función `sparked` (público, interno y admin) con la cadena de IA por pasos del Documento 1
+  (Extractor → Unir → Planificador → Generador por bloque → Revisión por código → Reparador → Verificador con
+  búsqueda en dominios confiables → fotografías de Wikipedia/Wikimedia → Armar). Cada paso corre en una ejecución
+  y la función se llama a sí misma para el siguiente; un vigilante reanuda lo que se atore.
+- **Accesos**: cada guía publicada tiene una clase de tipo `guia` y cada compra crea un acceso normal (7 días, 2
+  aparatos, "Acceso en uso en otros aparatos"), reutilizando `consumir_acceso` sin tocar los links de Lumio.
+- **Dinero**: vista previa barata antes de pagar; nada con nombre se guarda hasta "Pagar"; borradores sin pagar se
+  borran a las 24 h; guías personalizadas viven 7 días después del pago y luego queda solo la ficha en Compras;
+  topes de 80 compras al día y 6 por familia (ajustables en el panel).
+- **Motores en blanco**: la IA, Stripe y el correo se encienden al poner `ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY` +
+  `STRIPE_WEBHOOK_SECRET` y `RESEND_API_KEY` en Supabase. Regla de Daniel: "Stripe todavía no tengo la cuenta,
+  déjalo como motor en blanco": mientras tanto el pago es manual (folio + "Marcar pagada" en el panel).
+- **Probado**: publicar guía → buscar → vista previa → pago manual → link → 2 aparatos entran, el tercero no →
+  progreso guardado → reporte → topes. **Pendiente de probar con llaves reales**: la cadena de IA completa, Stripe,
+  correos; después, calibrar prompts y costos con promptfoo y Helicone.
