@@ -19,16 +19,22 @@
 
 <section class="hero"><div class="contenedor">
   <div>
-    <span class="pildora-sello">👋 Bienvenido a SparkEd</span>
-    <h1 style="margin-top:12px">Convierte tu temario en una <em>guía de estudio interactiva</em></h1>
+    <span class="pildora-sello">Bienvenido a SparkEd</span>
+    <h1 style="margin-top:14px">Convierte tu temario en una <em>guía de estudio interactiva</em></h1>
     <p>Teoría a todo color y juegos que se califican solos. Tu hijo estudia jugando en el iPad, la computadora o el celular.</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"><a class="boton" href="#servicios">Elige tu servicio</a><a class="boton linea" href="#demo">▶ Mira una guía real</a></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px"><a class="boton" href="#servicios">Elige tu servicio</a><a class="boton vidrio" href="#demo">▶ Mira una guía real</a></div>
+    <div class="chips"><span>$85 MXN · IVA incluido</span><span>7 días de acceso</span><span>2 aparatos por familia</span></div>
   </div>
-  <div class="sparky-hero"><span data-sprite="sparky:saludo" data-escala="10"></span></div>
+  <div class="sparky-hero"><div class="tarjeta-sparky">
+    <div class="tile"><span data-sprite="sparky:pensando" data-escala="9"></span><div class="burbuja" id="burbuja-dato">¿Sabías que…? La luz del Sol tarda unos 8 minutos en llegar a la Tierra.</div></div>
+    <div class="fila"><b>Guía de ejemplo: Think it through!</b><span>CIVICS III</span></div>
+    <div class="barra"><i style="width:100%"></i></div>
+    <small>4 bloques · 40 slides · teoría, juegos, mini-exámenes y reto final</small>
+  </div></div>
 </div></section>
 
 <section id="servicios" class="contenedor servicios">
-  <article class="servicio" style="--c:#1d4ed8;--fondo-paso:#e8efff">
+  <article class="servicio" style="--c:#6d28d9;--c2:#22d3ee;--fondo-paso:#f6f3ff">
     <div class="num"><b>1</b> Servicio 1</div>
     <h2>Accede a nuestra biblioteca de guías de colegios participantes</h2>
     <div class="pasos3">
@@ -39,7 +45,7 @@
     <div class="para">Si no quieres subir nada: nosotros ya tenemos los temas de tu colegio.</div>
     <a class="boton" href="biblioteca.html">Buscar la guía de mi colegio</a>
   </article>
-  <article class="servicio" style="--c:#7c3aed;--fondo-paso:#f1ebff">
+  <article class="servicio" style="--c:#FF6B9D;--c2:#FFB347;--fondo-paso:#fff3f0">
     <div class="num"><b>2</b> Servicio 2</div>
     <h2>Personaliza tu propia guía interactiva</h2>
     <div class="pasos3">
@@ -52,11 +58,11 @@
   </article>
 </section>
 
-<section id="demo" class="vista"><div class="contenedor">
+<section id="demo" class="vista"><div class="contenedor"><div class="caja-vista">
   <h2>Así se ve una guía de verdad</h2>
   <p>Teoría con tarjetas, línea de tiempo y palabras clave; juegos de carrera, castillo, montaña, mix and match y mini-exámenes con calificación.</p>
   <div class="marco-demo" id="marco-demo"><div class="tapa"><button class="boton" id="abrir-demo">▶ Probar la guía de ejemplo</button></div></div>
-</div></section>
+</div></div></section>
 
 <section class="contenedor precio-caja">
   <div class="precio">
@@ -76,8 +82,14 @@
 <footer class="pie"><div class="contenedor">SparkEd · Guías de estudio interactivas · <a href="../" style="color:inherit">Acceso a clases</a></div></footer>
 
 <script type="module">
-import { pintarSprites } from "./js/sitio.js";
+import { pintarSprites, esc } from "./js/sitio.js";
 pintarSprites();
+// La burbuja de Sparky muestra un dato curioso al azar del banco local (sin inteligencia artificial).
+fetch("datos/curiosos.json").then((r) => r.json()).then((datos) => {
+  const b = document.getElementById("burbuja-dato"); if (!b || !datos.length) return;
+  const d = datos[Math.floor(Math.random() * datos.length)];
+  b.textContent = `¿Sabías que…? ${d.texto}`;
+}).catch(() => {});
 document.getElementById("abrir-demo").onclick = () => {
   // En pantallas angostas (teléfonos) la guía se abre en pantalla completa; dentro del marco quedaría diminuta.
   if (window.innerWidth < 700) { window.open("guia.html?demo=civics3", "_blank", "noopener"); return; }

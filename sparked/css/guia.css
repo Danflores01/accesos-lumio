@@ -24,6 +24,26 @@ body.reproductor { background: var(--fondo-oscuro); color: var(--tinta); -webkit
   #barra .pg { margin: 0 4px; min-width: 44px; }
   #escenario { border-radius: 10px; }
 }
+/* Marco del reproductor en "Synthwave Suave": atardecer con horizonte en rejilla detrás del escenario y barra de cristal.
+   Las slides conservan la paleta de su materia; los juegos conservan su arte hasta que llegue el nuevo. */
+body.reproductor { background: var(--degradado-sw); }
+body.reproductor::before { content: ""; position: fixed; right: -160px; top: -80px; width: 560px; height: 560px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 179, 71, .5) 0%, rgba(255, 107, 157, .3) 45%, rgba(255, 107, 157, 0) 70%); pointer-events: none; z-index: -1; }
+body.reproductor::after { content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 44vh; pointer-events: none; z-index: -1; opacity: .7;
+  background: repeating-linear-gradient(180deg, rgba(255,255,255,.10) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 90px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 45%); mask-image: linear-gradient(180deg, transparent 0%, #000 45%); }
+#escenario { box-shadow: 0 34px 80px rgba(10, 4, 40, .55); }
+#barra { background: rgba(27, 19, 64, .55); border-left: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+#barra button { background: rgba(255,255,255,.14); border-radius: 14px; }
+#barra button:hover { background: var(--amarillo); color: var(--tinta); }
+#barra .pg { color: #ead9ff; }
+@media (orientation: portrait) { #barra { border-left: 0; border-top: 1px solid rgba(255,255,255,.14); } }
+.carga { background: var(--degradado-sw); }
+.carga .dato { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.22); }
+.carga .dato small { color: #ead9ff; }
+.mensaje .caja { border-top: 0; box-shadow: 0 30px 60px rgba(10, 4, 40, .45); position: relative; overflow: hidden; }
+.mensaje .caja::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 8px; background: linear-gradient(90deg, #6d28d9, #FF6B9D, #FFB347); }
+#miniaturas { background: rgba(27, 19, 64, .82); }
+
 /* Aviso para girar el teléfono (solo pantallas angostas en vertical). */
 #giro { position: fixed; inset: 0; z-index: 60; background: rgba(5, 8, 20, .78); display: flex; align-items: center; justify-content: center; padding: 24px; }
 #giro .caja { background: #fff; border-radius: 22px; padding: 26px 22px; text-align: center; max-width: 340px; display: flex; flex-direction: column; gap: 10px; align-items: center; }

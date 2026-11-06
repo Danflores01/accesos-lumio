@@ -2,13 +2,18 @@
    Paletas por materia (criterios sección 7), colores semánticos fijos, tipografías y piezas comunes.
    Una paleta se activa con data-paleta="historia_azul" en <html> o en cualquier contenedor. */
 
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Press+Start+2P&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Press+Start+2P&display=swap");
 
 :root {
   /* identidad SparkEd */
   --amarillo: #FFD400;
   --tinta: #121826;
   --marino: #0b1f4b;
+  /* dirección de arte "Synthwave Suave" (6 nov 2026): atardecer violeta a coral */
+  --sw-noche: #1B1340; --sw-violeta: #4C1D95; --sw-coral: #B8336A;
+  --violeta: #6d28d9; --rosa: #FF6B9D; --durazno: #FFB347;
+  --degradado-sw: linear-gradient(172deg, #1B1340 0%, #4C1D95 52%, #B8336A 100%);
+  --degradado-calido: linear-gradient(90deg, #FFB347, #FF6B9D);
   /* semánticos: siempre iguales */
   --ok: #16a34a; --ok-suave: #dcfce7; --ok-borde: #22c55e;
   --mal: #dc2626; --mal-suave: #fee2e2; --mal-borde: #ef4444;
@@ -20,7 +25,7 @@
   --b1: #1d4ed8; --b2: #c2410c; --b3: #0f766e; --b4: #b91c1c;
   --fondo: #f6f8fc; --fondo-oscuro: #0d1b3d; --acento: #38bdf8;
   /* tipografía */
-  --titulos: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --titulos: "Outfit", "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --texto: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --pixel: "Press Start 2P", monospace;
   --radio: 18px;
@@ -51,8 +56,10 @@ img, svg { display: block; max-width: 100%; }
 
 /* Piezas comunes */
 .pildora { display: inline-block; font: 800 12px/1 var(--texto); letter-spacing: .8px; text-transform: uppercase; color: #fff; background: var(--p); padding: 7px 12px; border-radius: 8px; }
-.boton { display: inline-flex; align-items: center; justify-content: center; gap: 10px; font: 700 18px var(--texto); padding: 14px 22px; border-radius: 999px; background: var(--amarillo); color: var(--tinta); box-shadow: 0 8px 18px rgba(255, 212, 0, .35); min-height: 52px; transition: transform .12s, box-shadow .12s; text-decoration: none; }
-.boton:hover { transform: translateY(-1px); box-shadow: 0 12px 24px rgba(255, 212, 0, .45); }
+.boton { display: inline-flex; align-items: center; justify-content: center; gap: 10px; font: 800 18px var(--titulos); padding: 14px 22px; border-radius: 14px; background: var(--amarillo); color: var(--tinta); box-shadow: 0 14px 30px rgba(255, 179, 71, .35); min-height: 52px; transition: transform .12s, box-shadow .12s; text-decoration: none; }
+.boton:hover { transform: translateY(-1px); box-shadow: 0 18px 34px rgba(255, 179, 71, .45); }
+.boton.vidrio { background: rgba(255,255,255,.14); color: #fff; box-shadow: none; }
+.boton.vidrio:hover { background: rgba(255,255,255,.22); }
 .boton:active { transform: translateY(1px); }
 .boton:disabled { opacity: .55; cursor: default; transform: none; }
 .boton.oscuro { background: var(--tinta); color: #fff; box-shadow: 0 8px 18px rgba(18, 24, 38, .25); }
