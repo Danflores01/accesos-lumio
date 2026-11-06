@@ -34,8 +34,22 @@ const ctx = {
 const R = { portada, tutorial, teoria, resultados, candado, carrera: J.carrera, montana: J.montana, castillo: J.castillo, swipe: J.swipe, superdato: J.superdato, match: J.match, sort: J.sort, rank: J.rank, ruleta: J.ruleta, quiz: J.quiz };
 
 function limpiar() { timers.forEach(clearTimeout); timers = []; rafs.forEach(cancelAnimationFrame); rafs = []; }
-function ajustar() { const vp = document.getElementById("vp").getBoundingClientRect(); escala = Math.min(vp.width / 1280, vp.height / 720) * 0.97; escenario.style.transform = `scale(${escala})`; }
+function ajustar() { const vp = document.getElementById("vp").getBoundingClientRect(); escala = Math.min(vp.width / 1280, vp.height / 720) * 0.985; escenario.style.transform = `scale(${escala})`; }
 addEventListener("resize", ajustar);
+// En teléfonos en vertical la guía queda chica: se sugiere girar el aparato (se puede seguir en vertical).
+function avisoGiro() {
+  const angostoVertical = matchMedia("(orientation: portrait) and (max-width: 600px)").matches;
+  const previo = document.getElementById("giro");
+  if (!angostoVertical) { previo?.remove(); return; }
+  let visto = false; try { visto = !!sessionStorage.getItem("sparked_giro"); } catch {}
+  if (visto || previo) return;
+  const d = document.createElement("div"); d.id = "giro";
+  d.innerHTML = `<div class="caja"><div class="icono">🔄</div><h2>Gira tu teléfono</h2><p>En horizontal la guía se ve mucho más grande y los juegos se controlan mejor.</p><button class="boton chico" type="button">Seguir en vertical</button></div>`;
+  d.querySelector("button").onclick = () => { try { sessionStorage.setItem("sparked_giro", "1"); } catch {} d.remove(); };
+  document.body.appendChild(d);
+}
+addEventListener("resize", avisoGiro);
+avisoGiro();
 
 function render() {
   limpiar(); escenario.innerHTML = "";

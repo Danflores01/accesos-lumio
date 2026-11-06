@@ -81,3 +81,42 @@ footer.pie { padding: 26px 0 40px; color: var(--gris); font-size: 14px; border-t
   .rejilla-campos { grid-template-columns: 1fr 1fr; }
   .aviso-vacio { grid-template-columns: 160px 1fr; }
 }
+
+/* Teléfonos en vertical (hasta 559 px): cabecera compacta, pasos en lista y menos aire. */
+@media (max-width: 559px) {
+  .contenedor { width: calc(100% - 24px); }
+  header.cab .contenedor { min-height: 54px; gap: 6px; }
+  header.cab nav { gap: 2px; justify-content: flex-end; }
+  header.cab nav a { font-size: 13px; padding: 6px 8px; }
+  header.cab nav a.solo-ancho { display: none; }
+  .hero { padding: 22px 0 16px; }
+  .hero .contenedor { gap: 14px; }
+  .hero h1 { font-size: clamp(30px, 9vw, 40px); }
+  .hero p { font-size: 17px; }
+  .hero .sparky-hero svg { width: 120px; height: auto; }
+  .servicios { gap: 16px; padding-bottom: 28px; }
+  .servicio { padding: 18px 16px 20px; border-radius: 22px; gap: 12px; }
+  .servicio h2 { font-size: 23px; }
+  .servicio .para { font-size: 16px; }
+  .pasos3 { grid-template-columns: 1fr; gap: 8px; }
+  .paso { flex-direction: row; text-align: left; align-items: center; gap: 12px; padding: 10px 12px; font-size: 15px; }
+  .paso .dib { height: auto; width: 68px; flex: none; align-items: center; justify-content: center; }
+  .paso .dib svg { max-height: 60px; width: auto; height: auto; }
+  .paso + .paso::before { content: "↓"; left: 30px; top: -15px; font-size: 15px; }
+  .vista { padding: 26px 0; }
+  .vista h2 { font-size: 24px; }
+  .marco-demo { aspect-ratio: 16 / 10; }
+  .precio { padding: 20px 16px; }
+  .precio .monto { font-size: 52px; }
+  .panel-paso { padding: 18px 14px; border-radius: 18px; gap: 12px; }
+  .panel-paso h1 { font-size: 24px; }
+  .flujo { padding: 16px 0 40px; }
+  .boton { width: 100%; }
+  .boton.chico, header .boton { width: auto; }
+}
+/* Teléfonos en horizontal: la cabecera no se queda pegada (roba altura). */
+@media (max-height: 460px) and (orientation: landscape) {
+  header.cab { position: static; }
+  .hero { padding: 18px 0 12px; }
+  .hero .sparky-hero svg { width: 110px; height: auto; }
+}

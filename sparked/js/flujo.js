@@ -29,8 +29,13 @@ export function contactoGuardado() { try { return JSON.parse(localStorage.getIte
 
 // Vista previa dentro de la página (el reproductor en un marco) con el botón de pago debajo.
 export function marcoVistaPrevia(destino, src, titulo) {
+  // En teléfonos la vista previa se abre en pantalla completa (dentro de un marco quedaría diminuta);
+  // el reproductor trae un botón para volver aquí y pagar.
+  const angosto = window.matchMedia("(max-width: 699px)").matches;
   destino.innerHTML = `<div class="resultado-guia"><div class="em">📘</div><div><b style="font-size:18px">${esc(titulo)}</b><div class="ayuda">Vista previa gratis: portada, primera pista y un juego. Lo demás se abre al pagar.</div></div></div>
-    <div class="marco-demo" style="margin-top:12px"><iframe src="${esc(src)}" title="Vista previa de tu guía"></iframe></div>`;
+    ${angosto
+      ? `<a class="boton" style="margin-top:12px" href="${esc(src)}">▶ Ver la vista previa</a><div class="ayuda">Se abre en pantalla completa (mejor con el teléfono en horizontal). Al final hay un botón para volver aquí.</div>`
+      : `<div class="marco-demo" style="margin-top:12px"><iframe src="${esc(src)}" title="Vista previa de tu guía"></iframe></div><div class="ayuda" style="margin-top:6px"><a href="${esc(src)}">Ver en pantalla completa ↗</a></div>`}`;
 }
 
 // Pago: pide al servidor crear el cobro. Con Stripe redirige; sin Stripe (motor en blanco) muestra el modo manual.

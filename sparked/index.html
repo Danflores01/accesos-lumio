@@ -14,7 +14,7 @@
 <body class="sitio">
 <header class="cab"><div class="contenedor">
   <a class="marca" href="index.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span></a>
-  <nav><a href="biblioteca.html">Biblioteca de colegios</a><a href="crear.html">Crear mi guía</a><a href="guia.html?demo=civics3" target="_blank" rel="noopener">Ver una guía</a></nav>
+  <nav><a href="biblioteca.html">Biblioteca de colegios</a><a href="crear.html">Crear mi guía</a><a class="solo-ancho" href="guia.html?demo=civics3" target="_blank" rel="noopener">Ver una guía</a></nav>
 </div></header>
 
 <section class="hero"><div class="contenedor">
@@ -79,6 +79,8 @@
 import { pintarSprites } from "./js/sitio.js";
 pintarSprites();
 document.getElementById("abrir-demo").onclick = () => {
+  // En pantallas angostas (teléfonos) la guía se abre en pantalla completa; dentro del marco quedaría diminuta.
+  if (window.innerWidth < 700) { window.open("guia.html?demo=civics3", "_blank", "noopener"); return; }
   const m = document.getElementById("marco-demo");
   m.innerHTML = '<iframe src="guia.html?demo=civics3" title="Guía de ejemplo" allow="autoplay"></iframe>';
 };
