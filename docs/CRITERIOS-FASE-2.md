@@ -307,3 +307,8 @@ moderno).
   y sombras sólidas suaves en paneles, botones START, fin de juego y GAME OVER.
 
 **Pendiente.** Afinar lo que Daniel pida al ver los juegos; swipe, ruleta y mini-examen solo recibieron el acabado visual.
+
+**Pantalla de instrucciones (Daniel, 6 nov 2026, noche).** Como en Lumio, antes de cada actividad aparece una película
+transparente sobre el juego con una tarjeta: Sparky, "¿Cómo se juega?", la instrucción propia de ese juego (por ejemplo
+"Lee la tarjeta y clasifícala con tu dedo: deslízala a la derecha si es verdadera…" o "Elige tu coche y a correr…") y el
+botón **Iniciar**. Aplica a los diez juegos y existe en español, inglés y francés (`TEXTOS.instr_*` en `cartucho.js`).

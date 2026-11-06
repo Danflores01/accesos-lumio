@@ -18,8 +18,10 @@ export function toast(sl, ok, txt, ms = 2600) {
   ok ? sonido.bien() : sonido.mal();
 }
 
-export function inicio(sl, instruccion, fn, extraHtml = "") {
-  const o = h(`<div class="inicio">${extraHtml}<div class="instruccion">${esc(instruccion)}</div><button class="start">START</button></div>`);
+// Pantalla de instrucciones estilo Lumio: película transparente sobre la actividad, tarjeta con Sparky, el título
+// "¿Cómo se juega?", la instrucción de ese juego y el botón Iniciar. op = { titulo, boton } en el idioma de la guía.
+export function inicio(sl, instruccion, fn, extraHtml = "", op = {}) {
+  const o = h(`<div class="inicio"><div class="tarjeta-inicio">${sparky("saludo", 3)}<div class="titulo">${esc(op.titulo ?? "¿Cómo se juega?")}</div><div class="instruccion">${esc(instruccion)}</div>${extraHtml}<button class="start">${esc(op.boton ?? "Iniciar")}</button></div></div>`);
   o.querySelector(".start").onclick = () => { sonido.toque(); o.remove(); fn(); };
   sl.appendChild(o);
   return o;

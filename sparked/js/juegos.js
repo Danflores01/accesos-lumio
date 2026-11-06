@@ -23,6 +23,8 @@ function gSvg(inner, style = "") { const g = document.createElementNS("http://ww
 // Fondo de la escena visible desde antes de START.
 function fondoPrevio(el, svg) { const caja = el.querySelector("#caja"); if (caja) caja.innerHTML = svg; }
 const panel = (ctx, extra = "") => `<div class="panel-q"><div class="barra-tiempo"><i id="tm"></i></div><div class="pill" id="qn"></div><div id="qbox"></div>${extra}</div>`;
+// Pantalla de instrucciones (estilo Lumio) antes de cada actividad, con el texto propio de ese juego.
+const arranque = (el, T, clave, fn, extra = "") => inicio(el, T("instr_" + clave), fn, extra, { titulo: T("como_jugar"), boton: T("iniciar") });
 // Bucle de animación que se apaga solo cuando la slide se quita de la pantalla.
 function bucle(el, ctx, paso) {
   let lt = 0;
@@ -101,7 +103,7 @@ export function carrera(s, ctx) {
   // Elegir coche antes de empezar: "para sentir que tiene su personaje".
   const elegidoAntes = ctx.coche();
   const selector = `<div class="elige">${colores.map((c) => `<button data-c="${c}" class="${c === elegidoAntes ? "sel" : ""}">${coche(c, 3)}<span>${c.toUpperCase()}</span></button>`).join("")}</div>`;
-  const ov = inicio(el, T("elige_coche"), () => correr(ctx.coche() ?? colores[0]), selector);
+  const ov = arranque(el, T, "carrera", () => correr(ctx.coche() ?? colores[0]), `<div class="ayuda" style="font-weight:800;color:#2A2340">${esc(T("elige_coche"))}</div>${selector}`);
   ov.querySelectorAll(".elige button").forEach((b) => b.onclick = () => { ov.querySelectorAll(".elige button").forEach((x) => x.classList.remove("sel")); b.classList.add("sel"); ctx.setCoche(b.dataset.c); sonido.toque(); });
   return el;
 }
@@ -147,7 +149,7 @@ export function montana(s, ctx) {
     };
     textos(); preguntar();
   };
-  inicio(el, T("start"), jugar);
+  arranque(el, T, "montana", jugar);
   return el;
 }
 
@@ -205,7 +207,7 @@ export function castillo(s, ctx) {
     };
     pintarVidas(); preguntar();
   };
-  inicio(el, T("start"), () => jugar(s.ids.slice()));
+  arranque(el, T, "castillo", () => jugar(s.ids.slice()));
   return el;
 }
 
@@ -229,7 +231,7 @@ export function swipe(s, ctx) {
       const up = (ev) => { c.removeEventListener("pointermove", mv); c.removeEventListener("pointerup", up); const dx = (ev.clientX - sx) / ctx.escala(); if (Math.abs(dx) > 120) juzgar(dx > 0); else { c.style.transition = "transform .3s cubic-bezier(.3,1.5,.6,1)"; c.style.transform = ""; c.style.borderColor = "#2A2340"; ctx.luego(() => c.style.transition = "", 320); } };
       c.addEventListener("pointermove", mv); c.addEventListener("pointerup", up); });
   };
-  sig(); return el;
+  sig(); arranque(el, T, "swipe", () => {}); return el;
 }
 
 // ---------- SÚPER DATO: toca o arrastra cada palabra a su hueco ----------
@@ -255,6 +257,7 @@ export function superdato(s, ctx) {
   });
   body.querySelectorAll(".hueco").forEach((z) => z.addEventListener("click", () => sel.enZona(z, soltar)));
   progreso();
+  arranque(el, T, "superdato", () => {});
   return el;
 }
 
@@ -278,6 +281,7 @@ export function match(s, ctx) {
   mezclar(pares).forEach((p) => { const c = h(p.imagen && s.retratos ? `<div style="display:flex;align-items:center;gap:8px"><img class="retrato-chico" src="${esc(p.imagen)}" alt="">${esc(p.termino)}</div>` : `<div>${esc(p.termino)}</div>`); c.dataset.k = p.termino;
     arrastrable(c, ctx, soltar, (c2) => sel.elegir(c2));
     body.querySelector("#L").appendChild(c); });
+  arranque(el, T, "match", () => {});
   return el;
 }
 
@@ -292,6 +296,7 @@ export function sort(s, ctx) {
   mezclar(a.elementos ?? []).forEach((it) => { const c = h(`<div>${esc(it.texto)}</div>`); c.__it = it;
     arrastrable(c, ctx, soltar, (c2) => sel.elegir(c2));
     body.querySelector("#pila").appendChild(c); });
+  arranque(el, T, "sort", () => {});
   return el;
 }
 
@@ -315,6 +320,7 @@ export function rank(s, ctx) {
     if (ok) { toast(el, true, a.por_que ?? a.retro_correcta ?? "✓", 2200); ctx.luego(() => fin(el, ctx, "🔢 Rank order", "✓", esc(a.por_que ?? ""), () => ctx.go(ctx.cur), true), 1200); }
     else toast(el, false, (a.por_que ? a.por_que + " · " : "") + pasos.map((p) => String(p.texto).split(":")[0]).join(" → "), 4500);
   };
+  arranque(el, T, "rank", () => {});
   return el;
 }
 
@@ -339,6 +345,7 @@ export function ruleta(s, ctx) {
   svg.addEventListener("pointermove", (e) => { if (!drag) return; const a = centro(e); let d = a - drag.a; if (d > 180) d -= 360; if (d < -180) d += 360; const t = performance.now(); ang += d; setA(); drag.v = d / Math.max(1, t - drag.t) * 1000; drag.a = a; drag.t = t; });
   svg.addEventListener("pointerup", () => { if (!drag) return; let v = drag.v; drag = null; if (Math.abs(v) < 300) v = (v < 0 ? -1 : 1) * (600 + Math.random() * 500); girar(Math.max(-1800, Math.min(1800, v))); });
   el.querySelector("#spin").onclick = () => girar(700 + Math.random() * 700);
+  arranque(el, T, "ruleta", () => {});
   return el;
 }
 
@@ -354,5 +361,5 @@ export function quiz(s, ctx) {
     const card = panelPregunta(a, ctx, (ok, txt) => { if (ok) aciertos++; else malas.push(a); dots.children[i].style.background = ok ? "var(--ok)" : "var(--mal)"; body.querySelector("#sc").textContent = aciertos; ok ? sonido.bien() : sonido.mal();
       card.appendChild(h(`<div class="retro ${ok ? "ok" : "mal"}">${esc(txt)}</div>`)); const nb = h(`<button class="btn" style="align-self:flex-end">${i + 1 < ids.length ? esc(T("siguiente")).replace("↓", "→") : esc(T("calificacion"))}</button>`); nb.onclick = () => { i++; mostrar(); }; card.appendChild(nb); });
     qb.appendChild(card); };
-  mostrar(); return el;
+  mostrar(); arranque(el, T, "quiz", () => {}); return el;
 }
