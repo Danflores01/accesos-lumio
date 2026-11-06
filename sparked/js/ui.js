@@ -52,18 +52,22 @@ function confeti() {
 }
 
 // Arrastre genérico (dedo, lápiz o mouse). onDrop(el, zona) devuelve true si se aceptó; si no, la tarjeta regresa con sacudida.
-export function arrastrable(el, ctx, onDrop) {
+// Si se pasa onTap, un toque sin arrastre (menos de 6 px) llama a onTap(el) en vez de soltar: así se puede jugar
+// tocando primero la tarjeta y luego su destino (más cómodo en celular y tablet).
+export function arrastrable(el, ctx, onDrop, onTap = null) {
   el.classList.add("card-d");
   el.addEventListener("pointerdown", (e) => {
     if (el.classList.contains("locked")) return;
     e.preventDefault();
     el.setPointerCapture(e.pointerId);
     const sx = e.clientX, sy = e.clientY;
+    let movio = false;
     el.classList.add("dragging"); el.style.transition = "none";
-    const mv = (ev) => { el.style.transform = `translate(${(ev.clientX - sx) / ctx.escala()}px,${(ev.clientY - sy) / ctx.escala()}px) rotate(-2deg) scale(1.04)`; };
+    const mv = (ev) => { if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) > 6) movio = true; el.style.transform = `translate(${(ev.clientX - sx) / ctx.escala()}px,${(ev.clientY - sy) / ctx.escala()}px) rotate(-2deg) scale(1.04)`; };
     const up = (ev) => {
       el.removeEventListener("pointermove", mv); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up);
       el.classList.remove("dragging");
+      if (!movio && onTap) { el.style.transition = ""; el.style.transform = ""; onTap(el); return; }
       el.style.visibility = "hidden";
       const zona = document.elementsFromPoint(ev.clientX, ev.clientY).find((x) => x.classList && x.classList.contains("drop"));
       el.style.visibility = "";
