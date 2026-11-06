@@ -245,7 +245,7 @@ export function superdato(s, ctx) {
   const soltar = (c, zona) => {
     if (zona.children.length || !zona.classList.contains("hueco")) return false;
     const quiere = resp[+zona.dataset.i];
-    if (c.dataset.w === quiere) { juntar(c, zona); zona.style.minWidth = "0"; toast(el, true, "✓ " + quiere, 1500); progreso(); if (!--faltan) { progreso(); ctx.registrar(a.id, fallos === 0); ctx.luego(() => fin(el, ctx, "⭐ Súper dato", fallos ? `${fallos} ✗` : T("perfecto"), "", () => ctx.go(ctx.cur), fallos === 0), 900); } return true; }
+    if (c.dataset.w === quiere) { juntar(c, zona); zona.style.minWidth = "0"; toast(el, true, "✓ " + quiere, 1500); faltan--; progreso(); if (!faltan) { ctx.registrar(a.id, fallos === 0); ctx.luego(() => fin(el, ctx, "⭐ Súper dato", fallos ? `${fallos} ✗` : T("perfecto"), "", () => ctx.go(ctx.cur), fallos === 0), 900); } return true; }
     fallos++; toast(el, false, `${T("respuesta")}: “${quiere}”`, 2800); return false;
   };
   mezclar([...resp, ...(a.distractores ?? [])]).forEach((w) => {

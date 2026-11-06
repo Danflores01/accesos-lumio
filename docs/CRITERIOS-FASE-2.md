@@ -276,3 +276,34 @@ conector en el catálogo (sin autorizar todavía); Claude Design fue el que se u
 
 **Acceso directo.** En el escritorio de Daniel quedó "SparkEd Guías" (abre el sitio de la fase 2 como ventana de
 Chrome con el logotipo de SparkEd), junto a "SparkEd Accesos" (fase 1).
+
+## 17. Dirección final de arte: sitio Synthwave Suave, juegos "retro 2.5D" (6 de noviembre de 2026, noche)
+
+**Decidido por Daniel.** Para el sitio, la dirección C "Synthwave Suave" del tablero de Claude Design (aplicada y publicada).
+Para los juegos y para Sparky mandó dos referencias nuevas: ilustración moderna entre 2D y 3D con temática retro
+(consolas, cartuchos, controles, coches de juguete), con contornos gruesos, volúmenes con dos tonos y sombra en el piso.
+Aclaración importante: "8 bits" fue su manera de pedir "moderno con temática retro". **Nada de pixeles en ningún lado:**
+ni en los juegos ni en las ilustraciones de la landing (las ve una señora, deben ser muy simples; los chavos quieren lo
+moderno).
+
+**Reglas de arte (aplicadas en `sparked/js/arte.js`).**
+- Todo es vector: Sparky (5 poses), coches de perfil con techo en sombra y cara superior clara, soldado, arquero,
+  escalador (Sparky compacto), 15 íconos y las cuatro escenas (ciudad synthwave, montaña con plataformas, castillo,
+  planeta). Contorno #2A2340, dos tonos por volumen, brillo pequeño, sombra elíptica en el piso.
+- Las escenas se dibujan con degradados y capas con id (edificios lejanos, cercanos y rayas) para moverse en bucle.
+- Misma silueta y colores de Sparky en cualquier estilo (traje blanco, visor azul marino, acentos amarillos).
+
+**Mecánicas "videojuego actual" (en `sparked/js/juegos.js`).**
+- Carrera: los coches corren todo el tiempo (rayas y edificios en parallax), acierto = acelerón y rebase suave,
+  error = frenada y te rebasan; motor sintetizado que acelera y frena; meta a cuadros.
+- Montaña: plataformas; cada acierto es un salto en parábola con estrella (+10), cada error un resbalón.
+- Castillo: una escuadra de tres soldados marcha hacia la torre; acierto = flecha en arco y el líder cae, los otros
+  huyen; error = llegan a la torre, sacudida y se pierde un corazón; tres vidas y GAME OVER.
+- Mix and match, súper dato, super sort y rank order: se juegan tocando (tarjeta → destino, con destinos latiendo) o
+  arrastrando; acierto = la tarjeta se junta con un "pop"; error = sacudida roja y la pareja correcta en el aviso.
+- Sonidos (`sparked/js/sonido.js`): tonos suaves con envolvente, ráfagas de ruido filtrado (silbido de la flecha,
+  golpe, tic), motor continuo; nada de beeps cuadrados.
+- Legibilidad y acabado (`guia.css`, bloque "retro 2.5D"): preguntas 23 px, opciones 19 px, tarjetas 19 px, contornos
+  y sombras sólidas suaves en paneles, botones START, fin de juego y GAME OVER.
+
+**Pendiente.** Afinar lo que Daniel pida al ver los juegos; swipe, ruleta y mini-examen solo recibieron el acabado visual.
