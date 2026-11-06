@@ -248,3 +248,31 @@ arte… haz todo ya de una vez") la fase 2 quedó construida y publicada en el m
 - **Probado**: publicar guía → buscar → vista previa → pago manual → link → 2 aparatos entran, el tercero no →
   progreso guardado → reporte → topes. **Pendiente de probar con llaves reales**: la cadena de IA completa, Stripe,
   correos; después, calibrar prompts y costos con promptfoo y Helicone.
+
+## 16. Pantallas y dirección de arte "retro gaming moderno" (6 de noviembre de 2026, tarde)
+
+**Todas las pantallas (decidido por Daniel).** El sitio y las guías deben verse bien en teléfonos y tablets, Android y Apple,
+en vertical y en horizontal, y en laptops. Reglas aplicadas:
+- Sitio: en teléfonos (hasta 559 px) la cabecera se compacta, los tres pasos de cada servicio se apilan en lista con
+  flecha hacia abajo y los botones van a lo ancho. La guía de ejemplo y la vista previa se abren en pantalla completa en
+  pantallas angostas (dentro de un marco quedarían diminutas); en pantallas anchas siguen en marco con un enlace
+  "Ver en pantalla completa".
+- Reproductor: en horizontal la barra queda a la derecha (respetando el notch); en vertical la barra pasa abajo en fila y
+  el escenario usa todo el ancho. En teléfonos en vertical aparece el aviso "Gira tu teléfono" con botón "Seguir en
+  vertical" (se recuerda durante la sesión). Si en la misma pestaña se abre otro link, la guía se recarga sola.
+
+**Dirección de arte (en exploración).** Daniel quiere conservar el concepto de gaming retro pero más moderno: el 8 bits se
+queda por ahora en personajes, íconos y juegos; la interfaz (botones, tarjetas, tipografía, fondos) pasa a un lenguaje
+actual. Tablero en Claude Design "SparkEd · Landing retro gaming moderna":
+https://claude.ai/artifact/AY7kqMeNHL77sGRQb1aEXW con la landing de hoy y tres direcciones:
+- **A · Arcade Neón:** fondo noche, cristal con borde fino, brillo violeta y cian, titulares en Sora.
+- **B · Arcade Pop:** fondo claro, contornos gruesos y sombras duras tipo sticker, conserva Bricolage Grotesque; la más
+  cercana al SparkEd de hoy y la más amable para mamás.
+- **C · Synthwave Suave:** atardecer violeta a coral con horizonte en rejilla, tarjetas blancas flotando, titulares en Outfit.
+Más tres tableros de piezas: Sparky en tres acabados (pixel actual, pixel con acabado moderno solo con CSS, vector
+redondo con reflejo en el visor), el juego de carrera con HUD modernizado y el sistema visual (paletas, tipografías, HUD,
+reglas). Pendiente: que Daniel elija dirección (o una mezcla) para aplicarla al sitio y al reproductor. Canva existe como
+conector en el catálogo (sin autorizar todavía); Claude Design fue el que se usó.
+
+**Acceso directo.** En el escritorio de Daniel quedó "SparkEd Guías" (abre el sitio de la fase 2 como ventana de
+Chrome con el logotipo de SparkEd), junto a "SparkEd Accesos" (fase 1).
