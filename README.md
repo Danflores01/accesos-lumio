@@ -27,3 +27,13 @@ versión que nunca llega (o no avisará nunca). GitHub Pages tarda hasta 10 minu
 
 Después, `git commit` y `git push` a `main`. Las funciones del servidor se despliegan aparte en Supabase y las
 migraciones se aplican allí (copia en `sql/migraciones/`).
+
+## SparkEd fase 2: guías interactivas
+
+- **Sitio de guías (familias):** `sparked/` → https://danflores01.github.io/accesos-lumio/sparked/
+  (`index.html` landing, `biblioteca.html` Servicio 1, `crear.html` Servicio 2, `listo.html` entrega,
+  `guia.html` reproductor con juegos en pixel art, `panel.html` panel de guías).
+- **Servidor:** función `sparked` (`funciones/sparked/index.ts`, `pipeline.ts`, `prompts.ts`) y migración
+  `sql/migraciones/20261106_sparked_fase2.sql`. Secretos (IA, Stripe, correo) en Supabase; sin ellos el sitio corre en
+  modo manual.
+- **Criterios de diseño:** `docs/CRITERIOS-FASE-2.md`. Detalle de uso en `GUIA.md`.

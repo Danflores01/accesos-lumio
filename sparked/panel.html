@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="es" data-paleta="otra">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FFD400">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/sitio.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
+<title>SparkEd · Panel de guías</title>
+<style>
+  .flujo .contenedor { max-width: 1100px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .tabs button { font: 700 15px var(--texto); padding: 10px 14px; border-radius: 999px; border: 2px solid var(--borde); background: #fff; cursor: pointer; color: var(--tinta); }
+  .tabs button.on { background: var(--tinta); color: #fff; border-color: var(--tinta); }
+  .tabs button .n { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--amarillo); color: var(--tinta); font-size: 12px; line-height: 20px; }
+  .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .numero { background: #fff; border-radius: 18px; box-shadow: var(--sombra); padding: 14px 16px; }
+  .numero b { display: block; font-size: 30px; line-height: 1.1; }
+  .numero span { color: var(--gris); font-size: 14px; }
+  .fila-g { display: flex; gap: 14px; align-items: flex-start; background: #fff; border-radius: 18px; box-shadow: var(--sombra); padding: 14px 16px; margin-bottom: 10px; flex-wrap: wrap; }
+  .fila-g .info { flex: 1 1 320px; min-width: 0; }
+  .fila-g .info b { font-size: 17px; }
+  .acciones { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .acciones .boton { font-size: 14px; padding: 7px 11px; min-height: 36px; box-shadow: none; }
+  .estado { display: inline-block; font: 800 11px/1 var(--texto); letter-spacing: .6px; text-transform: uppercase; padding: 5px 8px; border-radius: 999px; background: #eef0f6; color: #444; vertical-align: middle; margin-left: 6px; }
+  .estado.publicada, .estado.pagada, .estado.listo { background: #dcfce7; color: #166534; }
+  .estado.borrador, .estado.pendiente, .estado.generando, .estado.corriendo { background: #fef3c7; color: #92400e; }
+  .estado.archivada, .estado.fallida, .estado.error, .estado.revisado { background: #fee2e2; color: #991b1b; }
+  .estado.personalizada, .estado.sin_guia, .estado.nuevo { background: #ede9fe; color: #5b21b6; }
+  .prog { height: 8px; background: var(--borde); border-radius: 4px; overflow: hidden; margin: 6px 0 2px; }
+  .prog i { display: block; height: 100%; background: var(--amarillo); transition: width .4s; }
+  .link-caja { word-break: break-all; }
+  .motores { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .motor { background: #fff; border-radius: 14px; padding: 12px 14px; border: 2px solid var(--borde); }
+  .motor.on { border-color: #16a34a; }
+  .motor b { display: block; }
+  .motor code { font-size: 12px; background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
+  dialog { border: 0; border-radius: 20px; padding: 22px; max-width: 640px; width: calc(100% - 32px); box-shadow: 0 30px 60px rgba(0,0,0,.3); }
+  dialog::backdrop { background: rgba(20, 24, 38, .55); }
+  .msg { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--tinta); color: #fff; padding: 12px 18px; border-radius: 14px; font-weight: 700; z-index: 50; max-width: calc(100% - 32px); display: none; }
+  .msg.on { display: block; }
+  .msg.mal { background: #991b1b; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td, th { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  .detalle pre { background: #f6f7fb; padding: 10px; border-radius: 10px; font-size: 12px; max-height: 240px; overflow: auto; white-space: pre-wrap; }
+  @media (min-width: 760px) { .rejilla-campos { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body class="sitio">
+<header class="cab"><div class="contenedor">
+  <a class="marca" href="panel.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span>&nbsp;<small style="font-weight:600;color:var(--gris)">Panel de guías</small></a>
+  <nav><a href="index.html" target="_blank" rel="noopener">Ver el sitio ↗</a><a href="../index.html">Accesos Lumio</a><a href="#" id="salir" hidden>Salir</a></nav>
+</div></header>
+
+<main class="flujo"><div class="contenedor">
+  <section class="panel-paso" id="login">
+    <h1>Panel SparkEd</h1>
+    <p class="ayuda">Entra con la misma contraseña de administrador de Accesos Lumio.</p>
+    <form id="formLogin" class="rejilla-campos"><div class="campo"><label>Contraseña</label><input name="clave" type="password" autocomplete="current-password" required></div><div style="align-self:end"><button class="boton" type="submit">Entrar</button></div><div class="error" id="errLogin" style="grid-column:1/-1"></div></form>
+  </section>
+
+  <div id="app" hidden>
+    <div class="tabs" id="tabs">
+      <button data-tab="resumen" class="on">Resumen</button>
+      <button data-tab="guias">Biblioteca <span class="n" id="nGuias" hidden></span></button>
+      <button data-tab="compras">Compras <span class="n" id="nCompras" hidden></span></button>
+      <button data-tab="solicitudes">Pedidos sin guía <span class="n" id="nSolicitudes" hidden></span></button>
+      <button data-tab="reportes">Reportes <span class="n" id="nReportes" hidden></span></button>
+      <button data-tab="colegios">Colegios</button>
+      <button data-tab="ajustes">Ajustes</button>
+    </div>
+
+    <section data-panel="resumen">
+      <div class="numeros" id="numeros"></div>
+      <h2 style="margin:22px 0 10px">Motores</h2>
+      <div class="motores" id="motores"></div>
+    </section>
+
+    <section data-panel="guias" hidden>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <button class="boton" id="btnNueva">＋ Nueva guía</button>
+        <select id="filtroGuias" class="campo" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="">Todas</option><option value="borrador">Borradores (por revisar)</option><option value="publicada">Publicadas</option><option value="personalizada">Personalizadas (Servicio 2)</option><option value="archivada">Archivadas</option></select>
+        <button class="boton linea chico" id="btnRefrescarGuias">⟳ Actualizar</button>
+      </div>
+      <section class="panel-paso" id="nueva" hidden>
+        <h2 style="margin-top:0">Nueva guía de la biblioteca</h2>
+        <form id="formNueva" class="rejilla-campos">
+          <div class="campo" style="grid-column:1/-1"><label>Título (si lo dejas vacío, lo pone la IA)</label><input name="titulo" placeholder="Ej. Historia de México 2 · El encuentro de dos mundos"></div>
+          <div class="campo"><label>Colegio</label><select name="colegio_id"></select></div>
+          <div class="campo"><label>Grado</label><select name="grado" required></select></div>
+          <div class="campo"><label>Materia</label><select name="materia" required></select></div>
+          <div class="campo"><label>Examen (opcional)</label><input name="examen" placeholder="Ej. Examen bimestral 2"></div>
+          <div class="campo"><label>Fecha del examen (opcional)</label><input name="fecha_examen" type="date"></div>
+          <div class="campo" style="grid-column:1/-1"><label>Material de estudio: fotos o PDF (hasta 15 páginas)</label>
+            <div class="zona-carga" id="zona"><div>📷 Arrastra aquí las fotos o el PDF, o toca para elegir</div><input id="archivos" type="file" accept="image/*,application/pdf" multiple hidden></div>
+            <div class="miniaturas" id="minis"></div><div class="ayuda" id="conteo"></div></div>
+          <div class="campo" style="grid-column:1/-1"><label>O sube un cartucho ya hecho (archivo .json)</label><input name="cartucho" type="file" accept="application/json,.json"></div>
+          <label style="grid-column:1/-1;display:flex;gap:8px;align-items:center"><input type="checkbox" name="generar" checked> Generar la guía con la IA en cuanto terminen de subir las páginas</label>
+          <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap"><button class="boton" type="submit" id="btnCrear">Crear guía</button><button class="boton linea" type="button" id="btnCancelarNueva">Cancelar</button></div>
+          <div class="error" id="errNueva" style="grid-column:1/-1"></div>
+        </form>
+      </section>
+      <div id="listaGuias"></div>
+    </section>
+
+    <section data-panel="compras" hidden>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <select id="filtroCompras" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="pendiente">Pendientes de pago</option><option value="pagada">Pagadas</option><option value="">Todas</option></select>
+        <button class="boton linea chico" id="btnRefrescarCompras">⟳ Actualizar</button>
+        <span class="ayuda">Mientras Stripe no esté encendido, aquí confirmas los pagos a mano: al marcar "Pagada" se crea el link y se manda el correo.</span>
+      </div>
+      <div id="listaCompras"></div>
+    </section>
+
+    <section data-panel="solicitudes" hidden><p class="ayuda">Familias que buscaron una guía que todavía no existe. Cuando publiques esa guía, aquí aparecen marcadas para avisarles.</p><div id="listaSolicitudes"></div></section>
+    <section data-panel="reportes" hidden><p class="ayuda">Lo que los alumnos reportaron desde la banderita 🚩 del reproductor.</p><div id="listaReportes"></div></section>
+    <section data-panel="colegios" hidden>
+      <form id="formColegio" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><input name="nombre" placeholder="Nombre del colegio" required style="flex:1;min-width:220px;padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><button class="boton chico" type="submit">Agregar</button></form>
+      <div id="listaColegios"></div>
+    </section>
+    <section data-panel="ajustes" hidden>
+      <div class="panel-paso"><h2 style="margin-top:0">Ajustes del sitio</h2>
+        <form id="formAjustes" class="rejilla-campos">
+          <div class="campo"><label>Precio por guía (MXN, IVA incluido)</label><input name="sparked_precio" inputmode="decimal"></div>
+          <div class="campo"><label>WhatsApp de SparkEd (10 dígitos) para confirmar pagos manuales</label><input name="sparked_whatsapp" inputmode="numeric" placeholder="Vacío = sin botón de WhatsApp"></div>
+          <div class="campo"><label>Tope de compras por día (todo el sitio)</label><input name="sparked_tope_diario" inputmode="numeric"></div>
+          <div class="campo"><label>Tope de compras por día por familia</label><input name="sparked_tope_familia" inputmode="numeric"></div>
+          <div class="campo"><label>Tipo de cambio (pesos por dólar, para la ficha de costos)</label><input name="sparked_tipo_cambio" inputmode="decimal"></div>
+          <div class="campo"><label>Correo donde quieres recibir aviso de cada venta</label><input name="sparked_correo_aviso" type="email"></div>
+          <div class="campo"><label>Remitente de los correos</label><input name="sparked_correo_remitente" placeholder="SparkEd <hola@tudominio.com>"></div>
+          <div class="campo"><label>Dirección pública del sitio</label><input name="sparked_sitio"></div>
+          <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="boton" type="submit">Guardar ajustes</button><button class="boton linea" type="button" id="btnLimpiar">🧹 Limpiar borradores vencidos</button></div>
+        </form>
+      </div>
+      <div class="caja-clave" style="margin-top:14px"><b>Cómo se encienden los motores</b><p style="margin:6px 0 0">Cada motor se enciende poniendo su llave en Supabase → Edge Functions → Secrets (nunca en el código ni en WhatsApp): <code>ANTHROPIC_API_KEY</code> (la IA que escribe las guías), <code>STRIPE_SECRET_KEY</code> y <code>STRIPE_WEBHOOK_SECRET</code> (cobro en línea), <code>RESEND_API_KEY</code> (correos) y, opcional, <code>HELICONE_API_KEY</code> (medición de costos). Mientras un motor está apagado, el sitio sigue funcionando en modo manual.</p></div>
+    </section>
+  </div>
+</div></main>
+<dialog id="dlg"></dialog>
+<div class="msg" id="msg"></div>
+
+<script type="module">
+import { esc, opciones, GRADOS, MATERIAS, waLink } from "./js/sitio.js";
+import { CONFIG } from "./js/config.js";
+import { mensajeWhatsApp } from "./js/flujo.js";
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const LS = "al_clave"; // la misma llave que guarda la app de accesos (mismo dominio)
+let clave = ""; try { clave = localStorage.getItem(LS) || ""; } catch {}
+let colegios = [], timerGuias = null;
+
+function aviso(texto, mal = false, ms = 3500) { const m = $("#msg"); m.textContent = texto; m.className = "msg on" + (mal ? " mal" : ""); clearTimeout(aviso.t); aviso.t = setTimeout(() => m.classList.remove("on"), ms); }
+async function api(ruta, { method = "GET", body } = {}) {
+  const r = await fetch(`${CONFIG.api}/admin${ruta}`, { method, headers: { "content-type": "application/json", "x-admin-key": clave }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const d = await r.json().catch(() => ({}));
+  if (r.status === 401) { salir(false); throw new Error("Contraseña incorrecta"); }
+  if (!r.ok) throw new Error(d.error || "Error del servidor");
+  return d;
+}
+const fecha = (s) => s ? new Date(s).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "";
+const dinero = (n) => "$" + Number(n ?? 0).toFixed(0);
+const chip = (e) => `<span class="estado ${esc(e)}">${esc(String(e).replace("_", " "))}</span>`;
+function modal(html) { const d = $("#dlg"); d.innerHTML = html + `<div style="margin-top:14px;text-align:right"><button class="boton linea chico" id="cerrarDlg">Cerrar</button></div>`; d.showModal(); $("#cerrarDlg").onclick = () => d.close(); return d; }
+function salir(limpiar = true) { if (limpiar) { try { localStorage.removeItem(LS); } catch {} } clave = ""; $("#app").hidden = true; $("#login").hidden = false; $("#salir").hidden = true; }
+
+// ---------- Entrar ----------
+async function entrar() {
+  try { const p = await api("/ping"); $("#login").hidden = true; $("#app").hidden = false; $("#salir").hidden = false; pintarMotores(p); cargarTodo(); }
+  catch (e) { $("#errLogin").textContent = e.message; }
+}
+$("#formLogin").onsubmit = (e) => { e.preventDefault(); clave = $("#formLogin").clave.value.trim(); try { localStorage.setItem(LS, clave); } catch {} entrar(); };
+$("#salir").onclick = (e) => { e.preventDefault(); salir(); };
+if (clave) entrar();
+
+// ---------- Pestañas ----------
+$("#tabs").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; mostrarTab(b.dataset.tab); };
+function mostrarTab(t) {
+  $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
+  $$("[data-panel]").forEach((s) => { s.hidden = s.dataset.panel !== t; });
+  location.hash = t;
+  ({ resumen: cargarResumen, guias: cargarGuias, compras: cargarCompras, solicitudes: cargarSolicitudes, reportes: cargarReportes, colegios: cargarColegios, ajustes: cargarAjustes })[t]?.();
+}
+async function cargarTodo() { await cargarColegios(true); mostrarTab(location.hash.replace("#", "") || "resumen"); }
+
+// ---------- Resumen ----------
+async function cargarResumen() {
+  const r = await api("/resumen");
+  $("#numeros").innerHTML = [
+    [r.guias.publicadas, "guías publicadas"], [r.guias.borradores, "borradores por revisar"], [r.guias.personalizadas, "guías personalizadas vivas"],
+    [r.compras.pendientes, "compras pendientes de pago"], [r.compras.pagadas_hoy + " · " + dinero(r.compras.ingresos_hoy), "ventas de hoy"], [r.compras.pagadas_mes + " · " + dinero(r.compras.ingresos_mes), "ventas del mes"],
+    [r.solicitudes_sin_guia, "pedidos sin guía"], [r.reportes_nuevos, "reportes nuevos"], [r.ia.corriendo, "generaciones en curso"], ["US$" + r.ia.costo_usd_mes.toFixed(2), "gasto de IA este mes"],
+  ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
+  $("#nCompras").hidden = !r.compras.pendientes; $("#nCompras").textContent = r.compras.pendientes;
+  $("#nSolicitudes").hidden = !r.solicitudes_sin_guia; $("#nSolicitudes").textContent = r.solicitudes_sin_guia;
+  $("#nReportes").hidden = !r.reportes_nuevos; $("#nReportes").textContent = r.reportes_nuevos;
+  $("#nGuias").hidden = !r.guias.borradores; $("#nGuias").textContent = r.guias.borradores;
+}
+function pintarMotores(p) {
+  const m = p.motores ?? {};
+  const lista = [["ia", "Inteligencia artificial", "ANTHROPIC_API_KEY", "Escribe las guías del Servicio 2 y de la biblioteca"], ["stripe", "Cobro en línea (Stripe)", "STRIPE_SECRET_KEY", "Apagado = las compras se confirman a mano aquí"], ["webhook", "Aviso de pago de Stripe", "STRIPE_WEBHOOK_SECRET", "Confirma el pago automáticamente"], ["correo", "Correos (Resend)", "RESEND_API_KEY", "Manda el link y el QR al correo del cliente"], ["helicone", "Medición de costos (Helicone)", "HELICONE_API_KEY", "Opcional: cuánto cuesta cada guía"]];
+  $("#motores").innerHTML = lista.map(([k, nombre, sec, desc]) => `<div class="motor ${m[k] ? "on" : ""}"><b>${m[k] ? "🟢" : "⚪"} ${esc(nombre)}</b><span class="ayuda">${esc(desc)}</span><div style="margin-top:6px"><code>${esc(sec)}</code> ${m[k] ? "configurada" : "sin configurar"}</div></div>`).join("");
+}
+
+// ---------- Guías ----------
+async function cargarColegios(solo = false) {
+  colegios = await api("/colegios");
+  const f = $("#formNueva");
+  opciones(f.colegio_id, [{ valor: "", texto: "Sin colegio (sirve para todos)" }, ...colegios.filter((c) => c.activo).map((c) => ({ valor: c.id, texto: c.nombre }))], null);
+  if (!f.grado.options.length) { opciones(f.grado, GRADOS, "Elige el grado"); opciones(f.materia, MATERIAS, "Elige la materia"); }
+  if (solo) return;
+  $("#listaColegios").innerHTML = colegios.map((c) => `<div class="fila-g"><div class="info"><b>${esc(c.nombre)}</b> ${chip(c.activo ? "activo" : "inactivo")}</div><div class="acciones"><button class="boton linea" data-act="toggle" data-id="${c.id}" data-on="${c.activo}">${c.activo ? "Ocultar del sitio" : "Mostrar en el sitio"}</button></div></div>`).join("") || "<p class='ayuda'>Sin colegios.</p>";
+  $$("#listaColegios [data-act=toggle]").forEach((b) => b.onclick = async () => { await api(`/colegios/${b.dataset.id}`, { method: "PATCH", body: { activo: b.dataset.on !== "true" } }); cargarColegios(); });
+}
+$("#formColegio").onsubmit = async (e) => { e.preventDefault(); try { await api("/colegios", { method: "POST", body: { nombre: $("#formColegio").nombre.value } }); $("#formColegio").reset(); cargarColegios(); aviso("Colegio agregado"); } catch (err) { aviso(err.message, true); } };
+
+async function cargarGuias() {
+  const filtro = $("#filtroGuias").value;
+  let lista = await api("/guias" + (filtro && filtro !== "personalizada" ? `?estado=${filtro}` : ""));
+  if (filtro === "personalizada") lista = lista.filter((g) => g.origen === "personalizada");
+  else if (!filtro) lista = lista.filter((g) => g.origen === "biblioteca" || g.estado !== "archivada");
+  $("#listaGuias").innerHTML = lista.map(filaGuia).join("") || `<p class="ayuda">No hay guías aquí todavía. Crea la primera con "＋ Nueva guía".</p>`;
+  $$("#listaGuias [data-act]").forEach((b) => b.onclick = () => accionGuia(b.dataset.act, b.dataset.id, b));
+  clearTimeout(timerGuias);
+  if (lista.some((g) => g.trabajo && ["pendiente", "corriendo"].includes(g.trabajo.estado)) && !$("[data-panel=guias]").hidden) timerGuias = setTimeout(cargarGuias, 5000);
+}
+function filaGuia(g) {
+  const t = g.trabajo; const corriendo = t && ["pendiente", "corriendo"].includes(t.estado);
+  const meta = [g.colegio ?? "Todos los colegios", g.grado, g.materia, g.examen, g.fecha_examen ? "examen " + g.fecha_examen : ""].filter(Boolean).join(" · ");
+  const acciones = [];
+  if (g.completo) acciones.push(["ver", "👁 Ver como profesor", "linea"]);
+  if (g.estado === "publicada") acciones.push(["copiar-vp", "🔗 Copiar link de vista previa", "linea"]);
+  if (g.origen === "biblioteca" && !corriendo) { acciones.push(["paginas", g.completo ? "📷 Cambiar páginas" : "📷 Subir páginas", "linea"]); acciones.push(["generar", g.completo ? "🤖 Regenerar con IA" : "🤖 Generar con IA", "linea"]); acciones.push(["cartucho", "📄 Subir cartucho", "linea"]); }
+  if (g.completo && g.estado !== "publicada") acciones.push(["publicar", "✅ Publicar", ""]);
+  if (g.estado === "publicada" && g.origen === "biblioteca") acciones.push(["archivar", "📦 Archivar", "linea"]);
+  acciones.push(["editar", "✏️ Editar", "linea"], ["detalle", "ℹ️ Detalle", "linea"]);
+  if (!g.compras_pagadas) acciones.push(["borrar", "🗑 Borrar", "linea"]);
+  return `<div class="fila-g"><div class="info"><b>${esc(g.titulo ?? "(sin título)")}</b>${chip(g.estado)}${g.origen === "personalizada" ? chip("personalizada") : ""}
+    <div class="ayuda">${esc(meta)}</div>
+    <div class="ayuda">${g.completo ? "Cartucho completo" : "Sin cartucho completo"} · ${g.compras_pagadas} vendidas${g.compras_pendientes ? ` · ${g.compras_pendientes} pendientes` : ""} · costo IA ${dinero(g.costo_mxn)} · creada ${esc(fecha(g.creada_en))}${g.borrar_en ? " · se borra " + esc(fecha(g.borrar_en)) : ""}</div>
+    ${t ? `<div class="ayuda" style="margin-top:6px">${chip(t.estado)} ${esc(t.progreso?.mensaje ?? "")}${t.estado === "error" ? " · revisa el detalle" : ""}</div>${corriendo ? `<div class="prog"><i style="width:${t.progreso?.pct ?? 0}%"></i></div>` : ""}` : ""}
+  </div><div class="acciones">${acciones.map(([a, txt, cls]) => `<button class="boton ${cls}" data-act="${a}" data-id="${g.id}">${txt}</button>`).join("")}</div></div>`;
+}
+async function accionGuia(act, id, btn) {
+  try {
+    if (act === "ver") { const { cartucho } = await api(`/guias/${id}/cartucho`); localStorage.setItem("sparked_cartucho_" + id, JSON.stringify(cartucho)); window.open(`guia.html?local=${id}`, "_blank"); }
+    if (act === "copiar-vp") { await navigator.clipboard.writeText(`${CONFIG.sitio}biblioteca.html`); aviso("Link del sitio copiado. La vista previa se abre buscando la guía en la biblioteca."); }
+    if (act === "publicar") { const r = await api(`/guias/${id}/publicar`, { method: "POST" }); aviso("Guía publicada"); if (r.avisar?.length) modal(`<h2>Avísales que ya está lista</h2><p class="ayuda">${r.avisar.length} familia(s) la pidieron antes:</p>${r.avisar.map((s) => `<div class="fila-g"><div class="info"><b>${esc(s.nombre ?? "Familia")}</b> <span class="ayuda">${esc(s.telefono ?? "")} ${esc(s.correo ?? "")}</span></div><div class="acciones">${s.telefono ? `<a class="boton chico" target="_blank" rel="noopener" href="${esc(waLink(s.telefono, `Hola ${s.nombre ?? ""} 👋 Ya está lista la guía que buscabas en SparkEd. Entra a ${CONFIG.sitio}biblioteca.html y búscala con tu colegio, grado y materia.`))}">💬 WhatsApp</a>` : ""}</div></div>`).join("")}`); cargarGuias(); }
+    if (act === "archivar") { if (!confirm("¿Archivar esta guía? Dejará de aparecer en la biblioteca; las familias que ya la compraron siguen entrando.")) return; await api(`/guias/${id}/archivar`, { method: "POST" }); cargarGuias(); }
+    if (act === "borrar") { if (!confirm("¿Borrar esta guía y sus materiales? No se puede deshacer.")) return; await api(`/guias/${id}`, { method: "DELETE" }); aviso("Guía borrada"); cargarGuias(); cargarResumen(); }
+    if (act === "generar") { if (!confirm("La IA leerá las páginas subidas y escribirá la guía completa (tarda unos minutos y tiene costo). ¿Continuar?")) return; await api(`/guias/${id}/generar`, { method: "POST" }); aviso("Generando… la lista se actualiza sola"); cargarGuias(); }
+    if (act === "cartucho") { elegirArchivo(".json,application/json", false, async ([f]) => { const cartucho = JSON.parse(await f.text()); const r = await api(`/guias/${id}/cartucho`, { method: "POST", body: { cartucho } }); aviso(`Cartucho cargado: ${r.bloques} bloques`); cargarGuias(); }); }
+    if (act === "paginas") { elegirArchivo("image/*,application/pdf", true, async (files) => { btn.disabled = true; const pags = await convertir(files); const { subidas } = await api(`/guias/${id}/materiales`, { method: "POST", body: { paginas: pags.map((p) => ({ nombre: p.nombre, tipo: "image/jpeg", tamano: p.blob.size })) } }); await subir(subidas, pags, (n, t) => aviso(`Subiendo ${n} de ${t}…`, false, 1500)); aviso("Páginas subidas. Ahora puedes generar con la IA."); cargarGuias(); }); }
+    if (act === "editar") editarGuia(id);
+    if (act === "detalle") detalleGuia(id);
+  } catch (e) { aviso(e.message, true, 6000); }
+}
+function elegirArchivo(accept, multiple, fn) { const i = document.createElement("input"); i.type = "file"; i.accept = accept; i.multiple = multiple; i.onchange = () => { if (i.files.length) fn([...i.files]).catch((e) => aviso(e.message, true, 6000)); }; i.click(); }
+async function editarGuia(id) {
+  const g = await api(`/guias/${id}`);
+  const d = modal(`<h2>Editar guía</h2><form id="fEd" class="rejilla-campos">
+    <div class="campo" style="grid-column:1/-1"><label>Título</label><input name="titulo" value="${esc(g.titulo ?? "")}"></div>
+    <div class="campo"><label>Colegio</label><select name="colegio_id">${[{ id: "", nombre: "Sin colegio (sirve para todos)" }, ...colegios].map((c) => `<option value="${c.id}" ${c.id === (g.colegio_id ?? "") ? "selected" : ""}>${esc(c.nombre)}</option>`).join("")}</select></div>
+    <div class="campo"><label>Grado</label><select name="grado">${GRADOS.map((x) => `<option ${x === g.grado ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></div>
+    <div class="campo"><label>Materia</label><select name="materia">${MATERIAS.map((x) => `<option ${x === g.materia ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></div>
+    <div class="campo"><label>Examen</label><input name="examen" value="${esc(g.examen ?? "")}"></div>
+    <div class="campo"><label>Fecha del examen</label><input name="fecha_examen" type="date" value="${esc(g.fecha_examen ?? "")}"></div>
+    <div style="grid-column:1/-1"><button class="boton" type="submit">Guardar</button></div></form>`);
+  $("#fEd").onsubmit = async (e) => { e.preventDefault(); const f = e.target; try { await api(`/guias/${id}`, { method: "PATCH", body: { titulo: f.titulo.value, colegio_id: f.colegio_id.value || null, grado: f.grado.value, materia: f.materia.value, examen: f.examen.value, fecha_examen: f.fecha_examen.value || null } }); d.close(); aviso("Guardado"); cargarGuias(); } catch (err) { aviso(err.message, true); } };
+}
+async function detalleGuia(id) {
+  const g = await api(`/guias/${id}`);
+  const rep = g.reporte ?? {};
+  modal(`<h2>${esc(g.titulo ?? "Guía")}</h2><div class="ayuda">${esc([g.colegio ?? "Todos los colegios", g.grado, g.materia].join(" · "))} · ${g.completo ? `${g.bloques} bloques · ${g.actividades} actividades` : "sin cartucho completo"} · costo IA ${dinero(g.costo_mxn)}</div>
+    <div class="detalle">
+    <h3>Trabajos de la IA</h3>${(g.trabajos ?? []).map((t) => `<div style="margin-bottom:6px">${chip(t.estado)} <b>${esc(t.alcance)}</b> · paso ${esc(t.paso)} · ${esc(t.progreso?.mensaje ?? "")} · US$${Number(t.costo_usd).toFixed(3)} · ${esc(fecha(t.actualizado_en))}${t.error ? `<div class="error">${esc(t.error)}</div><button class="boton chico linea" data-reintentar="${t.id}">↻ Reintentar</button>` : ""}</div>`).join("") || "<p class='ayuda'>Ninguno (cartucho subido a mano).</p>"}
+    <h3>Verificación de datos</h3>${rep.verificacion?.length ? `<pre>${esc(JSON.stringify(rep.verificacion, null, 1))}</pre>` : "<p class='ayuda'>Sin correcciones registradas.</p>"}
+    ${rep.huecos?.length ? `<h3>Huecos detectados</h3><pre>${esc(rep.huecos.join("\n"))}</pre>` : ""}
+    <h3>Compras</h3>${(g.compras ?? []).map((c) => `<div>${chip(c.estado)} ${esc(c.nombre)} · ${esc(c.telefono)} · ${esc(fecha(c.creada_en))}</div>`).join("") || "<p class='ayuda'>Ninguna.</p>"}
+    ${g.borrador ? `<h3>Material</h3><div class="ayuda">${g.borrador.paginas} página(s) subidas · estado ${esc(g.borrador.estado)}</div>` : ""}</div>`);
+  $$("#dlg [data-reintentar]").forEach((b) => b.onclick = async () => { await api(`/trabajos/${b.dataset.reintentar}/reintentar`, { method: "POST" }); $("#dlg").close(); aviso("Reintentando…"); cargarGuias(); });
+}
+
+// Nueva guía
+let paginas = [];
+$("#btnNueva").onclick = () => { $("#nueva").hidden = false; $("#nueva").scrollIntoView({ behavior: "smooth" }); };
+$("#btnCancelarNueva").onclick = () => { $("#nueva").hidden = true; };
+const zona = $("#zona"), input = $("#archivos"), minis = $("#minis");
+zona.onclick = () => input.click();
+input.onchange = () => agregar([...input.files]);
+["dragenter", "dragover"].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add("sobre"); }));
+["dragleave", "drop"].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.remove("sobre"); }));
+zona.addEventListener("drop", (e) => agregar([...e.dataTransfer.files]));
+async function agregar(files) { paginas = paginas.concat(await convertir(files, 15 - paginas.length)).slice(0, 15); pintarMinis(); }
+function pintarMinis() {
+  minis.innerHTML = paginas.map((p, i) => `<div class="mini"><img src="${p.url}" alt=""><button type="button" data-i="${i}" aria-label="Quitar">✕</button></div>`).join("");
+  $$("button", minis).forEach((b) => b.onclick = () => { paginas.splice(+b.dataset.i, 1); pintarMinis(); });
+  $("#conteo").textContent = paginas.length ? `${paginas.length} de 15 páginas` : "";
+}
+async function convertir(files, max = 15) {
+  const out = [];
+  for (const f of files) {
+    if (out.length >= max) break;
+    if (f.type === "application/pdf") out.push(...(await paginasDePdf(f, max - out.length)));
+    else if (f.type.startsWith("image/")) { const r = await reducir(f, f.name); if (r) out.push(r); }
+  }
+  return out;
+}
+async function reducir(blob, nombre) {
+  const img = await createImageBitmap(blob).catch(() => null); if (!img) return null;
+  const k = Math.min(1, 1568 / Math.max(img.width, img.height));
+  const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  const out = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.86));
+  return { nombre: nombre.replace(/\.[^.]+$/, "") + ".jpg", blob: out, url: URL.createObjectURL(out) };
+}
+async function paginasDePdf(file, max) {
+  const pdfjs = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+  const out = [];
+  for (let p = 1; p <= doc.numPages && out.length < max; p++) {
+    const page = await doc.getPage(p); const vp = page.getViewport({ scale: 1 });
+    const k = Math.min(2, 1568 / Math.max(vp.width, vp.height)); const v2 = page.getViewport({ scale: k });
+    const c = document.createElement("canvas"); c.width = Math.round(v2.width); c.height = Math.round(v2.height);
+    await page.render({ canvasContext: c.getContext("2d"), viewport: v2 }).promise;
+    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.86));
+    out.push({ nombre: `${file.name.replace(/\.pdf$/i, "")}-p${p}.jpg`, blob, url: URL.createObjectURL(blob) });
+  }
+  return out;
+}
+async function subir(subidas, pags, cb) {
+  let n = 0;
+  for (const s of subidas) { const p = pags.find((x) => x.nombre === s.nombre); if (!p) continue; const r = await fetch(s.url, { method: "PUT", headers: { "content-type": "image/jpeg", "x-upsert": "true" }, body: p.blob }); if (!r.ok) throw new Error("No se pudo subir " + s.nombre); cb?.(++n, subidas.length); }
+}
+$("#formNueva").onsubmit = async (e) => {
+  e.preventDefault(); const f = e.target; $("#errNueva").textContent = "";
+  if (!f.grado.value || !f.materia.value) { $("#errNueva").textContent = "Elige grado y materia."; return; }
+  const archivoCartucho = f.cartucho.files[0];
+  if (!paginas.length && !archivoCartucho) { $("#errNueva").textContent = "Sube páginas o un cartucho."; return; }
+  $("#btnCrear").disabled = true;
+  try {
+    const r = await api("/guias", { method: "POST", body: { titulo: f.titulo.value, colegio_id: f.colegio_id.value || null, grado: f.grado.value, materia: f.materia.value, examen: f.examen.value, fecha_examen: f.fecha_examen.value || null, paginas: paginas.map((p) => ({ nombre: p.nombre, tipo: "image/jpeg", tamano: p.blob.size })) } });
+    if (paginas.length) await subir(r.subidas, paginas, (n, t) => aviso(`Subiendo página ${n} de ${t}…`, false, 1500));
+    if (archivoCartucho) { const cartucho = JSON.parse(await archivoCartucho.text()); await api(`/guias/${r.guia_id}/cartucho`, { method: "POST", body: { cartucho } }); }
+    else if (paginas.length && f.generar.checked) await api(`/guias/${r.guia_id}/generar`, { method: "POST" });
+    aviso("Guía creada"); f.reset(); paginas = []; pintarMinis(); $("#nueva").hidden = true; cargarGuias(); cargarResumen();
+  } catch (err) { $("#errNueva").textContent = err.message; }
+  $("#btnCrear").disabled = false;
+};
+$("#filtroGuias").onchange = cargarGuias; $("#btnRefrescarGuias").onclick = cargarGuias;
+
+// ---------- Compras ----------
+async function cargarCompras() {
+  const f = $("#filtroCompras").value;
+  const lista = await api("/compras" + (f ? `?estado=${f}` : ""));
+  $("#listaCompras").innerHTML = lista.map((c) => `<div class="fila-g"><div class="info"><b>${esc(c.titulo ?? "Guía")}</b>${chip(c.estado)}
+      <div class="ayuda">Folio <b>${esc(c.folio)}</b> · ${esc(fecha(c.creada_en))} · ${dinero(c.monto_mxn)} MXN${c.pagada_en ? " · pagada " + esc(fecha(c.pagada_en)) : ""}</div>
+      <div class="ayuda">${esc(c.nombre ?? "")} · <a href="${esc(waLink(c.telefono ?? "", ""))}" target="_blank" rel="noopener">${esc(c.telefono ?? "")}</a> · <a href="mailto:${esc(c.correo ?? "")}">${esc(c.correo ?? "")}</a> · ${esc([c.colegio_texto, c.grado, c.materia].filter(Boolean).join(" · "))}</div>
+      ${c.link ? `<div class="link-caja" style="margin-top:6px">${esc(c.link)}</div><div class="ayuda">Acceso: ${esc(c.acceso?.estado ?? "")} · vence ${esc(fecha(c.acceso?.expira_en))} · ${c.acceso?.usos ?? 0} aperturas</div>` : ""}
+    </div><div class="acciones">
+      ${c.estado === "pendiente" ? `<button class="boton" data-act="pagar" data-id="${c.id}">✅ Marcar pagada</button><button class="boton linea" data-act="cancelar" data-id="${c.id}">✖ Cancelar</button>` : ""}
+      ${c.link ? `<button class="boton linea" data-act="copiar" data-link="${esc(c.link)}">📋 Copiar link</button><a class="boton linea" target="_blank" rel="noopener" href="${esc(waLink(c.telefono ?? "", mensajeWhatsApp(c.titulo ?? "Tu guía", c.link)))}">💬 WhatsApp</a><button class="boton linea" data-act="reenviar" data-id="${c.id}">✉️ Reenviar correo</button>` : ""}
+    </div></div>`).join("") || "<p class='ayuda'>No hay compras en esta lista.</p>";
+  $$("#listaCompras [data-act]").forEach((b) => b.onclick = async () => {
+    try {
+      if (b.dataset.act === "pagar") { if (!confirm("¿Confirmas que esta compra ya se pagó? Se creará el link de 7 días y se enviará el correo.")) return; const r = await api(`/compras/${b.dataset.id}/pagar`, { method: "POST" }); aviso("Pago confirmado. Link creado."); cargarCompras(); cargarResumen(); modal(`<h2>Link listo 🎉</h2><div class="link-caja">${esc(r.link)}</div><p class="ayuda">${r.lista ? "La guía está completa." : "La IA sigue armando los bloques que faltan; el link ya funciona y mostrará el avance."}</p><a class="boton" target="_blank" rel="noopener" href="${esc(waLink(r.compra.telefono ?? "", mensajeWhatsApp(r.compra.titulo ?? "Tu guía", r.link)))}">💬 Mandar por WhatsApp</a>`); }
+      if (b.dataset.act === "cancelar") { if (!confirm("¿Cancelar esta compra pendiente?")) return; await api(`/compras/${b.dataset.id}/cancelar`, { method: "POST" }); cargarCompras(); }
+      if (b.dataset.act === "copiar") { await navigator.clipboard.writeText(b.dataset.link); aviso("Link copiado"); }
+      if (b.dataset.act === "reenviar") { await api(`/compras/${b.dataset.id}/reenviar`, { method: "POST" }); aviso("Correo reenviado (si el motor de correo está encendido)"); }
+    } catch (e) { aviso(e.message, true, 6000); }
+  });
+}
+$("#filtroCompras").onchange = cargarCompras; $("#btnRefrescarCompras").onclick = cargarCompras;
+
+// ---------- Solicitudes ----------
+async function cargarSolicitudes() {
+  const lista = await api("/solicitudes");
+  $("#listaSolicitudes").innerHTML = lista.map((s) => `<div class="fila-g"><div class="info"><b>${esc([s.materia, s.grado].filter(Boolean).join(" · "))}</b>${chip(s.estado)}<div class="ayuda">${esc(s.colegio ?? "Colegio no indicado")} · ${esc(s.nombre ?? "")} · ${esc(s.telefono ?? "")} · ${esc(s.correo ?? "")} · ${esc(fecha(s.creada_en))}</div></div>
+    <div class="acciones">${s.telefono ? `<a class="boton linea" target="_blank" rel="noopener" href="${esc(waLink(s.telefono, `Hola ${s.nombre ?? ""} 👋 Soy de SparkEd. Vi que buscabas la guía de ${s.materia ?? ""} de ${s.grado ?? ""}.`))}">💬 WhatsApp</a>` : ""}${s.estado === "sin_guia" || s.estado === "convertida" ? `<button class="boton linea" data-id="${s.id}">✓ Ya le avisé</button>` : ""}</div></div>`).join("") || "<p class='ayuda'>Nadie ha pedido una guía que no exista.</p>";
+  $$("#listaSolicitudes button[data-id]").forEach((b) => b.onclick = async () => { await api(`/solicitudes/${b.dataset.id}`, { method: "PATCH", body: { estado: "avisada" } }); cargarSolicitudes(); cargarResumen(); });
+}
+
+// ---------- Reportes ----------
+async function cargarReportes() {
+  const lista = await api("/reportes");
+  $("#listaReportes").innerHTML = lista.map((r) => `<div class="fila-g"><div class="info"><b>${esc(r.guia_titulo ?? "Guía")}</b>${chip(r.estado)}<div class="ayuda">Slide ${esc(r.slide ?? "?")} · ${esc(fecha(r.creado_en))}</div><div style="margin-top:6px">${esc(r.comentario)}</div></div><div class="acciones">${r.estado === "nuevo" ? `<button class="boton linea" data-id="${r.id}">✓ Revisado</button>` : ""}</div></div>`).join("") || "<p class='ayuda'>Sin reportes.</p>";
+  $$("#listaReportes button[data-id]").forEach((b) => b.onclick = async () => { await api(`/reportes/${b.dataset.id}`, { method: "PATCH" }); cargarReportes(); cargarResumen(); });
+}
+
+// ---------- Ajustes ----------
+async function cargarAjustes() {
+  const p = await api("/ping"); pintarMotores(p);
+  const f = $("#formAjustes");
+  for (const [k, v] of Object.entries(p.config ?? {})) if (f[k]) f[k].value = v;
+}
+$("#formAjustes").onsubmit = async (e) => { e.preventDefault(); const f = e.target; const body = {}; for (const el of f.elements) if (el.name) body[el.name] = el.value; try { await api("/config", { method: "POST", body }); aviso("Ajustes guardados"); } catch (err) { aviso(err.message, true); } };
+$("#btnLimpiar").onclick = async () => { try { const r = await api("/limpiar", { method: "POST" }); aviso(`Limpieza: ${r.borradores} borradores y ${r.guias} guías vencidas`); } catch (e) { aviso(e.message, true); } };
+</script>
+</body>
+</html>

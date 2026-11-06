@@ -1,0 +1,35 @@
+<!doctype html>
+<!--
+  Reproductor de guías SparkEd (fase 2). Se hospeda en GitHub Pages.
+  Modos:  guia.html#TOKEN            acceso real (la clave va después de "#": las vistas previas de WhatsApp no la ven)
+          guia.html?vp=ID            vista previa de una guía de la biblioteca (3 slides)
+          guia.html?clave=CLAVE      vista previa de una guía personalizada en borrador
+          guia.html?demo=civics3     guía de ejemplo completa (sin servidor)
+-->
+<html lang="es" data-paleta="civica_morado">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#FFD400">
+<meta property="og:title" content="SparkEd · Tu guía interactiva">
+<meta property="og:description" content="Guía de estudio interactiva. Ábrela en tu iPad, computadora o celular en horizontal.">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/guia.css">
+<title>SparkEd · Guía</title>
+</head>
+<body class="reproductor">
+<div id="vp"><div id="escenario"></div></div>
+<aside id="barra" aria-label="Barra de herramientas">
+  <button id="arriba" title="Slide anterior (↑)" aria-label="Slide anterior">↑</button>
+  <div class="pg" id="pg">…</div>
+  <button id="abajo" title="Siguiente slide (↓)" aria-label="Siguiente slide">↓</button>
+  <button id="rejilla" title="Ver todas las slides" aria-label="Ver todas las slides">▦</button>
+  <button id="sonido" class="chico" title="Sonido" aria-label="Sonido">🔊</button>
+  <button id="reportar" class="chico" title="¿Encontraste un error?" aria-label="Reportar un error">🚩</button>
+</aside>
+<div id="miniaturas" class="oculto"><div class="panel"><h2>Todas las slides</h2><div id="lista-mini"></div></div></div>
+<script type="module" src="js/reproductor.js"></script>
+</body>
+</html>

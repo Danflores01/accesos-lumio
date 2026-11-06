@@ -225,3 +225,44 @@ nombre, el pie de la imagen lo incluye ("Personal · Familia Pérez · vence el 
   lugar del texto. "Usar el texto en vez de la imagen" la quita.
 - En la computadora: la imagen queda copiada al pulsar Compartir; en el chat de WhatsApp Web pegas con
   Ctrl+V (el link ya está escrito y queda como pie de foto) y Enter.
+
+## SparkEd fase 2: guías interactivas (noviembre 2026)
+
+Junto a la app de accesos vive ahora el sitio de guías interactivas, en la carpeta `sparked/`:
+
+| Pieza | Dónde |
+|---|---|
+| Sitio para las familias (landing, biblioteca, crear guía) | https://danflores01.github.io/accesos-lumio/sparked/ |
+| Reproductor de guías (lo que abre el alumno) | `sparked/guia.html#<código>` |
+| Panel de guías (biblioteca, compras, pedidos, reportes, ajustes) | `sparked/panel.html` (misma contraseña del panel de accesos; también desde la ✨ de la app de accesos) |
+| Servidor | función `sparked` en Supabase (`funciones/sparked/`), tablas de la migración `sql/migraciones/20261106_sparked_fase2.sql` |
+| Criterios de diseño (arte, juegos, pago, accesos) | `docs/CRITERIOS-FASE-2.md` |
+
+**Cómo convive con los accesos de Lumio.** Nada de lo anterior cambió: `entrar.html`, la función `ir`, la función
+`admin` y los links activos siguen igual. Cada guía publicada tiene una "clase" propia de tipo `guia`, y cada compra
+crea un acceso normal dentro de esa clase: vale 7 días desde el pago y entra en 2 aparatos (al tercero le aparece
+"Acceso en uso en otros aparatos"). Las clases de Lumio conservan sus propios límites.
+
+**Los dos servicios.**
+1. *Biblioteca de colegios.* La familia elige colegio, grado y materia; si hay guía publicada ve una vista previa
+   gratis (portada, primera pista y un juego) y paga para desbloquearla. Si no hay, se le ofrece el Servicio 2 y
+   puede dejar su pedido ("Avísame cuando esté lista"), que aparece en el panel en "Pedidos sin guía".
+2. *Guía personalizada.* La familia sube fotos o PDF de sus apuntes (máximo 15 páginas); la IA arma primero una
+   vista previa barata, se paga y entonces se termina la guía completa. Los borradores sin pagar se borran a las
+   24 horas; las guías personalizadas viven 7 días después del pago y luego solo queda su ficha en "Compras".
+
+**Motores (se encienden con secretos en Supabase → Edge Functions → Secrets; nunca en el código).**
+- `ANTHROPIC_API_KEY`: la IA que lee las fotos y escribe las guías (ponle un límite de gasto en la consola de Anthropic).
+- `STRIPE_SECRET_KEY` y `STRIPE_WEBHOOK_SECRET`: cobro en línea. Mientras no existan, el pago es manual: la compra queda
+  "pendiente" con un folio y tú la marcas pagada en el panel; en ese momento se crea el link y se manda el correo.
+- `RESEND_API_KEY`: correos con el link y las reglas del acceso (opcional `HELICONE_API_KEY` para medir costos).
+
+**Publicar una guía de la biblioteca.** En el panel: ＋ Nueva guía → colegio, grado, materia, examen → sube las fotos
+(o un cartucho `.json` ya hecho) → "Generar con IA" → cuando termine, "Ver como profesor" para revisarla → Publicar.
+Al publicar, los pedidos sin guía que coincidan aparecen para avisarles por WhatsApp.
+
+**Ajustes del sitio** (pestaña Ajustes del panel): precio (85 MXN con IVA), WhatsApp para confirmar pagos manuales,
+topes de compras por día y por familia, correo de aviso de ventas y remitente.
+
+**Pruebas locales.** `node herramientas/servir.js 8787` sirve la carpeta en `http://localhost:8787/sparked/`
+(`guia.html?demo=civics3` abre la guía de ejemplo sin servidor).

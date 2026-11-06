@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es" data-paleta="civica_morado">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FFD400">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/sitio.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
+<title>SparkEd · Crea tu guía personalizada</title>
+</head>
+<body class="sitio">
+<header class="cab"><div class="contenedor">
+  <a class="marca" href="index.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span></a>
+  <nav><a href="biblioteca.html">Biblioteca de colegios</a></nav>
+</div></header>
+
+<main class="flujo"><div class="contenedor">
+  <div class="pasos-barra" id="pasos"><div class="on"></div><div></div><div></div><div></div></div>
+
+  <section class="panel-paso" id="p1">
+    <div style="color:#7c3aed;font-weight:800;letter-spacing:1px;font-size:14px">SERVICIO 2 · GUÍA PERSONALIZADA</div>
+    <h1>Arrastra tu contenido para hacer tu guía</h1>
+    <form id="form" class="rejilla-campos">
+      <div class="campo"><label>Grado</label><select name="grado" required></select></div>
+      <div class="campo"><label>Materia</label><select name="materia" required></select></div>
+      <div class="campo" style="grid-column:1/-1"><label>Colegio (opcional)</label><input name="colegio_texto" placeholder="Para identificar tu guía"></div>
+      <div style="grid-column:1/-1">
+        <div class="zona-carga" id="zona">📸 <b>Toca para elegir fotos o PDF</b>, o arrástralos aquí<br><span class="ayuda">Hasta 15 páginas · fotos de apuntes, hojas del libro o el temario. Mientras más claras, mejor.</span><input type="file" id="archivos" accept="image/*,application/pdf" multiple hidden></div>
+        <div class="miniaturas" id="minis" style="margin-top:10px"></div>
+        <div class="ayuda" id="conteo" style="margin-top:6px"></div>
+      </div>
+      <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="boton" type="submit" id="crear" disabled>✨ Crear mi guía</button><span class="ayuda">Primero ves una vista previa gratis. Tus fotos se borran solas.</span></div>
+      <div class="error" id="err1" style="grid-column:1/-1"></div>
+    </form>
+  </section>
+
+  <section class="panel-paso" id="p2" hidden></section>
+  <section class="panel-paso" id="p3" hidden></section>
+  <section class="panel-paso" id="p4" hidden></section>
+</div></main>
+
+<script type="module">
+import { api, esc, opciones, GRADOS, MATERIAS, leerContacto, guardarContacto, contactoGuardado, marcoVistaPrevia, iniciarPago, pantallaEspera, CONFIG, pintarSprites } from "./js/flujo.js";
+import { sparky } from "./js/arte.js";
+
+const $ = (s) => document.querySelector(s);
+const form = $("#form"), zona = $("#zona"), input = $("#archivos"), minis = $("#minis");
+const MAX = CONFIG.paginasMax;
+const pasos = (n) => { [...$("#pasos").children].forEach((d, i) => d.classList.toggle("on", i < n)); ["p1", "p2", "p3", "p4"].forEach((id, i) => { $("#" + id).hidden = i !== n - 1; }); window.scrollTo({ top: 0, behavior: "smooth" }); };
+opciones(form.grado, GRADOS, "Elige el grado"); opciones(form.materia, MATERIAS, "Elige la materia");
+const params = new URLSearchParams(location.search);
+if (params.get("grado")) form.grado.value = params.get("grado");
+if (params.get("materia")) form.materia.value = params.get("materia");
+if (params.get("colegio")) form.colegio_texto.value = params.get("colegio");
+
+// ---------- Páginas: fotos reducidas a 1568 px y PDFs convertidos a imágenes en el navegador ----------
+let paginas = []; // {nombre, blob, url}
+async function reducir(blob, nombre) {
+  const img = await createImageBitmap(blob).catch(() => null);
+  if (!img) return null;
+  const esc_ = Math.min(1, 1568 / Math.max(img.width, img.height));
+  const c = document.createElement("canvas"); c.width = Math.round(img.width * esc_); c.height = Math.round(img.height * esc_);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  const out = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.86));
+  return { nombre: nombre.replace(/\.[^.]+$/, "") + ".jpg", blob: out, url: URL.createObjectURL(out) };
+}
+async function paginasDePdf(file) {
+  const pdfjs = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+  const out = [];
+  for (let p = 1; p <= doc.numPages && paginas.length + out.length < MAX; p++) {
+    const page = await doc.getPage(p); const vp = page.getViewport({ scale: 1 });
+    const escala = Math.min(2, 1568 / Math.max(vp.width, vp.height)); const v2 = page.getViewport({ scale: escala });
+    const c = document.createElement("canvas"); c.width = Math.round(v2.width); c.height = Math.round(v2.height);
+    await page.render({ canvasContext: c.getContext("2d"), viewport: v2 }).promise;
+    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.86));
+    out.push({ nombre: `${file.name.replace(/\.pdf$/i, "")}-p${p}.jpg`, blob, url: URL.createObjectURL(blob) });
+  }
+  return out;
+}
+async function agregar(files) {
+  $("#err1").textContent = "";
+  for (const f of files) {
+    if (paginas.length >= MAX) { $("#err1").textContent = `Máximo ${MAX} páginas por guía.`; break; }
+    if (f.type === "application/pdf") { try { paginas.push(...await paginasDePdf(f)); } catch { $("#err1").textContent = "No pude leer ese PDF."; } }
+    else if (f.type.startsWith("image/")) { const r = await reducir(f, f.name); if (r) paginas.push(r); else $("#err1").textContent = "Formato de imagen no reconocido: " + f.name; }
+  }
+  paginas = paginas.slice(0, MAX); pintar();
+}
+function pintar() {
+  minis.innerHTML = paginas.map((p, i) => `<div class="mini"><img src="${p.url}" alt=""><button type="button" data-i="${i}" aria-label="Quitar">✕</button></div>`).join("");
+  minis.querySelectorAll("button").forEach((b) => b.onclick = () => { paginas.splice(+b.dataset.i, 1); pintar(); });
+  $("#conteo").textContent = paginas.length ? `${paginas.length} de ${MAX} páginas` : "";
+  $("#crear").disabled = !paginas.length;
+}
+zona.onclick = () => input.click();
+input.onchange = () => agregar([...input.files]);
+["dragenter", "dragover"].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add("sobre"); }));
+["dragleave", "drop"].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.remove("sobre"); }));
+zona.addEventListener("drop", (e) => agregar([...e.dataTransfer.files]));
+
+// ---------- Crear: borrador → subir → generar → esperar la vista previa ----------
+let clave = null, esp = null, contacto = contactoGuardado();
+form.onsubmit = async (e) => {
+  e.preventDefault();
+  if (!form.grado.value || !form.materia.value) { $("#err1").textContent = "Elige grado y materia."; return; }
+  if (!paginas.length) { $("#err1").textContent = "Sube al menos una página."; return; }
+  pasos(2);
+  esp = pantallaEspera($("#p2"), "Generando tu guía…");
+  try {
+    esp.actualizar(5, "Preparando tus páginas");
+    const b = await api.post("/borrador", { grado: form.grado.value, materia: form.materia.value, colegio_texto: form.colegio_texto.value.trim(), paginas: paginas.map((p) => ({ nombre: p.nombre, tipo: "image/jpeg", tamano: p.blob.size })) });
+    clave = b.clave; try { localStorage.setItem("sparked_borrador", clave); } catch {}
+    let n = 0;
+    for (const s of b.subidas) {
+      const p = paginas.find((x) => x.nombre === s.nombre); if (!p) continue;
+      const r = await fetch(s.url, { method: "PUT", headers: { "content-type": "image/jpeg", "x-upsert": "true" }, body: p.blob });
+      if (!r.ok) throw new Error("No se pudo subir " + s.nombre);
+      esp.actualizar(5 + Math.round(20 * (++n / b.subidas.length)), `Subiendo página ${n} de ${b.subidas.length}`);
+    }
+    await api.post(`/borrador/${encodeURIComponent(clave)}/generar`, {});
+    vigilar();
+  } catch (err) { esp?.detener(); $("#p2").innerHTML = `<p class="error">${esc(err.message)}</p><button class="boton linea" onclick="location.reload()">Intentar de nuevo</button>`; }
+};
+
+async function vigilar() {
+  try {
+    const d = await api.get(`/borrador/${encodeURIComponent(clave)}`);
+    const pr = d.progreso ?? {};
+    esp?.actualizar(25 + Math.round(70 * (pr.pct ?? 0) / 100), pr.mensaje ?? "");
+    if (d.estado === "vista_previa" || d.estado === "listo" || d.estado === "pagado") { esp?.detener(); mostrarVistaPrevia(d); return; }
+    if (d.estado === "fallido") { esp?.detener(); $("#p2").innerHTML = `<h2>No pude leer bien tus páginas 😕</h2><p>${esc(d.error ?? "Prueba con fotos más claras, con buena luz y la página completa.")}</p><button class="boton linea" onclick="location.href='crear.html'">Volver a intentar</button>`; return; }
+  } catch {}
+  setTimeout(vigilar, 3000);
+}
+
+function mostrarVistaPrevia(d) {
+  pasos(3);
+  const titulo = d.titulo ?? "Tu guía";
+  const volver = location.pathname + "?clave=" + encodeURIComponent(clave) + "&paso=pagar";
+  marcoVistaPrevia($("#p3"), `guia.html?clave=${encodeURIComponent(clave)}&volver=${encodeURIComponent(volver)}`, titulo);
+  $("#p3").insertAdjacentHTML("beforeend", `<form id="contacto" class="rejilla-campos" style="margin-top:14px">
+    <div class="campo"><label>Nombre de quien pide la guía</label><input name="nombre" required value="${esc(contacto?.nombre ?? "")}"></div>
+    <div class="campo"><label>WhatsApp (10 dígitos)</label><input name="telefono" inputmode="numeric" required value="${esc(contacto?.telefono ?? "")}"></div>
+    <div class="campo" style="grid-column:1/-1"><label>Correo</label><input name="correo" type="email" required value="${esc(contacto?.correo ?? "")}"></div>
+    <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="boton" type="submit">🔓 Desbloquear la guía entera por $${CONFIG.precio}</button><span class="ayuda">7 días · 2 aparatos · IVA incluido</span></div><div class="error" id="err3" style="grid-column:1/-1"></div></form>`);
+  $("#contacto").onsubmit = async (e) => { e.preventDefault(); const c = leerContacto($("#contacto")); if (c.errores.length) { $("#err3").textContent = c.errores[0]; return; } guardarContacto(c); pasos(4); $("#p4").innerHTML = `<h1>Pago</h1><div id="pago"></div>`; await iniciarPago($("#pago"), { clave, ...c }).catch(() => {}); };
+}
+
+// Retomar un borrador de las últimas 24 h
+const claveGuardada = params.get("clave") || (() => { try { return localStorage.getItem("sparked_borrador"); } catch { return null; } })();
+if (claveGuardada) {
+  clave = claveGuardada;
+  api.get(`/borrador/${encodeURIComponent(clave)}`).then((d) => {
+    if (d.estado === "vista_previa" || d.estado === "listo") mostrarVistaPrevia(d);
+    else if (d.estado === "generando") { pasos(2); esp = pantallaEspera($("#p2"), "Generando tu guía…"); vigilar(); }
+    else if (d.estado === "fallido") { $("#err1").textContent = (d.error ?? "No pudimos terminar tu guía anterior.") + " Puedes intentarlo de nuevo aquí."; try { localStorage.removeItem("sparked_borrador"); } catch {} }
+  }).catch(() => {});
+}
+</script>
+</body>
+</html>

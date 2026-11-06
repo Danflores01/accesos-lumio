@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es" data-paleta="historia_azul">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FFD400">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/sitio.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<title>SparkEd · Tu guía está lista</title>
+</head>
+<body class="sitio">
+<header class="cab"><div class="contenedor"><a class="marca" href="index.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span></a></div></header>
+<main class="flujo"><div class="contenedor"><section class="panel-paso" id="caja"><div class="estado-carga"><div>Confirmando tu compra…</div></div></section></div></main>
+<script type="module">
+import { api, esc, mensajeWhatsApp, waLink, CONFIG } from "./js/flujo.js";
+import { sparky } from "./js/arte.js";
+const params = new URLSearchParams(location.search);
+const compra = params.get("compra") || params.get("session_id") || (() => { try { return localStorage.getItem("sparked_compra"); } catch { return null; } })();
+const caja = document.getElementById("caja");
+
+async function revisar() {
+  if (!compra) { caja.innerHTML = `<h1>No encontramos tu compra</h1><p>Abre el link que te llegó por correo o vuelve a la <a href="index.html">página principal</a>.</p>`; return; }
+  try {
+    const d = await api.get(`/pago/estado/${encodeURIComponent(compra)}`);
+    if (d.estado !== "pagada" || !d.link) { caja.innerHTML = `<div class="estado-carga">${sparky("pensando", 5)}<h2>Esperando la confirmación del pago…</h2><p class="ayuda">Esta página se actualiza sola. También te avisamos por correo.</p></div>`; setTimeout(revisar, 5000); return; }
+    mostrar(d);
+  } catch (e) { caja.innerHTML = `<p class="error">${esc(e.message)}</p>`; setTimeout(revisar, 8000); }
+}
+function mostrar(d) {
+  const link = d.link; const titulo = d.titulo ?? "Tu guía";
+  const qr = qrcode(0, "M"); qr.addData(link); qr.make();
+  caja.innerHTML = `<div style="display:flex;gap:14px;align-items:center">${sparky("festejo", 6)}<div><h1>¡Tu guía está lista! 🎉</h1><div class="ayuda">${esc(titulo)}</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr;gap:16px" class="rejilla-campos">
+      <div><div class="qr">${qr.createSvgTag({ cellSize: 5, margin: 2 })}</div><div class="ayuda" style="margin-top:6px">El alumno puede escanear este código con su iPad.</div></div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="link-caja" id="link">${esc(link)}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="boton" href="${esc(link)}">▶ Abrir la guía</a><button class="boton linea" id="copiar">📋 Copiar link</button><a class="boton linea" id="wa" target="_blank" rel="noopener" href="${esc(waLink(d.telefono ?? "", mensajeWhatsApp(titulo, link)))}">💬 Mandar por WhatsApp</a></div>
+      </div></div>
+    <div class="caja-clave"><b>Cómo funciona tu acceso</b><ul style="margin:8px 0 0;padding-left:20px"><li>Vale <b>7 días</b> desde hoy${d.expira_en ? `: hasta el <b>${esc(new Date(d.expira_en).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short" }))}</b>` : ""}.</li><li>Acepta <b>2 aparatos</b>: por ejemplo tu celular y el iPad del alumno. Al tercero le aparece "Acceso en uso en otros aparatos".</li><li>No lo compartas en otros chats: es de tu familia.</li><li>Guarda este correo: también te lo enviamos a <b>${esc(d.correo ?? "tu correo")}</b>.</li></ul></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="boton linea" href="index.html">✨ Crea otra guía</a></div>`;
+  caja.querySelector("#copiar").onclick = async () => { try { await navigator.clipboard.writeText(link); caja.querySelector("#copiar").textContent = "✓ Copiado"; } catch {} };
+}
+revisar();
+</script>
+</body>
+</html>

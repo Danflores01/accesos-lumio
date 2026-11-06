@@ -1,0 +1,845 @@
+// Función "sparked": la API de la fase 2 (biblioteca de guías, guías personalizadas, pago, acceso al
+// reproductor y panel SparkEd). Vive junto a "ir" y "admin" sin tocarlas: los links de Lumio siguen igual.
+//
+// Rutas públicas (sin llave):
+//   GET  /colegios · POST /buscar · POST /solicitud · GET /vista-previa/:guia_id
+//   POST /borrador · GET /borrador/:clave · POST /borrador/:clave/generar
+//   POST /pago/crear · GET /pago/estado/:compra_id · POST /pago/webhook (Stripe)
+//   POST /acceso/:token · POST /progreso/:token · POST /reporte · GET /datos-curiosos
+// Rutas internas: POST /trabajo/:id/paso (solo la propia función, cabecera x-interno)
+// Rutas de administración (cabecera x-admin-key, la misma llave del panel de accesos): /admin/...
+//
+// Motores: la IA (ANTHROPIC_API_KEY), Stripe (STRIPE_SECRET_KEY, motor en blanco mientras no exista)
+// y el correo (RESEND_API_KEY) se encienden solos cuando Daniel pone cada secreto en Supabase.
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { ejecutarPaso, recortarVistaPrevia, aplanar, type Trabajo } from "./pipeline.ts";
+
+const VERSION = "2026-11-06.1";
+const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+const SELF = `${SUPABASE_URL}/functions/v1/sparked`;
+const BUCKET = "materiales";
+const PAGINAS_MAX = 15;
+const DIAS_ACCESO = 7;
+const APARATOS = 2;
+
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "content-type, x-admin-key, x-interno",
+  "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS",
+};
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+const error = (mensaje: string, status = 400) => json({ error: mensaje }, status);
+
+// ---------- Utilidades ----------
+const ALFABETO = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function nuevoToken(n = 14): string { const b = crypto.getRandomValues(new Uint8Array(n)); let s = ""; for (const x of b) s += ALFABETO[x % ALFABETO.length]; return s; }
+async function sha256hex(s: string): Promise<string> { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
+const esUuid = (u: unknown): u is string => typeof u === "string" && /^[0-9a-f-]{36}$/i.test(u);
+const esToken = (t: unknown): t is string => typeof t === "string" && /^[A-Za-z0-9]{8,64}$/.test(t);
+const esSecreto = (s: unknown): s is string => typeof s === "string" && /^[A-Za-z0-9]{16,64}$/.test(s);
+const esClave = (c: unknown): c is string => typeof c === "string" && /^[A-Za-z0-9]{16,40}$/.test(c);
+const esCorreo = (c: unknown): c is string => typeof c === "string" && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c) && c.length <= 120;
+function limpiarTel(t: unknown): string { let d = String(t ?? "").replace(/\D/g, ""); if (d.length === 12 && d.startsWith("52")) d = d.slice(2); if (d.length === 13 && d.startsWith("521")) d = d.slice(3); return d; }
+const texto = (v: unknown, max = 120) => String(v ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+const ipDe = (req: Request) => (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || (req.headers.get("cf-connecting-ip") ?? "") || null;
+const ahora = () => new Date().toISOString();
+const enDias = (d: number) => new Date(Date.now() + d * 86400 * 1000).toISOString();
+async function leerJson(req: Request): Promise<Record<string, any>> { try { return (await req.json()) ?? {}; } catch { return {}; } }
+function enSegundoPlano(p: Promise<unknown>) {
+  const ER = (globalThis as any).EdgeRuntime;
+  const seguro = p.catch((e) => console.error("segundo plano:", (e as Error).message));
+  if (ER?.waitUntil) ER.waitUntil(seguro);
+}
+
+// ---------- Configuración (tabla config, llaves sparked_*) ----------
+const CONFIG_DEF: Record<string, string> = {
+  sparked_sitio: "https://danflores01.github.io/accesos-lumio/sparked/",
+  sparked_precio: "85",
+  sparked_tope_diario: "80",       // compras por día en todo el sitio
+  sparked_tope_familia: "6",       // compras por día por teléfono o correo
+  sparked_tipo_cambio: "18.5",     // pesos por dólar para la ficha de costos
+  sparked_whatsapp: "",            // WhatsApp de SparkEd (10 dígitos) para confirmar pagos manuales
+  sparked_correo_aviso: "",        // correo de Daniel para avisos de ventas
+  sparked_correo_remitente: "SparkEd <onboarding@resend.dev>",
+};
+let configCache: { en: number; valores: Record<string, string> } | null = null;
+async function config(): Promise<Record<string, string>> {
+  if (configCache && Date.now() - configCache.en < 60_000) return configCache.valores;
+  const { data } = await supabase.from("config").select("clave, valor").like("clave", "sparked_%");
+  const valores = { ...CONFIG_DEF };
+  for (const r of data ?? []) if (r.valor !== null && r.valor !== undefined && String(r.valor) !== "") valores[r.clave] = String(r.valor);
+  configCache = { en: Date.now(), valores };
+  return valores;
+}
+const sitio = async () => (await config()).sparked_sitio.replace(/\/?$/, "/");
+const linkDe = (base: string, token: string) => `${base}guia.html#${token}`;
+
+// ---------- Llave de administrador (la misma del panel de accesos) ----------
+const CLAVES_CONFIG = ["admin_key_sha256", "recovery_key_sha256"];
+let hashes: string[] | null = null;
+async function cargarHashes(): Promise<string[]> { const { data } = await supabase.from("config").select("valor").in("clave", CLAVES_CONFIG); return (data ?? []).map((r) => r.valor); }
+async function autorizado(req: Request): Promise<boolean> {
+  const clave = req.headers.get("x-admin-key") ?? ""; if (!clave) return false;
+  const h = await sha256hex(clave);
+  if (!hashes) hashes = await cargarHashes();
+  if (hashes.includes(h)) return true;
+  hashes = await cargarHashes();
+  return hashes.includes(h);
+}
+let internoCache = "";
+async function claveInterna(): Promise<string> { if (!internoCache) internoCache = await sha256hex(SERVICE_KEY + ":sparked-interno"); return internoCache; }
+
+// ---------- Trabajos: un paso por ejecución, la función se llama a sí misma para el siguiente ----------
+function disparar(trabajoId: string, retrasoMs = 0) {
+  enSegundoPlano((async () => {
+    if (retrasoMs) await new Promise((r) => setTimeout(r, retrasoMs));
+    const r = await fetch(`${SELF}/trabajo/${trabajoId}/paso`, { method: "POST", headers: { "content-type": "application/json", "x-interno": await claveInterna() }, body: "{}" });
+    if (!r.ok) console.warn("No se pudo disparar el paso", trabajoId, r.status);
+  })());
+}
+async function cargarTrabajo(id: string): Promise<(Trabajo & { actualizado_en: string; error: string | null }) | null> {
+  const { data } = await supabase.from("trabajos").select("*").eq("id", id).maybeSingle();
+  return (data as any) ?? null;
+}
+async function fuenteDe(t: Trabajo) {
+  const { data: b } = await supabase.from("borradores").select("archivos, grado, materia, colegio_texto").eq("id", t.borrador_id).maybeSingle();
+  if (!b) throw new Error("El borrador de este trabajo ya no existe");
+  return { archivos: (b.archivos ?? []) as { ruta: string; nombre: string }[], grado: b.grado ?? "", materia: b.materia ?? "", colegio: b.colegio_texto ?? "", idioma_alumno: "es" };
+}
+const ERRORES_DEFINITIVOS = /no parecen material|No se pudo leer ninguna foto|Falta configurar|ya no existe|no_es_material/i;
+
+async function correrPaso(id: string) {
+  const t = await cargarTrabajo(id);
+  if (!t || t.estado === "listo" || t.estado === "error") return;
+  // Si otra ejecución lo está corriendo (menos de 140 s), no se duplica.
+  if (t.estado === "corriendo" && Date.now() - new Date(t.actualizado_en).getTime() < 140_000) return;
+  await supabase.from("trabajos").update({ estado: "corriendo", actualizado_en: ahora() }).eq("id", id);
+  t.estado = "corriendo";
+  try {
+    const fuente = await fuenteDe(t);
+    const sig = await ejecutarPaso(supabase as any, t, fuente);
+    if (sig === null) await alFinalizar(t);
+    else { await supabase.from("trabajos").update({ estado: "pendiente", actualizado_en: ahora() }).eq("id", id); disparar(id); }
+  } catch (e) {
+    const msg = (e as Error).message ?? String(e);
+    console.error("Paso falló", id, t.paso, msg);
+    const intentos = Number(t.intentos ?? 0) + 1;
+    const definitivo = intentos >= 3 || ERRORES_DEFINITIVOS.test(msg);
+    await supabase.from("trabajos").update({ estado: definitivo ? "error" : "pendiente", error: msg.slice(0, 500), intentos, actualizado_en: ahora() }).eq("id", id);
+    if (definitivo) {
+      const amable = /no parecen material/i.test(msg) ? "Las fotos no parecen material de estudio. Sube apuntes, páginas del libro o temarios." : /No se pudo leer ninguna foto/i.test(msg) ? msg : /Falta configurar/i.test(msg) ? "El generador todavía no está encendido. Avísanos por WhatsApp y lo activamos." : "No pudimos terminar tu guía. Intenta de nuevo con fotos más claras.";
+      if (t.borrador_id) await supabase.from("borradores").update({ estado: "fallido" }).eq("id", t.borrador_id).neq("estado", "pagado");
+      await supabase.from("trabajos").update({ progreso: { pct: 0, mensaje: amable, paso: t.paso } }).eq("id", id);
+    } else disparar(id, 6000);
+  }
+}
+
+// Reanuda un trabajo que se quedó a medias (la ejecución anterior se cortó). Lo llaman las consultas de estado.
+async function reanudarSiAtorado(t: { id: string; estado: string; actualizado_en: string; intentos: number } | null) {
+  if (!t || !["pendiente", "corriendo"].includes(t.estado)) return;
+  const quieto = Date.now() - new Date(t.actualizado_en).getTime();
+  if (quieto < 150_000) return;
+  if (Number(t.intentos ?? 0) >= 6) { await supabase.from("trabajos").update({ estado: "error", error: "Se interrumpió demasiadas veces", actualizado_en: ahora() }).eq("id", t.id); return; }
+  await supabase.from("trabajos").update({ estado: "pendiente", intentos: Number(t.intentos ?? 0) + 1, actualizado_en: ahora() }).eq("id", t.id);
+  disparar(t.id);
+}
+
+// Al terminar la cadena: guarda el cartucho (vista previa o completo) en la guía.
+async function alFinalizar(t: Trabajo) {
+  const D = t.datos as any;
+  const cartucho = D.cartucho;
+  if (!cartucho?.plan) throw new Error("El trabajo terminó sin cartucho");
+  cartucho.completo = t.alcance !== "vista_previa";
+  const cfg = await config();
+  const costoMxn = Number(t.costo_usd ?? 0) * (Number(cfg.sparked_tipo_cambio) || 18.5);
+  const plan = cartucho.plan;
+  const { data: borrador } = await supabase.from("borradores").select("*").eq("id", t.borrador_id).maybeSingle();
+  const base = {
+    titulo: texto(plan.identidad?.titulo, 120) || `${borrador?.materia ?? "Guía"} · ${borrador?.grado ?? ""}`.trim(),
+    idioma: plan.idioma_guia ?? "es", perfil_edad: plan.perfil_edad ?? null, paleta: plan.identidad?.paleta ?? null,
+    cartucho, vista_previa: recortarVistaPrevia(cartucho),
+  };
+  if (t.alcance === "vista_previa") {
+    const { data: g, error: e } = await supabase.from("guias").insert({
+      ...base, estado: "borrador", origen: "personalizada", colegio_id: borrador?.colegio_id ?? null, grado: borrador?.grado ?? null, materia: borrador?.materia ?? null,
+      borrador_id: t.borrador_id, costo_mxn: costoMxn.toFixed(2),
+      reporte: { etapa: "vista_previa", costo_usd: Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, bloques_plan: plan.bloques_plan?.length ?? 0 },
+    }).select("id").single();
+    if (e) throw e;
+    await supabase.from("borradores").update({ estado: "vista_previa", guia_id: g.id }).eq("id", t.borrador_id);
+    await supabase.from("trabajos").update({ guia_id: g.id }).eq("id", t.id);
+    return;
+  }
+  const guiaId = t.guia_id ?? borrador?.guia_id;
+  if (!guiaId) throw new Error("No hay guía a la que pegar el cartucho");
+  const { data: g } = await supabase.from("guias").select("origen, reporte, costo_mxn, estado").eq("id", guiaId).maybeSingle();
+  const costoPrevio = Number(g?.reporte?.costo_usd ?? 0);
+  const cambios: Record<string, unknown> = {
+    ...base, costo_mxn: (Number(g?.costo_mxn ?? 0) + costoMxn).toFixed(2),
+    reporte: { etapa: "completa", costo_usd: costoPrevio + Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, verificacion: D.verificacion ?? [], huecos: D.huecos ?? [], fotos: D.fotos ?? [], tipo_material: D.tipo_material ?? [], imagenes: Object.keys(D.imagenes ?? {}).length, terminado_en: ahora() },
+  };
+  if (g?.origen === "personalizada") cambios.estado = "publicada";
+  const { error: e2 } = await supabase.from("guias").update(cambios).eq("id", guiaId);
+  if (e2) throw e2;
+  if (borrador) await supabase.from("borradores").update({ estado: borrador.estado === "pagado" ? "listo" : borrador.estado === "generando" ? "listo" : borrador.estado }).eq("id", borrador.id);
+}
+
+// ---------- Archivos en el bucket privado ----------
+async function urlsDeSubida(rutas: { ruta: string; nombre: string }[]) {
+  const subidas: { nombre: string; url: string }[] = [];
+  for (const a of rutas) {
+    const { data, error: e } = await supabase.storage.from(BUCKET).createSignedUploadUrl(a.ruta, { upsert: true } as any);
+    if (e || !data) throw new Error("No se pudo preparar la subida: " + (e?.message ?? ""));
+    subidas.push({ nombre: a.nombre, url: data.signedUrl });
+  }
+  return subidas;
+}
+async function archivosSubidos(carpeta: string): Promise<Set<string>> {
+  const { data } = await supabase.storage.from(BUCKET).list(carpeta, { limit: 100 });
+  return new Set((data ?? []).map((f) => `${carpeta}/${f.name}`));
+}
+async function borrarCarpeta(carpeta: string) {
+  const { data } = await supabase.storage.from(BUCKET).list(carpeta, { limit: 100 });
+  const rutas = (data ?? []).map((f) => `${carpeta}/${f.name}`);
+  if (rutas.length) await supabase.storage.from(BUCKET).remove(rutas);
+}
+function validarPaginas(paginas: unknown): { nombre: string; tipo: string; tamano: number }[] | string {
+  if (!Array.isArray(paginas) || !paginas.length) return "Sube al menos una página.";
+  if (paginas.length > PAGINAS_MAX) return `Máximo ${PAGINAS_MAX} páginas por guía.`;
+  const out = [];
+  for (const p of paginas) {
+    const tamano = Number((p as any)?.tamano ?? 0);
+    if (tamano > 8 * 1024 * 1024) return "Cada página debe pesar menos de 8 MB.";
+    out.push({ nombre: texto((p as any)?.nombre, 80) || `pagina-${out.length + 1}.jpg`, tipo: "image/jpeg", tamano });
+  }
+  return out;
+}
+
+// ---------- Limpieza (sin pg_cron: se corre de vez en cuando con las peticiones y desde el panel) ----------
+async function limpieza(): Promise<{ borradores: number; guias: number }> {
+  let nb = 0, ng = 0;
+  const { data: viejos } = await supabase.from("borradores").select("id, guia_id, estado, archivos").lt("expira_en", ahora()).not("estado", "in", "(pagado,listo)").limit(20);
+  for (const b of viejos ?? []) {
+    await borrarCarpeta(`borradores/${b.id}`);
+    if (b.guia_id) {
+      const { count } = await supabase.from("compras").select("id", { count: "exact", head: true }).eq("guia_id", b.guia_id).eq("estado", "pagada");
+      if (!count) await supabase.from("guias").delete().eq("id", b.guia_id);
+    }
+    await supabase.from("borradores").delete().eq("id", b.id);
+    nb++;
+  }
+  // Guías personalizadas vencidas: se borra el contenido, queda la ficha en compras.
+  const { data: vencidas } = await supabase.from("guias").select("id, borrador_id").lt("borrar_en", ahora()).not("cartucho", "is", null).limit(20);
+  for (const g of vencidas ?? []) {
+    await supabase.from("guias").update({ cartucho: null, vista_previa: null, estado: "archivada", archivada_en: ahora() }).eq("id", g.id);
+    if (g.borrador_id) { await borrarCarpeta(`borradores/${g.borrador_id}`); await supabase.from("borradores").delete().eq("id", g.borrador_id); }
+    ng++;
+  }
+  return { borradores: nb, guias: ng };
+}
+
+// ---------- Pago y entrega ----------
+async function crearSesionStripe(compra: any, titulo: string, precio: number): Promise<{ id: string; url: string }> {
+  const key = Deno.env.get("STRIPE_SECRET_KEY")!;
+  const base = await sitio();
+  const p = new URLSearchParams({
+    mode: "payment", "line_items[0][quantity]": "1",
+    "line_items[0][price_data][currency]": "mxn", "line_items[0][price_data][unit_amount]": String(Math.round(precio * 100)),
+    "line_items[0][price_data][product_data][name]": `Guía interactiva SparkEd: ${titulo}`.slice(0, 120),
+    success_url: `${base}listo.html?compra=${compra.id}`, cancel_url: `${base}index.html?cancelado=1`,
+    "metadata[compra_id]": compra.id, "payment_intent_data[metadata][compra_id]": compra.id, customer_email: compra.correo,
+  });
+  const r = await fetch("https://api.stripe.com/v1/checkout/sessions", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/x-www-form-urlencoded" }, body: p });
+  const d = await r.json();
+  if (!r.ok) throw new Error("Stripe: " + (d.error?.message ?? r.status));
+  return { id: d.id, url: d.url };
+}
+async function firmaStripeValida(cuerpo: string, cabecera: string | null, secreto: string): Promise<boolean> {
+  if (!cabecera) return false;
+  const partes = Object.fromEntries(cabecera.split(",").map((x) => x.split("=") as [string, string]));
+  const t = partes.t; const firmas = cabecera.split(",").filter((x) => x.startsWith("v1=")).map((x) => x.slice(3));
+  if (!t || !firmas.length || Math.abs(Date.now() / 1000 - Number(t)) > 300) return false;
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(secreto), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const f = [...new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(`${t}.${cuerpo}`)))].map((x) => x.toString(16).padStart(2, "0")).join("");
+  return firmas.includes(f);
+}
+
+async function confirmarPago(compraId: string, extra: { stripe_session_id?: string; monto?: number; manual?: boolean } = {}) {
+  const { data: compra } = await supabase.from("compras").select("*").eq("id", compraId).maybeSingle();
+  if (!compra) throw new Error("Esa compra no existe");
+  if (compra.estado !== "pagada") {
+    const cambios: Record<string, unknown> = { estado: "pagada", pagada_en: ahora() };
+    if (extra.stripe_session_id) cambios.stripe_session_id = extra.stripe_session_id;
+    if (extra.monto) cambios.monto_mxn = extra.monto;
+    const { error: e } = await supabase.from("compras").update(cambios).eq("id", compraId);
+    if (e) throw e;
+    Object.assign(compra, cambios);
+  }
+  const entrega = await entregar(compra);
+  return { compra, ...entrega };
+}
+
+// Crea (una sola vez) la clase y el acceso de 7 días y 2 aparatos para esa compra; manda el correo.
+async function entregar(compra: any): Promise<{ token: string; expira_en: string; link: string; lista: boolean }> {
+  const base = await sitio();
+  if (compra.acceso_id) {
+    const { data: a } = await supabase.from("accesos").select("token, expira_en").eq("id", compra.acceso_id).maybeSingle();
+    if (a) { const { data: g } = await supabase.from("guias").select("completo:cartucho->completo").eq("id", compra.guia_id).maybeSingle(); return { token: a.token, expira_en: a.expira_en, link: linkDe(base, a.token), lista: g?.completo === true }; }
+  }
+  const { data: guia } = await supabase.from("guias").select("id, titulo, clase_id, origen, colegio_id, grado, materia, borrador_id, estado, completo:cartucho->completo").eq("id", compra.guia_id).maybeSingle();
+  if (!guia) throw new Error("La guía de esta compra ya no existe");
+  let claseId = guia.clase_id as string | null;
+  if (!claseId) {
+    const { data: c, error: e } = await supabase.from("clases").insert({
+      nombre: `SparkEd · ${guia.titulo ?? "Guía"}`.slice(0, 90), url_destino: `${base}guia.html`, tipo: "guia", activa: true, libre: false,
+      max_dispositivos: APARATOS, vigencia_horas: DIAS_ACCESO * 24, minutos_tras_apertura: DIAS_ACCESO * 24 * 60, max_usos: 1000000,
+      colegio_id: guia.colegio_id, grado: guia.grado, materia: guia.materia,
+    }).select("id").single();
+    if (e) throw e;
+    claseId = c.id;
+    await supabase.from("guias").update({ clase_id: claseId }).eq("id", guia.id);
+  }
+  const expira = enDias(DIAS_ACCESO);
+  const { data: acceso, error: ea } = await supabase.from("accesos").insert({
+    token: nuevoToken(), clase_id: claseId, alumno: texto(compra.nombre, 60) || "Familia", telefono: compra.telefono || null,
+    nota: `SparkEd · folio ${String(compra.id).slice(0, 8).toUpperCase()}`, expira_en: expira, minutos_tras_apertura: DIAS_ACCESO * 24 * 60, max_usos: 1000000, enviado_en: ahora(),
+  }).select("id, token").single();
+  if (ea) throw ea;
+  await supabase.from("compras").update({ acceso_id: acceso.id }).eq("id", compra.id);
+  if (guia.origen === "personalizada") {
+    const cambios: Record<string, unknown> = { borrar_en: enDias(DIAS_ACCESO + 1) };
+    if (guia.completo === true) cambios.estado = "publicada";
+    await supabase.from("guias").update(cambios).eq("id", guia.id);
+    if (guia.borrador_id) {
+      await supabase.from("borradores").update({ estado: "pagado", pagado_en: ahora(), nombre: compra.nombre, telefono: compra.telefono, correo: compra.correo, expira_en: enDias(DIAS_ACCESO + 1) }).eq("id", guia.borrador_id);
+      if (guia.completo !== true) await lanzarResto(guia.id, guia.borrador_id);
+    }
+  }
+  const link = linkDe(base, acceso.token);
+  enSegundoPlano(enviarCorreo(compra, guia.titulo ?? "Tu guía", link, expira));
+  return { token: acceso.token, expira_en: expira, link, lista: guia.completo === true };
+}
+
+// Después del pago de una guía personalizada: se generan los bloques que faltan a partir de la vista previa.
+async function lanzarResto(guiaId: string, borradorId: string) {
+  const { data: existente } = await supabase.from("trabajos").select("id, estado").eq("guia_id", guiaId).eq("alcance", "resto").limit(1).maybeSingle();
+  if (existente) return;
+  const { data: vp } = await supabase.from("trabajos").select("*").eq("borrador_id", borradorId).eq("alcance", "vista_previa").eq("estado", "listo").order("creado_en", { ascending: false }).limit(1).maybeSingle();
+  if (!vp) throw new Error("No existe la vista previa para continuar la guía");
+  const datos = { ...(vp.datos as any) }; delete datos.cartucho;
+  const nBloques = datos.plan?.bloques?.length ?? 1;
+  const paso = nBloques > 1 ? "generar:1" : "revisar";
+  const { data: t, error: e } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: borradorId, guia_id: guiaId, alcance: "resto", paso, estado: "pendiente", datos, progreso: { pct: 42, mensaje: nBloques > 1 ? `Escribiendo el bloque 2 de ${nBloques} ✍️` : "Revisando que todo esté perfecto ✅", paso } }).select("id").single();
+  if (e) throw e;
+  disparar(t.id);
+}
+
+async function enviarCorreo(compra: any, titulo: string, link: string, expira: string) {
+  const key = Deno.env.get("RESEND_API_KEY");
+  if (!key || !esCorreo(compra.correo)) return;
+  const cfg = await config();
+  const fecha = new Date(expira).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short", timeZone: "America/Mexico_City" });
+  const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1b1b1f">
+    <div style="background:#1b1b1f;color:#FFD400;padding:14px 18px;border-radius:12px 12px 0 0;font-weight:800;font-size:20px">⚡ SparkEd</div>
+    <div style="border:1px solid #e5e7eb;border-top:0;padding:18px;border-radius:0 0 12px 12px">
+      <h2 style="margin:0 0 6px">¡Tu guía está lista! 🎉</h2><p style="margin:0 0 14px;color:#555">${esc(titulo)}</p>
+      <p><a href="${esc(link)}" style="display:inline-block;background:#FFD400;color:#1b1b1f;padding:12px 18px;border-radius:10px;font-weight:800;text-decoration:none">▶ Abrir la guía</a></p>
+      <p style="font-size:13px;color:#555;word-break:break-all">Si el botón no abre, copia este link: ${esc(link)}</p>
+      <div style="background:#fff8d6;border-left:4px solid #FFD400;padding:10px 12px;border-radius:8px;font-size:14px">
+        <b>Cómo funciona tu acceso</b><ul style="margin:6px 0 0;padding-left:18px"><li>Vale <b>${DIAS_ACCESO} días</b>: hasta el ${esc(fecha)}.</li><li>Acepta <b>${APARATOS} aparatos</b> (por ejemplo tu celular y el iPad del alumno). Al tercero le aparece "Acceso en uso en otros aparatos".</li><li>Es de tu familia: no lo compartas en otros chats.</li></ul></div>
+      <p style="font-size:12px;color:#888">Folio ${esc(String(compra.id).slice(0, 8).toUpperCase())} · $${esc(compra.monto_mxn)} MXN IVA incluido</p>
+    </div></div>`;
+  const enviar = (to: string, subject: string, cuerpo: string) => fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ from: cfg.sparked_correo_remitente, to: [to], subject, html: cuerpo }) }).then(async (r) => { if (!r.ok) console.warn("Resend", r.status, (await r.text()).slice(0, 200)); });
+  await enviar(compra.correo, `Tu guía SparkEd: ${titulo}`, html);
+  if (esCorreo(cfg.sparked_correo_aviso)) await enviar(cfg.sparked_correo_aviso, `Venta SparkEd: ${titulo}`, `<p>Compra pagada: <b>${esc(titulo)}</b></p><p>${esc(compra.nombre)} · ${esc(compra.telefono)} · ${esc(compra.correo)}</p><p>Folio ${esc(String(compra.id).slice(0, 8).toUpperCase())} · $${esc(compra.monto_mxn)} MXN</p>`);
+}
+
+// Vista previa de una guía (si no está guardada, se recorta del cartucho).
+async function vistaPreviaDe(g: { vista_previa: any; cartucho: any }) { return g.vista_previa ?? (g.cartucho ? recortarVistaPrevia(g.cartucho) : null); }
+
+// Normaliza un cartucho subido a mano (actividades agrupadas → lista con tipo).
+function normalizarCartucho(c: any) {
+  if (!c || typeof c !== "object" || !Array.isArray(c.bloques) || !c.bloques.length) throw new Error("El cartucho debe traer plan y bloques");
+  c.plan = c.plan ?? {}; c.plan.identidad = c.plan.identidad ?? {};
+  c.bloques = c.bloques.map((b: any, i: number) => ({ ...b, id: b.id ?? `b${i + 1}`, pistas: b.pistas ?? [], actividades: aplanar(b.actividades), mini_examen: aplanar(b.mini_examen) }));
+  c.completo = true;
+  return c;
+}
+
+// ---------- Servidor ----------
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  const url = new URL(req.url);
+  const partes = url.pathname.split("/").filter(Boolean);
+  const ruta = partes.slice(partes.lastIndexOf("sparked") + 1).map((x) => decodeURIComponent(x));
+  const [r0, r1, r2] = ruta;
+  const m = req.method;
+
+  try {
+    if (!r0) return json({ ok: true, servicio: "SparkEd", version: VERSION });
+
+    // ---------- Interno: un paso de un trabajo ----------
+    if (r0 === "trabajo" && esUuid(r1) && r2 === "paso" && m === "POST") {
+      if ((req.headers.get("x-interno") ?? "") !== await claveInterna()) return error("No autorizado", 401);
+      enSegundoPlano(correrPaso(r1));
+      return json({ ok: true, aceptado: true }, 202);
+    }
+
+    // ---------- Público ----------
+    if (r0 === "colegios" && m === "GET") {
+      const { data } = await supabase.from("colegios").select("id, nombre").eq("activo", true).order("orden").order("nombre");
+      return json({ colegios: data ?? [] });
+    }
+
+    if (r0 === "buscar" && m === "POST") {
+      const b = await leerJson(req);
+      const grado = texto(b.grado, 60), materia = texto(b.materia, 60);
+      if (!grado || !materia) return error("Elige grado y materia.");
+      const colegioId = esUuid(b.colegio_id) ? b.colegio_id : null;
+      const { data } = await supabase.from("guias").select("id, titulo, materia, grado, examen, fecha_examen, colegio_id, publicada_en").eq("estado", "publicada").eq("origen", "biblioteca").ilike("grado", grado).ilike("materia", materia).order("publicada_en", { ascending: false });
+      const guias = (data ?? []).filter((g) => (colegioId && g.colegio_id === colegioId) || g.colegio_id === null).sort((a, b2) => Number(b2.colegio_id === colegioId) - Number(a.colegio_id === colegioId));
+      if (Math.random() < 0.1) enSegundoPlano(limpieza());
+      return json({ guias: guias.map(({ colegio_id: _c, ...g }) => g) });
+    }
+
+    if (r0 === "solicitud" && m === "POST") {
+      const b = await leerJson(req);
+      const fila = { colegio_id: esUuid(b.colegio_id) ? b.colegio_id : null, colegio_texto: texto(b.colegio_texto, 80) || null, grado: texto(b.grado, 60) || null, materia: texto(b.materia, 60) || null, nombre: texto(b.nombre, 80) || null, telefono: limpiarTel(b.telefono) || null, correo: esCorreo(b.correo) ? b.correo.trim().toLowerCase() : null };
+      if (!fila.grado || !fila.materia) return error("Faltan el grado y la materia.");
+      if (!fila.telefono && !fila.correo) return error("Deja un WhatsApp o un correo para avisarte.");
+      const { data: previa } = await supabase.from("solicitudes").select("id").eq("grado", fila.grado).eq("materia", fila.materia).or(`telefono.eq.${fila.telefono ?? "x"},correo.eq.${fila.correo ?? "x"}`).gte("creada_en", new Date(Date.now() - 7 * 86400 * 1000).toISOString()).limit(1);
+      if (!previa?.length) { const { error: e } = await supabase.from("solicitudes").insert(fila); if (e) throw e; }
+      return json({ ok: true });
+    }
+
+    if (r0 === "vista-previa" && esUuid(r1) && m === "GET") {
+      const { data: g } = await supabase.from("guias").select("id, titulo, materia, grado, examen, fecha_examen, vista_previa, cartucho, colegios(nombre)").eq("id", r1).eq("estado", "publicada").eq("origen", "biblioteca").maybeSingle();
+      if (!g) return error("Esa guía no está disponible", 404);
+      const vp = await vistaPreviaDe(g);
+      if (!vp) return error("Esa guía no tiene vista previa", 404);
+      return json({ vista_previa: vp, guia: { id: g.id, titulo: g.titulo, materia: g.materia, grado: g.grado, examen: g.examen, fecha_examen: g.fecha_examen, colegio: (g as any).colegios?.nombre ?? null } });
+    }
+
+    if (r0 === "borrador" && !r1 && m === "POST") {
+      const b = await leerJson(req);
+      const paginas = validarPaginas(b.paginas);
+      if (typeof paginas === "string") return error(paginas);
+      const grado = texto(b.grado, 60), materia = texto(b.materia, 60);
+      if (!grado || !materia) return error("Elige grado y materia.");
+      const cfg = await config();
+      const { count } = await supabase.from("borradores").select("id", { count: "exact", head: true }).gte("creado_en", new Date(Date.now() - 86400 * 1000).toISOString());
+      if ((count ?? 0) >= Number(cfg.sparked_tope_diario) * 3) return error("Hoy ya se alcanzó el límite de guías. Intenta mañana.", 429);
+      const id = crypto.randomUUID(); const clave = nuevoToken(24);
+      const archivos = paginas.map((p, k) => ({ ruta: `borradores/${id}/${k + 1}.jpg`, nombre: p.nombre, tipo: p.tipo, tamano: p.tamano }));
+      const { error: e } = await supabase.from("borradores").insert({ id, clave, servicio: 2, colegio_id: esUuid(b.colegio_id) ? b.colegio_id : null, colegio_texto: texto(b.colegio_texto, 80) || null, grado, materia, paginas: paginas.length, archivos, estado: "subiendo" });
+      if (e) throw e;
+      if (Math.random() < 0.2) enSegundoPlano(limpieza());
+      return json({ clave, subidas: await urlsDeSubida(archivos) }, 201);
+    }
+
+    if (r0 === "borrador" && esClave(r1) && r2 === "generar" && m === "POST") {
+      const { data: b } = await supabase.from("borradores").select("*").eq("clave", r1).maybeSingle();
+      if (!b) return error("Ese borrador no existe o ya venció", 404);
+      if (b.trabajo_id && b.estado !== "subiendo") return json({ ok: true, estado: b.estado });
+      const subidos = await archivosSubidos(`borradores/${b.id}`);
+      const archivos = (b.archivos as any[]).filter((a) => subidos.has(a.ruta));
+      if (!archivos.length) return error("No llegaron las páginas. Intenta subirlas de nuevo.");
+      const { data: t, error: e } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: b.id, alcance: "vista_previa", paso: "inicio", estado: "pendiente", progreso: { pct: 1, mensaje: "Preparando tus páginas 📖", paso: "inicio" } }).select("id").single();
+      if (e) throw e;
+      await supabase.from("borradores").update({ estado: "generando", trabajo_id: t.id, archivos, paginas: archivos.length }).eq("id", b.id);
+      disparar(t.id);
+      return json({ ok: true, estado: "generando", trabajo_id: t.id }, 202);
+    }
+
+    if (r0 === "borrador" && esClave(r1) && !r2 && m === "GET") {
+      const { data: b } = await supabase.from("borradores").select("id, estado, trabajo_id, guia_id, expira_en, grado, materia, pagado_en").eq("clave", r1).maybeSingle();
+      if (!b) return error("Ese borrador no existe o ya venció", 404);
+      if (new Date(b.expira_en).getTime() < Date.now() && !["pagado", "listo"].includes(b.estado)) return json({ estado: "expirado" });
+      let progreso: any = null, err: string | null = null;
+      if (b.trabajo_id) {
+        const t = await cargarTrabajo(b.trabajo_id);
+        if (t) { progreso = t.progreso; if (t.estado === "error") { err = (t.progreso as any)?.mensaje ?? null; if (b.estado === "generando") { await supabase.from("borradores").update({ estado: "fallido" }).eq("id", b.id); b.estado = "fallido"; } } await reanudarSiAtorado(t); }
+      }
+      let vista_previa: any = null, titulo: string | null = null;
+      if (b.guia_id && ["vista_previa", "pagado", "listo"].includes(b.estado)) {
+        const { data: g } = await supabase.from("guias").select("titulo, vista_previa, cartucho").eq("id", b.guia_id).maybeSingle();
+        if (g) { titulo = g.titulo; vista_previa = await vistaPreviaDe(g); }
+      }
+      return json({ estado: b.estado, progreso, error: err, titulo, vista_previa, grado: b.grado, materia: b.materia, expira_en: b.expira_en });
+    }
+
+    // ---------- Pago ----------
+    if (r0 === "pago" && r1 === "crear" && m === "POST") {
+      const b = await leerJson(req);
+      const nombre = texto(b.nombre, 80), telefono = limpiarTel(b.telefono), correo = esCorreo(b.correo) ? String(b.correo).trim().toLowerCase() : "";
+      if (nombre.length < 2) return error("Escribe el nombre de quien pide la guía.");
+      if (telefono.length !== 10) return error("Escribe un WhatsApp de 10 dígitos.");
+      if (!correo) return error("Escribe un correo válido.");
+      const cfg = await config();
+      const precio = Number(cfg.sparked_precio) || 85;
+      let guia: any = null, borrador: any = null;
+      if (esClave(b.clave)) {
+        const { data: bo } = await supabase.from("borradores").select("*").eq("clave", b.clave).maybeSingle();
+        if (!bo || !bo.guia_id) return error("Tu guía todavía no tiene vista previa. Espera a que termine.");
+        borrador = bo;
+        const { data: g } = await supabase.from("guias").select("id, titulo, grado, materia, colegio_id, origen").eq("id", bo.guia_id).maybeSingle();
+        guia = g;
+      } else if (esUuid(b.guia_id)) {
+        const { data: g } = await supabase.from("guias").select("id, titulo, grado, materia, colegio_id, origen, colegios(nombre)").eq("id", b.guia_id).eq("estado", "publicada").eq("origen", "biblioteca").maybeSingle();
+        guia = g;
+      }
+      if (!guia) return error("Esa guía no está disponible", 404);
+      // Topes contra abusos: por familia y por día.
+      const hace24 = new Date(Date.now() - 86400 * 1000).toISOString();
+      const { count: porFamilia } = await supabase.from("compras").select("id", { count: "exact", head: true }).or(`telefono.eq.${telefono},correo.eq.${correo}`).gte("creada_en", hace24).neq("estado", "fallida");
+      if ((porFamilia ?? 0) >= Number(cfg.sparked_tope_familia)) return error(`Por seguridad, solo se pueden pedir ${cfg.sparked_tope_familia} guías al día por familia.`, 429);
+      const { count: porDia } = await supabase.from("compras").select("id", { count: "exact", head: true }).gte("creada_en", hace24).neq("estado", "fallida");
+      if ((porDia ?? 0) >= Number(cfg.sparked_tope_diario)) return error("Hoy ya se alcanzó el límite de guías. Intenta mañana.", 429);
+      // Si ya hay una compra pendiente de esta misma guía y familia (últimas 2 h), se reutiliza.
+      const { data: pendiente } = await supabase.from("compras").select("*").eq("guia_id", guia.id).eq("telefono", telefono).eq("estado", "pendiente").gte("creada_en", new Date(Date.now() - 2 * 3600 * 1000).toISOString()).order("creada_en", { ascending: false }).limit(1).maybeSingle();
+      let compra = pendiente;
+      if (!compra) {
+        const { data: c, error: e } = await supabase.from("compras").insert({ guia_id: guia.id, borrador_id: borrador?.id ?? null, monto_mxn: precio, estado: "pendiente", nombre, telefono, correo, colegio_texto: borrador?.colegio_texto ?? (guia as any).colegios?.nombre ?? null, grado: guia.grado, materia: guia.materia, titulo: guia.titulo }).select("*").single();
+        if (e) throw e; compra = c;
+      }
+      if (borrador) await supabase.from("borradores").update({ nombre, telefono, correo }).eq("id", borrador.id);
+      if (Deno.env.get("STRIPE_SECRET_KEY")) {
+        const s = await crearSesionStripe(compra, guia.titulo ?? "Guía", precio);
+        await supabase.from("compras").update({ stripe_session_id: s.id }).eq("id", compra.id);
+        return json({ modo: "stripe", url: s.url, compra_id: compra.id });
+      }
+      // Motor en blanco: la compra queda apartada y se confirma a mano desde el panel SparkEd.
+      const folio = String(compra.id).slice(0, 8).toUpperCase();
+      const wa = cfg.sparked_whatsapp.replace(/\D/g, "");
+      const whatsapp = wa.length >= 10 ? `https://wa.me/${wa.length === 10 ? "52" + wa : wa}?text=${encodeURIComponent(`Hola, quiero confirmar mi compra de la guía "${guia.titulo ?? ""}" (folio ${folio}). Soy ${nombre}.`)}` : null;
+      return json({ modo: "manual", compra_id: compra.id, folio, precio, mensaje: `Tu guía quedó apartada. El pago en línea se está configurando: en cuanto lo confirmemos ${whatsapp ? "por WhatsApp" : "contigo"}, tu link aparece aquí y te llega al correo ${correo}.`, whatsapp });
+    }
+
+    if (r0 === "pago" && r1 === "estado" && esUuid(r2) && m === "GET") {
+      const { data: c } = await supabase.from("compras").select("id, estado, titulo, correo, telefono, acceso_id, guia_id, pagada_en, monto_mxn").eq("id", r2).maybeSingle();
+      if (!c) return error("Esa compra no existe", 404);
+      const out: Record<string, unknown> = { estado: c.estado, titulo: c.titulo, correo: c.correo, telefono: c.telefono, pagada_en: c.pagada_en, folio: String(c.id).slice(0, 8).toUpperCase() };
+      if (c.estado === "pagada") {
+        let acceso = c.acceso_id ? (await supabase.from("accesos").select("token, expira_en").eq("id", c.acceso_id).maybeSingle()).data : null;
+        if (!acceso) { const e = await entregar(c); acceso = { token: e.token, expira_en: e.expira_en }; }
+        out.link = linkDe(await sitio(), acceso.token); out.token = acceso.token; out.expira_en = acceso.expira_en;
+        const { data: g } = await supabase.from("guias").select("completo:cartucho->completo").eq("id", c.guia_id).maybeSingle();
+        out.guia_lista = g?.completo === true;
+        if (!out.guia_lista) { const { data: t } = await supabase.from("trabajos").select("id, estado, progreso, actualizado_en, intentos").eq("guia_id", c.guia_id).eq("alcance", "resto").order("creado_en", { ascending: false }).limit(1).maybeSingle(); if (t) { out.progreso = t.progreso; await reanudarSiAtorado(t as any); } }
+      }
+      return json(out);
+    }
+
+    if (r0 === "pago" && r1 === "webhook" && m === "POST") {
+      const secreto = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+      if (!secreto) return error("El motor de pagos aún no está configurado", 503);
+      const cuerpo = await req.text();
+      if (!(await firmaStripeValida(cuerpo, req.headers.get("stripe-signature"), secreto))) return error("Firma no válida", 400);
+      const ev = JSON.parse(cuerpo);
+      if (["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(ev.type)) {
+        const s = ev.data?.object ?? {};
+        const compraId = s.metadata?.compra_id;
+        if (esUuid(compraId) && (s.payment_status === "paid" || ev.type === "checkout.session.async_payment_succeeded")) await confirmarPago(compraId, { stripe_session_id: s.id, monto: s.amount_total ? s.amount_total / 100 : undefined });
+      }
+      return json({ received: true });
+    }
+
+    // ---------- Acceso al reproductor ----------
+    if (r0 === "acceso" && esToken(r1) && m === "POST") {
+      const b = await leerJson(req);
+      const { data: a } = await supabase.from("accesos").select("id, clase_id, alumno, expira_en").eq("token", r1).maybeSingle();
+      if (!a) return json({ estado: "inexistente" }, 404);
+      const { data: cl } = await supabase.from("clases").select("id, tipo").eq("id", a.clase_id).maybeSingle();
+      if (!cl || cl.tipo !== "guia") return json({ estado: "inexistente" }, 404);
+      const { data: g } = await supabase.from("guias").select("id, titulo, estado, completo:cartucho->completo").eq("clase_id", cl.id).maybeSingle();
+      if (!g) return json({ estado: "inexistente" }, 404);
+      if (g.completo !== true) {
+        const { data: t } = await supabase.from("trabajos").select("id, estado, progreso, actualizado_en, intentos").eq("guia_id", g.id).in("alcance", ["resto", "completa"]).order("creado_en", { ascending: false }).limit(1).maybeSingle();
+        if (t) await reanudarSiAtorado(t as any);
+        return json({ estado: "generando", progreso: t?.progreso ?? null, titulo: g.titulo }, 202);
+      }
+      const dispositivo = esSecreto(b.dispositivo) ? b.dispositivo : nuevoToken(32);
+      const { data: res, error: e } = await supabase.rpc("consumir_acceso", { p_token: r1, p_ip: ipDe(req), p_ua: (req.headers.get("user-agent") ?? "").slice(0, 300), p_dispositivo: dispositivo });
+      if (e) throw e;
+      const r = (res?.[0] ?? { estado: "inexistente" }) as { estado: string };
+      if (r.estado !== "ok") return json({ estado: r.estado, dispositivo: null }, 403);
+      const [{ data: full }, { data: prog }] = await Promise.all([
+        supabase.from("guias").select("cartucho").eq("id", g.id).maybeSingle(),
+        supabase.from("progreso").select("datos").eq("acceso_id", a.id).eq("dispositivo_sha256", await sha256hex(dispositivo)).maybeSingle(),
+      ]);
+      return json({ estado: "ok", cartucho: full?.cartucho, guia_id: g.id, dispositivo, progreso: prog?.datos ?? null, expira_en: a.expira_en, alumno: a.alumno && !/^#\d+$/.test(a.alumno) ? a.alumno : null });
+    }
+
+    if (r0 === "progreso" && esToken(r1) && m === "POST") {
+      const b = await leerJson(req);
+      if (!esSecreto(b.dispositivo) || typeof b.datos !== "object" || JSON.stringify(b.datos ?? {}).length > 40_000) return error("Datos no válidos");
+      const { data: a } = await supabase.from("accesos").select("id").eq("token", r1).maybeSingle();
+      if (!a) return error("No existe", 404);
+      const hash = await sha256hex(b.dispositivo);
+      const { data: d } = await supabase.from("acceso_dispositivos").select("acceso_id").eq("acceso_id", a.id).eq("dispositivo_sha256", hash).maybeSingle();
+      if (!d) return error("Aparato no registrado", 403);
+      const { error: e } = await supabase.from("progreso").upsert({ acceso_id: a.id, dispositivo_sha256: hash, datos: b.datos, actualizado_en: ahora() });
+      if (e) throw e;
+      return json({ ok: true });
+    }
+
+    if (r0 === "reporte" && m === "POST") {
+      const b = await leerJson(req);
+      const comentario = texto(b.comentario, 500);
+      if (!comentario) return error("Escribe qué estaba mal.");
+      let accesoId: string | null = null;
+      if (esToken(b.token)) { const { data: a } = await supabase.from("accesos").select("id").eq("token", b.token).maybeSingle(); accesoId = a?.id ?? null; }
+      const { error: e } = await supabase.from("reportes").insert({ acceso_id: accesoId, guia_id: esUuid(b.guia_id) ? b.guia_id : null, slide: Number.isFinite(Number(b.slide)) ? Number(b.slide) : null, comentario });
+      if (e) throw e;
+      return json({ ok: true });
+    }
+
+    if (r0 === "datos-curiosos" && m === "GET") {
+      const { data } = await supabase.from("datos_curiosos").select("texto, nivel, categoria, emoji, fuente").eq("estado", "publicado").limit(200);
+      return json({ datos: data ?? [] });
+    }
+
+    // ---------- Administración ----------
+    if (r0 === "admin") {
+      if (!(await autorizado(req))) return error("Clave de administrador incorrecta", 401);
+      const rec = r1, id = r2, accion = ruta[3];
+      const base = await sitio();
+
+      if (rec === "ping") {
+        const cfg = await config();
+        return json({ ok: true, version: VERSION, sitio: base, motores: { ia: !!Deno.env.get("ANTHROPIC_API_KEY"), stripe: !!Deno.env.get("STRIPE_SECRET_KEY"), webhook: !!Deno.env.get("STRIPE_WEBHOOK_SECRET"), correo: !!Deno.env.get("RESEND_API_KEY"), helicone: !!Deno.env.get("HELICONE_API_KEY") }, config: cfg });
+      }
+      if (rec === "config" && m === "POST") {
+        const b = await leerJson(req);
+        const filas = Object.keys(CONFIG_DEF).filter((k) => typeof b[k] === "string").map((k) => ({ clave: k, valor: String(b[k]).trim() }));
+        if (!filas.length) return error("Nada que guardar");
+        const { error: e } = await supabase.from("config").upsert(filas); if (e) throw e;
+        configCache = null;
+        return json({ ok: true, config: await config() });
+      }
+      if (rec === "resumen" && m === "GET") {
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        const mes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString();
+        const [guias, compras, solicitudes, reportes, trabajos, borradores] = await Promise.all([
+          supabase.from("guias").select("estado, origen"),
+          supabase.from("compras").select("estado, monto_mxn, pagada_en, creada_en").gte("creada_en", new Date(Date.now() - 45 * 86400 * 1000).toISOString()),
+          supabase.from("solicitudes").select("id", { count: "exact", head: true }).eq("estado", "sin_guia"),
+          supabase.from("reportes").select("id", { count: "exact", head: true }).eq("estado", "nuevo"),
+          supabase.from("trabajos").select("estado, costo_usd, creado_en").gte("creado_en", mes),
+          supabase.from("borradores").select("id", { count: "exact", head: true }).in("estado", ["generando", "vista_previa"]),
+        ]);
+        const cuenta = (arr: any[], f: (x: any) => boolean) => arr.filter(f).length;
+        const suma = (arr: any[], f: (x: any) => boolean) => arr.filter(f).reduce((n, x) => n + Number(x.monto_mxn ?? 0), 0);
+        const C = compras.data ?? [], T = trabajos.data ?? [], G = guias.data ?? [];
+        return json({
+          guias: { publicadas: cuenta(G, (g) => g.estado === "publicada" && g.origen === "biblioteca"), borradores: cuenta(G, (g) => g.estado === "borrador" && g.origen === "biblioteca"), personalizadas: cuenta(G, (g) => g.origen === "personalizada" && g.estado !== "archivada"), archivadas: cuenta(G, (g) => g.estado === "archivada") },
+          compras: { pendientes: cuenta(C, (c) => c.estado === "pendiente"), pagadas_hoy: cuenta(C, (c) => c.estado === "pagada" && c.pagada_en >= hoy.toISOString()), ingresos_hoy: suma(C, (c) => c.estado === "pagada" && c.pagada_en >= hoy.toISOString()), pagadas_mes: cuenta(C, (c) => c.estado === "pagada" && c.pagada_en >= mes), ingresos_mes: suma(C, (c) => c.estado === "pagada" && c.pagada_en >= mes) },
+          solicitudes_sin_guia: solicitudes.count ?? 0, reportes_nuevos: reportes.count ?? 0, borradores_activos: borradores.count ?? 0,
+          ia: { trabajos_mes: T.length, corriendo: cuenta(T, (t) => ["pendiente", "corriendo"].includes(t.estado)), errores: cuenta(T, (t) => t.estado === "error"), costo_usd_mes: T.reduce((n, t) => n + Number(t.costo_usd ?? 0), 0) },
+        });
+      }
+
+      if (rec === "colegios") {
+        if (m === "GET") { const { data } = await supabase.from("colegios").select("*").order("orden").order("nombre"); return json(data ?? []); }
+        if (m === "POST") { const nombre = texto((await leerJson(req)).nombre, 80); if (!nombre) return error("Falta el nombre"); const { data, error: e } = await supabase.from("colegios").insert({ nombre }).select().single(); if (e) throw e; return json(data, 201); }
+        if (m === "PATCH" && esUuid(id)) { const b = await leerJson(req); const cambios: Record<string, unknown> = {}; if (typeof b.nombre === "string" && texto(b.nombre, 80)) cambios.nombre = texto(b.nombre, 80); if (typeof b.activo === "boolean") cambios.activo = b.activo; if (Number.isFinite(Number(b.orden))) cambios.orden = Number(b.orden); const { data, error: e } = await supabase.from("colegios").update(cambios).eq("id", id).select().single(); if (e) throw e; return json(data); }
+      }
+
+      if (rec === "guias" && !id && m === "GET") {
+        const estado = url.searchParams.get("estado");
+        let q = supabase.from("guias").select("id, estado, origen, titulo, colegio_id, grado, materia, examen, fecha_examen, version, creada_en, publicada_en, archivada_en, borrar_en, costo_mxn, borrador_id, clase_id, idioma, paleta, completo:cartucho->completo, colegios(nombre)").order("creada_en", { ascending: false }).limit(300);
+        if (estado) q = q.eq("estado", estado);
+        const { data, error: e } = await q; if (e) throw e;
+        const ids = (data ?? []).map((g) => g.id);
+        const { data: comp } = ids.length ? await supabase.from("compras").select("guia_id, estado").in("guia_id", ids) : { data: [] };
+        const { data: trab } = ids.length ? await supabase.from("trabajos").select("id, guia_id, borrador_id, estado, progreso, alcance, costo_usd, actualizado_en").order("creado_en", { ascending: false }).limit(400) : { data: [] };
+        return json((data ?? []).map((g) => {
+          const t = (trab ?? []).find((x) => x.guia_id === g.id || (g.borrador_id && x.borrador_id === g.borrador_id));
+          return { ...g, colegio: (g as any).colegios?.nombre ?? null, colegios: undefined, compras_pagadas: (comp ?? []).filter((c) => c.guia_id === g.id && c.estado === "pagada").length, compras_pendientes: (comp ?? []).filter((c) => c.guia_id === g.id && c.estado === "pendiente").length, trabajo: t ? { id: t.id, estado: t.estado, progreso: t.progreso, alcance: t.alcance, actualizado_en: t.actualizado_en } : null };
+        }));
+      }
+      if (rec === "guias" && !id && m === "POST") {
+        const b = await leerJson(req);
+        const titulo = texto(b.titulo, 120), grado = texto(b.grado, 60), materia = texto(b.materia, 60);
+        if (!grado || !materia) return error("Faltan grado y materia");
+        const paginas = b.paginas ? validarPaginas(b.paginas) : [];
+        if (typeof paginas === "string") return error(paginas);
+        const colegioId = esUuid(b.colegio_id) ? b.colegio_id : null;
+        const bid = crypto.randomUUID(); const clave = nuevoToken(24);
+        const archivos = paginas.map((p, k) => ({ ruta: `biblioteca/${bid}/${k + 1}.jpg`, nombre: p.nombre, tipo: p.tipo, tamano: p.tamano }));
+        let colegioTexto: string | null = null;
+        if (colegioId) { const { data: c } = await supabase.from("colegios").select("nombre").eq("id", colegioId).maybeSingle(); colegioTexto = c?.nombre ?? null; }
+        const { error: eb } = await supabase.from("borradores").insert({ id: bid, clave, servicio: 1, colegio_id: colegioId, colegio_texto: colegioTexto, grado, materia, paginas: archivos.length, archivos, estado: "subiendo", expira_en: enDias(365) });
+        if (eb) throw eb;
+        const { data: g, error: eg } = await supabase.from("guias").insert({ estado: "borrador", origen: "biblioteca", titulo: titulo || `${materia} · ${grado}`, colegio_id: colegioId, grado, materia, examen: texto(b.examen, 80) || null, fecha_examen: b.fecha_examen || null, borrador_id: bid }).select("id").single();
+        if (eg) throw eg;
+        await supabase.from("borradores").update({ guia_id: g.id }).eq("id", bid);
+        return json({ guia_id: g.id, clave, subidas: archivos.length ? await urlsDeSubida(archivos) : [] }, 201);
+      }
+      if (rec === "guias" && esUuid(id) && !accion && m === "GET") {
+        const { data: g, error: e } = await supabase.from("guias").select("*, colegios(nombre)").eq("id", id).maybeSingle(); if (e) throw e;
+        if (!g) return error("No existe", 404);
+        const { data: t } = await supabase.from("trabajos").select("id, estado, paso, alcance, progreso, error, intentos, costo_usd, tokens_entrada, tokens_salida, creado_en, actualizado_en").or(`guia_id.eq.${id}${g.borrador_id ? `,borrador_id.eq.${g.borrador_id}` : ""}`).order("creado_en", { ascending: false }).limit(5);
+        const { data: comp } = await supabase.from("compras").select("id, estado, nombre, telefono, correo, pagada_en, creada_en").eq("guia_id", id).order("creada_en", { ascending: false });
+        const { data: bo } = g.borrador_id ? await supabase.from("borradores").select("id, clave, estado, paginas, archivos, colegio_texto").eq("id", g.borrador_id).maybeSingle() : { data: null };
+        const { cartucho, ...resto } = g as any;
+        return json({ ...resto, colegio: (g as any).colegios?.nombre ?? null, colegios: undefined, completo: cartucho?.completo === true, bloques: cartucho?.bloques?.length ?? 0, actividades: (cartucho?.bloques ?? []).reduce((n: number, b: any) => n + (b.actividades?.length ?? 0) + (b.mini_examen?.length ?? 0), 0), trabajos: t ?? [], compras: comp ?? [], borrador: bo });
+      }
+      if (rec === "guias" && esUuid(id) && accion === "cartucho" && m === "GET") {
+        const { data: g } = await supabase.from("guias").select("cartucho").eq("id", id).maybeSingle();
+        if (!g?.cartucho) return error("Esa guía no tiene cartucho", 404);
+        return json({ cartucho: g.cartucho });
+      }
+      if (rec === "guias" && esUuid(id) && accion === "cartucho" && m === "POST") {
+        const b = await leerJson(req);
+        let c: any; try { c = normalizarCartucho(typeof b.cartucho === "string" ? JSON.parse(b.cartucho) : b.cartucho); } catch (e2) { return error("Cartucho no válido: " + (e2 as Error).message); }
+        const { data: g } = await supabase.from("guias").select("titulo").eq("id", id).maybeSingle();
+        if (!g) return error("No existe", 404);
+        const cambios: Record<string, unknown> = { cartucho: c, vista_previa: recortarVistaPrevia(c), idioma: c.plan.idioma_guia ?? "es", perfil_edad: c.plan.perfil_edad ?? null, paleta: c.plan.identidad?.paleta ?? null, version: 1 };
+        if (!g.titulo && c.plan.identidad?.titulo) cambios.titulo = texto(c.plan.identidad.titulo, 120);
+        const { error: e } = await supabase.from("guias").update(cambios).eq("id", id); if (e) throw e;
+        return json({ ok: true, bloques: c.bloques.length });
+      }
+      if (rec === "guias" && esUuid(id) && (accion === "generar" || accion === "regenerar") && m === "POST") {
+        const { data: g } = await supabase.from("guias").select("id, borrador_id, estado").eq("id", id).maybeSingle();
+        if (!g?.borrador_id) return error("Esta guía no tiene materiales subidos", 400);
+        const { data: bo } = await supabase.from("borradores").select("*").eq("id", g.borrador_id).maybeSingle();
+        if (!bo) return error("No existe el material", 404);
+        const subidos = await archivosSubidos(`biblioteca/${bo.id}`);
+        const archivos = (bo.archivos as any[]).filter((a) => subidos.has(a.ruta));
+        if (!archivos.length) return error("No hay páginas subidas todavía");
+        const { data: enCurso } = await supabase.from("trabajos").select("id").eq("guia_id", id).in("estado", ["pendiente", "corriendo"]).limit(1);
+        if (enCurso?.length) return error("Ya hay una generación en curso para esta guía");
+        const { data: t, error: e } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: bo.id, guia_id: id, alcance: "completa", paso: "inicio", estado: "pendiente", progreso: { pct: 1, mensaje: "Preparando las páginas 📖", paso: "inicio" } }).select("id").single();
+        if (e) throw e;
+        await supabase.from("borradores").update({ estado: "generando", trabajo_id: t.id, archivos, paginas: archivos.length }).eq("id", bo.id);
+        disparar(t.id);
+        return json({ ok: true, trabajo_id: t.id }, 202);
+      }
+      if (rec === "guias" && esUuid(id) && accion === "materiales" && m === "POST") {
+        // Agregar o reemplazar páginas de una guía de biblioteca: devuelve URLs de subida.
+        const b = await leerJson(req);
+        const paginas = validarPaginas(b.paginas); if (typeof paginas === "string") return error(paginas);
+        const { data: g } = await supabase.from("guias").select("borrador_id").eq("id", id).maybeSingle();
+        if (!g?.borrador_id) return error("No existe", 404);
+        await borrarCarpeta(`biblioteca/${g.borrador_id}`);
+        const archivos = paginas.map((p, k) => ({ ruta: `biblioteca/${g.borrador_id}/${k + 1}.jpg`, nombre: p.nombre, tipo: p.tipo, tamano: p.tamano }));
+        await supabase.from("borradores").update({ archivos, paginas: archivos.length, estado: "subiendo" }).eq("id", g.borrador_id);
+        return json({ subidas: await urlsDeSubida(archivos) });
+      }
+      if (rec === "guias" && esUuid(id) && !accion && m === "PATCH") {
+        const b = await leerJson(req); const cambios: Record<string, unknown> = {};
+        if (typeof b.titulo === "string") cambios.titulo = texto(b.titulo, 120);
+        if (typeof b.examen === "string") cambios.examen = texto(b.examen, 80) || null;
+        if ("fecha_examen" in b) cambios.fecha_examen = b.fecha_examen || null;
+        if (typeof b.grado === "string" && texto(b.grado, 60)) cambios.grado = texto(b.grado, 60);
+        if (typeof b.materia === "string" && texto(b.materia, 60)) cambios.materia = texto(b.materia, 60);
+        if ("colegio_id" in b) cambios.colegio_id = esUuid(b.colegio_id) ? b.colegio_id : null;
+        if (!Object.keys(cambios).length) return error("Nada que cambiar");
+        const { data, error: e } = await supabase.from("guias").update(cambios).eq("id", id).select("id, titulo, examen, fecha_examen, grado, materia, colegio_id").single(); if (e) throw e;
+        return json(data);
+      }
+      if (rec === "guias" && esUuid(id) && accion === "publicar" && m === "POST") {
+        const { data: g } = await supabase.from("guias").select("id, colegio_id, grado, materia, completo:cartucho->completo").eq("id", id).maybeSingle();
+        if (!g) return error("No existe", 404);
+        if (g.completo !== true) return error("La guía todavía no tiene su cartucho completo");
+        const { error: e } = await supabase.from("guias").update({ estado: "publicada", publicada_en: ahora(), archivada_en: null }).eq("id", id); if (e) throw e;
+        // Quién la pidió sin que existiera: se marcan para avisarles.
+        let q = supabase.from("solicitudes").select("id, nombre, telefono, correo, colegio_texto").eq("estado", "sin_guia").ilike("grado", g.grado ?? "").ilike("materia", g.materia ?? "");
+        if (g.colegio_id) q = q.or(`colegio_id.eq.${g.colegio_id},colegio_id.is.null`);
+        const { data: sol } = await q;
+        if (sol?.length) await supabase.from("solicitudes").update({ estado: "convertida", guia_id: id }).in("id", sol.map((s) => s.id));
+        return json({ ok: true, avisar: sol ?? [] });
+      }
+      if (rec === "guias" && esUuid(id) && accion === "archivar" && m === "POST") {
+        const { error: e } = await supabase.from("guias").update({ estado: "archivada", archivada_en: ahora() }).eq("id", id); if (e) throw e;
+        return json({ ok: true });
+      }
+      if (rec === "guias" && esUuid(id) && !accion && m === "DELETE") {
+        const { count } = await supabase.from("compras").select("id", { count: "exact", head: true }).eq("guia_id", id).eq("estado", "pagada");
+        if (count) return error("Esta guía tiene compras pagadas: archívala en vez de borrarla");
+        const { data: g } = await supabase.from("guias").select("borrador_id, origen").eq("id", id).maybeSingle();
+        if (g?.borrador_id) { await borrarCarpeta(`${g.origen === "biblioteca" ? "biblioteca" : "borradores"}/${g.borrador_id}`); await supabase.from("borradores").delete().eq("id", g.borrador_id); }
+        const { error: e } = await supabase.from("guias").delete().eq("id", id); if (e) throw e;
+        return json({ ok: true });
+      }
+
+      if (rec === "solicitudes" && m === "GET") {
+        const { data, error: e } = await supabase.from("solicitudes").select("*, colegios(nombre)").order("creada_en", { ascending: false }).limit(300); if (e) throw e;
+        return json((data ?? []).map((s) => ({ ...s, colegio: (s as any).colegios?.nombre ?? s.colegio_texto ?? null, colegios: undefined })));
+      }
+      if (rec === "solicitudes" && esUuid(id) && m === "PATCH") {
+        const b = await leerJson(req); const estado = ["sin_guia", "avisada", "convertida"].includes(b.estado) ? b.estado : null;
+        if (!estado) return error("Estado no válido");
+        const { error: e } = await supabase.from("solicitudes").update({ estado }).eq("id", id); if (e) throw e;
+        return json({ ok: true });
+      }
+
+      if (rec === "compras" && !id && m === "GET") {
+        const estado = url.searchParams.get("estado");
+        let q = supabase.from("compras").select("*").order("creada_en", { ascending: false }).limit(300);
+        if (estado) q = q.eq("estado", estado);
+        const { data, error: e } = await q; if (e) throw e;
+        const ids = (data ?? []).map((c) => c.acceso_id).filter(Boolean);
+        const { data: acc } = ids.length ? await supabase.from("accesos_vista").select("id, token, estado, expira_en, usos").in("id", ids) : { data: [] };
+        return json((data ?? []).map((c) => { const a = (acc ?? []).find((x) => x.id === c.acceso_id); return { ...c, folio: String(c.id).slice(0, 8).toUpperCase(), link: a ? linkDe(base, a.token) : null, acceso: a ? { estado: a.estado, expira_en: a.expira_en, usos: a.usos } : null }; }));
+      }
+      if (rec === "compras" && esUuid(id) && accion === "pagar" && m === "POST") {
+        const r = await confirmarPago(id, { manual: true });
+        return json({ ok: true, compra: r.compra, link: r.link, token: r.token, expira_en: r.expira_en, lista: r.lista });
+      }
+      if (rec === "compras" && esUuid(id) && accion === "cancelar" && m === "POST") {
+        const { error: e } = await supabase.from("compras").update({ estado: "fallida" }).eq("id", id).eq("estado", "pendiente"); if (e) throw e;
+        return json({ ok: true });
+      }
+      if (rec === "compras" && esUuid(id) && accion === "reenviar" && m === "POST") {
+        const { data: c } = await supabase.from("compras").select("*").eq("id", id).maybeSingle();
+        if (!c || c.estado !== "pagada") return error("La compra no está pagada");
+        const e = await entregar(c);
+        await enviarCorreo(c, c.titulo ?? "Tu guía", e.link, e.expira_en);
+        return json({ ok: true, link: e.link });
+      }
+
+      if (rec === "reportes" && m === "GET") {
+        const { data, error: e } = await supabase.from("reportes").select("*, guias(titulo)").order("creado_en", { ascending: false }).limit(200); if (e) throw e;
+        return json((data ?? []).map((r) => ({ ...r, guia_titulo: (r as any).guias?.titulo ?? null, guias: undefined })));
+      }
+      if (rec === "reportes" && esUuid(id) && m === "PATCH") {
+        const { error: e } = await supabase.from("reportes").update({ estado: "revisado" }).eq("id", id); if (e) throw e;
+        return json({ ok: true });
+      }
+
+      if (rec === "trabajos" && esUuid(id) && !accion && m === "GET") {
+        const t = await cargarTrabajo(id); if (!t) return error("No existe", 404);
+        const { datos, ...resto } = t as any;
+        return json({ ...resto, datos_resumen: { inventario: Object.fromEntries(Object.entries(datos?.inventario ?? {}).map(([k, v]) => [k, (v as any[]).length])), bloques: (datos?.bloques ?? []).filter(Boolean).length, plan: datos?.plan ? { titulo: datos.plan.identidad?.titulo, bloques: datos.plan.bloques?.length, presupuesto: datos.plan.presupuesto_slides, camino: datos.plan.camino } : null, huecos: datos?.huecos ?? [], verificacion: datos?.verificacion ?? [] } });
+      }
+      if (rec === "trabajos" && esUuid(id) && accion === "reintentar" && m === "POST") {
+        const t = await cargarTrabajo(id); if (!t) return error("No existe", 404);
+        await supabase.from("trabajos").update({ estado: "pendiente", intentos: 0, error: null, actualizado_en: ahora() }).eq("id", id);
+        if (t.borrador_id) await supabase.from("borradores").update({ estado: "generando" }).eq("id", t.borrador_id).eq("estado", "fallido");
+        disparar(id);
+        return json({ ok: true });
+      }
+
+      if (rec === "limpiar" && m === "POST") return json(await limpieza());
+      if (rec === "datos-curiosos" && m === "POST") {
+        const b = await leerJson(req);
+        const filas = (Array.isArray(b.datos) ? b.datos : []).map((d: any) => ({ texto: texto(d.texto, 300), nivel: texto(d.nivel, 20) || "primaria", categoria: texto(d.categoria, 40) || "general", emoji: texto(d.emoji, 8) || null, fuente: texto(d.fuente, 120) || null })).filter((d: any) => d.texto);
+        if (!filas.length) return error("Sin datos");
+        const { error: e } = await supabase.from("datos_curiosos").insert(filas); if (e) throw e;
+        return json({ ok: true, insertados: filas.length });
+      }
+      return error("Ruta de administración no reconocida", 404);
+    }
+
+    return error("Ruta no reconocida", 404);
+  } catch (e) {
+    console.error(e);
+    return error((e as Error).message ?? "Error interno", 500);
+  }
+});

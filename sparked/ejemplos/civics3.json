@@ -1,0 +1,2766 @@
+{
+ "version_formato": "1.1",
+ "prueba": "Simulación Haiku 5.5 · pipeline v7",
+ "plan": {
+  "materia": "Civics and Ethics III",
+  "es_lengua_extranjera": false,
+  "idioma_guia": "en",
+  "apoyo": null,
+  "camino": "convertir",
+  "temas_a_investigar": [],
+  "identidad": {
+   "paleta": "civica_morado",
+   "titulo": "Think it through!",
+   "subtitulo": "Ethics, rights, culture and climate: judge every idea with evidence.",
+   "emojis_portada": [
+    "⚖️",
+    "🗳️",
+    "🌍",
+    "🎭"
+   ],
+   "objetivos": [
+    "Compare utilitarianism, deontology and virtue ethics and evaluate arguments.",
+    "Explain democracy, the four identities and the human rights principles.",
+    "Explain culture, art debates and the trade-offs of climate and energy choices."
+   ]
+  },
+  "puntos_dificiles": [
+   {
+    "id": "pd1",
+    "descripcion": "Comparing the three ethical theories in the same dilemma"
+   },
+   {
+    "id": "pd2",
+    "descripcion": "Human rights principles and the UDHR article groups"
+   },
+   {
+    "id": "pd3",
+    "descripcion": "Culture iceberg, heritage types and appropriation vs. appreciation"
+   },
+   {
+    "id": "pd4",
+    "descripcion": "Evaluating arguments: logic, evidence, language, gaps and interests"
+   },
+   {
+    "id": "pd5",
+    "descripcion": "Energy trade-offs: solar waste, critical minerals, EV life cycle, fusion vs. fission"
+   }
+  ],
+  "bloques": [
+   {
+    "id": "b1",
+    "titulo": "Ethics and thinking tools",
+    "fotos": [
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "id": "b2",
+    "titulo": "Democracy, identity and human rights",
+    "fotos": [
+     4,
+     5
+    ]
+   },
+   {
+    "id": "b3",
+    "titulo": "Culture, communities and art",
+    "fotos": [
+     6,
+     7,
+     8
+    ]
+   },
+   {
+    "id": "b4",
+    "titulo": "Climate change and energy",
+    "fotos": [
+     9,
+     10,
+     11
+    ]
+   }
+  ],
+  "reto_final": 20,
+  "nota_planificador": "Section 1 ('How to answer open questions') mixes exam description with an argument skill. The exam description is discarded; the argument checks (logic, evidence, language, gaps) and the answer structure are taught as content because sections 10 and 12 also list them as skills to learn."
+ },
+ "bloques": [
+  {
+   "id": "b1",
+   "titulo": "Ethics and thinking tools",
+   "pistas": [
+    {
+     "id": "b1p1",
+     "titulo": "Civics vs. ethics",
+     "emoji": "⚖️",
+     "ideas": [
+      "Civics: citizenship and the rights, duties and responsibilities of being a member of a community.",
+      "It includes laws, institutions and democratic skills (voting, debating, organizing).",
+      "Ethics: the branch of philosophy that studies moral principles and values.",
+      "Values: justice, honesty, respect, responsibility, solidarity.",
+      "Something can be legal but unethical, and ethical actions are not always required by law."
+     ]
+    },
+    {
+     "id": "b1p2",
+     "titulo": "Three ethical theories",
+     "emoji": "🚋",
+     "ideas": [
+      "Utilitarianism: the greatest good for the greatest number. It looks at consequences.",
+      "Deontology (Kantian ethics): an action is right if it follows a rule or duty, whatever the consequences.",
+      "Virtue ethics: what would a person of good character do?",
+      "Trolley dilemma: a utilitarian may pull the lever (one life vs. five).",
+      "A deontologist may refuse: actively causing a death breaks a rule."
+     ]
+    },
+    {
+     "id": "b1p3",
+     "titulo": "Applied ethics",
+     "emoji": "🤖",
+     "ideas": [
+      "Technology and AI: misinformation, facial recognition, bias in algorithms.",
+      "Environmental ethics: deforestation, climate responsibility, eco-friendly habits.",
+      "Bioethics: vaccines, genetic modification.",
+      "Animal ethics: zoos, animal testing, vegetarianism.",
+      "Digital and media ethics: viral posts, influencers' responsibility."
+     ]
+    },
+    {
+     "id": "b1p4",
+     "titulo": "Where do morals come from?",
+     "emoji": "🧭",
+     "ideas": [
+      "Morality: personal or social standards for good or bad behavior.",
+      "Our moral beliefs come from family, culture, religion, school and experiences.",
+      "Moral relativism: morals vary by culture. Universal values: some morals apply to everyone.",
+      "A custom (like eye contact) is a cultural difference; a moral problem involves harm, dignity or rights.",
+      "Moral dilemma: no easy answer because values conflict."
+     ]
+    },
+    {
+     "id": "b1p5",
+     "titulo": "Judge an argument",
+     "emoji": "🔍",
+     "ideas": [
+      "Logic: does the conclusion follow? Many followers do not make someone right.",
+      "Evidence: is it strong, recent and from a reliable source?",
+      "Language: look for extreme words like “always”, “never”, “dangerous”.",
+      "Gaps and interests: who is missing? Who benefits?",
+      "Strong answer: position → concept → evidence → other perspective → judgement."
+     ]
+    }
+   ],
+   "actividades": [
+    {
+     "id": "b1om1",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which theory asks: “What result helps the most people?”",
+     "opciones": [
+      "Deontology",
+      "Utilitarianism",
+      "Moral relativism",
+      "Virtue ethics"
+     ],
+     "correcta": 1,
+     "pista": "b1p2",
+     "punto_dificil": "pd1",
+     "dificultad": "facil",
+     "emoji": "📊",
+     "fuente": {
+      "foto": 2,
+      "tipo": "textual",
+      "cita": "What result helps the most people?",
+      "nota_validador": "cita de tabla (texto en columnas)"
+     },
+     "retro_correcta": "Yes! Utilitarianism looks for the greatest good for the greatest number.",
+     "retro_incorrecta": "Not quite: the answer is “Utilitarianism”. Utilitarianism looks for the greatest good for the greatest number."
+    },
+    {
+     "id": "b1om2",
+     "tipo": "opcion_multiple",
+     "pregunta": "In the trolley dilemma, who may refuse to pull the lever because actively causing a death breaks a rule?",
+     "opciones": [
+      "A relativist",
+      "A utilitarian",
+      "A virtue ethicist",
+      "A deontologist"
+     ],
+     "correcta": 3,
+     "pista": "b1p2",
+     "punto_dificil": "pd1",
+     "dificultad": "media",
+     "emoji": "🚋",
+     "fuente": {
+      "foto": 2,
+      "tipo": "textual",
+      "cita": "A deontologist may refuse because actively causing a death breaks a rule"
+     },
+     "retro_correcta": "Yes! Deontology follows rules and duties, whatever the consequences.",
+     "retro_incorrecta": "Not quite: the answer is “A deontologist”. Deontology follows rules and duties, whatever the consequences."
+    },
+    {
+     "id": "b1om3",
+     "tipo": "opcion_multiple",
+     "pregunta": "Virtue ethics focuses on…",
+     "opciones": [
+      "a person's character and virtues",
+      "what the law says",
+      "following strict rules",
+      "the greatest good for the greatest number"
+     ],
+     "correcta": 0,
+     "pista": "b1p2",
+     "punto_dificil": "pd1",
+     "dificultad": "facil",
+     "emoji": "🦁",
+     "fuente": {
+      "foto": 2,
+      "tipo": "textual",
+      "cita": "The focus is on a person's character and virtues"
+     },
+     "retro_correcta": "Yes! It asks what a person of good character would do.",
+     "retro_incorrecta": "Not quite: the answer is “a person's character and virtues”. It asks what a person of good character would do."
+    },
+    {
+     "id": "b1om4",
+     "tipo": "opcion_multiple",
+     "pregunta": "Vaccines and genetic modification belong to which area of applied ethics?",
+     "opciones": [
+      "Environmental ethics",
+      "Animal ethics",
+      "Bioethics",
+      "Digital and media ethics"
+     ],
+     "correcta": 2,
+     "pista": "b1p3",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🧬",
+     "fuente": {
+      "foto": 3,
+      "tipo": "textual",
+      "cita": "Moral issues in medicine and biology"
+     },
+     "retro_correcta": "Yes! Bioethics studies moral issues in medicine and biology.",
+     "retro_incorrecta": "Not quite: the answer is “Bioethics”. Bioethics studies moral issues in medicine and biology."
+    },
+    {
+     "id": "b1om5",
+     "tipo": "opcion_multiple",
+     "pregunta": "“He has millions of followers, so he must be right.” Which check shows this argument is weak?",
+     "opciones": [
+      "Judgement",
+      "Logic",
+      "Gaps and interests",
+      "Language"
+     ],
+     "correcta": 1,
+     "pista": "b1p5",
+     "punto_dificil": "pd4",
+     "dificultad": "media",
+     "emoji": "🔍",
+     "fuente": {
+      "foto": 1,
+      "tipo": "textual",
+      "cita": "Having many followers does not make someone right"
+     },
+     "retro_correcta": "Yes! Having many followers does not make someone right: the conclusion does not follow.",
+     "retro_incorrecta": "Not quite: the answer is “Logic”. Having many followers does not make someone right: the conclusion does not follow."
+    },
+    {
+     "id": "b1om6",
+     "tipo": "opcion_multiple",
+     "pregunta": "“Electric cars are ALWAYS dangerous.” Which check spots the problem?",
+     "opciones": [
+      "Judgement",
+      "Logic",
+      "Gaps and interests",
+      "Language"
+     ],
+     "correcta": 3,
+     "pista": "b1p5",
+     "punto_dificil": "pd4",
+     "dificultad": "media",
+     "emoji": "🗣️",
+     "fuente": {
+      "foto": 1,
+      "tipo": "textual",
+      "cita": "are there emotional or extreme words"
+     },
+     "retro_correcta": "Yes! “always” and “dangerous” are extreme, emotional words.",
+     "retro_incorrecta": "Not quite: the answer is “Language”. “always” and “dangerous” are extreme, emotional words."
+    },
+    {
+     "id": "b1om7",
+     "tipo": "opcion_multiple",
+     "pregunta": "An argument leaves out farmers and Indigenous communities. Which check finds this?",
+     "opciones": [
+      "Gaps and interests",
+      "Logic",
+      "Position",
+      "Language"
+     ],
+     "correcta": 0,
+     "pista": "b1p5",
+     "punto_dificil": "pd4",
+     "dificultad": "retadora",
+     "emoji": "👥",
+     "fuente": {
+      "foto": 1,
+      "tipo": "textual",
+      "cita": "who is missing from the debate? Who benefits from this argument?"
+     },
+     "retro_correcta": "Yes! This check asks who is missing from the debate and who benefits.",
+     "retro_incorrecta": "Not quite: the answer is “Gaps and interests”. This check asks who is missing from the debate and who benefits."
+    },
+    {
+     "id": "b1vf1",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Something can be legal but still unethical.",
+     "es_verdadera": true,
+     "pista": "b1p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "⚖️",
+     "fuente": {
+      "foto": 2,
+      "tipo": "textual",
+      "cita": "laws can be legal but still unethical"
+     },
+     "retro_correcta": "Yes! Laws can be legal but still unethical.",
+     "retro_incorrecta": "Not quite: the answer is “True”. Laws can be legal but still unethical."
+    },
+    {
+     "id": "b1vf2",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Ethical actions are always required by law.",
+     "es_verdadera": false,
+     "pista": "b1p1",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "📜",
+     "fuente": {
+      "foto": 2,
+      "tipo": "textual",
+      "cita": "ethical actions are not always required by law"
+     },
+     "retro_correcta": "Yes! Ethical actions are NOT always required by law.",
+     "retro_incorrecta": "Not quite: the answer is “False”. Ethical actions are NOT always required by law."
+    },
+    {
+     "id": "b1vf3",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Making eye contact is a moral problem, not a custom.",
+     "es_verdadera": false,
+     "pista": "b1p4",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "👀",
+     "fuente": {
+      "foto": 3,
+      "tipo": "textual",
+      "cita": "a custom (for example eye contact) is a cultural difference"
+     },
+     "retro_correcta": "Yes! Eye contact is a custom, a cultural difference. A moral problem involves harm, dignity or rights.",
+     "retro_incorrecta": "Not quite: the answer is “False”. Eye contact is a custom, a cultural difference. A moral problem involves harm, dignity or rights."
+    },
+    {
+     "id": "b1vf4",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Moral relativism says that some morals apply to everyone.",
+     "es_verdadera": false,
+     "pista": "b1p4",
+     "punto_dificil": null,
+     "dificultad": "retadora",
+     "emoji": "🌐",
+     "fuente": {
+      "foto": 3,
+      "tipo": "textual",
+      "cita": "Moral relativism: morals vary by culture"
+     },
+     "retro_correcta": "Yes! That is universal values. Relativism says morals vary by culture.",
+     "retro_incorrecta": "Not quite: the answer is “False”. That is universal values. Relativism says morals vary by culture."
+    },
+    {
+     "id": "b1co1",
+     "tipo": "conceptos",
+     "instruccion": "Match each idea with its meaning.",
+     "pares": [
+      {
+       "termino": "Utilitarianism",
+       "definicion": "The greatest good for the greatest number"
+      },
+      {
+       "termino": "Deontology",
+       "definicion": "Right actions follow rules or duties"
+      },
+      {
+       "termino": "Virtue ethics",
+       "definicion": "Focus on character and virtues"
+      },
+      {
+       "termino": "Morality",
+       "definicion": "Standards for good or bad behavior"
+      },
+      {
+       "termino": "Moral dilemma",
+       "definicion": "No easy answer because values conflict"
+      },
+      {
+       "termino": "Universal values",
+       "definicion": "Some morals apply to everyone"
+      }
+     ],
+     "pista": "b1p2",
+     "punto_dificil": "pd1",
+     "dificultad": "media",
+     "emoji": "🧩",
+     "fuente": {
+      "foto": 2,
+      "tipo": "textual",
+      "cita": "The greatest good for the greatest number"
+     }
+    },
+    {
+     "id": "b1cp1",
+     "tipo": "completar",
+     "enunciado": "Ethics is the branch of ___ that studies moral principles and values.",
+     "respuesta": "philosophy",
+     "distractores": [
+      "psychology",
+      "history",
+      "law"
+     ],
+     "pista": "b1p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🏛️",
+     "fuente": {
+      "foto": 2,
+      "tipo": "textual",
+      "cita": "the branch of philosophy that studies moral principles and values"
+     },
+     "retro_correcta": "Yes! Ethics is a branch of philosophy.",
+     "retro_incorrecta": "Not quite: the answer is “philosophy”. Ethics is a branch of philosophy."
+    },
+    {
+     "id": "b1cp2",
+     "tipo": "completar",
+     "enunciado": "A moral problem involves harm, dignity or ___.",
+     "respuesta": "rights",
+     "distractores": [
+      "customs",
+      "fashion",
+      "money"
+     ],
+     "pista": "b1p4",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "⚠️",
+     "fuente": {
+      "foto": 3,
+      "tipo": "textual",
+      "cita": "A moral problem involves harm, dignity or rights"
+     },
+     "retro_correcta": "Yes! A moral problem involves harm, dignity or rights.",
+     "retro_incorrecta": "Not quite: the answer is “rights”. A moral problem involves harm, dignity or rights."
+    },
+    {
+     "id": "b1cp3",
+     "tipo": "completar",
+     "enunciado": "Technology and AI ethics includes misinformation, facial recognition and bias in ___.",
+     "respuesta": "algorithms",
+     "distractores": [
+      "vaccines",
+      "zoos",
+      "forests"
+     ],
+     "pista": "b1p3",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🤖",
+     "fuente": {
+      "foto": 3,
+      "tipo": "textual",
+      "cita": "facial recognition, bias in algorithms",
+      "nota_validador": "cita de tabla (texto en columnas)"
+     },
+     "retro_correcta": "Yes! Bias in algorithms is a Technology and AI topic.",
+     "retro_incorrecta": "Not quite: the answer is “algorithms”. Bias in algorithms is a Technology and AI topic."
+    },
+    {
+     "id": "b1or1",
+     "tipo": "ordenar",
+     "instruccion": "Build a strong answer: put the parts in order.",
+     "pasos": [
+      {
+       "texto": "Position: I agree / I disagree because…",
+       "emoji": "🙋"
+      },
+      {
+       "texto": "Concept: name the idea from class",
+       "emoji": "💡"
+      },
+      {
+       "texto": "Evidence: details, numbers, facts, people",
+       "emoji": "📊"
+      },
+      {
+       "texto": "Other perspective: “However, farmers could say…”",
+       "emoji": "👥"
+      },
+      {
+       "texto": "Judgement: a clear, justified final answer",
+       "emoji": "⚖️"
+      }
+     ],
+     "pista": "b1p5",
+     "punto_dificil": "pd4",
+     "dificultad": "media",
+     "fuente": {
+      "foto": 1,
+      "tipo": "textual",
+      "cita": "Judgement: finish with a clear, justified final answer"
+     },
+     "retro_correcta": "Yes! A strong answer goes position → concept → evidence → other perspective → judgement.",
+     "retro_incorrecta": "Not quite: A strong answer goes position → concept → evidence → other perspective → judgement."
+    },
+    {
+     "id": "b1cl1",
+     "tipo": "clasificar",
+     "instruccion": "Which area of applied ethics?",
+     "grupos": [
+      "Technology and AI 🤖",
+      "Environmental ethics 🌳"
+     ],
+     "elementos": [
+      {
+       "texto": "Misinformation",
+       "grupo": 0
+      },
+      {
+       "texto": "Facial recognition",
+       "grupo": 0
+      },
+      {
+       "texto": "Bias in algorithms",
+       "grupo": 0
+      },
+      {
+       "texto": "Deforestation",
+       "grupo": 1
+      },
+      {
+       "texto": "Climate responsibility",
+       "grupo": 1
+      },
+      {
+       "texto": "Eco-friendly habits",
+       "grupo": 1
+      }
+     ],
+     "pista": "b1p3",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🗂️",
+     "fuente": {
+      "foto": 3,
+      "tipo": "textual",
+      "cita": "Deforestation, climate responsibility, eco-friendly habits",
+      "nota_validador": "cita de tabla (texto en columnas)"
+     }
+    },
+    {
+     "id": "b1sd1",
+     "tipo": "super_dato",
+     "texto": "[[Utilitarianism]] looks for the greatest good for the greatest number, so it judges actions by their [[consequences]]. [[Deontology]], also called Kantian ethics, says an action is right if it follows a [[rule]] or duty. Virtue ethics asks what a person of good [[character]] would do. In the trolley dilemma, a utilitarian may pull the [[lever]].",
+     "distractores": [
+      "feelings",
+      "laws",
+      "Relativism",
+      "habits"
+     ],
+     "pista": "b1p2",
+     "punto_dificil": "pd1",
+     "dificultad": "media",
+     "emoji": "⭐",
+     "fuente": {
+      "foto": 2,
+      "tipo": "textual",
+      "cita": "a utilitarian may pull the lever (one life vs. five)"
+     }
+    }
+   ],
+   "mini_examen": [
+    {
+     "id": "b1me1",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which theory judges actions by their consequences?",
+     "opciones": [
+      "Deontology",
+      "Virtue ethics",
+      "Utilitarianism",
+      "Moral relativism"
+     ],
+     "correcta": 2,
+     "pista": "b1p2",
+     "punto_dificil": "pd1",
+     "dificultad": "media",
+     "emoji": "📊",
+     "fuente": {
+      "foto": 2,
+      "tipo": "textual",
+      "cita": "Decisions are based on consequences"
+     },
+     "retro_correcta": "Yes! Utilitarian decisions are based on consequences; deontology ignores them.",
+     "retro_incorrecta": "Not quite: the answer is “Utilitarianism”. Utilitarian decisions are based on consequences; deontology ignores them."
+    },
+    {
+     "id": "b1me2",
+     "tipo": "opcion_multiple",
+     "pregunta": "Kantian ethics is another name for…",
+     "opciones": [
+      "meta-ethics",
+      "deontology",
+      "utilitarianism",
+      "virtue ethics"
+     ],
+     "correcta": 1,
+     "pista": "b1p2",
+     "punto_dificil": "pd1",
+     "dificultad": "facil",
+     "emoji": "📘",
+     "fuente": {
+      "foto": 2,
+      "tipo": "textual",
+      "cita": "Deontology (Kantian ethics)"
+     },
+     "retro_correcta": "Yes! Deontology is also called Kantian ethics.",
+     "retro_incorrecta": "Not quite: the answer is “deontology”. Deontology is also called Kantian ethics."
+    },
+    {
+     "id": "b1me3",
+     "tipo": "opcion_multiple",
+     "pregunta": "Zoos, animal testing and vegetarianism belong to…",
+     "opciones": [
+      "Digital and media ethics",
+      "Bioethics",
+      "Environmental ethics",
+      "Animal ethics"
+     ],
+     "correcta": 3,
+     "pista": "b1p3",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🐒",
+     "fuente": {
+      "foto": 3,
+      "tipo": "textual",
+      "cita": "Zoos, animal testing, vegetarianism"
+     },
+     "retro_correcta": "Yes! Animal ethics studies the moral status of animals.",
+     "retro_incorrecta": "Not quite: the answer is “Animal ethics”. Animal ethics studies the moral status of animals."
+    },
+    {
+     "id": "b1me4",
+     "tipo": "opcion_multiple",
+     "pregunta": "Where do our moral beliefs come from?",
+     "opciones": [
+      "Family, culture, religion, school and experiences",
+      "Only social media",
+      "Only the laws of a country",
+      "Only our genes"
+     ],
+     "correcta": 0,
+     "pista": "b1p4",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🧭",
+     "fuente": {
+      "foto": 3,
+      "tipo": "textual",
+      "cita": "Family, culture, religion, school, experiences"
+     },
+     "retro_correcta": "Yes! The guide lists family, culture, religion, school and experiences.",
+     "retro_incorrecta": "Not quite: the answer is “Family, culture, religion, school and experiences”. The guide lists family, culture, religion, school and experiences."
+    },
+    {
+     "id": "b1me5",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Civics includes democratic skills like voting, debating and organizing.",
+     "es_verdadera": true,
+     "pista": "b1p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🗳️",
+     "fuente": {
+      "foto": 2,
+      "tipo": "textual",
+      "cita": "democratic skills (voting, debating, organizing)"
+     },
+     "retro_correcta": "Yes! Civics includes democratic skills such as voting, debating and organizing.",
+     "retro_incorrecta": "Not quite: the answer is “True”. Civics includes democratic skills such as voting, debating and organizing."
+    },
+    {
+     "id": "b1me6",
+     "tipo": "opcion_multiple",
+     "pregunta": "Complete the useful phrase: “This argument is weak because it only uses ___.”",
+     "opciones": [
+      "recent data",
+      "expert reviews",
+      "one example",
+      "many sources"
+     ],
+     "correcta": 2,
+     "pista": "b1p5",
+     "punto_dificil": "pd4",
+     "dificultad": "media",
+     "emoji": "🧠",
+     "fuente": {
+      "foto": 1,
+      "tipo": "textual",
+      "cita": "This argument is weak because it only uses one example"
+     },
+     "retro_correcta": "Yes! One example does not prove a rule.",
+     "retro_incorrecta": "Not quite: the answer is “one example”. One example does not prove a rule."
+    }
+   ]
+  },
+  {
+   "id": "b2",
+   "titulo": "Democracy, identity and human rights",
+   "pistas": [
+    {
+     "id": "b2p1",
+     "titulo": "What is democracy?",
+     "emoji": "🗳️",
+     "ideas": [
+      "A system of government and a way of life: everyone can take part in decisions that affect them.",
+      "Elements: popular sovereignty (power belongs to the people), political equality, majority rule with protection of minority rights, civic participation, rule of law.",
+      "Types: representative, participatory, direct.",
+      "Examples: elections, referendums, town halls, peaceful protests, student councils.",
+      "Low participation or ignoring minorities weakens democracy."
+     ]
+    },
+    {
+     "id": "b2p2",
+     "titulo": "Four identities",
+     "emoji": "🪞",
+     "ideas": [
+      "Personal: unique qualities and experiences; how we see ourselves.",
+      "Social: groups we belong to (nationality, gender, social class, religion); how others see us.",
+      "Cultural: traditions, language and customs, shaped by where you grow up and global influences.",
+      "Digital: usernames, profile pictures, content you share.",
+      "We show different sides in different spaces, and identities can create conflict."
+     ]
+    },
+    {
+     "id": "b2p3",
+     "titulo": "Human rights",
+     "emoji": "🕊️",
+     "ideas": [
+      "Basic rights and freedoms of every person in the world.",
+      "Inherent to all, regardless of race, gender, nationality or religion.",
+      "Foundation: human dignity, equality and respect.",
+      "Origin: after World War II (the Holocaust). Goal: “Never again.”",
+      "Principles: universality, indivisibility, interdependence, inalienability."
+     ]
+    },
+    {
+     "id": "b2p4",
+     "titulo": "The UDHR (30 articles)",
+     "emoji": "📜",
+     "ideas": [
+      "Preamble: foundation and purpose.",
+      "Articles 1–2: equality and non-discrimination.",
+      "Articles 3–21: civil and political rights (life 3, torture 5, religion 18, speech 19, vote 21).",
+      "Articles 22–27: economic, social and cultural rights (work 23, health and housing 25, education 26, culture 27).",
+      "Articles 28–30: collective rights and limitations."
+     ]
+    }
+   ],
+   "actividades": [
+    {
+     "id": "b2om1",
+     "tipo": "opcion_multiple",
+     "pregunta": "Popular sovereignty means…",
+     "opciones": [
+      "the majority always wins",
+      "power belongs to the people",
+      "judges make the laws",
+      "all voices matter equally"
+     ],
+     "correcta": 1,
+     "pista": "b2p1",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "👑",
+     "fuente": {
+      "foto": 4,
+      "tipo": "textual",
+      "cita": "popular sovereignty (power belongs to the people)"
+     },
+     "retro_correcta": "Yes! Popular sovereignty = power belongs to the people.",
+     "retro_incorrecta": "Not quite: the answer is “power belongs to the people”. Popular sovereignty = power belongs to the people."
+    },
+    {
+     "id": "b2om2",
+     "tipo": "opcion_multiple",
+     "pregunta": "Citizens vote directly in a referendum. Which type of democracy is this?",
+     "opciones": [
+      "Participatory",
+      "Representative",
+      "Universal",
+      "Direct"
+     ],
+     "correcta": 3,
+     "pista": "b2p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🗳️",
+     "fuente": {
+      "foto": 4,
+      "tipo": "textual",
+      "cita": "direct (citizens vote directly, for example in referendums)"
+     },
+     "retro_correcta": "Yes! In direct democracy citizens vote directly, for example in referendums.",
+     "retro_incorrecta": "Not quite: the answer is “Direct”. In direct democracy citizens vote directly, for example in referendums."
+    },
+    {
+     "id": "b2om3",
+     "tipo": "opcion_multiple",
+     "pregunta": "Citizens take part in councils and local processes. Which type of democracy is this?",
+     "opciones": [
+      "Participatory",
+      "Direct",
+      "Universal",
+      "Representative"
+     ],
+     "correcta": 0,
+     "pista": "b2p1",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🏘️",
+     "fuente": {
+      "foto": 4,
+      "tipo": "textual",
+      "cita": "participatory (citizens take part in councils and local processes)"
+     },
+     "retro_correcta": "Yes! Participatory democracy = citizens take part in councils and local processes.",
+     "retro_incorrecta": "Not quite: the answer is “Participatory”. Participatory democracy = citizens take part in councils and local processes."
+    },
+    {
+     "id": "b2om4",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which identity is about usernames, profile pictures and the content you share?",
+     "opciones": [
+      "Cultural",
+      "Personal",
+      "Digital",
+      "Social"
+     ],
+     "correcta": 2,
+     "pista": "b2p2",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "📱",
+     "fuente": {
+      "foto": 4,
+      "tipo": "textual",
+      "cita": "How you present yourself online"
+     },
+     "retro_correcta": "Yes! Digital identity is how you present yourself online.",
+     "retro_incorrecta": "Not quite: the answer is “Digital”. Digital identity is how you present yourself online."
+    },
+    {
+     "id": "b2om5",
+     "tipo": "opcion_multiple",
+     "pregunta": "Human rights were set out after the atrocities of…",
+     "opciones": [
+      "the Cold War",
+      "World War II (the Holocaust)",
+      "World War I",
+      "the French Revolution"
+     ],
+     "correcta": 1,
+     "pista": "b2p3",
+     "punto_dificil": "pd2",
+     "dificultad": "facil",
+     "emoji": "🕊️",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "after the atrocities of World War II (the Holocaust)"
+     },
+     "retro_correcta": "Yes! They come from World War II and the Holocaust: “Never again.”",
+     "retro_incorrecta": "Not quite: the answer is “World War II (the Holocaust)”. They come from World War II and the Holocaust: “Never again.”"
+    },
+    {
+     "id": "b2om6",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which UDHR articles cover economic, social and cultural rights?",
+     "opciones": [
+      "Articles 3–21",
+      "Articles 1–2",
+      "Articles 28–30",
+      "Articles 22–27"
+     ],
+     "correcta": 3,
+     "pista": "b2p4",
+     "punto_dificil": "pd2",
+     "dificultad": "retadora",
+     "emoji": "📜",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "Articles 22–27: economic, social and cultural rights"
+     },
+     "retro_correcta": "Yes! Articles 22–27 are economic, social and cultural rights.",
+     "retro_incorrecta": "Not quite: the answer is “Articles 22–27”. Articles 22–27 are economic, social and cultural rights."
+    },
+    {
+     "id": "b2om7",
+     "tipo": "opcion_multiple",
+     "pregunta": "Freedom of Speech is in article…",
+     "opciones": [
+      "19",
+      "3",
+      "18",
+      "21"
+     ],
+     "correcta": 0,
+     "pista": "b2p4",
+     "punto_dificil": "pd2",
+     "dificultad": "retadora",
+     "emoji": "🗣️",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "Freedom of Speech (19)"
+     },
+     "retro_correcta": "Yes! Freedom of Speech is article 19; religion is 18 and vote is 21.",
+     "retro_incorrecta": "Not quite: the answer is “19”. Freedom of Speech is article 19; religion is 18 and vote is 21."
+    },
+    {
+     "id": "b2vf1",
+     "tipo": "verdadero_falso",
+     "afirmacion": "In a democracy, majority rule includes protection of minority rights.",
+     "es_verdadera": true,
+     "pista": "b2p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🤝",
+     "fuente": {
+      "foto": 4,
+      "tipo": "textual",
+      "cita": "majority rule with protection of minority rights"
+     },
+     "retro_correcta": "Yes! Majority rule comes with protection of minority rights.",
+     "retro_incorrecta": "Not quite: the answer is “True”. Majority rule comes with protection of minority rights."
+    },
+    {
+     "id": "b2vf2",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Low participation makes democracy stronger.",
+     "es_verdadera": false,
+     "pista": "b2p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "📉",
+     "fuente": {
+      "foto": 4,
+      "tipo": "textual",
+      "cita": "low participation or ignoring minorities weakens democracy"
+     },
+     "retro_correcta": "Yes! Low participation WEAKENS democracy: decisions do not represent everyone.",
+     "retro_incorrecta": "Not quite: the answer is “False”. Low participation WEAKENS democracy: decisions do not represent everyone."
+    },
+    {
+     "id": "b2vf3",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Inalienability means rights cannot be taken away or given up.",
+     "es_verdadera": true,
+     "pista": "b2p3",
+     "punto_dificil": "pd2",
+     "dificultad": "media",
+     "emoji": "🔒",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "Cannot be taken away or given up"
+     },
+     "retro_correcta": "Yes! Inalienable rights cannot be taken away or given up.",
+     "retro_incorrecta": "Not quite: the answer is “True”. Inalienable rights cannot be taken away or given up."
+    },
+    {
+     "id": "b2vf4",
+     "tipo": "verdadero_falso",
+     "afirmacion": "The UDHR has 25 articles.",
+     "es_verdadera": false,
+     "pista": "b2p4",
+     "punto_dificil": "pd2",
+     "dificultad": "facil",
+     "emoji": "🔢",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "Structure of the UDHR (30 articles)"
+     },
+     "retro_correcta": "Yes! The UDHR has 30 articles.",
+     "retro_incorrecta": "Not quite: the answer is “False”. The UDHR has 30 articles."
+    },
+    {
+     "id": "b2co1",
+     "tipo": "conceptos",
+     "instruccion": "Match each word with its meaning.",
+     "pares": [
+      {
+       "termino": "Universality",
+       "definicion": "Rights apply to everyone, everywhere"
+      },
+      {
+       "termino": "Indivisibility",
+       "definicion": "All rights are equally important"
+      },
+      {
+       "termino": "Interdependence",
+       "definicion": "Rights are connected and reinforce each other"
+      },
+      {
+       "termino": "Inalienability",
+       "definicion": "Rights cannot be taken away or given up"
+      },
+      {
+       "termino": "Personal identity",
+       "definicion": "How we see ourselves"
+      },
+      {
+       "termino": "Social identity",
+       "definicion": "Shaped by the groups we belong to"
+      }
+     ],
+     "pista": "b2p3",
+     "punto_dificil": "pd2",
+     "dificultad": "media",
+     "emoji": "🧩",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "Apply to everyone, everywhere"
+     }
+    },
+    {
+     "id": "b2cp1",
+     "tipo": "completar",
+     "enunciado": "The foundation of human rights is human dignity, equality and ___.",
+     "respuesta": "respect",
+     "distractores": [
+      "money",
+      "power",
+      "religion"
+     ],
+     "pista": "b2p3",
+     "punto_dificil": "pd2",
+     "dificultad": "facil",
+     "emoji": "🕊️",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "human dignity, equality and respect"
+     },
+     "retro_correcta": "Yes! The foundation is human dignity, equality and respect.",
+     "retro_incorrecta": "Not quite: the answer is “respect”. The foundation is human dignity, equality and respect."
+    },
+    {
+     "id": "b2cp2",
+     "tipo": "completar",
+     "enunciado": "The goal of human rights after the Holocaust is: “Never ___.”",
+     "respuesta": "again",
+     "distractores": [
+      "alone",
+      "forget",
+      "war"
+     ],
+     "pista": "b2p3",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "✋",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "The goal is “Never again.”"
+     },
+     "retro_correcta": "Yes! The goal is “Never again.”",
+     "retro_incorrecta": "Not quite: the answer is “again”. The goal is “Never again.”"
+    },
+    {
+     "id": "b2cp3",
+     "tipo": "completar",
+     "enunciado": "Cultural identity is shaped by where you grow up and by ___ influences.",
+     "respuesta": "global",
+     "distractores": [
+      "digital",
+      "family",
+      "school"
+     ],
+     "pista": "b2p2",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🌎",
+     "fuente": {
+      "foto": 4,
+      "tipo": "textual",
+      "cita": "shaped by where you grow up and by global influences"
+     },
+     "retro_correcta": "Yes! Cultural identity is shaped by where you grow up and by global influences.",
+     "retro_incorrecta": "Not quite: the answer is “global”. Cultural identity is shaped by where you grow up and by global influences."
+    },
+    {
+     "id": "b2or1",
+     "tipo": "ordenar",
+     "instruccion": "Put the parts of the UDHR in order.",
+     "pasos": [
+      {
+       "texto": "Preamble: foundation and purpose",
+       "emoji": "📖"
+      },
+      {
+       "texto": "Articles 1–2: equality and non-discrimination",
+       "emoji": "🟰"
+      },
+      {
+       "texto": "Articles 3–21: civil and political rights",
+       "emoji": "🗳️"
+      },
+      {
+       "texto": "Articles 22–27: economic, social and cultural rights",
+       "emoji": "🏥"
+      },
+      {
+       "texto": "Articles 28–30: collective rights and limitations",
+       "emoji": "🤝"
+      }
+     ],
+     "pista": "b2p4",
+     "punto_dificil": "pd2",
+     "dificultad": "media",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "Articles 28–30: collective rights and limitations"
+     },
+     "retro_correcta": "Yes! The order is preamble, 1–2, 3–21, 22–27, 28–30.",
+     "retro_incorrecta": "Not quite: The order is preamble, 1–2, 3–21, 22–27, 28–30."
+    },
+    {
+     "id": "b2cl1",
+     "tipo": "clasificar",
+     "instruccion": "Civil and political, or economic, social and cultural?",
+     "grupos": [
+      "Civil and political 🗳️",
+      "Economic, social and cultural 🏥"
+     ],
+     "elementos": [
+      {
+       "texto": "Right to Life (3)",
+       "grupo": 0
+      },
+      {
+       "texto": "Freedom from Torture (5)",
+       "grupo": 0
+      },
+      {
+       "texto": "Freedom of Religion (18)",
+       "grupo": 0
+      },
+      {
+       "texto": "Freedom of Speech (19)",
+       "grupo": 0
+      },
+      {
+       "texto": "Right to Vote (21)",
+       "grupo": 0
+      },
+      {
+       "texto": "Work (23)",
+       "grupo": 1
+      },
+      {
+       "texto": "Healthcare and Housing (25)",
+       "grupo": 1
+      },
+      {
+       "texto": "Education (26)",
+       "grupo": 1
+      },
+      {
+       "texto": "Culture (27)",
+       "grupo": 1
+      }
+     ],
+     "pista": "b2p4",
+     "punto_dificil": "pd2",
+     "dificultad": "retadora",
+     "emoji": "🗂️",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "Civil and political: Right to Life (3)"
+     }
+    },
+    {
+     "id": "b2sd1",
+     "tipo": "super_dato",
+     "texto": "Human rights are basic rights and freedoms that belong to every person in the [[world]]. Their foundation is human [[dignity]], equality and respect. They were set out after the atrocities of World War II (the [[Holocaust]]), with the goal “Never [[again]].” The UDHR has [[30]] articles, and articles 3–21 are [[civil]] and political rights.",
+     "distractores": [
+      "country",
+      "money",
+      "economic",
+      "25"
+     ],
+     "pista": "b2p3",
+     "punto_dificil": "pd2",
+     "dificultad": "media",
+     "emoji": "⭐",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "basic rights and freedoms that belong to every person in the world"
+     }
+    }
+   ],
+   "mini_examen": [
+    {
+     "id": "b2me1",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which is NOT one of the three types of democracy in the guide?",
+     "opciones": [
+      "Representative",
+      "Direct",
+      "Universal",
+      "Participatory"
+     ],
+     "correcta": 2,
+     "pista": "b2p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "❓",
+     "fuente": {
+      "foto": 4,
+      "tipo": "textual",
+      "cita": "Types: representative (elected representatives), participatory"
+     },
+     "retro_correcta": "Yes! The three types are representative, participatory and direct.",
+     "retro_incorrecta": "Not quite: the answer is “Universal”. The three types are representative, participatory and direct."
+    },
+    {
+     "id": "b2me2",
+     "tipo": "opcion_multiple",
+     "pregunta": "The Right to Vote is in article…",
+     "opciones": [
+      "19",
+      "21",
+      "5",
+      "26"
+     ],
+     "correcta": 1,
+     "pista": "b2p4",
+     "punto_dificil": "pd2",
+     "dificultad": "retadora",
+     "emoji": "🗳️",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "Right to Vote (21)"
+     },
+     "retro_correcta": "Yes! The Right to Vote is article 21.",
+     "retro_incorrecta": "Not quite: the answer is “21”. The Right to Vote is article 21."
+    },
+    {
+     "id": "b2me3",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which identity is influenced by nationality, gender, social class and religion?",
+     "opciones": [
+      "Cultural",
+      "Personal",
+      "Digital",
+      "Social"
+     ],
+     "correcta": 3,
+     "pista": "b2p2",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "👥",
+     "fuente": {
+      "foto": 4,
+      "tipo": "textual",
+      "cita": "Influenced by the groups we belong to (nationality, gender, social class, religion)"
+     },
+     "retro_correcta": "Yes! Social identity comes from the groups we belong to.",
+     "retro_incorrecta": "Not quite: the answer is “Social”. Social identity comes from the groups we belong to."
+    },
+    {
+     "id": "b2me4",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Education (article 26) is an economic, social and cultural right.",
+     "es_verdadera": true,
+     "pista": "b2p4",
+     "punto_dificil": "pd2",
+     "dificultad": "media",
+     "emoji": "🎓",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "Education (26)"
+     },
+     "retro_correcta": "Yes! Education is article 26, inside articles 22–27.",
+     "retro_incorrecta": "Not quite: the answer is “True”. Education is article 26, inside articles 22–27."
+    },
+    {
+     "id": "b2me5",
+     "tipo": "opcion_multiple",
+     "pregunta": "“All rights are equally important.” Which principle is this?",
+     "opciones": [
+      "Indivisibility",
+      "Universality",
+      "Interdependence",
+      "Inalienability"
+     ],
+     "correcta": 0,
+     "pista": "b2p3",
+     "punto_dificil": "pd2",
+     "dificultad": "media",
+     "emoji": "⚖️",
+     "fuente": {
+      "foto": 5,
+      "tipo": "textual",
+      "cita": "All rights are equally important"
+     },
+     "retro_correcta": "Yes! Indivisibility = all rights are equally important.",
+     "retro_incorrecta": "Not quite: the answer is “Indivisibility”. Indivisibility = all rights are equally important."
+    },
+    {
+     "id": "b2me6",
+     "tipo": "opcion_multiple",
+     "pregunta": "Why does ignoring minorities weaken democracy?",
+     "opciones": [
+      "Voting becomes illegal",
+      "Elections become faster",
+      "Decisions do not represent everyone",
+      "Laws disappear"
+     ],
+     "correcta": 2,
+     "pista": "b2p1",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🧩",
+     "fuente": {
+      "foto": 4,
+      "tipo": "textual",
+      "cita": "decisions do not represent everyone"
+     },
+     "retro_correcta": "Yes! If minorities are ignored, decisions do not represent everyone.",
+     "retro_incorrecta": "Not quite: the answer is “Decisions do not represent everyone”. If minorities are ignored, decisions do not represent everyone."
+    }
+   ]
+  },
+  {
+   "id": "b3",
+   "titulo": "Culture, communities and art",
+   "pistas": [
+    {
+     "id": "b3p1",
+     "titulo": "Community",
+     "emoji": "🏘️",
+     "ideas": [
+      "A group of people who live in the same place or share interests and values. It gives a sense of belonging.",
+      "Local (school, town), national (a country), global (shared interests across the world).",
+      "In ecology: plants or animals living together (coral reef, forest, beehive).",
+      "Online communities: shared interests, support and global connection, but also privacy risks, fake identities, cyberbullying and misinformation.",
+      "Utopia: a perfect society. Dystopia: an undesirable, harmful one."
+     ]
+    },
+    {
+     "id": "b3p2",
+     "titulo": "Culture and heritage",
+     "emoji": "🧊",
+     "ideas": [
+      "Culture = learned + shared + always changing. We are not born with it.",
+      "Iceberg: visible part (food, clothes, music, festivals, language) and invisible part (values, beliefs, ideas of respect, time, right and wrong).",
+      "Tangible heritage: buildings, monuments, objects (Teotihuacan pyramids).",
+      "Intangible heritage: traditions, music, dances, food, languages (Día de Muertos, mariachi).",
+      "Drivers of change: technology, migration, media and the Internet, economy, globalization."
+     ]
+    },
+    {
+     "id": "b3p3",
+     "titulo": "Popular culture and subcultures",
+     "emoji": "🛹",
+     "ideas": [
+      "Popular culture: what most people enjoy at a given time. It changes quickly.",
+      "Subculture: a group inside a larger culture with its own beliefs, values and style (skaters, K-pop fans, cosplayers).",
+      "Its members feel part of an in-group.",
+      "Appreciation gives credit, respect and benefit to the community.",
+      "Appropriation takes without credit or payment, especially from communities with less power."
+     ]
+    },
+    {
+     "id": "b3p4",
+     "titulo": "Arts in society",
+     "emoji": "🗿",
+     "ideas": [
+      "Subjective: personal opinion and lived experience. Objective: verifiable facts and evidence.",
+      "Public art gives cultural value, community pride and quality of life; it needs empathy.",
+      "“History is not neutral”: the Edward Colston statue in Bristol (2020).",
+      "In Mexico: do Columbus monuments preserve history or silence Indigenous histories?",
+      "Public art can unite, divide, remember or erase. It is never just decoration."
+     ]
+    }
+   ],
+   "actividades": [
+    {
+     "id": "b3om1",
+     "tipo": "opcion_multiple",
+     "pregunta": "Culture is learned, shared and…",
+     "opciones": [
+      "the same forever",
+      "always changing",
+      "something we are born with",
+      "only about food"
+     ],
+     "correcta": 1,
+     "pista": "b3p2",
+     "punto_dificil": "pd3",
+     "dificultad": "facil",
+     "emoji": "🔄",
+     "fuente": {
+      "foto": 6,
+      "tipo": "textual",
+      "cita": "Culture = learned + shared + always changing"
+     },
+     "retro_correcta": "Yes! Culture = learned + shared + always changing.",
+     "retro_incorrecta": "Not quite: the answer is “always changing”. Culture = learned + shared + always changing."
+    },
+    {
+     "id": "b3om2",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which belongs to the INVISIBLE part of the culture iceberg?",
+     "opciones": [
+      "Clothes",
+      "Festivals",
+      "Food",
+      "Values"
+     ],
+     "correcta": 3,
+     "pista": "b3p2",
+     "punto_dificil": "pd3",
+     "dificultad": "media",
+     "emoji": "🧊",
+     "fuente": {
+      "foto": 6,
+      "tipo": "textual",
+      "cita": "invisible part (values, beliefs"
+     },
+     "retro_correcta": "Yes! Values and beliefs are under the water; food, clothes and festivals are visible.",
+     "retro_incorrecta": "Not quite: the answer is “Values”. Values and beliefs are under the water; food, clothes and festivals are visible."
+    },
+    {
+     "id": "b3om3",
+     "tipo": "opcion_multiple",
+     "pregunta": "Día de Muertos and mariachi are examples of…",
+     "opciones": [
+      "intangible heritage",
+      "subcultures",
+      "tangible heritage",
+      "utopias"
+     ],
+     "correcta": 0,
+     "pista": "b3p2",
+     "punto_dificil": "pd3",
+     "dificultad": "media",
+     "emoji": "💀",
+     "fuente": {
+      "foto": 6,
+      "tipo": "textual",
+      "cita": "Intangible: traditions, music, dances, food, languages (Día de Muertos, mariachi"
+     },
+     "retro_correcta": "Yes! Traditions and music are intangible heritage.",
+     "retro_incorrecta": "Not quite: the answer is “intangible heritage”. Traditions and music are intangible heritage."
+    },
+    {
+     "id": "b3om4",
+     "tipo": "opcion_multiple",
+     "pregunta": "A group inside a larger culture with its own beliefs, values and style is a…",
+     "opciones": [
+      "dystopia",
+      "global community",
+      "subculture",
+      "cultural heritage"
+     ],
+     "correcta": 2,
+     "pista": "b3p3",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🛹",
+     "fuente": {
+      "foto": 7,
+      "tipo": "textual",
+      "cita": "a group within a larger culture with its own beliefs, values, interests and style"
+     },
+     "retro_correcta": "Yes! That is a subculture.",
+     "retro_incorrecta": "Not quite: the answer is “subculture”. That is a subculture."
+    },
+    {
+     "id": "b3om5",
+     "tipo": "opcion_multiple",
+     "pregunta": "Where was the Edward Colston statue that raised questions in 2020?",
+     "opciones": [
+      "Mexico City",
+      "Bristol",
+      "New York",
+      "Madrid"
+     ],
+     "correcta": 1,
+     "pista": "b3p4",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🗽",
+     "fuente": {
+      "foto": 8,
+      "tipo": "textual",
+      "cita": "the Edward Colston statue in Bristol (2020)"
+     },
+     "retro_correcta": "Yes! The Colston statue was in Bristol (2020).",
+     "retro_incorrecta": "Not quite: the answer is “Bristol”. The Colston statue was in Bristol (2020)."
+    },
+    {
+     "id": "b3om6",
+     "tipo": "opcion_multiple",
+     "pregunta": "Appreciation, unlike appropriation, gives…",
+     "opciones": [
+      "money only to big companies",
+      "copies without permission",
+      "nothing to the community",
+      "credit, respect and benefit to the community"
+     ],
+     "correcta": 3,
+     "pista": "b3p3",
+     "punto_dificil": "pd3",
+     "dificultad": "media",
+     "emoji": "🙏",
+     "fuente": {
+      "foto": 7,
+      "tipo": "textual",
+      "cita": "appreciation gives credit, respect and benefit to the community"
+     },
+     "retro_correcta": "Yes! Appreciation gives credit, respect and benefit; appropriation takes without credit or payment.",
+     "retro_incorrecta": "Not quite: the answer is “credit, respect and benefit to the community”. Appreciation gives credit, respect and benefit; appropriation takes without credit or payment."
+    },
+    {
+     "id": "b3vf1",
+     "tipo": "verdadero_falso",
+     "afirmacion": "In ecology, a coral reef can be a community.",
+     "es_verdadera": true,
+     "pista": "b3p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🐠",
+     "fuente": {
+      "foto": 6,
+      "tipo": "textual",
+      "cita": "a community can also be plants or animals living together (coral reef"
+     },
+     "retro_correcta": "Yes! Plants or animals living together (coral reef, forest, beehive) are a community.",
+     "retro_incorrecta": "Not quite: the answer is “True”. Plants or animals living together (coral reef, forest, beehive) are a community."
+    },
+    {
+     "id": "b3vf2",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Culture is something we are born with.",
+     "es_verdadera": false,
+     "pista": "b3p2",
+     "punto_dificil": "pd3",
+     "dificultad": "facil",
+     "emoji": "👶",
+     "fuente": {
+      "foto": 6,
+      "tipo": "textual",
+      "cita": "It is not something we are born with"
+     },
+     "retro_correcta": "Yes! Culture is learned; it is not something we are born with.",
+     "retro_incorrecta": "Not quite: the answer is “False”. Culture is learned; it is not something we are born with."
+    },
+    {
+     "id": "b3vf3",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Popular culture changes quickly and spreads fast.",
+     "es_verdadera": true,
+     "pista": "b3p3",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "📈",
+     "fuente": {
+      "foto": 7,
+      "tipo": "textual",
+      "cita": "It changes quickly and spreads fast"
+     },
+     "retro_correcta": "Yes! Popular culture changes quickly and spreads fast.",
+     "retro_incorrecta": "Not quite: the answer is “True”. Popular culture changes quickly and spreads fast."
+    },
+    {
+     "id": "b3vf4",
+     "tipo": "verdadero_falso",
+     "afirmacion": "An objective view is based on personal opinion.",
+     "es_verdadera": false,
+     "pista": "b3p4",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🔬",
+     "fuente": {
+      "foto": 8,
+      "tipo": "textual",
+      "cita": "Objective: verifiable facts and evidence"
+     },
+     "retro_correcta": "Yes! Objective = verifiable facts and evidence; subjective = personal opinion.",
+     "retro_incorrecta": "Not quite: the answer is “False”. Objective = verifiable facts and evidence; subjective = personal opinion."
+    },
+    {
+     "id": "b3vf5",
+     "tipo": "verdadero_falso",
+     "afirmacion": "A dystopia is a perfect, ideal society.",
+     "es_verdadera": false,
+     "pista": "b3p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🏚️",
+     "fuente": {
+      "foto": 7,
+      "tipo": "textual",
+      "cita": "Dystopia: an undesirable, harmful society"
+     },
+     "retro_correcta": "Yes! That is a utopia. A dystopia is undesirable and harmful.",
+     "retro_incorrecta": "Not quite: the answer is “False”. That is a utopia. A dystopia is undesirable and harmful."
+    },
+    {
+     "id": "b3co1",
+     "tipo": "conceptos",
+     "instruccion": "Match each word with its meaning.",
+     "pares": [
+      {
+       "termino": "Utopia",
+       "definicion": "A perfect, ideal society"
+      },
+      {
+       "termino": "Dystopia",
+       "definicion": "An undesirable, harmful society"
+      },
+      {
+       "termino": "Subjective",
+       "definicion": "Personal opinion and lived experience"
+      },
+      {
+       "termino": "Objective",
+       "definicion": "Verifiable facts and evidence"
+      },
+      {
+       "termino": "Community",
+       "definicion": "Gives a sense of belonging"
+      },
+      {
+       "termino": "Popular culture",
+       "definicion": "What most people enjoy at a given time"
+      }
+     ],
+     "pista": "b3p4",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🧩",
+     "fuente": {
+      "foto": 7,
+      "tipo": "textual",
+      "cita": "Utopia: a perfect, ideal society"
+     }
+    },
+    {
+     "id": "b3cp1",
+     "tipo": "completar",
+     "enunciado": "Drivers of cultural change: technology, migration, media and the Internet, economy and ___.",
+     "respuesta": "globalization",
+     "distractores": [
+      "tradition",
+      "religion",
+      "weather"
+     ],
+     "pista": "b3p2",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🌐",
+     "fuente": {
+      "foto": 6,
+      "tipo": "textual",
+      "cita": "economy, globalization"
+     },
+     "retro_correcta": "Yes! Globalization is the fifth driver.",
+     "retro_incorrecta": "Not quite: the answer is “globalization”. Globalization is the fifth driver."
+    },
+    {
+     "id": "b3cp2",
+     "tipo": "completar",
+     "enunciado": "Public art can unite, divide, remember or ___.",
+     "respuesta": "erase",
+     "distractores": [
+      "decorate",
+      "celebrate",
+      "entertain"
+     ],
+     "pista": "b3p4",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🖼️",
+     "fuente": {
+      "foto": 8,
+      "tipo": "textual",
+      "cita": "Public art can unite, divide, remember or erase"
+     },
+     "retro_correcta": "Yes! Public art can unite, divide, remember or erase.",
+     "retro_incorrecta": "Not quite: the answer is “erase”. Public art can unite, divide, remember or erase."
+    },
+    {
+     "id": "b3cl1",
+     "tipo": "clasificar",
+     "instruccion": "Tangible or intangible heritage?",
+     "grupos": [
+      "Tangible 🏛️",
+      "Intangible 🎶"
+     ],
+     "elementos": [
+      {
+       "texto": "Teotihuacan pyramids",
+       "grupo": 0
+      },
+      {
+       "texto": "Churches",
+       "grupo": 0
+      },
+      {
+       "texto": "Ruins",
+       "grupo": 0
+      },
+      {
+       "texto": "Monuments",
+       "grupo": 0
+      },
+      {
+       "texto": "Día de Muertos",
+       "grupo": 1
+      },
+      {
+       "texto": "Mariachi",
+       "grupo": 1
+      },
+      {
+       "texto": "Indigenous languages",
+       "grupo": 1
+      },
+      {
+       "texto": "Japanese tea ceremony",
+       "grupo": 1
+      }
+     ],
+     "pista": "b3p2",
+     "punto_dificil": "pd3",
+     "dificultad": "media",
+     "emoji": "🗂️",
+     "fuente": {
+      "foto": 6,
+      "tipo": "textual",
+      "cita": "Tangible: buildings, monuments, objects (Teotihuacan pyramids, churches, ruins)"
+     }
+    },
+    {
+     "id": "b3cl2",
+     "tipo": "clasificar",
+     "instruccion": "Online communities: advantage or disadvantage?",
+     "grupos": [
+      "Advantage 👍",
+      "Disadvantage 👎"
+     ],
+     "elementos": [
+      {
+       "texto": "Shared interests",
+       "grupo": 0
+      },
+      {
+       "texto": "Support networks",
+       "grupo": 0
+      },
+      {
+       "texto": "Global connection",
+       "grupo": 0
+      },
+      {
+       "texto": "Privacy risks",
+       "grupo": 1
+      },
+      {
+       "texto": "Fake identities",
+       "grupo": 1
+      },
+      {
+       "texto": "Cyberbullying",
+       "grupo": 1
+      },
+      {
+       "texto": "Misinformation",
+       "grupo": 1
+      }
+     ],
+     "pista": "b3p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🗂️",
+     "fuente": {
+      "foto": 7,
+      "tipo": "textual",
+      "cita": "Disadvantages: privacy risks, fake identities, cyberbullying, misinformation"
+     }
+    },
+    {
+     "id": "b3sd1",
+     "tipo": "super_dato",
+     "texto": "Culture is [[learned]], shared and always changing. Food, clothes and music are the [[visible]] part of the culture iceberg, while values and beliefs are the [[invisible]] part. The Teotihuacan pyramids are [[tangible]] heritage, and Día de Muertos is [[intangible]] heritage. [[Appreciation]] gives credit, respect and benefit to the community.",
+     "distractores": [
+      "born",
+      "hidden",
+      "Appropriation",
+      "popular"
+     ],
+     "pista": "b3p2",
+     "punto_dificil": "pd3",
+     "dificultad": "media",
+     "emoji": "⭐",
+     "fuente": {
+      "foto": 6,
+      "tipo": "textual",
+      "cita": "Culture = learned + shared + always changing"
+     }
+    }
+   ],
+   "mini_examen": [
+    {
+     "id": "b3me1",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which community connects people with shared interests across the world?",
+     "opciones": [
+      "Global",
+      "National",
+      "Local",
+      "Ecological"
+     ],
+     "correcta": 0,
+     "pista": "b3p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🌍",
+     "fuente": {
+      "foto": 6,
+      "tipo": "textual",
+      "cita": "global (people connected by shared interests across the world)"
+     },
+     "retro_correcta": "Yes! A global community connects people by shared interests across the world.",
+     "retro_incorrecta": "Not quite: the answer is “Global”. A global community connects people by shared interests across the world."
+    },
+    {
+     "id": "b3me2",
+     "tipo": "opcion_multiple",
+     "pregunta": "Skaters, K-pop fans and cosplayers are examples of…",
+     "opciones": [
+      "utopias",
+      "national communities",
+      "subcultures",
+      "tangible heritage"
+     ],
+     "correcta": 2,
+     "pista": "b3p3",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🎤",
+     "fuente": {
+      "foto": 7,
+      "tipo": "textual",
+      "cita": "Examples: kendama, itasha, skaters, K-pop fans, cosplayers"
+     },
+     "retro_correcta": "Yes! The guide gives them as subculture examples.",
+     "retro_incorrecta": "Not quite: the answer is “subcultures”. The guide gives them as subculture examples."
+    },
+    {
+     "id": "b3me3",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Taking from a culture without credit or payment is appropriation.",
+     "es_verdadera": true,
+     "pista": "b3p3",
+     "punto_dificil": "pd3",
+     "dificultad": "media",
+     "emoji": "🚫",
+     "fuente": {
+      "foto": 7,
+      "tipo": "textual",
+      "cita": "Appropriation takes without credit or payment"
+     },
+     "retro_correcta": "Yes! Appropriation takes without credit or payment.",
+     "retro_incorrecta": "Not quite: the answer is “True”. Appropriation takes without credit or payment."
+    },
+    {
+     "id": "b3me4",
+     "tipo": "opcion_multiple",
+     "pregunta": "The Teotihuacan pyramids are…",
+     "opciones": [
+      "popular culture",
+      "tangible heritage",
+      "a subculture",
+      "intangible heritage"
+     ],
+     "correcta": 1,
+     "pista": "b3p2",
+     "punto_dificil": "pd3",
+     "dificultad": "facil",
+     "emoji": "🔺",
+     "fuente": {
+      "foto": 6,
+      "tipo": "textual",
+      "cita": "Tangible: buildings, monuments, objects (Teotihuacan pyramids"
+     },
+     "retro_correcta": "Yes! Buildings and monuments are tangible heritage.",
+     "retro_incorrecta": "Not quite: the answer is “tangible heritage”. Buildings and monuments are tangible heritage."
+    },
+    {
+     "id": "b3me5",
+     "tipo": "opcion_multiple",
+     "pregunta": "“Art is in the eye of the beholder” describes a ___ view.",
+     "opciones": [
+      "objective",
+      "neutral",
+      "global",
+      "subjective"
+     ],
+     "correcta": 3,
+     "pista": "b3p4",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "👁️",
+     "fuente": {
+      "foto": 8,
+      "tipo": "textual",
+      "cita": "in the eye of the beholder"
+     },
+     "retro_correcta": "Yes! Subjective = personal opinion and lived experience.",
+     "retro_incorrecta": "Not quite: the answer is “subjective”. Subjective = personal opinion and lived experience."
+    },
+    {
+     "id": "b3me6",
+     "tipo": "opcion_multiple",
+     "pregunta": "Public art needs empathy: describe feelings and…",
+     "opciones": [
+      "listen actively",
+      "stay silent",
+      "ignore others",
+      "copy others"
+     ],
+     "correcta": 0,
+     "pista": "b3p4",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "👂",
+     "fuente": {
+      "foto": 8,
+      "tipo": "textual",
+      "cita": "It needs empathy (describe feelings, listen actively)"
+     },
+     "retro_correcta": "Yes! Empathy means describing feelings and listening actively.",
+     "retro_incorrecta": "Not quite: the answer is “listen actively”. Empathy means describing feelings and listening actively."
+    }
+   ]
+  },
+  {
+   "id": "b4",
+   "titulo": "Climate change and energy",
+   "pistas": [
+    {
+     "id": "b4p1",
+     "titulo": "Climate basics",
+     "emoji": "🌡️",
+     "ideas": [
+      "Climate change: long-term shifts in temperature and weather, increasingly caused by humans since the 1800s.",
+      "Weather = daily conditions. Climate = long-term average over decades.",
+      "Greenhouse effect: gases (CO₂, methane, water vapor) trap heat like a blanket.",
+      "Carbon footprint: total greenhouse gases produced by a person, organization or product.",
+      "The IPCC calls for deep emission cuts to limit warming to 1.5°C."
+     ]
+    },
+    {
+     "id": "b4p2",
+     "titulo": "Causes, impacts and who pays",
+     "emoji": "🌊",
+     "ideas": [
+      "Burning fossil fuels → CO₂ → rising temperatures → melting ice caps and rising seas.",
+      "Impacts: floods, droughts, storms, biodiversity loss, forced migration.",
+      "Poorer countries suffer most despite contributing least (climate justice).",
+      "For rich countries paying: they caused most historical emissions. Against: enormous costs, debt risks, China and India now major polluters.",
+      "Shared responsibility: governments, companies and individuals."
+     ]
+    },
+    {
+     "id": "b4p3",
+     "titulo": "Solar, fission and fusion",
+     "emoji": "☀️",
+     "ideas": [
+      "Solar: renewable, very low emissions in operation, costs have fallen.",
+      "Challenge: old panels produce toxic waste (250,000 t in 2016, 78 million t projected by 2050).",
+      "Fission splits heavy nuclei (uranium); all current nuclear plants use it.",
+      "Fusion joins nuclei (powers the Sun): more energy, less waste, no meltdown risk.",
+      "December 2022: the National Ignition Facility (USA) got the first net energy gain from fusion."
+     ]
+    },
+    {
+     "id": "b4p4",
+     "titulo": "Is renewable energy sustainable?",
+     "emoji": "⛏️",
+     "ideas": [
+      "Critical minerals: lithium (batteries), cobalt (EVs), copper (wiring, turbines), nickel, rare earths.",
+      "Supply chain: mining → processing → manufacturing → distribution.",
+      "Hidden costs: habitat destruction, water use, diesel machinery; lithium demand ×40 by 2040.",
+      "Electric cars: zero emissions only while driving; judge the whole life cycle.",
+      "80% of people live in fossil fuel-importing countries; China dominates mineral processing."
+     ]
+    }
+   ],
+   "actividades": [
+    {
+     "id": "b4om1",
+     "tipo": "opcion_multiple",
+     "pregunta": "Weather is daily conditions. Climate is…",
+     "opciones": [
+      "one cold day",
+      "the weather of one week",
+      "the long-term average over decades",
+      "today's rain and wind"
+     ],
+     "correcta": 2,
+     "pista": "b4p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🌦️",
+     "fuente": {
+      "foto": 9,
+      "tipo": "textual",
+      "cita": "Climate = long-term average over decades"
+     },
+     "retro_correcta": "Yes! Climate is the long-term average over decades.",
+     "retro_incorrecta": "Not quite: the answer is “the long-term average over decades”. Climate is the long-term average over decades."
+    },
+    {
+     "id": "b4om2",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which of these is a greenhouse gas named in the guide?",
+     "opciones": [
+      "Oxygen",
+      "Methane (CH₄)",
+      "Nitrogen",
+      "Helium"
+     ],
+     "correcta": 1,
+     "pista": "b4p1",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "💨",
+     "fuente": {
+      "foto": 9,
+      "tipo": "textual",
+      "cita": "Examples: CO₂, methane (CH₄), water vapor"
+     },
+     "retro_correcta": "Yes! The guide names CO₂, methane and water vapor.",
+     "retro_incorrecta": "Not quite: the answer is “Methane (CH₄)”. The guide names CO₂, methane and water vapor."
+    },
+    {
+     "id": "b4om3",
+     "tipo": "opcion_multiple",
+     "pregunta": "The IPCC calls for deep emission cuts to limit warming to…",
+     "opciones": [
+      "5°C",
+      "3°C",
+      "0.5°C",
+      "1.5°C"
+     ],
+     "correcta": 3,
+     "pista": "b4p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🎯",
+     "fuente": {
+      "foto": 9,
+      "tipo": "textual",
+      "cita": "limit warming to 1.5°C"
+     },
+     "retro_correcta": "Yes! The IPCC goal is 1.5°C.",
+     "retro_incorrecta": "Not quite: the answer is “1.5°C”. The IPCC goal is 1.5°C."
+    },
+    {
+     "id": "b4om4",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which process powers the Sun?",
+     "opciones": [
+      "Fusion",
+      "Fission",
+      "Photosynthesis",
+      "Combustion"
+     ],
+     "correcta": 0,
+     "pista": "b4p3",
+     "punto_dificil": "pd5",
+     "dificultad": "facil",
+     "emoji": "🌞",
+     "fuente": {
+      "foto": 10,
+      "tipo": "textual",
+      "cita": "Fusion joins atomic nuclei (the process that powers the Sun)"
+     },
+     "retro_correcta": "Yes! Fusion joins atomic nuclei, the process that powers the Sun.",
+     "retro_incorrecta": "Not quite: the answer is “Fusion”. Fusion joins atomic nuclei, the process that powers the Sun."
+    },
+    {
+     "id": "b4om5",
+     "tipo": "opcion_multiple",
+     "pregunta": "All current nuclear power plants use…",
+     "opciones": [
+      "wind energy",
+      "solar energy",
+      "fission",
+      "fusion"
+     ],
+     "correcta": 2,
+     "pista": "b4p3",
+     "punto_dificil": "pd5",
+     "dificultad": "media",
+     "emoji": "⚛️",
+     "fuente": {
+      "foto": 10,
+      "tipo": "textual",
+      "cita": "All current nuclear power plants use it"
+     },
+     "retro_correcta": "Yes! All current nuclear plants use fission.",
+     "retro_incorrecta": "Not quite: the answer is “fission”. All current nuclear plants use fission."
+    },
+    {
+     "id": "b4om6",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which critical mineral is used for wiring and turbines?",
+     "opciones": [
+      "Cobalt",
+      "Copper",
+      "Nickel",
+      "Lithium"
+     ],
+     "correcta": 1,
+     "pista": "b4p4",
+     "punto_dificil": "pd5",
+     "dificultad": "retadora",
+     "emoji": "🔌",
+     "fuente": {
+      "foto": 11,
+      "tipo": "textual",
+      "cita": "copper (wiring and turbines)"
+     },
+     "retro_correcta": "Yes! Copper: wiring and turbines; lithium: batteries.",
+     "retro_incorrecta": "Not quite: the answer is “Copper”. Copper: wiring and turbines; lithium: batteries."
+    },
+    {
+     "id": "b4om7",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which country is the dominant processor of many critical minerals?",
+     "opciones": [
+      "USA",
+      "Mexico",
+      "India",
+      "China"
+     ],
+     "correcta": 3,
+     "pista": "b4p4",
+     "punto_dificil": "pd5",
+     "dificultad": "media",
+     "emoji": "🏭",
+     "fuente": {
+      "foto": 11,
+      "tipo": "textual",
+      "cita": "China is the dominant processor of many critical minerals"
+     },
+     "retro_correcta": "Yes! China dominates the processing of rare earths and lithium.",
+     "retro_incorrecta": "Not quite: the answer is “China”. China dominates the processing of rare earths and lithium."
+    },
+    {
+     "id": "b4om8",
+     "tipo": "opcion_multiple",
+     "pregunta": "“Zero emissions” for electric cars is true only…",
+     "opciones": [
+      "while driving",
+      "during mining",
+      "over the whole life cycle",
+      "during battery production"
+     ],
+     "correcta": 0,
+     "pista": "b4p4",
+     "punto_dificil": "pd5",
+     "dificultad": "media",
+     "emoji": "🚗",
+     "fuente": {
+      "foto": 11,
+      "tipo": "textual",
+      "cita": "“zero emissions” is true only while driving"
+     },
+     "retro_correcta": "Yes! It is true only while driving; judge the whole life cycle.",
+     "retro_incorrecta": "Not quite: the answer is “while driving”. It is true only while driving; judge the whole life cycle."
+    },
+    {
+     "id": "b4vf1",
+     "tipo": "verdadero_falso",
+     "afirmacion": "A cold week disproves global warming.",
+     "es_verdadera": false,
+     "pista": "b4p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🥶",
+     "fuente": {
+      "foto": 9,
+      "tipo": "textual",
+      "cita": "A cold week does not disprove global warming"
+     },
+     "retro_correcta": "Yes! Weather is not climate: a cold week does not disprove global warming.",
+     "retro_incorrecta": "Not quite: the answer is “False”. Weather is not climate: a cold week does not disprove global warming."
+    },
+    {
+     "id": "b4vf2",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Poorer countries suffer the most despite contributing least.",
+     "es_verdadera": true,
+     "pista": "b4p2",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "⚖️",
+     "fuente": {
+      "foto": 9,
+      "tipo": "textual",
+      "cita": "poorer countries suffer the most despite contributing least"
+     },
+     "retro_correcta": "Yes! This is the unequal impact of climate change.",
+     "retro_incorrecta": "Not quite: the answer is “True”. This is the unequal impact of climate change."
+    },
+    {
+     "id": "b4vf3",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Fusion produces more radioactive waste than fission.",
+     "es_verdadera": false,
+     "pista": "b4p3",
+     "punto_dificil": "pd5",
+     "dificultad": "media",
+     "emoji": "☢️",
+     "fuente": {
+      "foto": 10,
+      "tipo": "textual",
+      "cita": "with less radioactive waste and no meltdown risk"
+     },
+     "retro_correcta": "Yes! Fusion produces LESS radioactive waste and has no meltdown risk.",
+     "retro_incorrecta": "Not quite: the answer is “False”. Fusion produces LESS radioactive waste and has no meltdown risk."
+    },
+    {
+     "id": "b4vf4",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Popularity (followers) proves that information is true.",
+     "es_verdadera": false,
+     "pista": "b4p1",
+     "punto_dificil": "pd4",
+     "dificultad": "facil",
+     "emoji": "🔍",
+     "fuente": {
+      "foto": 9,
+      "tipo": "textual",
+      "cita": "Popularity (followers) does not prove truth"
+     },
+     "retro_correcta": "Yes! Popularity does not prove truth; check the evidence.",
+     "retro_incorrecta": "Not quite: the answer is “False”. Popularity does not prove truth; check the evidence."
+    },
+    {
+     "id": "b4co1",
+     "tipo": "conceptos",
+     "instruccion": "Match each word with its meaning.",
+     "pares": [
+      {
+       "termino": "Carbon footprint",
+       "definicion": "Total greenhouse gases produced by a person, organization or product"
+      },
+      {
+       "termino": "Greenhouse effect",
+       "definicion": "Gases trap heat like a blanket"
+      },
+      {
+       "termino": "Climate justice",
+       "definicion": "Those who contributed least suffer the most"
+      },
+      {
+       "termino": "Energy",
+       "definicion": "The capacity to do work or produce heat"
+      },
+      {
+       "termino": "Global warming",
+       "definicion": "Earth getting warmer due to human activities"
+      },
+      {
+       "termino": "Fission",
+       "definicion": "Splits heavy atomic nuclei"
+      }
+     ],
+     "pista": "b4p1",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🧩",
+     "fuente": {
+      "foto": 9,
+      "tipo": "textual",
+      "cita": "the total greenhouse gases produced by a person, organization or product"
+     }
+    },
+    {
+     "id": "b4cp1",
+     "tipo": "completar",
+     "enunciado": "In December 2022, the National Ignition Facility (USA) achieved the first net energy ___ from fusion.",
+     "respuesta": "gain",
+     "distractores": [
+      "loss",
+      "ban",
+      "leak"
+     ],
+     "pista": "b4p3",
+     "punto_dificil": "pd5",
+     "dificultad": "media",
+     "emoji": "🔬",
+     "fuente": {
+      "foto": 10,
+      "tipo": "textual",
+      "cita": "achieved the first net energy gain from fusion"
+     },
+     "retro_correcta": "Yes! It was the first net energy gain from fusion.",
+     "retro_incorrecta": "Not quite: the answer is “gain”. It was the first net energy gain from fusion."
+    },
+    {
+     "id": "b4cp2",
+     "tipo": "completar",
+     "enunciado": "Lithium demand is projected to grow ___ by 2040.",
+     "respuesta": "40×",
+     "distractores": [
+      "4×",
+      "10×",
+      "100×"
+     ],
+     "pista": "b4p4",
+     "punto_dificil": "pd5",
+     "dificultad": "retadora",
+     "emoji": "🔋",
+     "fuente": {
+      "foto": 11,
+      "tipo": "textual",
+      "cita": "lithium demand projected to grow 40× by 2040"
+     },
+     "retro_correcta": "Yes! Lithium demand is projected to grow 40× by 2040.",
+     "retro_incorrecta": "Not quite: the answer is “40×”. Lithium demand is projected to grow 40× by 2040."
+    },
+    {
+     "id": "b4cp3",
+     "tipo": "completar",
+     "enunciado": "To use less energy, wash clothes at ___ °C.",
+     "respuesta": "30",
+     "distractores": [
+      "60",
+      "90",
+      "45"
+     ],
+     "pista": "b4p2",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "👕",
+     "fuente": {
+      "foto": 10,
+      "tipo": "textual",
+      "cita": "wash clothes at 30°C"
+     },
+     "retro_correcta": "Yes! The guide says wash clothes at 30°C.",
+     "retro_incorrecta": "Not quite: the answer is “30”. The guide says wash clothes at 30°C."
+    },
+    {
+     "id": "b4or1",
+     "tipo": "ordenar",
+     "instruccion": "Put the renewable energy supply chain in order.",
+     "pasos": [
+      {
+       "texto": "Mining",
+       "emoji": "⛏️"
+      },
+      {
+       "texto": "Processing",
+       "emoji": "⚙️"
+      },
+      {
+       "texto": "Manufacturing",
+       "emoji": "🏭"
+      },
+      {
+       "texto": "Distribution",
+       "emoji": "🚚"
+      }
+     ],
+     "pista": "b4p4",
+     "punto_dificil": "pd5",
+     "dificultad": "facil",
+     "fuente": {
+      "foto": 11,
+      "tipo": "textual",
+      "cita": "mining → processing → manufacturing → distribution"
+     },
+     "retro_correcta": "Yes! The chain is mining → processing → manufacturing → distribution.",
+     "retro_incorrecta": "Not quite: The chain is mining → processing → manufacturing → distribution."
+    },
+    {
+     "id": "b4or2",
+     "tipo": "ordenar",
+     "instruccion": "Put the cause and effect chain in order.",
+     "pasos": [
+      {
+       "texto": "Burning fossil fuels",
+       "emoji": "🛢️"
+      },
+      {
+       "texto": "CO₂ is released",
+       "emoji": "💨"
+      },
+      {
+       "texto": "Temperatures rise",
+       "emoji": "🌡️"
+      },
+      {
+       "texto": "Ice caps melt and sea levels rise",
+       "emoji": "🧊"
+      }
+     ],
+     "pista": "b4p2",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "fuente": {
+      "foto": 9,
+      "tipo": "textual",
+      "cita": "Burning fossil fuels (coal, oil, gas) releases CO₂"
+     },
+     "retro_correcta": "Yes! Fossil fuels → CO₂ → rising temperatures → melting ice and rising seas.",
+     "retro_incorrecta": "Not quite: Fossil fuels → CO₂ → rising temperatures → melting ice and rising seas."
+    },
+    {
+     "id": "b4cl1",
+     "tipo": "clasificar",
+     "instruccion": "Solar energy: advantage or challenge?",
+     "grupos": [
+      "Advantage ☀️",
+      "Challenge ⚠️"
+     ],
+     "elementos": [
+      {
+       "texto": "Renewable and virtually unlimited",
+       "grupo": 0
+      },
+      {
+       "texto": "Very low emissions during operation",
+       "grupo": 0
+      },
+      {
+       "texto": "Reduces fossil fuel dependence",
+       "grupo": 0
+      },
+      {
+       "texto": "Costs have fallen",
+       "grupo": 0
+      },
+      {
+       "texto": "Old panels produce toxic waste",
+       "grupo": 1
+      },
+      {
+       "texto": "Limited recycling",
+       "grupo": 1
+      },
+      {
+       "texto": "78 million tonnes of waste by 2050",
+       "grupo": 1
+      }
+     ],
+     "pista": "b4p3",
+     "punto_dificil": "pd5",
+     "dificultad": "media",
+     "emoji": "🗂️",
+     "fuente": {
+      "foto": 10,
+      "tipo": "textual",
+      "cita": "old panels produce toxic waste, limited recycling"
+     }
+    },
+    {
+     "id": "b4cl2",
+     "tipo": "clasificar",
+     "instruccion": "Should rich countries pay? Sort the arguments.",
+     "grupos": [
+      "For 👍",
+      "Against / complications 👎"
+     ],
+     "elementos": [
+      {
+       "texto": "They caused most historical emissions",
+       "grupo": 0
+      },
+      {
+       "texto": "They built wealth at the planet's expense",
+       "grupo": 0
+      },
+      {
+       "texto": "Helping prevents migration and instability",
+       "grupo": 0
+      },
+      {
+       "texto": "Costs are enormous",
+       "grupo": 1
+      },
+      {
+       "texto": "Debt risks for recipient nations",
+       "grupo": 1
+      },
+      {
+       "texto": "China and India are now major polluters",
+       "grupo": 1
+      }
+     ],
+     "pista": "b4p2",
+     "punto_dificil": null,
+     "dificultad": "retadora",
+     "emoji": "🗂️",
+     "fuente": {
+      "foto": 10,
+      "tipo": "textual",
+      "cita": "they caused most historical emissions"
+     }
+    },
+    {
+     "id": "b4sd1",
+     "tipo": "super_dato",
+     "texto": "Burning fossil fuels releases [[CO₂]], and temperatures rise. The [[greenhouse]] effect traps heat like a blanket. The IPCC calls for deep emission cuts to limit warming to [[1.5°C]]. [[Fission]] splits heavy atomic nuclei, while [[fusion]] joins them, the process that powers the Sun. Electric cars have zero emissions only while [[driving]].",
+     "distractores": [
+      "oxygen",
+      "3°C",
+      "charging",
+      "mining"
+     ],
+     "pista": "b4p3",
+     "punto_dificil": "pd5",
+     "dificultad": "media",
+     "emoji": "⭐",
+     "fuente": {
+      "foto": 10,
+      "tipo": "textual",
+      "cita": "Fusion joins atomic nuclei (the process that powers the Sun)"
+     }
+    }
+   ],
+   "mini_examen": [
+    {
+     "id": "b4me1",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which is an impact of climate change in the guide?",
+     "opciones": [
+      "More ice at the poles",
+      "Fewer storms",
+      "Forced migration of millions of people",
+      "Lower sea levels"
+     ],
+     "correcta": 2,
+     "pista": "b4p2",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🧳",
+     "fuente": {
+      "foto": 9,
+      "tipo": "textual",
+      "cita": "forced migration of millions of people"
+     },
+     "retro_correcta": "Yes! Impacts include forced migration, floods, droughts and stronger storms.",
+     "retro_incorrecta": "Not quite: the answer is “Forced migration of millions of people”. Impacts include forced migration, floods, droughts and stronger storms."
+    },
+    {
+     "id": "b4me2",
+     "tipo": "opcion_multiple",
+     "pregunta": "With shared responsibility, who must act?",
+     "opciones": [
+      "Only companies",
+      "Governments, companies and individuals",
+      "Only scientists",
+      "Only governments"
+     ],
+     "correcta": 1,
+     "pista": "b4p2",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🤝",
+     "fuente": {
+      "foto": 10,
+      "tipo": "textual",
+      "cita": "governments set policy, companies reduce emissions, individuals make conscious choices"
+     },
+     "retro_correcta": "Yes! Governments set policy, companies cut emissions, individuals make choices.",
+     "retro_incorrecta": "Not quite: the answer is “Governments, companies and individuals”. Governments set policy, companies cut emissions, individuals make choices."
+    },
+    {
+     "id": "b4me3",
+     "tipo": "verdadero_falso",
+     "afirmacion": "Cobalt mining in the DRC has included child workers.",
+     "es_verdadera": true,
+     "pista": "b4p4",
+     "punto_dificil": "pd5",
+     "dificultad": "media",
+     "emoji": "⛏️",
+     "fuente": {
+      "foto": 11,
+      "tipo": "textual",
+      "cita": "cobalt mining in the DRC, including child workers"
+     },
+     "retro_correcta": "Yes! The guide mentions hazardous conditions, including child workers.",
+     "retro_incorrecta": "Not quite: the answer is “True”. The guide mentions hazardous conditions, including child workers."
+    },
+    {
+     "id": "b4me4",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which is a hidden cost of renewable energy?",
+     "opciones": [
+      "Lower prices",
+      "Free sunlight",
+      "Cleaner city air",
+      "Habitat destruction"
+     ],
+     "correcta": 3,
+     "pista": "b4p4",
+     "punto_dificil": "pd5",
+     "dificultad": "media",
+     "emoji": "🌲",
+     "fuente": {
+      "foto": 11,
+      "tipo": "textual",
+      "cita": "Hidden costs: habitat destruction, large water use, diesel machinery"
+     },
+     "retro_correcta": "Yes! Hidden costs: habitat destruction, water use, diesel machinery.",
+     "retro_incorrecta": "Not quite: the answer is “Habitat destruction”. Hidden costs: habitat destruction, water use, diesel machinery."
+    },
+    {
+     "id": "b4me5",
+     "tipo": "opcion_multiple",
+     "pregunta": "A reliable source…",
+     "opciones": [
+      "uses evidence, is transparent and is reviewed by experts",
+      "uses emotional words",
+      "has many followers",
+      "has no author"
+     ],
+     "correcta": 0,
+     "pista": "b4p1",
+     "punto_dificil": "pd4",
+     "dificultad": "media",
+     "emoji": "📚",
+     "fuente": {
+      "foto": 9,
+      "tipo": "textual",
+      "cita": "A reliable source uses evidence, is transparent and is reviewed by experts"
+     },
+     "retro_correcta": "Yes! Reliable = evidence, transparency and expert review.",
+     "retro_incorrecta": "Not quite: the answer is “uses evidence, is transparent and is reviewed by experts”. Reliable = evidence, transparency and expert review."
+    },
+    {
+     "id": "b4me6",
+     "tipo": "opcion_multiple",
+     "pregunta": "Which is a way to use less energy?",
+     "opciones": [
+      "Run machines half full",
+      "Cook without lids",
+      "Use LED bulbs",
+      "Leave chargers plugged in"
+     ],
+     "correcta": 2,
+     "pista": "b4p2",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "💡",
+     "fuente": {
+      "foto": 10,
+      "tipo": "textual",
+      "cita": "use LED bulbs"
+     },
+     "retro_correcta": "Yes! Use LED bulbs, unplug chargers, use lids and run machines only when full.",
+     "retro_incorrecta": "Not quite: the answer is “Use LED bulbs”. Use LED bulbs, unplug chargers, use lids and run machines only when full."
+    },
+    {
+     "id": "b4me7",
+     "tipo": "opcion_multiple",
+     "pregunta": "Mineral-rich nations may gain…",
+     "opciones": [
+      "fewer exports",
+      "geopolitical influence",
+      "more fossil fuels",
+      "less power"
+     ],
+     "correcta": 1,
+     "pista": "b4p4",
+     "punto_dificil": "pd5",
+     "dificultad": "media",
+     "emoji": "🗺️",
+     "fuente": {
+      "foto": 11,
+      "tipo": "textual",
+      "cita": "may gain geopolitical influence"
+     },
+     "retro_correcta": "Yes! Mineral-rich nations may gain geopolitical influence.",
+     "retro_incorrecta": "Not quite: the answer is “geopolitical influence”. Mineral-rich nations may gain geopolitical influence."
+    }
+   ]
+  }
+ ],
+ "calentamiento": [
+  "b1om1",
+  "b1om3",
+  "b1om4",
+  "b2om2",
+  "b2om4",
+  "b2om5"
+ ],
+ "reto_final": [
+  "b3me5",
+  "b2me4",
+  "b4me6",
+  "b3me4",
+  "b4me5",
+  "b3me3",
+  "b4me4",
+  "b4cp1",
+  "b3vf4",
+  "b4me3",
+  "b1me6",
+  "b4om8",
+  "b2vf2",
+  "b2om7",
+  "b3vf5",
+  "b4me2",
+  "b3vf1",
+  "b3vf2",
+  "b2me2",
+  "b2om6"
+ ]
+}
