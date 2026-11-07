@@ -95,7 +95,7 @@ export const TEXTOS = {
 };
 export const t = (idioma, clave) => (TEXTOS[idioma] ?? TEXTOS.es)[clave] ?? TEXTOS.es[clave] ?? clave;
 
-// Mezcla con semilla (para que la misma guía salga igual en todos los aparatos de la familia).
+// Mezcla con semilla (para que la misma guía salga igual en todos los dispositivos de la familia).
 export function mezclar(arr, semilla = 1) {
   const a = arr.slice(); let s = (semilla >>> 0) || 1;
   const r = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;

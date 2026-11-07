@@ -36,7 +36,7 @@ const R = { portada, tutorial, teoria, resultados, candado, carrera: J.carrera, 
 function limpiar() { timers.forEach(clearTimeout); timers = []; rafs.forEach(cancelAnimationFrame); rafs = []; }
 function ajustar() { const vp = document.getElementById("vp").getBoundingClientRect(); escala = Math.min(vp.width / 1280, vp.height / 720) * 0.985; escenario.style.transform = `scale(${escala})`; }
 addEventListener("resize", ajustar);
-// En teléfonos en vertical la guía queda chica: se sugiere girar el aparato (se puede seguir en vertical).
+// En teléfonos en vertical la guía queda chica: se sugiere girar el dispositivo (se puede seguir en vertical).
 function avisoGiro() {
   const angostoVertical = matchMedia("(orientation: portrait) and (max-width: 600px)").matches;
   const previo = document.getElementById("giro");
@@ -100,7 +100,7 @@ function recuperar(remoto) {
   if (p) { ctx.resultados = p.resultados ?? {}; ctx.minis = p.minis ?? {}; ctx.reto = p.reto ?? null; cur = Math.min(S.length - 1, p.cur ?? 0); }
 }
 
-// Secreto del aparato (regla de familia), igual que en entrar.html.
+// Secreto del dispositivo (regla de familia), igual que en entrar.html.
 const CLAVE_DISP = "disp_" + token;
 function leerSecreto() { try { return localStorage.getItem(CLAVE_DISP) || ""; } catch { return ""; } }
 function guardarSecreto(s) { try { if (s) localStorage.setItem(CLAVE_DISP, s); } catch {} }
@@ -123,7 +123,7 @@ async function arrancar() {
   escenario.appendChild(carga); carga.actualizar(15, "LOADING…");
   try {
     if (esToken) {
-      // Acceso real: pide la guía al servidor con la clave y la marca del aparato.
+      // Acceso real: pide la guía al servidor con la clave y la marca del dispositivo.
       const r = await fetch(`${CONFIG.api}/acceso/${token}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ dispositivo: leerSecreto() || undefined }) });
       const d = await r.json().catch(() => ({ estado: "error" }));
       if (d.dispositivo) guardarSecreto(d.dispositivo);

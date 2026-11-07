@@ -48,7 +48,7 @@ export async function iniciarPago(destino, datos) {
     // Modo manual: la compra queda pendiente y Daniel la confirma desde el panel.
     destino.innerHTML = `<div class="panel-paso" style="box-shadow:none;padding:0"><h2>Tu guía está apartada 🎟️</h2>
       <p>${esc(r.mensaje ?? "El pago en línea se está configurando. Te contactamos por WhatsApp para completar tu compra y activar tu guía.")}</p>
-      <div class="resultado-guia"><div class="em">🧾</div><div><b>Folio: ${esc(r.compra_id?.slice(0, 8).toUpperCase() ?? "")}</b><div class="ayuda">Guárdalo. En cuanto se confirme el pago, tu link aparece aquí y te llega por correo.</div></div></div>
+      <div class="resultado-guia"><div class="em">🧾</div><div><b>Folio: ${esc(r.compra_id?.slice(0, 8).toUpperCase() ?? "")}</b><div class="ayuda">Guárdalo. En cuanto se confirme el pago, el link de tu guía aparece aquí y te la mandamos por correo y por WhatsApp.</div></div></div>
       ${r.whatsapp ? `<a class="boton" target="_blank" rel="noopener" href="${esc(r.whatsapp)}">💬 Confirmar por WhatsApp</a>` : ""}
       <div id="espera" class="ayuda">Esperando confirmación…</div></div>`;
     esperarPago(destino.querySelector("#espera"), r.compra_id);
@@ -113,6 +113,6 @@ export function pantallaEspera(destino, titulo, opciones = {}) {
 
 // Mensaje de WhatsApp listo para reenviar al hijo.
 export function mensajeWhatsApp(titulo, link) {
-  return `Hola 👋 Aquí está tu guía interactiva de SparkEd: *${titulo}*\n\nÁbrela en tu iPad o computadora:\n${link}\n\nEs para nuestra familia: vale 7 días y hasta en 2 aparatos. ¡A estudiar jugando! 🚀`;
+  return `Hola 👋 Aquí está tu guía interactiva de SparkEd: *${titulo}*\n\nÁbrela en tu iPad o computadora:\n${link}\n\nEs para nuestra familia: vale 7 días y hasta en 2 dispositivos. ¡A estudiar jugando! 🚀`;
 }
 export const linkDeToken = (token) => `${CONFIG.sitio}guia.html#${token}`;

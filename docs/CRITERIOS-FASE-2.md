@@ -13,7 +13,7 @@ Material de referencia en `fase2/referencias/`: los dos documentos, el prototipo
 - Mismo repositorio `accesos-lumio` en GitHub Pages y mismo proyecto de Supabase. No se abre otro repositorio ni otro proyecto.
 - Carpeta nueva en Pages para la landing, el formulario y generador, el reproductor de guías y la pestaña de guías del panel. El botón "Visitar sitio" del panel lleva al generador.
 - Funciones nuevas en Supabase: generación por pasos, pago (webhook del proveedor), entrega de cartuchos al reproductor. La llave de Claude vive como secreto del servidor y nunca toca el navegador.
-- Tablas nuevas: borradores temporales, guías (el cartucho), progreso por acceso y aparato, fichas. Se reutilizan accesos, acceso_dispositivos, eventos y colegios (fase 1).
+- Tablas nuevas: borradores temporales, guías (el cartucho), progreso por acceso y dispositivo, fichas. Se reutilizan accesos, acceso_dispositivos, eventos y colegios (fase 1).
 - Cada ejecución de una función hace **un solo paso** de la cadena y deja el siguiente listo, con una tabla de trabajos; las funciones tienen límites cortos de tiempo y procesador. La reducción de fotos y la extracción de texto de PDF, Word, Excel y PowerPoint se hacen **en el navegador** antes de subir.
 
 ## 2. Ciclo del cliente
@@ -27,7 +27,7 @@ La landing "Bienvenido a SparkEd" ofrece **dos caminos** (libreta de Daniel, 6 n
 4. **"Generando tu guía":** pantalla de carga con avance real por pasos ("Leyendo tus apuntes 2 de 4", "Planeando la guía", "Escribiendo el bloque 1"). Dura entre dos y cuatro minutos.
 5. **Vista previa de 3 slides:** portada real, índice real con los bloques y un juego real del bloque 1.
 6. **"Desbloquea tu guía entera":** pago en línea. Precio: 100 MXN con IVA incluido (decidido el 7 nov 2026; del 5 al 7 de nov fue 85).
-7. **Link único:** se crea solo al confirmarse el pago, con el nombre del formulario, 7 días de vigencia y 2 aparatos.
+7. **Link único:** se crea solo al confirmarse el pago, con el nombre del formulario, 7 días de vigencia y 2 dispositivos.
 8. **Guía jugable** en el reproductor. Última slide con "Crea otra guía".
 
 ## 2b. Pantalla de carga: datos curiosos y trivia (sin inteligencia artificial)
@@ -35,7 +35,7 @@ La landing "Bienvenido a SparkEd" ofrece **dos caminos** (libreta de Daniel, 6 n
 - **Banco propio, sin inteligencia artificial en tiempo real.** Los datos y las preguntas se escriben una sola vez a partir de fuentes confiables (enciclopedias, museos, UNESCO, NASA, institutos oficiales), cada uno con su fuente guardada, redactados con palabras propias y revisados por Daniel. Viven como un archivo en el repositorio, en caché del navegador, y se eligen **al azar** sin repetir dentro de la misma sesión. Costo cero por carga.
 - **Etiquetas** por materia y por perfil de edad: si la guía es de historia, salen más datos de historia; nada que no sea apto para primaria. Se arranca con unos 200 datos y 100 preguntas y el banco crece con el tiempo.
 - **El avance real siempre a la vista:** arriba, la barra con los pasos verdaderos ("Leyendo tus apuntes 2 de 4", "Planeando la guía", "Escribiendo el bloque 1"); abajo, el dato curioso o la trivia. Sparky anima la espera. La trivia no cuenta para los resultados de la guía.
-- **Si cierra la página,** la generación sigue en el servidor. Al volver con el mismo aparato, dentro de las 24 horas, retoma la vista previa donde iba (la clave del borrador se guarda en su navegador).
+- **Si cierra la página,** la generación sigue en el servidor. Al volver con el mismo dispositivo, dentro de las 24 horas, retoma la vista previa donde iba (la clave del borrador se guarda en su navegador).
 - **Alineado con la sección "Pantallas de carga: ¿Sabías que…?" del prompt maestro v35:** cada dato lleva texto corto (25 palabras para peques y primaria, 40 para grandes), nivel, categoría, emoji y fuente; sin miedo, violencia, política ni religión; estado borrador → aprobado por Daniel en el panel → publicado; 1 de cada 4 pantallas es un tip de estudio o de la app; el dato rota cada 8 a 10 segundos; nunca más de 3 segundos de espera extra; botón "¡Otro dato!"; Sparky en la esquina con mini actividades y frases ("Afilando lápices…") y, en los pasos reales, "Leyendo tus fotos 📖", "Buscando pistas escondidas 🔍", "Revisando que todo esté perfecto ✅", "Arreglando detallitos 🔧", "¡Tu cartucho está listo! 🎉". Meta a largo plazo: 400 datos; para la fase 2 se arranca con 200.
 
 ## 2d. Camino de la biblioteca: guías precargadas por colegio, grado y materia (Daniel, 6 nov 2026)
@@ -44,7 +44,7 @@ Para la mamá que no quiere ni sabe subir materiales: llena un formulario y comp
 2. **"Buscando materiales":** el sistema busca en la biblioteca la guía publicada para ese colegio, grado y materia. No usa inteligencia artificial en ese momento: solo consulta la base. Si hay varias (distintos exámenes o periodos), muestra la lista con el nombre del examen y su fecha.
 3. **Vista previa de 3 slides** de la guía encontrada, en el mismo reproductor y con el mismo cartucho recortado.
 4. **Pago con Stripe**, mismo precio y mismo flujo que la guía personalizada.
-5. **Entrega:** al confirmarse el pago se crea un acceso propio para esa familia (7 días, 2 aparatos) y se manda el link por correo y por WhatsApp, con QR e instrucciones. Cada compra tiene su propio link y su propio progreso aunque la guía sea la misma.
+5. **Entrega:** al confirmarse el pago se crea un acceso propio para esa familia (7 días, 2 dispositivos) y se manda el link por correo y por WhatsApp, con QR e instrucciones. Cada compra tiene su propio link y su propio progreso aunque la guía sea la misma.
 6. **Si no hay guía disponible:** aviso "Por el momento no tenemos la guía de [materia] de [grado] del [colegio]", **explicado con un dibujo, no con texto**: Sparky busca en la estantería vacía y señala el camino al Servicio 2, con una mini ilustración de los tres pasos (fotos de tus apuntes → Sparky las convierte → tu guía lista). Dos botones: **"Crea tu guía personalizada con el Servicio 2"** (lleva al otro camino con el formulario ya lleno) y **"Avísame cuando esté lista"**. Esa solicitud se guarda con colegio, grado, materia y contacto: es la lista de demanda que le dice a Daniel qué guía producir y a quién avisar cuando la publique.
 
 **Backstage en el panel: pestaña "Biblioteca".**
@@ -61,7 +61,7 @@ Para la mamá que no quiere ni sabe subir materiales: llena un formulario y comp
 - **Vista previa barata.** Antes del pago solo corren el Extractor, el Planificador y el Generador del bloque 1. Después del pago corren los demás bloques, la revisión, la reparación y el Verificador. La vista previa cuesta cerca de la mitad de una guía (0.30 a 0.50 MXN con Haiku para 10 fotos).
 - **Nada con nombre entra a la base hasta que oprimen Pagar.** Lo subido para la vista previa va a un cajón temporal con clave al azar y se borra solo a las 24 horas. Los datos del formulario viajan en el navegador. Una vista previa abandonada no consume nada ni deja rastro.
 - **El pago confirmado es el conector.** Estados: borrador (sin pago, se borra a las 24 h) → pagada (arrancan los 7 días) → vencida (al día 7 se borran cartucho, fotos y progreso; queda una ficha con nombre, colegio, grado, materia, monto y fecha para cuentas y estadísticas). Renovar después del día 7 significa volver a generar.
-- **Topes contra el abuso:** tres vistas previas al día por teléfono, por correo y por aparato; tope de gasto diario dentro de la función ("vuelve mañana"); límite de gasto mensual en la consola de Anthropic; filtro gratuito contra robots en el formulario.
+- **Topes contra el abuso:** tres vistas previas al día por teléfono, por correo y por dispositivo; tope de gasto diario dentro de la función ("vuelve mañana"); límite de gasto mensual en la consola de Anthropic; filtro gratuito contra robots en el formulario.
 - **Fotos subidas:** se borran a los 30 días como máximo, y con la guía al día 7.
 - **Precio decidido: 100 MXN por guía, IVA incluido** (7 nov 2026; antes 85). Se cobra con Mercado Pago (tarjeta, OXXO y SPEI); Stripe queda dormido. Economía por guía vendida, con las comisiones del análisis de costos del 4 nov (confirmar con el contador):
 
@@ -88,22 +88,22 @@ Para la mamá que no quiere ni sabe subir materiales: llena un formulario y comp
 | 1,000 | 100,000 | ~74,000 | ~78,000 |
 
 ## 4. Accesos
-- **Ilimitados hasta que venza la guía.** Sin tope de clics ni cierre a los minutos. Solo dos controles: vigencia de 7 días desde el pago y 2 aparatos por familia. Las clases de Lumio de la fase 1 conservan sus límites, porque ahí no se controla el destino.
-- Al tercer aparato le aparece **"Acceso en uso en otros aparatos"** (texto actual de la app, se conserva). El intento queda registrado y se cuenta en el panel.
-- **La guía nunca viaja suelta.** El reproductor pide el cartucho al servidor con la clave del link y la marca del aparato. La vista previa recibe un cartucho recortado; el completo solo se entrega con clave pagada y aparato permitido. Compartir la dirección no sirve.
-- **Progreso en el servidor** por clave y aparato: resultado al primer intento de cada actividad, intentos, calificación de cada mini-examen, puntaje del reto final, tiempo y última slide. Se reanuda donde se quedó (Documento 2, sección 7).
-- **Liberar aparatos:** desde el correo de compra, una sola vez por guía, sin depender de Daniel. Renovar desde el panel sigue existiendo.
+- **Ilimitados hasta que venza la guía.** Sin tope de clics ni cierre a los minutos. Solo dos controles: vigencia de 7 días desde el pago y 2 dispositivos por familia. Las clases de Lumio de la fase 1 conservan sus límites, porque ahí no se controla el destino.
+- Al tercer dispositivo le aparece **"Acceso en uso en otros dispositivos"** (Daniel, 7 nov 2026: en todo el sitio y en las guías se dice "dispositivos"). El intento queda registrado y se cuenta en el panel.
+- **La guía nunca viaja suelta.** El reproductor pide el cartucho al servidor con la clave del link y la marca del dispositivo. La vista previa recibe un cartucho recortado; el completo solo se entrega con clave pagada y dispositivo permitido. Compartir la dirección no sirve.
+- **Progreso en el servidor** por clave y dispositivo: resultado al primer intento de cada actividad, intentos, calificación de cada mini-examen, puntaje del reto final, tiempo y última slide. Se reanuda donde se quedó (Documento 2, sección 7).
+- **Liberar dispositivos:** desde el correo de compra, una sola vez por guía, sin depender de Daniel. Renovar desde el panel sigue existiendo.
 - El contador de aperturas se conserva como dato de uso, no como límite.
 
 ## 5. Entrega
-- **Primero por correo.** Contenido: título y portada de la guía, código QR grande, el link, fecha y hora de vencimiento, qué contiene por bloques, reglas en lenguaje llano (dos aparatos por familia, qué significa "Acceso en uso en otros aparatos", cómo liberar aparatos), contacto de ayuda y botón "Crea otra guía".
+- **Primero por correo.** Contenido: título y portada de la guía, código QR grande, el link, fecha y hora de vencimiento, qué contiene por bloques, reglas en lenguaje llano (2 dispositivos por familia, qué significa "Acceso en uso en otros dispositivos", cómo liberar dispositivos), contacto de ayuda y botón "Crea otra guía".
 - El QR se genera en el servidor sin costo y también aparece en la pantalla "¡Listo!" después del pago, para que el niño lo escanee del celular del papá.
 - Botón "Mandar por WhatsApp" con el mensaje listo, para que el papá lo reenvíe al hijo. WhatsApp automático desde el servidor queda para después (cuesta por mensaje).
 - Para que el correo llegue se necesita un dominio propio y un servicio de envío con plan gratuito suficiente.
 
 ## 6. Panel del profesor
 - Pestaña **Guías** junto a las clases: contadores de hoy, semana y mes (generadas, vistas previas, pagadas, ingresos, costo de Claude, porcentaje de vistas previas que terminaron en pago); lista con filtros por colegio, grado, materia, estado y fecha, y buscador por nombre o teléfono.
-- **Detalle de cada guía:** "Ver como profesor" (guía completa sin registrar aparato ni vencer), reporte de verificación (citas encontradas, datos corregidos con fuente, temas completados), fotos originales mientras existan, estado del link, aparatos, avance del alumno, reenviar correo, liberar aparatos, renovar.
+- **Detalle de cada guía:** "Ver como profesor" (guía completa sin registrar dispositivo ni vencer), reporte de verificación (citas encontradas, datos corregidos con fuente, temas completados), fotos originales mientras existan, estado del link, dispositivos, avance del alumno, reenviar correo, liberar dispositivos, renovar.
 - **Cola "Revisar":** guías marcadas por las revisiones automáticas (citas sin encontrar, dudas del Verificador, reparaciones repetidas) más una de cada veinte al azar.
 - **Avisos:** al instante solo pagos y fallas; todo lo demás en un resumen diario por la noche.
 - **"Reportar un error"** en cada slide del reproductor: manda la slide y el comentario a la cola.
@@ -158,7 +158,7 @@ Referencia: la lección **Historia de México 2 · El encuentro de dos mundos** 
 - **Estilo:** pixel art retro de 16 bits, noches neón, pantalla CRT, HUD tipo "LEVEL 01 · HIGH SCORE · PRESS START". Referencias en `fase2/referencias/pinterest/`. Personajes propios siempre (Sparky, el astronauta, es la mascota); Mario, Nintendo y Pac-Man aparecen en las referencias solo por el feeling y no se usan.
 - **Misma mecánica, varias plantillas** (Documento 2, sección 3): cada juego tendrá al menos tres plantillas, elegidas al azar sin repetir dentro de una guía. Primero se construye cada mecánica con una plantilla neutra y se valida; las plantillas y los personajes van después.
 - **Reglas que no cambian** (Documento 2, sección 5.3): toda respuesta se califica al instante, la incorrecta muestra la respuesta correcta, lo arrastrado regresa con sacudida, se guarda el acierto al primer intento, todo funciona con el dedo en iPad.
-- **Carrera:** el coche arranca en la línea de salida con los rivales. Aparece una pregunta de la teoría con unos 10 segundos. Bien: acelera y rebasa a un coche. Mal o tiempo agotado: lo rebasan. Gana si cruza primero la meta; podio al final. **Antes de empezar, el alumno elige entre 5 coches** para sentir que tiene su personaje (la elección se recuerda en su aparato). Plantillas: Fórmula 1, carreras callejeras, ciudad neón de noche.
+- **Carrera:** el coche arranca en la línea de salida con los rivales. Aparece una pregunta de la teoría con unos 10 segundos. Bien: acelera y rebasa a un coche. Mal o tiempo agotado: lo rebasan. Gana si cruza primero la meta; podio al final. **Antes de empezar, el alumno elige entre 5 coches** para sentir que tiene su personaje (la elección se recuerda en su dispositivo). Plantillas: Fórmula 1, carreras callejeras, ciudad neón de noche.
 - **Castillo:** un arquero en lo alto de una torre; los soldados se acercan uno por pregunta. Bien: elimina al soldado. Mal: lo atacan y pierde un corazón. **Tres vidas;** al perder las tres la actividad se reinicia con las preguntas revueltas. Puntaje: soldados eliminados.
 - **Montaña:** subir contestando preguntas tipo quiz (la Torre del Documento 2 con plantilla de montaña y feeling de consola retro).
 - **Mix and match:** plantilla de astronauta en un planeta, feeling de videojuego retro.
@@ -238,14 +238,14 @@ arte… haz todo ya de una vez") la fase 2 quedó construida y publicada en el m
   búsqueda en dominios confiables → fotografías de Wikipedia/Wikimedia → Armar). Cada paso corre en una ejecución
   y la función se llama a sí misma para el siguiente; un vigilante reanuda lo que se atore.
 - **Accesos**: cada guía publicada tiene una clase de tipo `guia` y cada compra crea un acceso normal (7 días, 2
-  aparatos, "Acceso en uso en otros aparatos"), reutilizando `consumir_acceso` sin tocar los links de Lumio.
+  dispositivos, "Acceso en uso en otros dispositivos"), reutilizando `consumir_acceso` sin tocar los links de Lumio.
 - **Dinero**: vista previa barata antes de pagar; nada con nombre se guarda hasta "Pagar"; borradores sin pagar se
   borran a las 24 h; guías personalizadas viven 7 días después del pago y luego queda solo la ficha en Compras;
   topes de 80 compras al día y 6 por familia (ajustables en el panel).
 - **Motores en blanco**: la IA, Stripe y el correo se encienden al poner `ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY` +
   `STRIPE_WEBHOOK_SECRET` y `RESEND_API_KEY` en Supabase. Regla de Daniel: "Stripe todavía no tengo la cuenta,
   déjalo como motor en blanco": mientras tanto el pago es manual (folio + "Marcar pagada" en el panel).
-- **Probado**: publicar guía → buscar → vista previa → pago manual → link → 2 aparatos entran, el tercero no →
+- **Probado**: publicar guía → buscar → vista previa → pago manual → link → 2 dispositivos entran, el tercero no →
   progreso guardado → reporte → topes. **Pendiente de probar con llaves reales**: la cadena de IA completa, Stripe,
   correos; después, calibrar prompts y costos con promptfoo y Helicone.
 
@@ -357,3 +357,18 @@ distinto personaje o escenario, para que el tema sea unisex y nunca se repita de
 coches (ciudad de neón), naves (espacio), caballos (hipódromo) o dragones (cielo), con su propio sonido (motor, galope,
 viento). El estante elige sin repetir plantilla dentro de la misma guía; la IA que genera las guías debe respetar esa
 biblioteca y alternar: por ejemplo carrera con coches → puertas → teoría → mix and match → carrera con caballos.
+
+## 19. Tono y palabras (Daniel, 7 de noviembre de 2026)
+
+**Regla de redacción.** Todos los textos del sitio, de las guías, de los correos y de los mensajes de WhatsApp van en
+lenguaje formal, pero muy simple y específico. Se vale repetir un poco para que nadie se confunda.
+- **"Dispositivos"**, siempre (en singular y en plural): "2 dispositivos por familia", "vale 7 días y hasta en 2
+  dispositivos", "El tercer dispositivo ve el aviso «Acceso en uso en otros dispositivos»". No se usan sinónimos
+  coloquiales.
+- **El acceso siempre es "a tu guía":** "7 días de acceso ilimitado a tu guía". Nunca debe entenderse como acceso a toda
+  la plataforma.
+- **Precio:** "Una guía: $100 MXN, IVA incluido".
+- **Entrega:** "te la mandamos por correo y por WhatsApp".
+- **Sin coloquialismos:** por ejemplo, "Juegas y estudias", no "la juegas".
+- **Pasos como lista corta y numerada** (1, 2, 3), no como frase corrida: "1. Tomas fotos de tus apuntes", "2. Sparky
+  las convierte en una guía", "3. Juegas y estudias".

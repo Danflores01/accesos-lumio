@@ -146,7 +146,7 @@ function mostrarVistaPrevia(d) {
     <div class="campo"><label>Nombre de quien pide la guía</label><input name="nombre" required value="${esc(contacto?.nombre ?? "")}"></div>
     <div class="campo"><label>WhatsApp (10 dígitos)</label><input name="telefono" inputmode="numeric" required value="${esc(contacto?.telefono ?? "")}"></div>
     <div class="campo" style="grid-column:1/-1"><label>Correo</label><input name="correo" type="email" required value="${esc(contacto?.correo ?? "")}"></div>
-    <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="boton" type="submit">🔓 Desbloquear la guía entera por $${CONFIG.precio}</button><span class="ayuda">7 días · 2 aparatos · IVA incluido</span></div><div class="error" id="err3" style="grid-column:1/-1"></div></form>`);
+    <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="boton" type="submit">🔓 Desbloquear la guía entera por $${CONFIG.precio}</button><span class="ayuda">7 días de acceso ilimitado a tu guía · 2 dispositivos por familia · IVA incluido</span></div><div class="error" id="err3" style="grid-column:1/-1"></div></form>`);
   $("#contacto").onsubmit = async (e) => { e.preventDefault(); const c = leerContacto($("#contacto")); if (c.errores.length) { $("#err3").textContent = c.errores[0]; return; } guardarContacto(c); pasos(4); $("#p4").innerHTML = `<h1>Pago</h1><div id="pago"></div>`; await iniciarPago($("#pago"), { clave, ...c }).catch(() => {}); };
 }
 

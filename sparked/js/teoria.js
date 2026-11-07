@@ -146,7 +146,7 @@ export function resultados(s, ctx) {
 export function candado(s, ctx) {
   const c = ctx.c;
   const el = h(`<div class="sl candado"><div class="caja">${sparky("saludo", 5)}<h2>${esc(ctx.t("desbloquea"))}</h2>
-    <ul><li><b>${c.bloques_totales ?? c.bloques.length}</b> ${esc(ctx.t("bloque")).toLowerCase()}s con teoría a todo color</li><li><b>${c.actividades_totales ?? "+40"}</b> actividades y juegos con retroalimentación al instante</li><li>${esc(ctx.t("mini"))} por bloque y ${esc(ctx.t("reto")).toLowerCase()}</li><li>7 días de acceso · 2 aparatos por familia</li></ul>
+    <ul><li><b>${c.bloques_totales ?? c.bloques.length}</b> ${esc(ctx.t("bloque")).toLowerCase()}s con teoría a todo color</li><li><b>${c.actividades_totales ?? "+40"}</b> actividades y juegos con retroalimentación al instante</li><li>${esc(ctx.t("mini"))} por bloque y ${esc(ctx.t("reto")).toLowerCase()}</li><li>7 días de acceso ilimitado a tu guía · 2 dispositivos por familia</li></ul>
     <div class="precio">$${ctx.precio ?? 100}<small>MXN · IVA incluido</small></div>
     <button class="boton" id="pagar">🔓 ${esc(ctx.t("desbloquea"))}</button></div></div>`);
   el.querySelector("#pagar").onclick = () => ctx.desbloquear();
@@ -174,13 +174,13 @@ const MENSAJES = {
   agotado: ["🔒", "Enlace agotado", "Este enlace ya se usó el máximo de veces permitido."],
   revocado: ["⛔", "Acceso cancelado", "Este acceso fue cancelado."],
   clase_inactiva: ["📕", "Guía no disponible", "Esta guía ya no está disponible."],
-  otro_dispositivo: ["📵", "Acceso en uso en otros aparatos", "Este acceso ya se usa en los aparatos permitidos. Si es tu propio aparato, cierra la navegación privada y vuelve a abrir el link."],
+  otro_dispositivo: ["📵", "Acceso en uso en otros dispositivos", "Este acceso ya se usa en los dispositivos permitidos. Si es tu propio dispositivo, cierra la navegación privada y vuelve a abrir el link."],
   generando: ["⏳", "Tu guía se está terminando de armar", "Sparky está escribiendo los últimos bloques. Esta página se actualiza sola en unos segundos; no cierres el link."],
   error: ["⚠️", "Algo falló", "No se pudo abrir la guía. Intenta de nuevo en un momento."],
 };
 export function mensaje(estado) {
   const m = MENSAJES[estado] ?? MENSAJES.inexistente;
-  return h(`<div class="sl mensaje"><div class="caja"><div class="icono">${m[0]}</div><h2>${esc(m[1])}</h2><p>${esc(m[2])}</p><p style="font-size:14px;color:var(--gris)">Cada link es de una sola familia y acepta pocos aparatos.</p></div></div>`);
+  return h(`<div class="sl mensaje"><div class="caja"><div class="icono">${m[0]}</div><h2>${esc(m[1])}</h2><p>${esc(m[2])}</p><p style="font-size:14px;color:var(--gris)">Cada link es de una sola familia y se abre en hasta 2 dispositivos.</p></div></div>`);
 }
 
 export { colorBloque, TONOS, icono };

@@ -103,7 +103,7 @@ function elegir(g) {
   guiaElegida = g; pasos(3);
   const volver = location.pathname + "?guia=" + encodeURIComponent(g.id) + "&paso=pagar";
   marcoVistaPrevia($("#p3"), `guia.html?vp=${encodeURIComponent(g.id)}&volver=${encodeURIComponent(volver)}`, g.titulo);
-  $("#p3").insertAdjacentHTML("beforeend", `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px"><button class="boton" id="pagar">🔓 Desbloquear la guía entera por $${CONFIG.precio}</button><span class="ayuda">7 días · 2 aparatos · IVA incluido</span></div>`);
+  $("#p3").insertAdjacentHTML("beforeend", `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px"><button class="boton" id="pagar">🔓 Desbloquear la guía entera por $${CONFIG.precio}</button><span class="ayuda">7 días de acceso ilimitado a tu guía · 2 dispositivos por familia · IVA incluido</span></div>`);
   $("#pagar").onclick = () => pagar(g);
 }
 

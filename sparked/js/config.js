@@ -6,5 +6,5 @@ export const CONFIG = {
   precio: 100,
   paginasMax: 15,
   diasAcceso: 7,
-  aparatos: 2,
+  dispositivos: 2,
 };
