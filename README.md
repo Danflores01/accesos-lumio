@@ -4,7 +4,7 @@ App personal para repartir accesos a clases de Lumio por WhatsApp: cada familia 
 único, con vigencia propia, que deja de funcionar si lo reenvían.
 
 - **App (celular y computadora):** `index.html`, publicada con GitHub Pages en
-  https://danflores01.github.io/accesos-lumio/
+  https://sparkeducation-mx.com/
 - **Página que ven los alumnos:** `entrar.html` (el código del link va después de `#`).
 - **Servidor:** proyecto Supabase `accesos-lumio` (funciones en `funciones/`, esquema inicial en
   `sql/esquema.sql` y migraciones posteriores en `sql/migraciones/`).
@@ -30,7 +30,7 @@ migraciones se aplican allí (copia en `sql/migraciones/`).
 
 ## SparkEd fase 2: guías interactivas
 
-- **Sitio de guías (familias):** `sparked/` → https://danflores01.github.io/accesos-lumio/sparked/
+- **Sitio de guías (familias):** `sparked/` → https://sparkeducation-mx.com/sparked/
   (`index.html` landing, `biblioteca.html` Servicio 1, `crear.html` Servicio 2, `listo.html` entrega,
   `guia.html` reproductor con juegos en pixel art, `panel.html` panel de guías).
 - **Servidor:** función `sparked` (`funciones/sparked/index.ts`, `pipeline.ts`, `prompts.ts`) y migración

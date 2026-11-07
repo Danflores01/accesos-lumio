@@ -2,7 +2,7 @@
 export const CONFIG = {
   version: "2026-11-06.1",
   api: "https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/sparked",
-  sitio: "https://danflores01.github.io/accesos-lumio/sparked/",
+  sitio: "https://sparkeducation-mx.com/sparked/",
   precio: 100,
   paginasMax: 15,
   diasAcceso: 7,

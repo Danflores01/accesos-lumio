@@ -56,7 +56,7 @@ function enSegundoPlano(p: Promise<unknown>) {
 
 // ---------- Configuración (tabla config, llaves sparked_*) ----------
 const CONFIG_DEF: Record<string, string> = {
-  sparked_sitio: "https://danflores01.github.io/accesos-lumio/sparked/",
+  sparked_sitio: "https://sparkeducation-mx.com/sparked/",
   sparked_precio: "100",
   sparked_tope_diario: "80",       // compras por día en todo el sitio
   sparked_tope_familia: "6",       // compras por día por teléfono o correo

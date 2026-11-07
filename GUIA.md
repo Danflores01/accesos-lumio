@@ -10,12 +10,12 @@ otras personas ya no abre.
 
 | Pieza | Dónde |
 |---|---|
-| **La app** (celular y computadora) | https://danflores01.github.io/accesos-lumio/ |
+| **La app** (celular y computadora) | https://sparkeducation-mx.com/ |
 | Clave de administrador | `CLAVES.txt` (archivo privado; nunca está en internet) |
-| Lo que ve el alumno | `https://danflores01.github.io/accesos-lumio/entrar.html#<código>` |
+| Lo que ve el alumno | `https://sparkeducation-mx.com/entrar.html#<código>` |
 | Código fuente | https://github.com/Danflores01/accesos-lumio |
 | Servidor (base de datos y funciones) | Supabase, proyecto `accesos-lumio`: https://supabase.com/dashboard/project/wfqfqfsbkqbaejnkhidz |
-| Panel avanzado (con nombres y teléfonos) | https://danflores01.github.io/accesos-lumio/panel.html |
+| Panel avanzado (con nombres y teléfonos) | https://sparkeducation-mx.com/panel.html |
 
 Todo corre en planes gratuitos (GitHub Pages y Supabase Free).
 
@@ -232,7 +232,7 @@ Junto a la app de accesos vive ahora el sitio de guías interactivas, en la carp
 
 | Pieza | Dónde |
 |---|---|
-| Sitio para las familias (landing, biblioteca, crear guía) | https://danflores01.github.io/accesos-lumio/sparked/ |
+| Sitio para las familias (landing, biblioteca, crear guía) | https://sparkeducation-mx.com/sparked/ |
 | Reproductor de guías (lo que abre el alumno) | `sparked/guia.html#<código>` |
 | Panel de guías (biblioteca, compras, pedidos, reportes, ajustes) | `sparked/panel.html` (misma contraseña del panel de accesos; también desde la ✨ de la app de accesos) |
 | Servidor | función `sparked` en Supabase (`funciones/sparked/`), tablas de la migración `sql/migraciones/20261106_sparked_fase2.sql` |
