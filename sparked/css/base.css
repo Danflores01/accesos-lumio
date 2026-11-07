@@ -31,15 +31,15 @@
   --radio: 18px;
   --sombra: 0 8px 22px rgba(20, 30, 60, .12);
 }
-[data-paleta="historia_azul"] { --p:#1d4ed8; --p2:#1e40af; --p-suave:#e8efff; --p-texto:#0b2a8a; --b1:#1d4ed8; --b2:#c2410c; --b3:#0f766e; --b4:#b91c1c; --fondo:#f6f8fc; --fondo-oscuro:#0d1b3d; --acento:#38bdf8; }
-[data-paleta="espanol_rojo"]  { --p:#c62828; --p2:#7f1d1d; --p-suave:#ffe9e9; --p-texto:#7f1d1d; --b1:#c62828; --b2:#ea580c; --b3:#7f1d1d; --b4:#e11d48; --fondo:#fff7f3; --fondo-oscuro:#3b0a0a; --acento:#fb7185; }
-[data-paleta="mate_naranja"]  { --p:#ea580c; --p2:#9a3412; --p-suave:#ffeedd; --p-texto:#7c2d12; --b1:#ea580c; --b2:#1d4ed8; --b3:#0f766e; --b4:#7c3aed; --fondo:#fff8f1; --fondo-oscuro:#3b1a05; --acento:#fdba74; }
-[data-paleta="ciencias_verde"]{ --p:#15803d; --p2:#14532d; --p-suave:#e3f7e9; --p-texto:#14532d; --b1:#15803d; --b2:#0e7490; --b3:#ca8a04; --b4:#7c3aed; --fondo:#f3fbf5; --fondo-oscuro:#052e16; --acento:#4ade80; }
-[data-paleta="frances_cielo"] { --p:#0ea5e9; --p2:#0369a1; --p-suave:#e0f4ff; --p-texto:#0c4a6e; --b1:#0ea5e9; --b2:#0369a1; --b3:#7c3aed; --b4:#e11d48; --fondo:#eef8ff; --fondo-oscuro:#082f49; --acento:#7dd3fc; }
-[data-paleta="civica_morado"] { --p:#6d28d9; --p2:#4c1d95; --p-suave:#efe9ff; --p-texto:#3b1a8a; --b1:#6d28d9; --b2:#a21caf; --b3:#4338ca; --b4:#0e7490; --fondo:#f7f5ff; --fondo-oscuro:#1e1538; --acento:#c4b5fd; }
-[data-paleta="ingles_mostaza"]{ --p:#b45309; --p2:#78350f; --p-suave:#fff1d6; --p-texto:#78350f; --b1:#b45309; --b2:#0f766e; --b3:#3730a3; --b4:#d97706; --fondo:#fffaf0; --fondo-oscuro:#2a1a05; --acento:#fbbf24; }
-[data-paleta="geo_turquesa"]  { --p:#0f766e; --p2:#134e4a; --p-suave:#dff5f2; --p-texto:#134e4a; --b1:#0f766e; --b2:#ea580c; --b3:#1d4ed8; --b4:#7c3aed; --fondo:#f0fbfa; --fondo-oscuro:#042f2e; --acento:#5eead4; }
-[data-paleta="otra"]          { --p:#334155; --p2:#1e293b; --p-suave:#e8edf5; --p-texto:#1e293b; --b1:#334155; --b2:#0f766e; --b3:#b45309; --b4:#7c3aed; --fondo:#f6f7fb; --fondo-oscuro:#0f172a; --acento:#94a3b8; }
+[data-paleta="historia_azul"] { --p:#1d4ed8; --p2:#1e40af; --p-suave:#e8efff; --p-texto:#0b2a8a; --b1:#1d4ed8; --b2:#c2410c; --b3:#b91c1c; --b4:#4d7c0f; --b5:#0f766e; --fondo:#f6f8fc; --fondo-oscuro:#0d1b3d; --acento:#38bdf8; }
+[data-paleta="espanol_rojo"]  { --p:#c62828; --p2:#7f1d1d; --p-suave:#ffe9e9; --p-texto:#7f1d1d; --b1:#c62828; --b2:#ea580c; --b3:#7f1d1d; --b4:#e11d48; --b5:#0f766e; --fondo:#fff7f3; --fondo-oscuro:#3b0a0a; --acento:#fb7185; }
+[data-paleta="mate_naranja"]  { --p:#ea580c; --p2:#9a3412; --p-suave:#ffeedd; --p-texto:#7c2d12; --b1:#ea580c; --b2:#1d4ed8; --b3:#0f766e; --b4:#7c3aed; --b5:#b91c1c; --fondo:#fff8f1; --fondo-oscuro:#3b1a05; --acento:#fdba74; }
+[data-paleta="ciencias_verde"]{ --p:#15803d; --p2:#14532d; --p-suave:#e3f7e9; --p-texto:#14532d; --b1:#15803d; --b2:#0e7490; --b3:#ca8a04; --b4:#7c3aed; --b5:#b91c1c; --fondo:#f3fbf5; --fondo-oscuro:#052e16; --acento:#4ade80; }
+[data-paleta="frances_cielo"] { --p:#0ea5e9; --p2:#0369a1; --p-suave:#e0f4ff; --p-texto:#0c4a6e; --b1:#0ea5e9; --b2:#0369a1; --b3:#7c3aed; --b4:#e11d48; --b5:#0f766e; --fondo:#eef8ff; --fondo-oscuro:#082f49; --acento:#7dd3fc; }
+[data-paleta="civica_morado"] { --p:#6d28d9; --p2:#4c1d95; --p-suave:#efe9ff; --p-texto:#3b1a8a; --b1:#6d28d9; --b2:#a21caf; --b3:#4338ca; --b4:#0e7490; --b5:#b45309; --fondo:#f7f5ff; --fondo-oscuro:#1e1538; --acento:#c4b5fd; }
+[data-paleta="ingles_mostaza"]{ --p:#b45309; --p2:#78350f; --p-suave:#fff1d6; --p-texto:#78350f; --b1:#b45309; --b2:#0f766e; --b3:#3730a3; --b4:#d97706; --b5:#7c3aed; --fondo:#fffaf0; --fondo-oscuro:#2a1a05; --acento:#fbbf24; }
+[data-paleta="geo_turquesa"]  { --p:#0f766e; --p2:#134e4a; --p-suave:#dff5f2; --p-texto:#134e4a; --b1:#0f766e; --b2:#ea580c; --b3:#1d4ed8; --b4:#7c3aed; --b5:#b91c1c; --fondo:#f0fbfa; --fondo-oscuro:#042f2e; --acento:#5eead4; }
+[data-paleta="otra"]          { --p:#334155; --p2:#1e293b; --p-suave:#e8edf5; --p-texto:#1e293b; --b1:#334155; --b2:#0f766e; --b3:#b45309; --b4:#7c3aed; --b5:#b91c1c; --fondo:#f6f7fb; --fondo-oscuro:#0f172a; --acento:#94a3b8; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }

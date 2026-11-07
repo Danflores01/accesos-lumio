@@ -188,7 +188,8 @@ export function armarSlides(c) {
       grupos.push(pistas.slice(i, i + (resto === 4 ? 2 : 3)));
     }
     if (!grupos.length) grupos.push([]);
-    grupos.forEach((g, gi) => S.push({ k: "teoria", t: `${t(idioma, "pista")} · ${b.titulo}${grupos.length > 1 ? ` (${gi + 1})` : ""}`, b, bi, pistas: g, parte: gi + 1, ultima: gi === grupos.length - 1, tag: `${t(idioma, "pista")} · ${t(idioma, "bloque")} ${nb}`, blk: bi }));
+    // Si la primera pista del grupo trae `titulo_pagina`, la slide se titula así (como las páginas "Clue" de Lumio).
+    grupos.forEach((g, gi) => S.push({ k: "teoria", t: g[0]?.titulo_pagina || `${t(idioma, "pista")} · ${b.titulo}${grupos.length > 1 ? ` (${gi + 1})` : ""}`, b, bi, pistas: g, parte: gi + 1, ultima: gi === grupos.length - 1, tag: `${t(idioma, "pista")} · ${t(idioma, "bloque")} ${nb}`, blk: bi }));
     const acts = b.actividades;
     const mc = acts.filter((a) => a.tipo === "opcion_multiple" || a.tipo === "completar").map((a) => a.id);
     if (mc.length) { const juego = quizJuegos[bi % quizJuegos.length]; S.push({ k: juego, t: `${{ carrera: "🏎️", puertas: "🚪", montana: "🧗", castillo: "🏰" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }

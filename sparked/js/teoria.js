@@ -5,12 +5,12 @@ import { sparky, icono } from "./arte.js";
 import { formatoDePista } from "./cartucho.js";
 
 const TONOS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)", "#7c3aed", "#15803d", "#db2777", "#0e7490"];
-const colorBloque = (bi) => bi >= 0 ? `var(--b${(bi % 4) + 1})` : "var(--oro)";
+const colorBloque = (bi) => bi >= 0 ? `var(--b${(bi % 5) + 1})` : "var(--oro)";
 
 // Marco común: barra de bloques arriba, píldora, título.
 export function marco(s, ctx) {
   const col = colorBloque(s.blk);
-  const barra = ctx.c.bloques.map((b, i) => `<i style="background:var(--b${(i % 4) + 1});opacity:${i === s.blk ? 1 : .18}"></i>`).join("") || `<i style="background:${col}"></i>`;
+  const barra = ctx.c.bloques.map((b, i) => `<i style="background:var(--b${(i % 5) + 1});opacity:${i === s.blk ? 1 : .18}"></i>`).join("") || `<i style="background:${col}"></i>`;
   return h(`<div class="sl"><div class="era">${barra}</div><div class="cabeza"><span class="pildora" style="background:${col}">${esc(s.tag ?? "")}</span><h1>${esc(s.t)}</h1></div></div>`);
 }
 
@@ -29,7 +29,7 @@ export function portada(s, ctx) {
     ${derecha}
     <div class="aprender">${esc(ctx.t("aprender"))}</div>
     <div class="objetivos">${(I.objetivos ?? []).slice(0, 3).map((o, i) => `<div><b>${i + 1}</b>${esc(o)}</div>`).join("")}</div>
-    <div class="bloques">${c.bloques.map((b, i) => `<div style="background:var(--b${(i % 4) + 1})">${esc(ctx.t("bloque"))} ${i + 1} · ${esc(b.titulo)}</div>`).join("")}</div></div>`);
+    <div class="bloques">${c.bloques.map((b, i) => `<div style="background:var(--b${(i % 5) + 1})">${esc(ctx.t("bloque"))} ${i + 1} · ${esc(b.titulo)}</div>`).join("")}</div></div>`);
   if (ctx.modo === "vista_previa") el.appendChild(h(`<div class="pildora" style="position:absolute;right:24px;top:22px;background:var(--oro);color:#111">${esc(ctx.t("vista_previa"))}</div>`));
   return el;
 }
@@ -82,12 +82,18 @@ export function teoria(s, ctx) {
   const cuerpo = h('<div class="cuerpo"></div>');
   const desfase = (s.parte - 1) * 3;
   const defin = pistas.length >= 2 && pistas.length <= 3 && pistas.every((p) => (p.ideas ?? []).length <= 3 && (p.ideas ?? []).every((i) => String(i).length < 70) && !p.esquema && !p.imagenes?.length);
+  // síntesis de la página: caja clave o banda (van debajo de las tarjetas)
+  const clave = pistas.map((p) => p.clave).find(Boolean);
+  const concl = pistas.map((p) => p.conclusion).find(Boolean);
+  // Si debajo de las tarjetas viene algo más (esquema, clave o banda), la cuadrícula no debe ocupar toda la altura,
+  // porque lo que sigue quedaría fuera de la slide.
+  const altura = (conEsquema || clave || concl) ? "auto" : "100%";
 
   let cuerpoHtml = "";
   if (retratos.length && formato === "retratos" || (retratos.length && !conEsquema)) {
     // Retratos a la izquierda, tarjetas al centro, pintura o mapa a la derecha
     const lateral = otrasImgs[0];
-    cuerpoHtml = `<div style="display:grid;grid-template-columns:150px 1fr ${lateral ? "300px" : ""};gap:20px;height:100%">
+    cuerpoHtml = `<div style="display:grid;grid-template-columns:150px 1fr ${lateral ? "300px" : ""};gap:20px;height:${altura}">
       <div class="retrato-col">${retratos.slice(0, 3).map((r, i) => `<div class="r" style="--c:${TONOS[i % TONOS.length]}"><img src="${esc(r.url)}" alt="${esc(r.nombre ?? "")}" loading="lazy">${esc(r.nombre ?? "")}</div>`).join("")}</div>
       <div class="tarjetas" style="grid-template-columns:1fr">${pistas.map((p, i) => tarjeta(p, i, ctx, { desfase })).join("")}</div>
       ${lateral ? `<div class="lado-img"><div class="cuadro"><img src="${esc(lateral.url)}" alt="${esc(lateral.pie ?? "")}" loading="lazy"><div class="pie">${esc(lateral.pie ?? lateral.credito ?? "")}</div></div></div>` : ""}</div>`;
@@ -96,14 +102,14 @@ export function teoria(s, ctx) {
   } else {
     const cols = Math.max(1, pistas.length);
     const conImagen = otrasImgs.length > 0;
-    cuerpoHtml = `<div class="tarjetas" style="grid-template-columns:repeat(${cols},1fr)${conImagen ? ";grid-auto-rows:1fr" : ""}">${pistas.map((p, i) => tarjeta(p, i, ctx, { desfase, conImagen })).join("")}</div>`;
+    cuerpoHtml = `<div class="tarjetas" style="grid-template-columns:repeat(${cols},1fr)${conImagen ? ";grid-auto-rows:1fr" : ""};height:${altura}">${pistas.map((p, i) => tarjeta(p, i, ctx, { desfase, conImagen })).join("")}</div>`;
     if (conEsquema) cuerpoHtml += esquemaHtml(conEsquema.esquema, TONOS[(idx + desfase) % TONOS.length], ctx);
   }
-  // síntesis de la página: caja clave o banda
-  const clave = pistas.map((p) => p.clave).find(Boolean);
-  const concl = pistas.map((p) => p.conclusion).find(Boolean);
-  if (clave) cuerpoHtml += `<div class="caja-clave fila-clave">🔑 ${idea(clave)}</div>`;
-  if (concl) cuerpoHtml += `<div class="banda fila-clave">${idea(concl)}</div>`;
+  // En la última slide antes de un juego, el botón "¡A jugar!" ocupa la esquina inferior derecha: la caja clave o la banda le dejan sitio.
+  const sig = ctx.siguienteTitulo();
+  const sangria = sig ? ' style="margin-right:380px"' : "";
+  if (clave) cuerpoHtml += `<div class="caja-clave fila-clave"${sangria}>🔑 ${idea(clave)}</div>`;
+  if (concl) cuerpoHtml += `<div class="banda fila-clave"${sangria}>${idea(concl)}</div>`;
   cuerpo.innerHTML = cuerpoHtml;
 
   // última slide de teoría del bloque: "Ojo con esto" y "Palabras clave"
@@ -118,7 +124,6 @@ export function teoria(s, ctx) {
     }
   }
   el.appendChild(cuerpo);
-  const sig = ctx.siguienteTitulo();
   if (sig) el.appendChild(h(`<div class="a-jugar">🎮 <span>${esc(ctx.t("a_jugar"))}</span> ${esc(sig)}</div>`));
   return el;
 }

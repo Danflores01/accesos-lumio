@@ -66,7 +66,7 @@ document.getElementById("arriba").onclick = () => ctx.go(cur - 1);
 document.getElementById("abajo").onclick = () => ctx.go(cur + 1);
 document.getElementById("rejilla").onclick = () => {
   const lista = document.getElementById("lista-mini"); lista.innerHTML = "";
-  S.forEach((s, i) => { const b = h(`<button class="${i === cur ? "actual" : ""}" style="border-top-color:${s.blk >= 0 ? `var(--b${(s.blk % 4) + 1})` : "var(--oro)"}"><small>${i + 1}</small><span>${esc(s.t)}</span></button>`); b.onclick = () => { document.getElementById("miniaturas").classList.add("oculto"); ctx.go(i); }; lista.appendChild(b); });
+  S.forEach((s, i) => { const b = h(`<button class="${i === cur ? "actual" : ""}" style="border-top-color:${s.blk >= 0 ? `var(--b${(s.blk % 5) + 1})` : "var(--oro)"}"><small>${i + 1}</small><span>${esc(s.t)}</span></button>`); b.onclick = () => { document.getElementById("miniaturas").classList.add("oculto"); ctx.go(i); }; lista.appendChild(b); });
   document.getElementById("miniaturas").classList.remove("oculto");
 };
 document.getElementById("miniaturas").onclick = (e) => { if (e.target.id === "miniaturas") e.target.classList.add("oculto"); };
@@ -152,7 +152,7 @@ async function arrancar() {
       if (!guardado) throw new Error("sin cartucho local");
       montar(JSON.parse(guardado), "demo"); recuperar(null);
     } else {
-      const demo = (params.get("demo") || "civics3").replace(/[^a-z0-9_-]/gi, "");
+      const demo = (params.get("demo") || "historia1").replace(/[^a-z0-9_-]/gi, "");
       const cartucho = await (await fetch(`ejemplos/${demo}.json`)).json();
       const vp = params.get("vista") === "previa";
       montar(vp ? recortarVistaPrevia(normalizar(cartucho)) : cartucho, vp ? "vista_previa" : "demo");
