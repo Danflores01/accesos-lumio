@@ -71,14 +71,34 @@ export function esperarPago(el, compraId, cada = 5000) {
 }
 
 // Pantalla "Buscando…" o "Generando…" con Sparky y un dato curioso cada 9 segundos.
-export function pantallaEspera(destino, titulo) {
-  destino.innerHTML = `<div class="estado-carga"><div class="flot">${sparky("pensando", 6)}</div><h2 id="esp-titulo">${esc(titulo)}</h2><div class="barra"><i id="esp-barra"></i></div><div id="esp-paso" class="ayuda"></div><div class="dato" id="esp-dato"></div></div>`;
+// opciones.paginas (cuántas páginas se leen) sirve para estimar el tiempo; opciones.estimado son segundos totales si ya se conocen.
+export function pantallaEspera(destino, titulo, opciones = {}) {
+  destino.innerHTML = `<div class="estado-carga"><div class="flot">${sparky("pensando", 6)}</div><h2 id="esp-titulo">${esc(titulo)}</h2><div class="barra"><i id="esp-barra"></i></div><div id="esp-paso" class="ayuda"></div><div id="esp-tiempo" class="ayuda"></div><div class="dato" id="esp-dato"></div></div>`;
   let datos = [], i = 0, timer = null;
   const pinta = () => { if (!datos.length) return; const d = datos[i++ % datos.length]; destino.querySelector("#esp-dato").innerHTML = `¿Sabías que…? ${esc(d.emoji ?? "")} ${esc(d.texto)} <small style="display:block;color:var(--gris)">${d.fuente ? "Fuente: " + esc(d.fuente) : ""}</small>`; };
   fetch("datos/curiosos.json").then((r) => r.json()).then((d) => { datos = d.sort(() => Math.random() - .5); pinta(); timer = setInterval(pinta, 9000); }).catch(() => {});
+  // Tiempo estimado: arranca con un cálculo por páginas (lectura + plan + primer bloque, medido en pruebas reales)
+  // y se va corrigiendo con el avance real de la barra.
+  const inicio = Date.now();
+  const previsto = opciones.estimado ?? (opciones.paginas ? 100 + 9 * Number(opciones.paginas) : null);
+  let pct = 0;
+  const frase = (s) => s < 20 ? "Ya casi está…" : s < 50 ? "Falta menos de un minuto" : s < 100 ? "Falta alrededor de un minuto" : `Faltan unos ${Math.round(s / 60)} minutos`;
+  const pintaTiempo = () => {
+    const el = destino.querySelector("#esp-tiempo"); if (!el) return;
+    const pasado = (Date.now() - inicio) / 1000;
+    const porAvance = pct >= 10 && pasado >= 15 ? pasado * (100 - pct) / pct : null;
+    let restante = null;
+    if (previsto !== null && porAvance !== null) restante = Math.max(previsto - pasado, 0) * .5 + porAvance * .5;
+    else if (previsto !== null) restante = Math.max(previsto - pasado, 0);
+    else if (porAvance !== null) restante = porAvance;
+    if (restante === null) { el.textContent = ""; return; }
+    el.textContent = pasado < 5 && previsto !== null ? `⏱️ Tiempo estimado: unos ${Math.max(1, Math.round(previsto / 60))} minutos` : "⏱️ " + frase(restante);
+  };
+  pintaTiempo();
+  const reloj = setInterval(pintaTiempo, 1000);
   return {
-    actualizar(pct, paso) { const b = destino.querySelector("#esp-barra"); if (b) b.style.width = Math.max(2, Math.min(100, pct)) + "%"; const p = destino.querySelector("#esp-paso"); if (p && paso) p.textContent = paso; },
-    detener() { clearInterval(timer); },
+    actualizar(p, paso) { pct = Number(p) || pct; const b = destino.querySelector("#esp-barra"); if (b) b.style.width = Math.max(2, Math.min(100, pct)) + "%"; const el = destino.querySelector("#esp-paso"); if (el && paso) el.textContent = paso; pintaTiempo(); },
+    detener() { clearInterval(timer); clearInterval(reloj); const el = destino.querySelector("#esp-tiempo"); if (el) el.textContent = ""; },
   };
 }
 
