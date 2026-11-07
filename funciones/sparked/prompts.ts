@@ -71,7 +71,7 @@ DECIDE, EN ESTE ORDEN:
    - Fotos con varios idiomas → el idioma de la MATERIA.
 3. "camino": "convertir" (hay contenido), "investigar" (temario_lista, o guía que
    describe el examen sin contenido suficiente) o "mixto". Lista los temas sin
-   contenido en "temas_a_investigar", con sus recursos_mencionados.
+   contenido en "temas_a_investigar" (textos cortos; menciona su recurso si lo hay).
    EXCEPCIÓN: si el material describe el examen pero el temario pide una HABILIDAD (por ejemplo, evaluar argumentos
    o estructurar una respuesta), esa habilidad SÍ se enseña como contenido; la descripción del examen se descarta.
 4. "presupuesto_slides" según las fotos subidas:
@@ -92,8 +92,10 @@ DECIDE, EN ESTE ORDEN:
    difícil es punto difícil.
 7. "bloques": según el presupuesto (2 a 5), en el orden del material. Elige lo
    CRUCIAL: con mucho material, usa primero la prioridad 1, y lo que no quepa va en
-   "inventario_no_usado". Para cada bloque:
-   - "temas" e "ids_inventario" (solo eso se le manda al Generador: usa los textos de los elementos del inventario).
+   "inventario_no_usado" (solo sus ids). Para cada bloque:
+   - "temas" (títulos cortos) e "ids_inventario": los "id" exactos de los elementos del inventario
+     que entran en el bloque (por ejemplo "dat12"); solo esos elementos se le mandan al Generador.
+     Nunca copies en el plan los textos del inventario.
    - "pistas": 2 a 4 títulos (máx. 5 ideas cada una).
    - "juegos": de 3 a 5, elegidos por el contenido:
      datos y definiciones → opcion_multiple (6–8) + completar (2–4) ·
@@ -108,6 +110,8 @@ DECIDE, EN ESTE ORDEN:
 9. Revisa la cuenta: 5 slides fijas + por bloque (teoría + juegos + mini-examen) debe
    caer dentro del presupuesto.
 
+Sé breve: el plan es un índice, no un resumen. "nota_planificador" en 1 o 2 líneas.
+
 Responde SOLO con JSON:
 { "materia": "...", "es_lengua_extranjera": false, "idioma_guia": "es", "apoyo": null,
   "camino": "convertir", "temas_a_investigar": [], "presupuesto_slides": 24,
@@ -121,6 +125,30 @@ Responde SOLO con JSON:
                 "super_dato": 1, "conceptos": 6, "ordenar": 0, "clasificar": 1, "quien_es_quien": 0 },
     "formato_practica": null, "mini_examen": 6 } ],
   "reto_final": 18, "inventario_no_usado": [], "nota_planificador": "" }`;
+
+// Forma obligatoria del plan: se manda como output_config.format (structured outputs), así el API garantiza
+// un JSON válido con exactamente estos campos. Si el API no la acepta, claude() pide JSON libre.
+const TXT = { type: "string" };
+const LISTA = { type: "array", items: TXT };
+const NUM = { type: "integer" };
+const obj = (props: Record<string, unknown>) => ({ type: "object", additionalProperties: false, required: Object.keys(props), properties: props });
+export const ESQUEMA_PLAN = obj({
+  materia: TXT, es_lengua_extranjera: { type: "boolean" }, idioma_guia: { type: "string", enum: ["es", "en", "fr"] },
+  apoyo: { anyOf: [{ type: "null" }, obj({ idioma: TXT, formato: { type: "string", enum: ["linea_corta", "bilingue_completo"] } })] },
+  camino: { type: "string", enum: ["convertir", "investigar", "mixto"] }, temas_a_investigar: LISTA, presupuesto_slides: NUM,
+  perfil_edad: { type: "string", enum: ["infantil", "caricatura", "juvenil", "sobrio"] }, plantillas_sugeridas: LISTA,
+  identidad: obj({
+    paleta: { type: "string", enum: ["historia_azul", "espanol_rojo", "mate_naranja", "ciencias_verde", "frances_cielo", "civica_morado", "ingles_mostaza", "geo_turquesa", "otra"] },
+    titulo: TXT, subtitulo: TXT, emojis_portada: LISTA, objetivos: LISTA, retratos_portada: LISTA,
+  }),
+  puntos_dificiles: { type: "array", items: obj({ id: TXT, descripcion: TXT }) },
+  bloques: { type: "array", items: obj({
+    id: TXT, titulo: TXT, temas: LISTA, ids_inventario: LISTA, pistas: LISTA, slides_teoria: NUM,
+    juegos: obj({ opcion_multiple: NUM, completar: NUM, verdadero_falso: NUM, super_dato: NUM, conceptos: NUM, ordenar: NUM, clasificar: NUM, quien_es_quien: NUM }),
+    formato_practica: { anyOf: [{ type: "null" }, TXT] }, mini_examen: NUM,
+  }) },
+  reto_final: NUM, inventario_no_usado: LISTA, nota_planificador: TXT,
+});
 
 export const GENERADOR = `ERES EL GENERADOR DE "SPARKED". Creas las pistas y actividades de UN bloque de una
 guía de estudio. Solo usas el inventario que te damos.

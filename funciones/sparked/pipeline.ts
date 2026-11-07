@@ -1,6 +1,6 @@
 // La cadena de generación por pasos (Documento 1): extraer → unir → planear → generar por bloque → revisar →
 // reparar → verificar → imágenes → armar. Cada ejecución hace UN paso y deja el siguiente listo.
-import { EXTRACTOR, PLANIFICADOR, GENERADOR, REPARADOR, VERIFICADOR, DOMINIOS_CONFIABLES, NIVEL_LECTURA } from "./prompts.ts";
+import { EXTRACTOR, PLANIFICADOR, ESQUEMA_PLAN, GENERADOR, REPARADOR, VERIFICADOR, DOMINIOS_CONFIABLES, NIVEL_LECTURA } from "./prompts.ts";
 
 export type Trabajo = { id: string; borrador_id: string | null; guia_id: string | null; alcance: string; paso: string; estado: string; progreso: Record<string, unknown>; datos: Record<string, unknown>; intentos: number; costo_usd: number; tokens_entrada: number; tokens_salida: number };
 type Supa = ReturnType<typeof import("npm:@supabase/supabase-js@2").createClient>;
@@ -11,7 +11,7 @@ const PRECIO: Record<string, [number, number]> = { [MODELO_HAIKU]: [0.10, 0.50],
 const FOTOS_POR_LOTE = 3; // pocas fotos por llamada para que cada paso termine en menos de 2 minutos
 
 // ---------- Llamada al API de Claude (fetch directo, sin SDK) ----------
-export async function claude(opts: { modelo?: string; sistema: string; contenido: unknown[]; esquema?: unknown; maxTokens?: number; herramientas?: unknown[]; esfuerzo?: string }): Promise<{ json: any; texto: string; parada: string | null; uso: { entrada: number; salida: number; costo: number } }> {
+export async function claude(opts: { modelo?: string; sistema: string; contenido: unknown[]; esquema?: unknown; maxTokens?: number; herramientas?: unknown[]; esfuerzo?: string }): Promise<{ json: any; texto: string; parada: string | null; formato: boolean; uso: { entrada: number; salida: number; costo: number } }> {
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) throw new Error("Falta configurar ANTHROPIC_API_KEY en los secretos de Supabase");
   const modelo = opts.modelo ?? MODELO_HAIKU;
@@ -29,10 +29,16 @@ export async function claude(opts: { modelo?: string; sistema: string; contenido
   // Cada paso debe caber en una ejecución de la función (tope de 150 s): si Claude tarda más, se corta y se reintenta.
   const pedir = () => fetch(url, { method: "POST", headers: cab, body: JSON.stringify(cuerpo), signal: AbortSignal.timeout(125_000) });
   let r = await pedir();
+  const oc = cuerpo.output_config as Record<string, unknown>;
+  if (r.status === 400 && oc.format) {
+    // Si el API no acepta el esquema, se pide JSON libre (con el mismo esfuerzo) y se valida aquí.
+    console.warn("Esquema rechazado, reintento sin formato:", (await r.text()).slice(0, 300));
+    delete oc.format;
+    r = await pedir();
+  }
   if (r.status === 400) {
-    // Si el API rechaza output_config (formato o esfuerzo), se pide JSON libre y se valida aquí.
-    const err = await r.text();
-    console.warn("Petición rechazada, reintento sin output_config:", err.slice(0, 300));
+    // Si el API rechaza output_config (esfuerzo), se pide sin él.
+    console.warn("Petición rechazada, reintento sin output_config:", (await r.text()).slice(0, 300));
     delete cuerpo.output_config;
     r = await pedir();
   }
@@ -43,7 +49,8 @@ export async function claude(opts: { modelo?: string; sistema: string; contenido
   const salida = d.usage?.output_tokens ?? 0;
   const [pe, ps] = PRECIO[modelo] ?? PRECIO[MODELO_HAIKU];
   const costo = (entrada * pe + salida * ps) / 1e6 + (d.usage?.server_tool_use?.web_search_requests ?? 0) * 0.01;
-  return { json: extraerJson(texto), texto, parada: d.stop_reason ?? null, uso: { entrada: Math.round(entrada), salida, costo } };
+  const formato = !!(cuerpo.output_config as any)?.format;
+  return { json: extraerJson(texto), texto, parada: d.stop_reason ?? null, formato, uso: { entrada: Math.round(entrada), salida, costo } };
 }
 
 export function extraerJson(texto: string): any {
@@ -51,6 +58,8 @@ export function extraerJson(texto: string): any {
   const candidatos = [texto];
   const m = texto.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (m) candidatos.push(m[1]);
+  const o = primerObjeto(texto);
+  if (o) candidatos.push(o);
   const a = texto.indexOf("{"), b = texto.lastIndexOf("}");
   if (a >= 0 && b > a) candidatos.push(texto.slice(a, b + 1));
   for (const c of candidatos) {
@@ -59,6 +68,31 @@ export function extraerJson(texto: string): any {
     try { return JSON.parse(c.replace(/,\s*([}\]])/g, "$1")); } catch { /* sigue */ }
   }
   return null;
+}
+
+// El primer objeto JSON completo del texto (cuenta llaves fuera de las comillas), por si después viene más texto.
+function primerObjeto(texto: string): string | null {
+  const a = texto.indexOf("{");
+  if (a < 0) return null;
+  let nivel = 0, enCadena = false, escape = false;
+  for (let i = a; i < texto.length; i++) {
+    const ch = texto[i];
+    if (enCadena) { if (escape) escape = false; else if (ch === "\\") escape = true; else if (ch === '"') enCadena = false; continue; }
+    if (ch === '"') enCadena = true;
+    else if (ch === "{") nivel++;
+    else if (ch === "}" && --nivel === 0) return texto.slice(a, i + 1);
+  }
+  return null;
+}
+
+// Guarda qué contestó la IA cuando su respuesta no se pudo usar, para diagnosticar sin repetir la llamada
+// (también guarda el costo de ese intento).
+async function guardarDiagnostico(supabase: Supa, t: Trabajo, campo: string, r: { texto: string; parada: string | null; formato: boolean; uso: { salida: number } }) {
+  const txt = r.texto ?? "";
+  const diag = { parada: r.parada, formato: r.formato, tokens_salida: r.uso.salida, largo: txt.length, inicio: txt.slice(0, 600), fin: txt.slice(-600), en: new Date().toISOString() };
+  console.error("Respuesta de la IA sin JSON útil", campo, JSON.stringify({ ...diag, inicio: diag.inicio.slice(0, 300), fin: diag.fin.slice(-300) }));
+  (t.datos as any)[campo] = diag;
+  await guardar(supabase, t, { datos: t.datos, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
 }
 
 // ---------- Utilidades ----------
@@ -112,7 +146,10 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
     for (const a of archivos) contenido.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: await base64De(supabase, a.ruta) } });
     const r = await claude({ sistema: EXTRACTOR, contenido, maxTokens: 9000 });
     sumar(t, r.uso);
-    if (!r.json || !r.json.inventario) throw new Error("El extractor no devolvió inventario");
+    if (!r.json || !r.json.inventario) {
+      await guardarDiagnostico(supabase, t, "diagnostico_extraer", r);
+      throw new Error(`El extractor no devolvió inventario (${r.parada ?? "sin motivo"}, ${(r.texto ?? "").length} caracteres)`);
+    }
     D.inventarios = D.inventarios ?? []; D.inventarios[i] = r.json;
     const sig = i + 1 < lotes ? `extraer:${i + 1}` : "unir";
     await guardar(supabase, t, { datos: D, progreso: { pct: 5 + Math.round(25 * (i + 1) / lotes), mensaje: `Leyendo tus fotos 📖 (${Math.min(total, (i + 1) * FOTOS_POR_LOTE)} de ${total})`, paso: sig }, paso: sig, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
@@ -149,17 +186,18 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
 
   if (t.paso === "planear") {
     const contenido = [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${nivel} · idioma del alumno ${fuente.idioma_alumno ?? "es"} · fotos subidas ${total} · materia indicada ${fuente.materia} · tipo de material ${JSON.stringify(D.tipo_material)}.\n\nINVENTARIO:\n${JSON.stringify(D.inventario)}` }];
-    const r = await claude({ sistema: PLANIFICADOR, contenido, maxTokens: 16000 });
+    // El plan sale con un esquema JSON obligatorio (structured outputs) y con esfuerzo bajo: el pensamiento de la IA
+    // cuenta dentro de max_tokens y, con esfuerzo medio, el plan se cortaba o salía con un JSON que no se podía leer.
+    const r = await claude({ sistema: PLANIFICADOR, contenido, esquema: ESQUEMA_PLAN, esfuerzo: "low", maxTokens: 16000 });
     sumar(t, r.uso);
     const plan = r.json?.bloques?.length ? r.json : r.json?.plan?.bloques?.length ? r.json.plan : null;
     if (!plan) {
-      // Se guarda qué contestó la IA para poder diagnosticar sin repetir la llamada.
-      const txt = r.texto ?? "";
-      console.error("Planificador sin bloques", JSON.stringify({ parada: r.parada, largo: txt.length, inicio: txt.slice(0, 300), fin: txt.slice(-300) }));
-      D.diagnostico_plan = { parada: r.parada, largo: txt.length, inicio: txt.slice(0, 600), fin: txt.slice(-600), en: new Date().toISOString() };
-      await guardar(supabase, t, { datos: D, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
-      throw new Error(`El planificador no devolvió bloques (${r.parada ?? "sin motivo"}, ${txt.length} caracteres)`);
+      await guardarDiagnostico(supabase, t, "diagnostico_plan", r);
+      throw new Error(`El planificador no devolvió bloques (${r.parada ?? "sin motivo"}, ${(r.texto ?? "").length} caracteres)`);
     }
+    // Solo se quedan los ids que existen en el inventario (si un bloque se queda sin ids, el Generador recibe todo).
+    const idsValidos = new Set(Object.values(D.inventario as Record<string, any[]>).flat().map((e: any) => e?.id));
+    plan.bloques = plan.bloques.slice(0, 5).map((pb: any, i: number) => ({ ...pb, id: pb.id || `b${i + 1}`, juegos: pb.juegos ?? {}, ids_inventario: (Array.isArray(pb.ids_inventario) ? pb.ids_inventario : []).filter((x: unknown) => idsValidos.has(x)) }));
     D.plan = plan;
     D.plan.grado = fuente.grado; D.plan.presupuesto_slides = Math.min(40, D.plan.presupuesto_slides ?? 25);
     D.bloques = [];
@@ -176,9 +214,14 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
     if (!Object.keys(invBloque).length) Object.assign(invBloque, D.inventario);
     const sistema = GENERADOR.replaceAll("{idioma_guia}", plan.idioma_guia ?? "es").replaceAll("{perfil_edad}", plan.perfil_edad ?? "juvenil");
     const contenido = [{ type: "text", text: `Datos: nivel ${nivel} · perfil ${plan.perfil_edad} · idioma de la guía ${plan.idioma_guia} · apoyo ${JSON.stringify(plan.apoyo)}\nPlan del bloque: ${JSON.stringify(pb)}\nInventario del bloque: ${JSON.stringify(invBloque)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
-    const r = await claude({ sistema, contenido, maxTokens: 11000 });
+    // Esfuerzo bajo y tope amplio: el pensamiento de la IA cuenta dentro de max_tokens. Con esfuerzo medio pensaba
+    // ~15 000 tokens y el bloque salía cortado (max_tokens con solo ~3 700 caracteres de JSON).
+    const r = await claude({ sistema, contenido, esfuerzo: "low", maxTokens: 16000 });
     sumar(t, r.uso);
-    if (!r.json?.pistas) throw new Error(`El generador no devolvió el bloque ${bi + 1}`);
+    if (!r.json?.pistas) {
+      await guardarDiagnostico(supabase, t, "diagnostico_generar", r);
+      throw new Error(`El generador no devolvió el bloque ${bi + 1} (${r.parada ?? "sin motivo"}, ${(r.texto ?? "").length} caracteres)`);
+    }
     const b = r.json;
     const tipoDe = (a: any) => a.tipo ?? (Array.isArray(a.opciones) ? "opcion_multiple" : a.afirmacion !== undefined ? "verdadero_falso" : "completar");
     D.bloques[bi] = { id: pb.id ?? `b${bi + 1}`, titulo: pb.titulo, pistas: (b.pistas ?? []).map((p: any, k: number) => ({ ...p, id: p.id ?? `${pb.id ?? "b" + (bi + 1)}p${k + 1}` })), actividades: aplanar(b.actividades), mini_examen: (b.mini_examen ?? []).map((a: any, k: number) => ({ ...a, tipo: tipoDe(a), id: a.id ?? `${pb.id ?? "b" + (bi + 1)}me${k + 1}` })) };
