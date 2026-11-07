@@ -10,7 +10,7 @@ otras personas ya no abre.
 
 | Pieza | Dónde |
 |---|---|
-| **La app** (celular y computadora) | https://sparkeducation-mx.com/ |
+| **La app** (celular y computadora) | https://sparkeducation-mx.com/accesos/ (la raíz del dominio abre la portada de SparkEd) |
 | Clave de administrador | `CLAVES.txt` (archivo privado; nunca está en internet) |
 | Lo que ve el alumno | `https://sparkeducation-mx.com/entrar.html#<código>` |
 | Código fuente | https://github.com/Danflores01/accesos-lumio |
@@ -20,6 +20,8 @@ otras personas ya no abre.
 Todo corre en planes gratuitos (GitHub Pages y Supabase Free).
 
 Desde el 7 de noviembre de 2026 el sitio vive en el dominio propio `sparkeducation-mx.com` (DNS en GoDaddy, páginas en GitHub Pages con HTTPS obligatorio). Los links antiguos `danflores01.github.io/accesos-lumio/…` siguen abriendo porque GitHub los redirige al dominio nuevo; no hace falta reenviar nada.
+
+La app de accesos quedó en `/accesos/` (https://sparkeducation-mx.com/accesos/); la raíz del dominio abre la portada pública de SparkEd. Si tenías la app instalada en el teléfono desde la dirección vieja, vuelve a instalarla desde la nueva dirección.
 
 ## Cómo se usa, paso a paso
 
