@@ -25,7 +25,7 @@ async function revisar() {
   if (!compra) { caja.innerHTML = `<h1>No encontramos tu compra</h1><p>Abre el link que te mandamos por correo o por WhatsApp, o vuelve a la <a href="index.html">página principal</a>.</p>`; return; }
   try {
     const d = await api.get(`/pago/estado/${encodeURIComponent(compra)}`);
-    if (d.estado !== "pagada" || !d.link) { caja.innerHTML = `<div class="estado-carga">${sparky("pensando", 5)}<h2>Esperando la confirmación del pago…</h2><p class="ayuda">Esta página se actualiza sola. Cuando se confirme el pago, también te mandamos tu guía por correo y por WhatsApp.</p></div>`; setTimeout(revisar, 5000); return; }
+    if (d.estado !== "pagada" || !d.link) { caja.innerHTML = `<div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div><h2>Esperando la confirmación del pago…</h2><p class="ayuda">Esta página se actualiza sola. Cuando se confirme el pago, también te mandamos tu guía por correo y por WhatsApp.</p></div>`; setTimeout(revisar, 5000); return; }
     mostrar(d);
   } catch (e) { caja.innerHTML = `<p class="error">${esc(e.message)}</p>`; setTimeout(revisar, 8000); }
 }

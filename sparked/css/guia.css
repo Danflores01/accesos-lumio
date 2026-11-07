@@ -276,8 +276,7 @@ body.reproductor::after { content: ""; position: fixed; left: 0; right: 0; botto
 
 /* Pantalla de carga con Sparky y datos curiosos */
 .carga { position: absolute; inset: 0; background: #0b1026; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; text-align: center; }
-.carga .sparky { animation: flotar 2.4s ease-in-out infinite; }
-@keyframes flotar { 50% { transform: translateY(-14px); } }
+/* Sparky trabaja con su casco de obra mientras carga (teoria.js, pantallaCarga); su movimiento viene de base.css (.sk-anima). */
 .carga h2 { font: 16px/1.8 var(--pixel); color: var(--amarillo); }
 .carga .dato { background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.2); border-radius: 18px; padding: 18px 24px; max-width: 760px; font-size: 22px; line-height: 1.4; }
 .carga .dato small { display: block; color: #a5b4fc; font-size: 14px; margin-top: 8px; }

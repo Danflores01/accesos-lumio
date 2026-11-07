@@ -136,7 +136,7 @@ export function resultados(s, ctx) {
   el.appendChild(h(`<div class="cuerpo resultados"><div class="dona"><svg viewBox="0 0 120 120" width="200"><circle cx="60" cy="60" r="50" fill="none" stroke="var(--p-suave)" stroke-width="16"/><circle cx="60" cy="60" r="50" fill="none" stroke="var(--p)" stroke-width="16" stroke-dasharray="${pc * 3.14} 400" transform="rotate(-90 60 60)" stroke-linecap="round"/><text x="60" y="68" text-anchor="middle" font-size="26" font-weight="800" fill="#121826" font-family="Bricolage Grotesque, sans-serif">${pc}%</text></svg>
       <div style="font-size:18px;text-align:center">${ok} ${esc(ctx.t("de"))} ${ids.length} ${esc(ctx.t("correctas"))} ${esc(ctx.t("primer_intento"))}</div>
       ${minis ? `<div class="minis">${minis}</div>` : ""}${ctx.reto != null ? `<div class="minis"><div><span>🏆 ${esc(ctx.t("reto"))}</span><span>${ctx.reto} ${esc(ctx.t("puntos"))}</span></div></div>` : ""}
-      <div style="margin-top:6px">${sparky(ok && pc >= 70 ? "festejo" : "pensando", 4)}</div></div>
+      <div style="margin-top:6px" class="sk-anima">${sparky(ok && pc >= 70 ? "festejo" : "escribiendo", 4)}</div></div>
     <div class="lista"><h2>${esc(ctx.t("repasa"))}</h2>${malas.length ? malas.map((a) => `<div class="it">• ${esc(a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.instruccion ?? "")}${a.pista && ctx.slideDePista(a.pista) >= 0 ? ` <a data-ir="${ctx.slideDePista(a.pista)}">${esc(ctx.t("pista"))} →</a>` : ""}</div>`).join("") : `<div class="it">${esc(ids.length ? ctx.t("perfecto") : ctx.t("nada_repasar"))}</div>`}</div></div>`));
   el.querySelectorAll("[data-ir]").forEach((a) => a.onclick = () => ctx.go(Number(a.dataset.ir)));
   return el;
@@ -153,9 +153,9 @@ export function candado(s, ctx) {
   return el;
 }
 
-// Pantalla de carga: Sparky flota y aparecen datos curiosos de uno en uno.
+// Pantalla de carga: Sparky trabaja con su casco de obra (martilla los bloques A, B y C) y aparecen datos curiosos de uno en uno.
 export function pantallaCarga(ctx, datos = []) {
-  const el = h(`<div class="sl carga crt"><div class="sparky">${sparky("pensando", 7)}</div><h2>${esc(ctx.t("cargando"))}</h2><div class="progreso"><i></i></div><div class="paso"></div><div class="dato"><div class="texto"></div><small></small></div><button class="boton chico" style="background:#fff">${esc(ctx.t("otro_dato"))}</button></div>`);
+  const el = h(`<div class="sl carga crt"><div class="carga-sparky sk-anima">${sparky("construyendo", 7)}</div><h2>${esc(ctx.t("cargando"))}</h2><div class="progreso"><i></i></div><div class="paso"></div><div class="dato"><div class="texto"></div><small></small></div><button class="boton chico" style="background:#fff">${esc(ctx.t("otro_dato"))}</button></div>`);
   let orden = datos.slice().sort(() => Math.random() - .5), i = 0;
   const pinta = () => { const d = orden[i % orden.length]; if (!d) { el.querySelector(".dato").style.display = "none"; return; } el.querySelector(".dato .texto").innerHTML = `${esc(ctx.t("sabias"))} ${esc(d.emoji ?? "")} ${esc(d.texto)}`; el.querySelector(".dato small").textContent = d.fuente ? "Fuente: " + d.fuente : ""; i++; };
   pinta();

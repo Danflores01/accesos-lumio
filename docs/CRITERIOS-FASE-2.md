@@ -313,12 +313,12 @@ moderno).
   genera la guía (constructor; también en "Buscando materiales…" de la biblioteca), el paso "Sparky las convierte" del
   inicio y de la biblioteca (constructor chico), la pantalla de carga al abrir una guía (constructor), "Preparando tu
   pago…" y "Esperando la confirmación del pago…" (escribiendo), los resultados de la guía con menos de 70 % (escribiendo:
-  a repasar) y el recuadro del inicio, donde cada 8 a 15 segundos
-  hace algo al azar: saluda, camina de un lado a otro o escribe un dato curioso nuevo letra por letra en la burbuja.
-  Reacciona a la gente sin estorbar: mouse encima = saluda; toque o clic = festeja con un brinco. La pose «pensando»
-  con «?» ya no se usa en ninguna pantalla (queda solo en la hoja de personaje). Con "reducir movimiento" se queda quieto (sin caminar, brincar ni escribir
-  letra por letra). Código: poses y accesorios ("+casco", "+taller") en `arte.js`, `sparkyVivo()` y `escribirTexto()`
-  en `ui.js`, animaciones en `base.css` (sección "Sparky vivo"; solo corren dentro de `.sk-anima`).
+  a repasar) y el recuadro del inicio, donde cada 8 a 15 segundos hace algo al azar: saluda, camina de un lado a otro o
+  escribe un dato curioso nuevo letra por letra en la burbuja. Reacciona a la gente sin estorbar: mouse encima =
+  saluda; toque o clic = festeja con un brinco. La pose «pensando» con «?» ya no se usa en ninguna pantalla (queda solo
+  en la hoja de personaje). Con "reducir movimiento" se queda quieto (sin caminar, brincar ni escribir letra por
+  letra). Código: poses y accesorios ("+casco", "+taller") en `arte.js`, `sparkyVivo()` y `escribirTexto()` en `ui.js`,
+  animaciones en `base.css` (sección "Sparky vivo"; solo corren dentro de `.sk-anima`).
 
 **Mecánicas "videojuego actual" (en `sparked/js/juegos.js`).**
 - Carrera: los coches corren todo el tiempo (rayas y edificios en parallax), acierto = acelerón y rebase suave,

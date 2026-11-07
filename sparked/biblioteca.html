@@ -86,7 +86,7 @@ function mostrarResultados(guias) {
     p2.innerHTML = `<h1>Por el momento no tenemos la guía de ${esc(busqueda.materia)} de ${esc(busqueda.grado)} del ${esc(busqueda.colegio_texto || "colegio")}</h1>
       <div class="aviso-vacio"><div class="dib">${sparky("triste", 7)}</div><div>
         <p style="margin-top:0"><b>Pero hay otro camino:</b> con el <b>Servicio 2</b> subes fotos de los apuntes y Sparky arma la guía en minutos.</p>
-        <div class="pasos3" style="--c:#7c3aed;--fondo-paso:#fff"><div class="paso"><div class="dib">${icono("camara", 4)}</div>Fotos de tus apuntes</div><div class="paso"><div class="dib">${sparky("pensando", 3)}</div>Sparky las convierte</div><div class="paso"><div class="dib">${icono("check", 5)}</div>Tu guía lista</div></div>
+        <div class="pasos3" style="--c:#7c3aed;--fondo-paso:#fff"><div class="paso"><div class="dib">${icono("camara", 4)}</div>1. Tomas fotos de tus apuntes</div><div class="paso"><div class="dib sk-anima">${sparky("construyendo", 3)}</div>2. Sparky las convierte en una guía</div><div class="paso"><div class="dib">${icono("check", 5)}</div>3. Juegas y estudias</div></div>
       </div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="boton" id="ir-s2">✨ Crea tu guía personalizada con el Servicio 2</a><button class="boton linea" id="avisame">🔔 Avísame cuando esté lista</button></div><div id="aviso-ok" class="ayuda"></div>`;
     const q = new URLSearchParams({ grado: busqueda.grado, materia: busqueda.materia, colegio: busqueda.colegio_texto ?? "" });
