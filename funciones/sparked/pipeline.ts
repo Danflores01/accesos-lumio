@@ -118,11 +118,22 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
     const invs = (D.inventarios ?? []) as any[];
     if (invs.some((x) => x?.estado === "no_es_material_de_estudio") && invs.every((x) => x?.estado !== "ok" && x?.estado !== "parcial")) throw new Error("Las fotos no parecen material de estudio");
     const fotos = invs.flatMap((x) => x?.fotos ?? []);
-    const legibles = fotos.filter((f: any) => f.legible !== false).length;
+    const legibles = fotos.filter((f: any) => f?.legible !== false).length;
     if (!legibles) throw new Error("No se pudo leer ninguna foto. Prueba con fotos más claras y con buena luz.");
     const inv: Record<string, any[]> = {};
     const vistos = new Set<string>();
-    for (const x of invs) for (const [k, lista] of Object.entries(x?.inventario ?? {})) { inv[k] = inv[k] ?? []; for (const el of (lista as any[]) ?? []) { const clave = k + "|" + normaliza(JSON.stringify(el)).slice(0, 120); if (vistos.has(clave)) continue; vistos.add(clave); inv[k].push(el); } }
+    for (const x of invs) for (const [k, lista] of Object.entries(x?.inventario ?? {})) {
+      inv[k] = inv[k] ?? [];
+      for (const crudo of Array.isArray(lista) ? lista : lista ? [lista] : []) {
+        // El extractor a veces devuelve textos sueltos en vez de objetos (p. ej. en "recursos_mencionados"):
+        // se envuelven para que todo elemento sea un objeto y pueda recibir su id.
+        const el = crudo && typeof crudo === "object" ? crudo : typeof crudo === "string" || typeof crudo === "number" ? { texto: String(crudo) } : null;
+        if (!el) continue;
+        const clave = k + "|" + normaliza(JSON.stringify(el)).slice(0, 120);
+        if (vistos.has(clave)) continue;
+        vistos.add(clave); inv[k].push(el);
+      }
+    }
     // ids para que el Planificador y el Generador se refieran a los elementos
     let n = 0; for (const [k, lista] of Object.entries(inv)) for (const el of lista) el.id = `${k.slice(0, 3)}${++n}`;
     D.inventario = inv; D.fotos = fotos; D.tipo_material = invs.map((x) => x?.tipo_material).filter(Boolean);
