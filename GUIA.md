@@ -269,7 +269,8 @@ crea un acceso normal dentro de esa clase: vale 7 días desde el pago y entra en
 Al publicar, los pedidos sin guía que coincidan aparecen para avisarles por WhatsApp.
 
 **Ajustes del sitio** (pestaña Ajustes del panel): precio (100 MXN, IVA incluido; es lo que cobra Mercado Pago), WhatsApp para confirmar pagos manuales,
-topes de compras por día y por familia, correo de aviso de ventas y remitente.
+topes de compras por día y por familia (80 y 6; para probar más, súbelos aquí y al terminar regrésalos), correo de aviso de ventas y
+remitente, y qué ve el alumno mientras se termina una guía pagada. Los códigos de descuento están en la pestaña Códigos (ver abajo).
 
 **Pruebas locales.** `node herramientas/servir.js 8787` sirve la carpeta en `http://localhost:8787/sparked/`
 (`guia.html?demo=civics3` abre la guía de ejemplo sin servidor).
@@ -343,3 +344,53 @@ aviso no ha llegado (una vez cada 20 s por compra) y devuelve `metodo`, `pago_mp
 `POST /pago/reintentar/:id` hace un link de pago nuevo para una compra pendiente. Columnas nuevas en `compras`:
 migración `sql/migraciones/20261107_sparked_mercadopago.sql`. Prueba sin llaves: `node herramientas/probar-mercadopago.ts`
 (Node 23.6 o más nuevo).
+
+## Códigos de descuento (guía gratis o con descuento)
+
+Sirven para tus pruebas y para regalar accesos. La familia escribe el código en el campo **"¿Tienes un código? Escríbelo
+aquí"** del pago (en "Crear mi guía" y en la biblioteca). Se aceptan con mayúsculas o minúsculas y con espacios de más.
+
+**Cómo crear un código (panel → pestaña Códigos):**
+1. Escribe el código (de 3 a 40 letras o números, puede llevar guion) o toca 🎲 para que el panel invente uno.
+2. Elige qué hace: **Guía gratis** (no paga nada y la guía se entrega al momento) o **Descuento en %** (paga menos en
+   Mercado Pago; por ejemplo 50 = mitad de precio).
+3. Límite de usos: cuántas guías se pueden pedir con ese código (1 = un solo uso; vacío = sin límite).
+4. Caduca el (opcional): el código deja de servir al terminar ese día.
+5. Nota: para ti (por ejemplo "para mis pruebas" o "regalo para la familia López").
+6. "Crear código". En la lista puedes copiarlo, **apagarlo** (deja de servir al momento) o volver a encenderlo.
+
+**Qué pasa al usarlo:**
+- Código gratis: la compra queda pagada con monto 0 y método "código"; se crean el acceso de 7 días y el link, y le
+  llega el correo igual que a una compra pagada. Tú recibes el aviso "Guía con código" (no "Venta").
+- Código de descuento: Mercado Pago cobra el precio ya descontado. El uso se cuenta cuando el pago se confirma.
+- Las guías con código gratis **no cuentan como venta ni como ingreso** en el Resumen ni en la Biblioteca; se cuentan
+  aparte ("guías con código gratis este mes").
+- Si el código no sirve (no existe, está apagado, ya caducó o se acabaron sus usos), la familia solo ve "Ese código no
+  es válido". Cada intento queda en "Últimos intentos" y, con 5 intentos fallidos en una hora desde el mismo teléfono,
+  correo o conexión, los siguientes se rechazan solos (aunque el código sea bueno) hasta que pase la hora.
+
+## Entrega en dos tiempos (la guía completa tarda unos 4 minutos)
+
+La guía completa se genera **después** del pago (así no se gasta en guías que nadie paga) y tarda entre 3 y 6 minutos.
+Por eso, al pagar:
+1. La página dice "Tu pago se confirmó" (o "Tu código se aplicó") y "Tu guía completa se está terminando: tarda unos 4
+   minutos. Te avisamos por correo en cuanto esté lista", con una barra de avance y el tiempo estimado. Ya muestra el
+   link para copiarlo o mandarlo por WhatsApp. Cuando la guía queda completa, la misma página cambia a "¡Tu guía está
+   lista!".
+2. El primer correo dice lo mismo, con el link. Cuando la guía queda completa, llega un **segundo correo** (una sola
+   vez): "¡Tu guía completa está lista!", con el mismo link. Si la guía ya estaba completa al pagar (biblioteca), solo
+   sale un correo.
+3. Si la IA no logra terminar la guía después de sus reintentos, el link y la página dicen "Estamos revisando tu guía;
+   te avisamos por correo en cuanto esté lista" (ya no "generando" para siempre). Tú recibes un correo en la dirección
+   de Ajustes → "Correo donde quieres recibir aviso de cada venta" (si la pusiste) y el Resumen del panel muestra el
+   aviso en rojo con el botón "Abrir la guía". Ahí tocas **↻ Reintentar**; al terminar, a la familia le llega sola el
+   correo de que su guía completa está lista.
+
+**Ajuste "Mientras se termina una guía pagada"** (pestaña Ajustes): con "Mostrar el avance…" (lo de siempre) el link
+enseña el avance hasta que la guía esté completa. Con "Dejar jugar los bloques de la vista previa…" el alumno ya puede
+jugar los bloques que existen, con un letrero arriba de "Estamos terminando los demás bloques"; cuando la guía queda
+completa, el letrero ofrece abrirla.
+
+**Topes de compras.** Por seguridad hay un tope de 80 compras al día en todo el sitio y de 6 al día por familia
+(mismo teléfono o correo). Si necesitas probar más, súbelos en Ajustes → "Tope de compras por día (todo el sitio)" y
+"Tope de compras por día por familia", guarda, y al terminar regrésalos a 80 y 6.

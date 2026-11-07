@@ -153,6 +153,17 @@ export function candado(s, ctx) {
   return el;
 }
 
+// Guía pagada que todavía se está terminando (ajuste "jugar durante la generación"): fin de los bloques que ya existen.
+export function terminando(s, ctx) {
+  const c = ctx.c;
+  const faltan = Math.max(0, (c.plan?.bloques_plan?.length ?? 0) - c.bloques.length);
+  const el = h(`<div class="sl candado"><div class="caja">${sparky("construyendo", 5)}<h2>Estamos terminando los demás bloques</h2>
+    <p style="font-size:20px;margin:0">${faltan ? `Faltan ${faltan} bloque${faltan === 1 ? "" : "s"} con su teoría, juegos y mini-examen.` : "Falta la revisión final de tu guía."} Te avisamos por correo en cuanto esté lista; este mismo link la abre completa.</p>
+    <button class="boton" id="recargar">🔄 Ver si ya está lista</button></div></div>`);
+  el.querySelector("#recargar").onclick = () => location.reload();
+  return el;
+}
+
 // Pantalla de carga: Sparky trabaja con su casco de obra (martilla los bloques A, B y C) y aparecen datos curiosos de uno en uno.
 export function pantallaCarga(ctx, datos = []) {
   const el = h(`<div class="sl carga crt"><div class="carga-sparky sk-anima">${sparky("construyendo", 7)}</div><h2>${esc(ctx.t("cargando"))}</h2><div class="progreso"><i></i></div><div class="paso"></div><div class="dato"><div class="texto"></div><small></small></div><button class="boton chico" style="background:#fff">${esc(ctx.t("otro_dato"))}</button></div>`);
@@ -176,6 +187,7 @@ const MENSAJES = {
   clase_inactiva: ["📕", "Guía no disponible", "Esta guía ya no está disponible."],
   otro_dispositivo: ["📵", "Acceso en uso en otros dispositivos", "Este acceso ya se usa en los dispositivos permitidos. Si es tu propio dispositivo, cierra la navegación privada y vuelve a abrir el link."],
   generando: ["⏳", "Tu guía se está terminando de armar", "Sparky está escribiendo los últimos bloques. Esta página se actualiza sola en unos segundos; no cierres el link."],
+  revisando: ["🔎", "Estamos revisando tu guía", "Estamos revisando tu guía; te avisamos por correo en cuanto esté lista. No necesitas hacer nada más."],
   error: ["⚠️", "Algo falló", "No se pudo abrir la guía. Intenta de nuevo en un momento."],
 };
 export function mensaje(estado) {

@@ -45,6 +45,11 @@ export async function iniciarPago(destino, datos) {
   destino.innerHTML = `<div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div><div>Preparando tu pago…</div></div>`;
   try {
     const r = await api.post("/pago/crear", datos);
+    if (r.modo === "codigo") {
+      // Código gratis: la guía ya quedó entregada; listo.html muestra el avance y el link.
+      try { localStorage.setItem("sparked_compra", r.compra_id); } catch {}
+      location.href = r.url || `listo.html?compra=${encodeURIComponent(r.compra_id)}`; return r;
+    }
     if (r.modo === "mercadopago" && r.url) {
       // Se guarda la compra por si al regresar de Mercado Pago la dirección no la trae.
       try { localStorage.setItem("sparked_compra", r.compra_id); } catch {}
@@ -66,6 +71,10 @@ export async function iniciarPago(destino, datos) {
     throw e;
   }
 }
+
+// Campo opcional del código de descuento (Daniel crea los códigos en el panel) y su lectura sin espacios.
+export const campoCodigo = (estilo = "grid-column:1/-1") => `<div class="campo" style="${estilo}"><label>¿Tienes un código? Escríbelo aquí</label><input name="codigo" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Opcional" style="text-transform:uppercase"></div>`;
+export const leerCodigo = (raiz) => (raiz?.querySelector("[name=codigo]")?.value ?? "").replace(/\s+/g, "").toUpperCase();
 
 export function esperarPago(el, compraId, cada = 5000) {
   const tick = async () => {
@@ -101,6 +110,8 @@ export function textoPagoPendiente(d, pista = "") {
 // Sparky trabaja con casco de obra, martillo y bloques mientras tanto (Daniel, 7 nov 2026); si lo tocan, festeja y
 // vuelve a martillar. Cada dato curioso se escribe letra por letra.
 // opciones.paginas (cuántas páginas se leen) sirve para estimar el tiempo; opciones.estimado son segundos totales si ya se conocen.
+// opciones.inicio (milisegundos) = cuándo empezó el trabajo si fue antes de abrir la página, y opciones.base = el
+// porcentaje con el que empezó (el resto de una guía pagada arranca en 42 %): así el tiempo estimado no vuelve a empezar.
 export function pantallaEspera(destino, titulo, opciones = {}) {
   destino.innerHTML = `<div class="estado-carga"><div class="esp-sparky"></div><h2 id="esp-titulo">${esc(titulo)}</h2><div class="barra"><i id="esp-barra"></i></div><div id="esp-paso" class="ayuda"></div><div id="esp-tiempo" class="ayuda"></div><div class="dato" id="esp-dato"></div></div>`;
   const obrero = sparkyVivo(destino.querySelector(".esp-sparky"), { escala: 7, reposo: "construyendo", accesorios: "+casco+taller", acciones: [] });
@@ -114,14 +125,15 @@ export function pantallaEspera(destino, titulo, opciones = {}) {
   fetch("datos/curiosos.json").then((r) => r.json()).then((d) => { datos = d.sort(() => Math.random() - .5); pinta(); timer = setInterval(pinta, 9000); }).catch(() => {});
   // Tiempo estimado: arranca con un cálculo por páginas (lectura + plan + primer bloque, medido en pruebas reales)
   // y se va corrigiendo con el avance real de la barra.
-  const inicio = Date.now();
+  const inicio = Math.min(Date.now(), Number(opciones.inicio) || Date.now());
+  const base = Number(opciones.base) || 0;
   const previsto = opciones.estimado ?? (opciones.paginas ? 100 + 9 * Number(opciones.paginas) : null);
-  let pct = 0;
+  let pct = base;
   const frase = (s) => s < 20 ? "Ya casi está…" : s < 50 ? "Falta menos de un minuto" : s < 100 ? "Falta alrededor de un minuto" : `Faltan unos ${Math.round(s / 60)} minutos`;
   const pintaTiempo = () => {
     const el = destino.querySelector("#esp-tiempo"); if (!el) return;
     const pasado = (Date.now() - inicio) / 1000;
-    const porAvance = pct >= 10 && pasado >= 15 ? pasado * (100 - pct) / pct : null;
+    const porAvance = pct >= base + 10 && pasado >= 15 ? pasado * (100 - pct) / (pct - base) : null;
     let restante = null;
     if (previsto !== null && porAvance !== null) restante = Math.max(previsto - pasado, 0) * .5 + porAvance * .5;
     else if (previsto !== null) restante = Math.max(previsto - pasado, 0);

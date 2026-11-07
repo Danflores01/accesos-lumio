@@ -67,6 +67,7 @@
       <button data-tab="resumen" class="on">Resumen</button>
       <button data-tab="guias">Biblioteca <span class="n" id="nGuias" hidden></span></button>
       <button data-tab="compras">Compras <span class="n" id="nCompras" hidden></span></button>
+      <button data-tab="codigos">Códigos</button>
       <button data-tab="solicitudes">Pedidos sin guía <span class="n" id="nSolicitudes" hidden></span></button>
       <button data-tab="reportes">Reportes <span class="n" id="nReportes" hidden></span></button>
       <button data-tab="colegios">Colegios</button>
@@ -74,6 +75,7 @@
     </div>
 
     <section data-panel="resumen">
+      <div id="alertas"></div>
       <div class="numeros" id="numeros"></div>
       <h2 style="margin:22px 0 10px">Motores</h2>
       <div class="motores" id="motores"></div>
@@ -115,6 +117,26 @@
       <div id="listaCompras"></div>
     </section>
 
+    <section data-panel="codigos" hidden>
+      <div class="panel-paso"><h2 style="margin-top:0">Nuevo código</h2>
+        <p class="ayuda">La familia escribe el código en el campo "¿Tienes un código?" del pago. Con un código de guía gratis no paga nada y la guía se entrega al momento; con uno de descuento paga menos. Las guías con código gratis no cuentan como ventas.</p>
+        <form id="formCodigo" class="rejilla-campos">
+          <div class="campo"><label>Código</label><div style="display:flex;gap:6px"><input name="codigo" required maxlength="40" autocomplete="off" placeholder="Ej. PRUEBA-DANIEL" style="flex:1;text-transform:uppercase"><button class="boton linea chico" type="button" id="btnInventarCodigo" title="Inventar un código">🎲</button></div></div>
+          <div class="campo"><label>Qué hace</label><select name="tipo"><option value="gratis">Guía gratis</option><option value="porcentaje">Descuento en %</option></select></div>
+          <div class="campo" id="campoValor" hidden><label>Descuento (%)</label><input name="valor" inputmode="numeric" placeholder="Ej. 50"></div>
+          <div class="campo"><label>Límite de usos</label><input name="usos_max" inputmode="numeric" value="1" placeholder="Vacío = sin límite"></div>
+          <div class="campo"><label>Caduca el (opcional)</label><input name="expira_en" type="date"></div>
+          <div class="campo" style="grid-column:1/-1"><label>Nota (solo la ves tú)</label><input name="nota" maxlength="200" placeholder="Ej. Para mis pruebas / regalo para la familia López"></div>
+          <div style="grid-column:1/-1"><button class="boton" type="submit">Crear código</button></div>
+          <div class="error" id="errCodigo" style="grid-column:1/-1"></div>
+        </form>
+      </div>
+      <div id="listaCodigos" style="margin-top:14px"></div>
+      <h2 style="margin:22px 0 6px">Últimos intentos</h2>
+      <p class="ayuda">Cada vez que alguien escribe un código queda aquí. Con 5 intentos fallidos en una hora (mismo teléfono, correo o conexión), los siguientes se rechazan solos.</p>
+      <div id="listaIntentos"></div>
+    </section>
+
     <section data-panel="solicitudes" hidden><p class="ayuda">Familias que buscaron una guía que todavía no existe. Cuando publiques esa guía, aquí aparecen marcadas para avisarles.</p><div id="listaSolicitudes"></div></section>
     <section data-panel="reportes" hidden><p class="ayuda">Lo que los alumnos reportaron desde la banderita 🚩 del reproductor.</p><div id="listaReportes"></div></section>
     <section data-panel="colegios" hidden>
@@ -129,7 +151,8 @@
           <div class="campo"><label>Tope de compras por día (todo el sitio)</label><input name="sparked_tope_diario" inputmode="numeric"></div>
           <div class="campo"><label>Tope de compras por día por familia</label><input name="sparked_tope_familia" inputmode="numeric"></div>
           <div class="campo"><label>Tipo de cambio (pesos por dólar, para la ficha de costos)</label><input name="sparked_tipo_cambio" inputmode="decimal"></div>
-          <div class="campo"><label>Correo donde quieres recibir aviso de cada venta</label><input name="sparked_correo_aviso" type="email"></div>
+          <div class="campo"><label>Correo donde quieres recibir aviso de cada venta (y si una guía pagada no se termina)</label><input name="sparked_correo_aviso" type="email"></div>
+          <div class="campo" style="grid-column:1/-1"><label>Mientras se termina una guía pagada (unos 4 minutos)</label><select name="sparked_jugar_durante_generacion"><option value="no">Mostrar el avance hasta que la guía esté completa</option><option value="si">Dejar jugar los bloques de la vista previa, con el letrero "estamos terminando los demás bloques"</option></select></div>
           <div class="campo"><label>Remitente de los correos</label><input name="sparked_correo_remitente" placeholder="SparkEd <hola@tudominio.com>"></div>
           <div class="campo"><label>Dirección pública del sitio</label><input name="sparked_sitio"></div>
           <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="boton" type="submit">Guardar ajustes</button><button class="boton linea" type="button" id="btnLimpiar">🧹 Limpiar borradores vencidos</button></div>
@@ -182,7 +205,7 @@ function mostrarTab(t) {
   $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   $$("[data-panel]").forEach((s) => { s.hidden = s.dataset.panel !== t; });
   location.hash = t;
-  ({ resumen: cargarResumen, guias: cargarGuias, compras: cargarCompras, solicitudes: cargarSolicitudes, reportes: cargarReportes, colegios: cargarColegios, ajustes: cargarAjustes })[t]?.();
+  ({ resumen: cargarResumen, guias: cargarGuias, compras: cargarCompras, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, colegios: cargarColegios, ajustes: cargarAjustes })[t]?.();
 }
 async function cargarTodo() { await cargarColegios(true); mostrarTab(location.hash.replace("#", "") || "resumen"); }
 
@@ -191,9 +214,12 @@ async function cargarResumen() {
   const r = await api("/resumen");
   $("#numeros").innerHTML = [
     [r.guias.publicadas, "guías publicadas"], [r.guias.borradores, "borradores por revisar"], [r.guias.personalizadas, "guías personalizadas vivas"],
-    [r.compras.pendientes, "compras pendientes de pago"], [r.compras.pagadas_hoy + " · " + dinero(r.compras.ingresos_hoy), "ventas de hoy"], [r.compras.pagadas_mes + " · " + dinero(r.compras.ingresos_mes), "ventas del mes"],
+    [r.compras.pendientes, "compras pendientes de pago"], [r.compras.pagadas_hoy + " · " + dinero(r.compras.ingresos_hoy), "ventas de hoy"], [r.compras.pagadas_mes + " · " + dinero(r.compras.ingresos_mes), "ventas del mes"], [r.compras.con_codigo_mes ?? 0, "guías con código gratis este mes (no son ventas)"],
     [r.solicitudes_sin_guia, "pedidos sin guía"], [r.reportes_nuevos, "reportes nuevos"], [r.ia.corriendo, "generaciones en curso"], ["US$" + r.ia.costo_usd_mes.toFixed(2), "gasto de IA este mes"],
   ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
+  // Guías pagadas que la IA no pudo terminar: la familia ve "Estamos revisando tu guía" hasta que se reintente.
+  $("#alertas").innerHTML = (r.entregas_con_error ?? []).map((x) => `<div class="caja-clave" style="border-left-color:#dc2626;margin-bottom:12px"><b>⚠️ Guía pagada sin terminar: ${esc(x.titulo ?? "Guía")}</b><div class="ayuda" style="margin:4px 0 8px">La IA no pudo terminar los bloques que faltan (paso ${esc(x.paso ?? "")}, ${esc(fecha(x.desde))}). La familia ve "Estamos revisando tu guía; te avisamos por correo en cuanto esté lista". Abre la guía y toca ↻ Reintentar; al terminar, a la familia le llega sola el correo.</div><button class="boton chico" data-guia="${esc(x.guia_id)}">Abrir la guía</button></div>`).join("");
+  $$("#alertas [data-guia]").forEach((b) => b.onclick = () => detalleGuia(b.dataset.guia));
   $("#nCompras").hidden = !r.compras.pendientes; $("#nCompras").textContent = r.compras.pendientes;
   $("#nSolicitudes").hidden = !r.solicitudes_sin_guia; $("#nSolicitudes").textContent = r.solicitudes_sin_guia;
   $("#nReportes").hidden = !r.reportes_nuevos; $("#nReportes").textContent = r.reportes_nuevos;
@@ -237,10 +263,10 @@ function filaGuia(g) {
   if (g.completo && g.estado !== "publicada") acciones.push(["publicar", "✅ Publicar", ""]);
   if (g.estado === "publicada" && g.origen === "biblioteca") acciones.push(["archivar", "📦 Archivar", "linea"]);
   acciones.push(["editar", "✏️ Editar", "linea"], ["detalle", "ℹ️ Detalle", "linea"]);
-  if (!g.compras_pagadas) acciones.push(["borrar", "🗑 Borrar", "linea"]);
+  if (!g.compras_pagadas && !g.compras_codigo) acciones.push(["borrar", "🗑 Borrar", "linea"]);
   return `<div class="fila-g"><div class="info"><b>${esc(g.titulo ?? "(sin título)")}</b>${chip(g.estado)}${g.origen === "personalizada" ? chip("personalizada") : ""}
     <div class="ayuda">${esc(meta)}</div>
-    <div class="ayuda">${g.completo ? "Cartucho completo" : "Sin cartucho completo"} · ${g.compras_pagadas} vendidas${g.compras_pendientes ? ` · ${g.compras_pendientes} pendientes` : ""} · costo IA ${dinero(g.costo_mxn)} · creada ${esc(fecha(g.creada_en))}${g.borrar_en ? " · se borra " + esc(fecha(g.borrar_en)) : ""}</div>
+    <div class="ayuda">${g.completo ? "Cartucho completo" : "Sin cartucho completo"} · ${g.compras_pagadas} vendidas${g.compras_codigo ? ` · ${g.compras_codigo} con código gratis` : ""}${g.compras_pendientes ? ` · ${g.compras_pendientes} pendientes` : ""} · costo IA ${dinero(g.costo_mxn)} · creada ${esc(fecha(g.creada_en))}${g.borrar_en ? " · se borra " + esc(fecha(g.borrar_en)) : ""}</div>
     ${t ? `<div class="ayuda" style="margin-top:6px">${chip(t.estado)} ${esc(t.progreso?.mensaje ?? "")}${t.estado === "error" ? " · revisa el detalle" : ""}</div>${corriendo ? `<div class="prog"><i style="width:${t.progreso?.pct ?? 0}%"></i></div>` : ""}` : ""}
   </div><div class="acciones">${acciones.map(([a, txt, cls]) => `<button class="boton ${cls}" data-act="${a}" data-id="${g.id}">${txt}</button>`).join("")}</div></div>`;
 }
@@ -279,7 +305,7 @@ async function detalleGuia(id) {
     <h3>Trabajos de la IA</h3>${(g.trabajos ?? []).map((t) => `<div style="margin-bottom:6px">${chip(t.estado)} <b>${esc(t.alcance)}</b> · paso ${esc(t.paso)} · ${esc(t.progreso?.mensaje ?? "")} · US$${Number(t.costo_usd).toFixed(3)} · ${esc(fecha(t.actualizado_en))}${t.error ? `<div class="error">${esc(t.error)}</div><button class="boton chico linea" data-reintentar="${t.id}">↻ Reintentar</button>` : ""}</div>`).join("") || "<p class='ayuda'>Ninguno (cartucho subido a mano).</p>"}
     <h3>Verificación de datos</h3>${rep.verificacion?.length ? `<pre>${esc(JSON.stringify(rep.verificacion, null, 1))}</pre>` : "<p class='ayuda'>Sin correcciones registradas.</p>"}
     ${rep.huecos?.length ? `<h3>Huecos detectados</h3><pre>${esc(rep.huecos.join("\n"))}</pre>` : ""}
-    <h3>Compras</h3>${(g.compras ?? []).map((c) => `<div>${chip(c.estado)} ${esc(c.nombre)} · ${esc(c.telefono)} · ${esc(fecha(c.creada_en))}</div>`).join("") || "<p class='ayuda'>Ninguna.</p>"}
+    <h3>Compras</h3>${(g.compras ?? []).map((c) => `<div>${chip(c.estado)} ${esc(c.nombre)} · ${esc(c.telefono)} · ${esc(fecha(c.creada_en))}${c.metodo_pago === "codigo" ? ` · 🎟️ código ${esc(c.codigo ?? "")} (gratis, no es venta)` : c.codigo ? ` · 🎟️ código ${esc(c.codigo)} · ${dinero(c.monto_mxn)}` : ""}</div>`).join("") || "<p class='ayuda'>Ninguna.</p>"}
     ${g.borrador ? `<h3>Material</h3><div class="ayuda">${g.borrador.paginas} página(s) subidas · estado ${esc(g.borrador.estado)}</div>` : ""}</div>`);
   $$("#dlg [data-reintentar]").forEach((b) => b.onclick = async () => { await api(`/trabajos/${b.dataset.reintentar}/reintentar`, { method: "POST" }); $("#dlg").close(); aviso("Reintentando…"); cargarGuias(); });
 }
@@ -362,6 +388,7 @@ async function cargarCompras() {
   $("#listaCompras").innerHTML = lista.map((c) => `<div class="fila-g"><div class="info"><b>${esc(c.titulo ?? "Guía")}</b>${chip(c.estado)}
       <div class="ayuda">Folio <b>${esc(c.folio)}</b> · ${esc(fecha(c.creada_en))} · ${dinero(c.monto_mxn)} MXN${c.pagada_en ? " · pagada " + esc(fecha(c.pagada_en)) : ""}</div>
       <div class="ayuda">${esc(c.nombre ?? "")} · <a href="${esc(waLink(c.telefono ?? "", ""))}" target="_blank" rel="noopener">${esc(c.telefono ?? "")}</a> · <a href="mailto:${esc(c.correo ?? "")}">${esc(c.correo ?? "")}</a> · ${esc([c.colegio_texto, c.grado, c.materia].filter(Boolean).join(" · "))}</div>
+      ${c.codigo ? `<div class="ayuda">🎟️ Código <b>${esc(c.codigo)}</b>${c.metodo_pago === "codigo" ? " · guía gratis (no cuenta como venta)" : ` · descuento de ${dinero(c.descuento_mxn)}`}</div>` : ""}
       ${c.mp_preferencia_id || c.mp_estado ? `<div class="ayuda">Mercado Pago: ${esc(METODOS_MP[c.metodo_pago] ?? c.metodo_pago ?? "todavía sin pago")}${c.mp_estado ? " · " + esc(ESTADOS_MP[c.mp_estado] ?? c.mp_estado) : ""}${c.mp_vence_en && c.estado === "pendiente" ? " · se puede pagar hasta el " + esc(fecha(c.mp_vence_en)) : ""}${c.mp_pago_id ? " · pago " + esc(c.mp_pago_id) : ""}${c.mp_ficha_url ? ` · <a href="${esc(c.mp_ficha_url)}" target="_blank" rel="noopener">ver ficha</a>` : ""}</div>` : ""}
       ${c.link ? `<div class="link-caja" style="margin-top:6px">${esc(c.link)}</div><div class="ayuda">Acceso: ${esc(c.acceso?.estado ?? "")} · vence ${esc(fecha(c.acceso?.expira_en))} · ${c.acceso?.usos ?? 0} aperturas</div>` : ""}
     </div><div class="acciones">
@@ -380,6 +407,30 @@ async function cargarCompras() {
   });
 }
 $("#filtroCompras").onchange = cargarCompras; $("#btnRefrescarCompras").onclick = cargarCompras;
+
+// ---------- Códigos de descuento ----------
+const RESULTADOS = { ok: "✅ aplicado", no_existe: "no existe", apagado: "estaba apagado", vencido: "ya había caducado", agotado: "ya no tenía usos", bloqueado: "⛔ bloqueado (demasiados intentos)" };
+const estadoCodigo = (c) => !c.activo ? "apagado" : c.expira_en && new Date(c.expira_en) <= new Date() ? "vencido" : c.usos_max !== null && c.usos >= c.usos_max ? "agotado" : "activo";
+async function cargarCodigos() {
+  const r = await api("/codigos");
+  $("#listaCodigos").innerHTML = r.codigos.map((c) => `<div class="fila-g"><div class="info"><b style="font-family:monospace;font-size:19px">${esc(c.codigo)}</b>${chip(estadoCodigo(c))}
+      <div class="ayuda">${c.tipo === "gratis" ? "Guía gratis" : `Descuento de ${Number(c.valor)} %`} · usado ${c.usos} ${c.usos_max ? `de ${c.usos_max} ${c.usos_max === 1 ? "vez" : "veces"}` : "veces (sin límite)"} · ${c.expira_en ? "caduca el " + esc(fecha(c.expira_en)) : "no caduca"} · creado ${esc(fecha(c.creado_en))}</div>
+      ${c.nota ? `<div class="ayuda">📝 ${esc(c.nota)}</div>` : ""}</div>
+    <div class="acciones"><button class="boton linea" data-copiar="${esc(c.codigo)}">📋 Copiar</button>${c.activo ? `<button class="boton linea" data-activo="false" data-id="${c.id}">⏸ Apagar</button>` : `<button class="boton linea" data-activo="true" data-id="${c.id}">▶ Encender</button>`}</div></div>`).join("") || "<p class='ayuda'>Todavía no hay códigos.</p>";
+  $("#listaIntentos").innerHTML = r.intentos.length ? `<table><tr><th>Fecha</th><th>Código escrito</th><th>Resultado</th><th>Quién</th></tr>${r.intentos.map((i) => `<tr><td>${esc(fecha(i.creado_en))}</td><td style="font-family:monospace">${esc(i.codigo ?? "")}</td><td>${esc(RESULTADOS[i.resultado] ?? i.resultado)}</td><td>${esc([i.telefono, i.correo, i.ip].filter(Boolean).join(" · "))}</td></tr>`).join("")}</table>` : "<p class='ayuda'>Nadie ha escrito un código todavía.</p>";
+  $$("#listaCodigos [data-copiar]").forEach((b) => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copiar); aviso("Código copiado"); } catch {} });
+  $$("#listaCodigos [data-activo]").forEach((b) => b.onclick = async () => { try { await api(`/codigos/${b.dataset.id}`, { method: "PATCH", body: { activo: b.dataset.activo === "true" } }); aviso(b.dataset.activo === "true" ? "Código encendido" : "Código apagado"); cargarCodigos(); } catch (e) { aviso(e.message, true); } });
+}
+const fCod = $("#formCodigo");
+fCod.tipo.onchange = () => { $("#campoValor").hidden = fCod.tipo.value !== "porcentaje"; };
+$("#btnInventarCodigo").onclick = () => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; fCod.codigo.value = "SPARK-" + [...crypto.getRandomValues(new Uint8Array(6))].map((x) => A[x % A.length]).join(""); };
+fCod.onsubmit = async (e) => {
+  e.preventDefault(); $("#errCodigo").textContent = "";
+  try {
+    const c = await api("/codigos", { method: "POST", body: { codigo: fCod.codigo.value, tipo: fCod.tipo.value, valor: fCod.valor.value, usos_max: fCod.usos_max.value.trim() === "" ? null : fCod.usos_max.value, expira_en: fCod.expira_en.value || null, nota: fCod.nota.value } });
+    aviso(`Código ${c.codigo} creado`); fCod.reset(); $("#campoValor").hidden = true; cargarCodigos();
+  } catch (err) { $("#errCodigo").textContent = err.message; }
+};
 
 // ---------- Solicitudes ----------
 async function cargarSolicitudes() {

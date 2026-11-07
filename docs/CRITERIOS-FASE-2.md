@@ -117,6 +117,21 @@ Para la mamá que no quiere ni sabe subir materiales: llena un formulario y comp
   7. Para probar sin cobrar: cuenta de prueba comprador, Access Token de prueba (`TEST-…`) en `MP_ACCESS_TOKEN`, tarjeta
      de prueba con titular APRO; al terminar, regresar el Access Token de producción.
 
+## 3c. Códigos de descuento (construido el 7 nov 2026)
+- Daniel los crea en el panel (pestaña Códigos): código, "guía gratis" o "descuento en %", límite de usos (vacío = sin
+  límite), caducidad opcional (fin de ese día, hora del centro de México) y nota. Se pueden apagar y volver a encender.
+- La familia lo escribe en el campo opcional "¿Tienes un código? Escríbelo aquí" del pago. Se compara sin distinguir
+  mayúsculas y sin espacios. Si no sirve, el mensaje es neutro: "Ese código no es válido".
+- Gratis (total 0): la compra queda pagada al momento (monto 0, `metodo_pago = "codigo"`, el código y el descuento) y se
+  entrega igual que una compra pagada (acceso de 7 días, link y correo). El uso se gasta con un paso atómico en SQL
+  (`sparked_usar_codigo`), así que nunca se pasa del límite aunque dos familias lo usen al mismo tiempo.
+- Porcentaje: Mercado Pago cobra el precio ya descontado (también Stripe o el modo manual). El uso se cuenta una sola vez
+  cuando la compra queda pagada.
+- Las compras con código gratis no cuentan como venta ni como ingreso en el Resumen ni en la Biblioteca del panel;
+  el aviso a Daniel dice "Guía con código" en vez de "Venta".
+- Protección: cada intento queda en `codigo_intentos`; con 5 intentos fallidos en una hora (mismo teléfono, correo o IP)
+  los siguientes se rechazan con el mismo mensaje neutro.
+
 ## 4. Accesos
 - **Ilimitados hasta que venza la guía.** Sin tope de clics ni cierre a los minutos. Solo dos controles: vigencia de 7 días desde el pago y 2 dispositivos por familia. Las clases de Lumio de la fase 1 conservan sus límites, porque ahí no se controla el destino.
 - Al tercer dispositivo le aparece **"Acceso en uso en otros dispositivos"** (Daniel, 7 nov 2026: en todo el sitio y en las guías se dice "dispositivos"). El intento queda registrado y se cuenta en el panel.
@@ -130,6 +145,19 @@ Para la mamá que no quiere ni sabe subir materiales: llena un formulario y comp
 - El QR se genera en el servidor sin costo y también aparece en la pantalla "¡Listo!" después del pago, para que el niño lo escanee del celular del papá.
 - Botón "Mandar por WhatsApp" con el mensaje listo, para que el papá lo reenvíe al hijo. WhatsApp automático desde el servidor queda para después (cuesta por mensaje).
 - Para que el correo llegue se necesita un dominio propio y un servicio de envío con plan gratuito suficiente.
+
+## 5b. Entrega en dos tiempos (construido el 7 nov 2026)
+- La guía completa se genera solo después del pago (no se gasta antes) y tarda entre 3 y 6 minutos. Los avisos son
+  honestos: listo.html dice "Tu pago se confirmó. Tu guía completa se está terminando: tarda unos 4 minutos. Te avisamos
+  por correo en cuanto esté lista." con barra de avance y tiempo estimado (avance del trabajo "resto"), y cambia a
+  "¡Tu guía está lista!" solo cuando la guía está completa.
+- Primer correo con el mismo mensaje honesto y el link; segundo correo, una sola vez, "¡Tu guía completa está lista!",
+  cuando termina el trabajo "resto" (`compras.correo_lista_en`). Si la guía ya estaba completa al pagar, solo sale uno.
+- Si el trabajo "resto" falla tras sus reintentos: el link deja de decir "generando" y dice "Estamos revisando tu guía;
+  te avisamos por correo en cuanto esté lista"; Daniel recibe un correo (si llenó el correo de aviso en Ajustes) y el
+  Resumen del panel muestra la guía en rojo. Al reintentar y terminar, la familia recibe el segundo correo.
+- Ajuste `sparked_jugar_durante_generacion` (defecto "no"): con "si", el reproductor deja jugar los bloques de la vista
+  previa mientras se termina el resto, con el letrero "Estamos terminando los demás bloques".
 
 ## 6. Panel del profesor
 - Pestaña **Guías** junto a las clases: contadores de hoy, semana y mes (generadas, vistas previas, pagadas, ingresos, costo de Claude, porcentaje de vistas previas que terminaron en pago); lista con filtros por colegio, grado, materia, estado y fecha, y buscador por nombre o teléfono.

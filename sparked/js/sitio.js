@@ -10,9 +10,11 @@ export function pintarSprites(raiz = document) {
   });
 }
 
+// El error lleva la respuesta completa (err.datos) por si trae más detalle, por ejemplo campo: "codigo".
+const falla = (d, r) => Object.assign(new Error(d.error || "Error del servidor"), { datos: d, status: r.status });
 export const api = {
-  async get(ruta) { const r = await fetch(`${CONFIG.api}${ruta}`); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || "Error del servidor"); return d; },
-  async post(ruta, cuerpo, extra = {}) { const r = await fetch(`${CONFIG.api}${ruta}`, { method: "POST", headers: { "content-type": "application/json", ...extra }, body: JSON.stringify(cuerpo ?? {}) }); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || "Error del servidor"); return d; },
+  async get(ruta) { const r = await fetch(`${CONFIG.api}${ruta}`); const d = await r.json().catch(() => ({})); if (!r.ok) throw falla(d, r); return d; },
+  async post(ruta, cuerpo, extra = {}) { const r = await fetch(`${CONFIG.api}${ruta}`, { method: "POST", headers: { "content-type": "application/json", ...extra }, body: JSON.stringify(cuerpo ?? {}) }); const d = await r.json().catch(() => ({})); if (!r.ok) throw falla(d, r); return d; },
 };
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));

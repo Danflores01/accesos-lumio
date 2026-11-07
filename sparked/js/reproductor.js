@@ -1,6 +1,6 @@
 // El reproductor: carga la guía (demo, vista previa o acceso con clave), arma el estante y navega como Lumio.
 import { normalizar, armarSlides, recortarVistaPrevia, t as tx } from "./cartucho.js";
-import { portada, tutorial, teoria, resultados, candado, pantallaCarga, mensaje } from "./teoria.js";
+import { portada, tutorial, teoria, resultados, candado, terminando, pantallaCarga, mensaje } from "./teoria.js";
 import * as J from "./juegos.js";
 import { h, esc } from "./ui.js";
 import { sonido } from "./sonido.js";
@@ -31,7 +31,7 @@ const ctx = {
   desbloquear: () => { const volver = params.get("volver"); if (volver) location.href = volver; else if (ctx.guiaId) location.href = `biblioteca.html?guia=${encodeURIComponent(ctx.guiaId)}&paso=pagar`; else location.href = "index.html"; },
 };
 
-const R = { portada, tutorial, teoria, resultados, candado, carrera: J.carrera, puertas: J.puertas, montana: J.montana, castillo: J.castillo, swipe: J.swipe, superdato: J.superdato, match: J.match, sort: J.sort, rank: J.rank, ruleta: J.ruleta, quiz: J.quiz };
+const R = { portada, tutorial, teoria, resultados, candado, terminando, carrera: J.carrera, puertas: J.puertas, montana: J.montana, castillo: J.castillo, swipe: J.swipe, superdato: J.superdato, match: J.match, sort: J.sort, rank: J.rank, ruleta: J.ruleta, quiz: J.quiz };
 
 function limpiar() { timers.forEach(clearTimeout); timers = []; rafs.forEach(cancelAnimationFrame); rafs = []; }
 function ajustar() { const vp = document.getElementById("vp").getBoundingClientRect(); escala = Math.min(vp.width / 1280, vp.height / 720) * 0.985; escenario.style.transform = `scale(${escala})`; }
@@ -107,12 +107,38 @@ function guardarSecreto(s) { try { if (s) localStorage.setItem(CLAVE_DISP, s); }
 
 // ---------- Arranque ----------
 function aplicarPaleta() { document.documentElement.dataset.paleta = c.plan.identidad.paleta; document.title = `${c.plan.identidad.titulo} · SparkEd`; }
-function montar(cartucho, modo) {
+function montar(cartucho, modo, parcial = false) {
   ctx.modo = modo;
   c = normalizar(cartucho); aplicarPaleta();
   S = armarSlides(c);
   if (modo === "vista_previa") { S = S.filter((s) => s.k !== "resultados" && s.k !== "ruleta"); S.push({ k: "candado", t: ctx.t("desbloquea"), blk: -1 }); }
+  // Guía pagada que todavía se está terminando: se juegan los bloques que ya existen y al final va un letrero.
+  if (parcial) { S = S.filter((s) => s.k !== "resultados" && s.k !== "ruleta"); S.push({ k: "terminando", t: "Estamos terminando los demás bloques", blk: -1 }); }
   return S;
+}
+
+// Letrero de arriba mientras se termina la guía (ajuste "jugar durante la generación"). Pregunta cada 30 s, sin gastar
+// el acceso, si la guía completa ya está lista; cuando lo está, ofrece abrirla.
+function avisoParcial(d) {
+  const el = document.createElement("div"); el.id = "aviso-parcial";
+  const TERMINANDO = "⏳ Estamos terminando los demás bloques. Te avisamos por correo en cuanto esté lista.";
+  const REVISANDO = "🔎 Estamos revisando tu guía; te avisamos por correo en cuanto esté lista.";
+  const pinta = (txt, lista = false) => {
+    el.innerHTML = `<span>${esc(txt)}</span>${lista ? `<button class="boton chico" type="button">Abrir la guía completa</button>` : ""}`;
+    el.classList.toggle("listo", lista);
+    const b = el.querySelector("button"); if (b) b.onclick = () => location.reload();
+  };
+  pinta(d.revision ? REVISANDO : TERMINANDO);
+  document.body.appendChild(el);
+  const vigila = async () => {
+    try {
+      const r = await (await fetch(`${CONFIG.api}/acceso/${token}/estado`)).json();
+      if (r.completo) { pinta("✅ ¡Tu guía completa está lista!", true); return; }
+      pinta(r.revision ? REVISANDO : TERMINANDO);
+    } catch {}
+    setTimeout(vigila, 30000);
+  };
+  setTimeout(vigila, 30000);
 }
 
 async function cargarDatos() { try { return await (await fetch("datos/curiosos.json")).json(); } catch { return []; } }
@@ -133,9 +159,15 @@ async function arrancar() {
         const pr = d.progreso ?? {}; const p = document.createElement("p"); p.style.cssText = "font-weight:700;color:var(--p)"; p.textContent = `${pr.pct ? pr.pct + "% · " : ""}${pr.mensaje ?? ""}`; msj.querySelector(".caja")?.appendChild(p);
         setTimeout(() => location.reload(), 8000); return;
       }
+      if (d.estado === "revisando") {
+        // El trabajo que termina la guía falló: ya no se dice "generando" para siempre. Se vuelve a revisar cada minuto.
+        carga.detener(); escenario.innerHTML = ""; escenario.appendChild(mensaje("revisando"));
+        setTimeout(() => location.reload(), 60000); return;
+      }
       if (d.estado !== "ok" || !d.cartucho) { carga.detener(); escenario.innerHTML = ""; escenario.appendChild(mensaje(d.estado ?? "error")); return; }
       ctx.guiaId = d.guia_id ?? null;
-      montar(d.cartucho, "acceso"); recuperar(d.progreso ?? null);
+      montar(d.cartucho, "acceso", !!d.parcial); recuperar(d.progreso ?? null);
+      if (d.parcial) avisoParcial(d);
     } else if (params.get("vp")) {
       const r = await fetch(`${CONFIG.api}/vista-previa/${encodeURIComponent(params.get("vp"))}`);
       const d = await r.json();

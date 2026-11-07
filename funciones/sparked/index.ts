@@ -4,9 +4,9 @@
 // Rutas públicas (sin llave):
 //   GET  /colegios · POST /buscar · POST /solicitud · GET /vista-previa/:guia_id
 //   POST /borrador · GET /borrador/:clave · POST /borrador/:clave/generar
-//   POST /pago/crear · GET /pago/estado/:compra_id · POST /pago/reintentar/:compra_id
+//   POST /pago/crear (acepta un código de descuento) · GET /pago/estado/:compra_id · POST /pago/reintentar/:compra_id
 //   POST /pago/mercadopago (avisos de Mercado Pago) · POST /pago/webhook (Stripe)
-//   POST /acceso/:token · POST /progreso/:token · POST /reporte · GET /datos-curiosos
+//   POST /acceso/:token · GET /acceso/:token/estado · POST /progreso/:token · POST /reporte · GET /datos-curiosos
 // Rutas internas: POST /trabajo/:id/paso (solo la propia función, cabecera x-interno)
 // Rutas de administración (cabecera x-admin-key, la misma llave del panel de accesos): /admin/...
 //
@@ -17,7 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, type Trabajo } from "./pipeline.ts";
 
-const VERSION = "2026-11-07.1";
+const VERSION = "2026-11-07.2";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -66,6 +66,8 @@ const CONFIG_DEF: Record<string, string> = {
   sparked_whatsapp: "",            // WhatsApp de SparkEd (10 dígitos) para confirmar pagos manuales
   sparked_correo_aviso: "",        // correo de Daniel para avisos de ventas
   sparked_correo_remitente: "SparkEd <onboarding@resend.dev>",
+  // "si" = mientras se termina una guía pagada (unos 4 minutos), el reproductor deja jugar los bloques de la vista previa.
+  sparked_jugar_durante_generacion: "no",
   // Modelo (haiku | sonnet | opus) y esfuerzo (low | medium | high) de cada paso de la IA. El defecto es el de siempre.
   sparked_modelo_extraer: "haiku", sparked_esfuerzo_extraer: "medium",
   sparked_modelo_plan: "haiku", sparked_esfuerzo_plan: "low",
@@ -144,9 +146,11 @@ async function correrPaso(id: string) {
     const definitivo = intentos >= 3 || ERRORES_DEFINITIVOS.test(msg);
     await supabase.from("trabajos").update({ estado: definitivo ? "error" : "pendiente", error: msg.slice(0, 500), intentos, actualizado_en: ahora() }).eq("id", id);
     if (definitivo) {
-      const amable = /no parecen material/i.test(msg) ? "Las fotos no parecen material de estudio. Sube apuntes, páginas del libro o temarios." : /No se pudo leer ninguna foto/i.test(msg) ? msg : /Falta configurar/i.test(msg) ? "El generador todavía no está encendido. Avísanos por WhatsApp y lo activamos." : "No pudimos terminar tu guía. Intenta de nuevo con fotos más claras.";
+      // Guía ya pagada (trabajo "resto"): a la familia no se le pide nada; Daniel recibe el aviso para reintentar.
+      const amable = t.alcance === "resto" ? MSG_REVISANDO : /no parecen material/i.test(msg) ? "Las fotos no parecen material de estudio. Sube apuntes, páginas del libro o temarios." : /No se pudo leer ninguna foto/i.test(msg) ? msg : /Falta configurar/i.test(msg) ? "El generador todavía no está encendido. Avísanos por WhatsApp y lo activamos." : "No pudimos terminar tu guía. Intenta de nuevo con fotos más claras.";
       if (t.borrador_id) await supabase.from("borradores").update({ estado: "fallido" }).eq("id", t.borrador_id).neq("estado", "pagado");
       await supabase.from("trabajos").update({ progreso: { pct: 0, mensaje: amable, paso: t.paso } }).eq("id", id);
+      if (t.alcance === "resto") await avisarRestoFallido(id);
     } else disparar(id, 6000);
   }
 }
@@ -156,7 +160,12 @@ async function reanudarSiAtorado(t: { id: string; estado: string; actualizado_en
   if (!t || !["pendiente", "corriendo"].includes(t.estado)) return;
   const quieto = Date.now() - new Date(t.actualizado_en).getTime();
   if (quieto < 150_000) return;
-  if (Number(t.intentos ?? 0) >= 6) { await supabase.from("trabajos").update({ estado: "error", error: "Se interrumpió demasiadas veces", actualizado_en: ahora() }).eq("id", t.id); return; }
+  if (Number(t.intentos ?? 0) >= 6) {
+    // Paso atómico: si varias consultas llegan juntas, solo una lo marca (y solo una vez se avisa a Daniel).
+    const { data: marcado } = await supabase.from("trabajos").update({ estado: "error", error: "Se interrumpió demasiadas veces", actualizado_en: ahora() }).eq("id", t.id).in("estado", ["pendiente", "corriendo"]).select("alcance");
+    if (marcado?.[0]?.alcance === "resto") { await supabase.from("trabajos").update({ progreso: { pct: 0, mensaje: MSG_REVISANDO } }).eq("id", t.id); await avisarRestoFallido(t.id); }
+    return;
+  }
   await supabase.from("trabajos").update({ estado: "pendiente", intentos: Number(t.intentos ?? 0) + 1, actualizado_en: ahora() }).eq("id", t.id);
   disparar(t.id);
 }
@@ -199,6 +208,9 @@ async function alFinalizar(t: Trabajo) {
   const { error: e2 } = await supabase.from("guias").update(cambios).eq("id", guiaId);
   if (e2) throw e2;
   if (borrador) await supabase.from("borradores").update({ estado: borrador.estado === "pagado" ? "listo" : borrador.estado === "generando" ? "listo" : borrador.estado }).eq("id", borrador.id);
+  // Entrega en dos tiempos: la familia ya pagó y tiene su link; ahora le llega el correo de "guía completa" (una vez).
+  // Si el correo falla, el trabajo no se marca como fallido: la guía ya quedó completa.
+  if (t.alcance === "resto") { try { await avisarGuiaCompleta(guiaId); } catch (e) { console.error("No se pudo mandar el correo de guía completa:", (e as Error).message); } }
 }
 
 // ---------- Archivos en el bucket privado ----------
@@ -454,6 +466,89 @@ async function avisoMercadoPago(req: Request, url: URL): Promise<Response> {
   return json({ ok: true, resultado: await procesarPagoMP(r.datos) });
 }
 
+// ---------- Códigos de descuento (Daniel los crea en el panel: para sus pruebas y para regalar accesos) ----------
+// Tipo "gratis": la guía sale sin costo y se entrega al instante. Tipo "porcentaje": se cobra el precio con descuento.
+// El código se compara sin distinguir mayúsculas y sin espacios. Si no sirve (no existe, apagado, vencido o sin usos),
+// la familia solo ve un mensaje neutro. Cada intento queda anotado y, con 5 intentos fallidos en una hora (mismo
+// teléfono, correo o IP), los siguientes se rechazan aunque el código sea bueno.
+const CODIGO_NO_VALIDO = "Ese código no es válido";
+const CODIGO_INTENTOS_MAX = 5;
+const MSG_REVISANDO = "Estamos revisando tu guía; te avisamos por correo en cuanto esté lista.";
+type Codigo = { id: string; codigo: string; tipo: string; valor: number; usos_max: number | null; usos: number; activo: boolean; expira_en: string | null };
+type Quien = { telefono: string; correo: string; ip: string | null };
+const normalizarCodigo = (v: unknown) => String(v ?? "").normalize("NFC").replace(/\s+/g, "").toUpperCase().slice(0, 60);
+const formatoCodigo = (c: string) => /^[A-Z0-9Ñ][A-Z0-9Ñ_-]{2,39}$/.test(c);
+const redondear = (n: number) => Math.round(n * 100) / 100;
+const comillas = (s: string) => `"${String(s).replace(/["\\]/g, "")}"`; // valor seguro dentro de un filtro .or()
+function motivoCodigo(c: Codigo | null): string | null {
+  if (!c) return "no_existe";
+  if (!c.activo) return "apagado";
+  if (c.expira_en && new Date(c.expira_en).getTime() <= Date.now()) return "vencido";
+  if (c.usos_max !== null && c.usos_max !== undefined && Number(c.usos) >= Number(c.usos_max)) return "agotado";
+  return null;
+}
+function precioConCodigo(precio: number, c: Codigo): number {
+  if (c.tipo === "gratis" || Number(c.valor) >= 100) return 0;
+  return Math.max(0, redondear(precio * (1 - Number(c.valor) / 100)));
+}
+async function anotarIntento(fila: Record<string, unknown>) {
+  const { error: e } = await supabase.from("codigo_intentos").insert(fila);
+  if (e) console.warn("No se pudo anotar el intento de código:", e.message);
+}
+// null = la familia no escribió código; { error } = no sirve (mensaje neutro); { codigo } = sirve.
+async function revisarCodigo(valor: unknown, quien: Quien): Promise<null | { error: string } | { codigo: Codigo }> {
+  const escrito = normalizarCodigo(valor);
+  if (!escrito) return null;
+  const fila = { codigo: escrito.slice(0, 40), telefono: quien.telefono || null, correo: quien.correo || null, ip: quien.ip };
+  const filtro = [`telefono.eq.${comillas(quien.telefono)}`, `correo.eq.${comillas(quien.correo)}`, quien.ip ? `ip.eq.${comillas(quien.ip)}` : ""].filter(Boolean).join(",");
+  const { count } = await supabase.from("codigo_intentos").select("id", { count: "exact", head: true }).gte("creado_en", new Date(Date.now() - 3600 * 1000).toISOString()).not("resultado", "in", "(ok,bloqueado)").or(filtro);
+  if ((count ?? 0) >= CODIGO_INTENTOS_MAX) { await anotarIntento({ ...fila, resultado: "bloqueado" }); return { error: CODIGO_NO_VALIDO }; }
+  const { data } = formatoCodigo(escrito) ? await supabase.from("codigos").select("id, codigo, tipo, valor, usos_max, usos, activo, expira_en").eq("codigo", escrito).maybeSingle() : { data: null };
+  const motivo = motivoCodigo(data as Codigo | null);
+  if (motivo) { await anotarIntento({ ...fila, codigo_id: (data as any)?.id ?? null, resultado: motivo }); return { error: CODIGO_NO_VALIDO }; }
+  return { codigo: data as Codigo };
+}
+// Suma un uso (o lo devuelve con delta -1). Sin forzar, solo lo suma si el código sigue sirviendo (paso atómico en SQL:
+// dos familias no pueden gastar al mismo tiempo el último uso).
+async function usarCodigo(codigo: string, forzar = false, delta = 1): Promise<boolean> {
+  const { data, error: e } = await supabase.rpc("sparked_usar_codigo", { p_codigo: codigo, p_forzar: forzar, p_delta: delta });
+  if (e) throw e;
+  return Array.isArray(data) && data.length > 0;
+}
+// Código de descuento en porcentaje: su uso se cuenta cuando la compra queda pagada (una sola vez por compra).
+async function contarUsoCodigo(compraId: string) {
+  const { data: marcada } = await supabase.from("compras").update({ codigo_usado_en: ahora() }).eq("id", compraId).not("codigo", "is", null).is("codigo_usado_en", null).select("codigo");
+  if (marcada?.[0]?.codigo) await usarCodigo(marcada[0].codigo, true);
+}
+// Código gratis: la compra queda pagada con el código y la guía se entrega en ese momento (acceso de 7 días, correo
+// y link, igual que una compra pagada).
+async function entregarConCodigo(compra: any, cod: Codigo, quien: Quien, precio: number): Promise<Response> {
+  const fila = { codigo: cod.codigo, codigo_id: cod.id, telefono: quien.telefono, correo: quien.correo, ip: quien.ip };
+  if (!(await usarCodigo(cod.codigo))) { await anotarIntento({ ...fila, resultado: "agotado" }); return json({ error: CODIGO_NO_VALIDO, campo: "codigo" }, 400); }
+  const { data: ganada, error: e } = await supabase.from("compras").update({ estado: "pagada", pagada_en: ahora(), monto_mxn: 0, metodo_pago: "codigo", codigo: cod.codigo, descuento_mxn: precio, codigo_usado_en: ahora() }).eq("id", compra.id).eq("estado", "pendiente").select("id");
+  if (e || !ganada?.length) {
+    await usarCodigo(cod.codigo, true, -1); // el uso se devuelve: esta compra no se pagó con el código
+    if (e) throw e;
+    return error("Esta compra ya no está activa. Vuelve a pedir tu guía desde la página principal.");
+  }
+  await anotarIntento({ ...fila, resultado: "ok", compra_id: compra.id });
+  // Si la entrega se interrumpe aquí, GET /pago/estado la termina (la compra ya quedó pagada con el código).
+  try { await confirmarPago(compra.id); } catch (e2) { console.error("Entrega con código interrumpida; la termina /pago/estado:", (e2 as Error).message); }
+  return json({ modo: "codigo", compra_id: compra.id, url: `${await sitio()}listo.html?compra=${compra.id}` });
+}
+
+// Avance de una guía pagada que todavía no está completa (trabajo "resto"). revision = el trabajo falló, terminó sin
+// pegar la guía o no existe: ya no se dice "generando" para siempre. desde = cuándo se entregó el link (para no
+// confundir con los segundos en que el trabajo apenas se está creando).
+async function avanceDeGuia(guiaId: string, desde = 0): Promise<{ revision: boolean; avance: any }> {
+  const { data: t } = await supabase.from("trabajos").select("id, estado, progreso, actualizado_en, intentos").eq("guia_id", guiaId).in("alcance", ["resto", "completa"]).order("creado_en", { ascending: false }).limit(1).maybeSingle();
+  const viejo = (iso: unknown) => Date.now() - new Date(String(iso ?? 0)).getTime() > 60_000;
+  if (!t) return viejo(desde ? new Date(desde).toISOString() : 0) ? { revision: true, avance: { pct: 0, mensaje: MSG_REVISANDO } } : { revision: false, avance: null };
+  if (t.estado === "error" || (t.estado === "listo" && viejo(t.actualizado_en))) return { revision: true, avance: { pct: 0, mensaje: MSG_REVISANDO } };
+  await reanudarSiAtorado(t as any);
+  return { revision: false, avance: t.progreso ?? null };
+}
+
 async function confirmarPago(compraId: string, extra: { stripe_session_id?: string; monto?: number; manual?: boolean } = {}) {
   const { data: compra } = await supabase.from("compras").select("*").eq("id", compraId).maybeSingle();
   if (!compra) throw new Error("Esa compra no existe");
@@ -472,9 +567,15 @@ async function confirmarPago(compraId: string, extra: { stripe_session_id?: stri
 // Crea (una sola vez) la clase y el acceso de 7 días y 2 aparatos para esa compra; manda el correo.
 async function entregar(compra: any): Promise<{ token: string; expira_en: string; link: string; lista: boolean }> {
   const base = await sitio();
+  await contarUsoCodigo(compra.id); // código de descuento en porcentaje: su uso se cuenta al quedar pagada (una vez)
   if (compra.acceso_id) {
     const { data: a } = await supabase.from("accesos").select("token, expira_en").eq("id", compra.acceso_id).maybeSingle();
-    if (a) { const { data: g } = await supabase.from("guias").select("completo:cartucho->completo").eq("id", compra.guia_id).maybeSingle(); return { token: a.token, expira_en: a.expira_en, link: linkDe(base, a.token), lista: g?.completo === true }; }
+    if (a) {
+      const { data: g } = await supabase.from("guias").select("origen, borrador_id, completo:cartucho->completo").eq("id", compra.guia_id).maybeSingle();
+      // Si la primera entrega se cortó antes de lanzar el resto de la guía, se lanza ahora (lanzarResto no lo duplica).
+      if (g && g.completo !== true && g.origen === "personalizada" && g.borrador_id) await lanzarResto(compra.guia_id, g.borrador_id).catch((e) => console.error("No se pudo lanzar el resto de la guía:", (e as Error).message));
+      return { token: a.token, expira_en: a.expira_en, link: linkDe(base, a.token), lista: g?.completo === true };
+    }
   }
   const { data: guia } = await supabase.from("guias").select("id, titulo, clase_id, origen, colegio_id, grado, materia, borrador_id, estado, completo:cartucho->completo").eq("id", compra.guia_id).maybeSingle();
   if (!guia) throw new Error("La guía de esta compra ya no existe");
@@ -502,12 +603,23 @@ async function entregar(compra: any): Promise<{ token: string; expira_en: string
     await supabase.from("guias").update(cambios).eq("id", guia.id);
     if (guia.borrador_id) {
       await supabase.from("borradores").update({ estado: "pagado", pagado_en: ahora(), nombre: compra.nombre, telefono: compra.telefono, correo: compra.correo, expira_en: enDias(DIAS_ACCESO + 1) }).eq("id", guia.borrador_id);
-      if (guia.completo !== true) await lanzarResto(guia.id, guia.borrador_id);
+      if (guia.completo !== true) {
+        // Si no se puede lanzar, la familia ve "Estamos revisando tu guía" y Daniel recibe el aviso; el link y el
+        // correo salen de todos modos.
+        try { await lanzarResto(guia.id, guia.borrador_id); }
+        catch (e) {
+          console.error("No se pudo lanzar el resto de la guía:", (e as Error).message);
+          enSegundoPlano(avisarDaniel(`⚠️ SparkEd: una guía pagada no se pudo continuar (${guia.titulo ?? "guía"})`, `<p>La guía <b>${escHtml(guia.titulo)}</b> ya está pagada (folio ${escHtml(folioDe(compra.id))}), pero no se pudo lanzar la generación de los bloques que faltan: ${escHtml((e as Error).message)}</p><p>Revísala en el panel: Biblioteca → Personalizadas.</p>`));
+        }
+      }
     }
   }
   const link = linkDe(base, acceso.token);
-  enSegundoPlano(enviarCorreo(compra, guia.titulo ?? "Tu guía", link, expira));
-  return { token: acceso.token, expira_en: expira, link, lista: guia.completo === true };
+  const lista = guia.completo === true;
+  // Guía completa desde el primer correo: el segundo ("tu guía completa está lista") ya no hace falta.
+  if (lista) await supabase.from("compras").update({ correo_lista_en: ahora() }).eq("id", compra.id).is("correo_lista_en", null);
+  enSegundoPlano(enviarCorreo(compra, guia.titulo ?? "Tu guía", link, expira, lista));
+  return { token: acceso.token, expira_en: expira, link, lista };
 }
 
 // Después del pago de una guía personalizada: se generan los bloques que faltan a partir de la vista previa.
@@ -524,25 +636,80 @@ async function lanzarResto(guiaId: string, borradorId: string) {
   disparar(t.id);
 }
 
-async function enviarCorreo(compra: any, titulo: string, link: string, expira: string) {
+const escHtml = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+const folioDe = (id: unknown) => String(id ?? "").slice(0, 8).toUpperCase();
+async function mandarCorreo(para: string, asunto: string, html: string) {
   const key = Deno.env.get("RESEND_API_KEY");
-  if (!key || !esCorreo(compra.correo)) return;
+  if (!key || !esCorreo(para)) return;
   const cfg = await config();
+  const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ from: cfg.sparked_correo_remitente, to: [para], subject: asunto, html }) });
+  if (!r.ok) console.warn("Resend", r.status, (await r.text()).slice(0, 200));
+}
+// Aviso a Daniel (correo de Ajustes → "Correo donde quieres recibir aviso de cada venta"), si lo puso.
+async function avisarDaniel(asunto: string, html: string) {
+  const cfg = await config();
+  if (esCorreo(cfg.sparked_correo_aviso)) await mandarCorreo(cfg.sparked_correo_aviso, asunto, html);
+}
+
+// Correo a la familia con su link. lista = la guía ya está completa. Si todavía no lo está (entrega en dos tiempos),
+// el correo lo dice tal cual y, al terminar la guía, sale el segundo correo (segundo = true, desde avisarGuiaCompleta).
+async function enviarCorreo(compra: any, titulo: string, link: string, expira: string, lista = true, segundo = false) {
+  if (!Deno.env.get("RESEND_API_KEY") || !esCorreo(compra.correo)) return;
+  const cfg = await config();
+  const esc = escHtml;
   const fecha = new Date(expira).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short", timeZone: "America/Mexico_City" });
-  const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+  const conCodigo = compra.metodo_pago === "codigo";
+  const encabezado = segundo ? "¡Tu guía completa está lista! 🎉" : lista ? "¡Tu guía está lista! 🎉" : conCodigo ? "Tu código se aplicó ✅" : "Tu pago se confirmó ✅";
+  const aviso = lista ? "" : `<p style="margin:0 0 10px">Tu guía completa se está terminando: tarda unos 4 minutos. Te avisamos por correo en cuanto esté lista.</p>
+      <p style="margin:0 0 10px;color:#555">Este es el link de tu guía; guárdalo. ${cfg.sparked_jugar_durante_generacion === "si" ? "Mientras se termina, ya puedes abrirla y jugar los primeros bloques." : "Se abre en cuanto la guía esté completa."}</p>`;
   const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1b1b1f">
     <div style="background:#1b1b1f;color:#FFD400;padding:14px 18px;border-radius:12px 12px 0 0;font-weight:800;font-size:20px">⚡ SparkEd</div>
     <div style="border:1px solid #e5e7eb;border-top:0;padding:18px;border-radius:0 0 12px 12px">
-      <h2 style="margin:0 0 6px">¡Tu guía está lista! 🎉</h2><p style="margin:0 0 14px;color:#555">${esc(titulo)}</p>
+      <h2 style="margin:0 0 6px">${encabezado}</h2><p style="margin:0 0 14px;color:#555">${esc(titulo)}</p>${aviso}
       <p><a href="${esc(link)}" style="display:inline-block;background:#FFD400;color:#1b1b1f;padding:12px 18px;border-radius:10px;font-weight:800;text-decoration:none">▶ Abrir la guía</a></p>
       <p style="font-size:13px;color:#555;word-break:break-all">Si el botón no abre, copia este link: ${esc(link)}</p>
       <div style="background:#fff8d6;border-left:4px solid #FFD400;padding:10px 12px;border-radius:8px;font-size:14px">
         <b>Cómo funciona tu acceso</b><ul style="margin:6px 0 0;padding-left:18px"><li>Vale <b>${DIAS_ACCESO} días de acceso ilimitado a tu guía</b>: hasta el ${esc(fecha)}.</li><li>Acepta <b>${APARATOS} dispositivos</b> (por ejemplo tu celular y el iPad del alumno). El tercer dispositivo ve el aviso "Acceso en uso en otros dispositivos".</li><li>Es de tu familia: no lo compartas en otros chats.</li></ul></div>
-      <p style="font-size:12px;color:#888">Folio ${esc(String(compra.id).slice(0, 8).toUpperCase())} · $${esc(compra.monto_mxn)} MXN IVA incluido</p>
+      <p style="font-size:12px;color:#888">Folio ${esc(folioDe(compra.id))} · ${conCodigo ? `Acceso con código${compra.codigo ? " " + esc(compra.codigo) : ""}` : `$${esc(compra.monto_mxn)} MXN IVA incluido`}</p>
     </div></div>`;
-  const enviar = (to: string, subject: string, cuerpo: string) => fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ from: cfg.sparked_correo_remitente, to: [to], subject, html: cuerpo }) }).then(async (r) => { if (!r.ok) console.warn("Resend", r.status, (await r.text()).slice(0, 200)); });
-  await enviar(compra.correo, `Tu guía SparkEd: ${titulo}`, html);
-  if (esCorreo(cfg.sparked_correo_aviso)) await enviar(cfg.sparked_correo_aviso, `Venta SparkEd: ${titulo}`, `<p>Compra pagada: <b>${esc(titulo)}</b></p><p>${esc(compra.nombre)} · ${esc(compra.telefono)} · ${esc(compra.correo)}</p><p>Folio ${esc(String(compra.id).slice(0, 8).toUpperCase())} · $${esc(compra.monto_mxn)} MXN</p>`);
+  const asunto = segundo ? `Tu guía completa está lista: ${titulo}` : lista ? `Tu guía SparkEd: ${titulo}` : `Tu guía SparkEd se está terminando: ${titulo}`;
+  await mandarCorreo(compra.correo, asunto, html);
+  if (segundo) return;
+  // Aviso a Daniel: una venta, o un acceso con código gratis (que no es venta).
+  const quien = `<p>${esc(compra.nombre)} · ${esc(compra.telefono)} · ${esc(compra.correo)}</p>`;
+  if (conCodigo) await avisarDaniel(`Guía con código SparkEd: ${titulo}`, `<p>Acceso con el código <b>${esc(compra.codigo ?? "")}</b> (sin costo; no cuenta como venta): <b>${esc(titulo)}</b></p>${quien}<p>Folio ${esc(folioDe(compra.id))}</p>`);
+  else await avisarDaniel(`Venta SparkEd: ${titulo}`, `<p>Compra pagada: <b>${esc(titulo)}</b></p>${quien}<p>Folio ${esc(folioDe(compra.id))} · $${esc(compra.monto_mxn)} MXN${compra.codigo ? ` (con el código ${esc(compra.codigo)})` : ""}</p>`);
+}
+
+// Entrega en dos tiempos: cuando el trabajo "resto" termina, cada compra pagada de esa guía recibe (una sola vez) el
+// correo "¡Tu guía completa está lista!" con el mismo link.
+async function avisarGuiaCompleta(guiaId: string) {
+  const { data: compras } = await supabase.from("compras").select("*").eq("guia_id", guiaId).eq("estado", "pagada").not("acceso_id", "is", null).is("correo_lista_en", null);
+  if (!compras?.length) return;
+  const base = await sitio();
+  const { data: g } = await supabase.from("guias").select("titulo").eq("id", guiaId).maybeSingle();
+  for (const c of compras) {
+    const { data: ganada } = await supabase.from("compras").update({ correo_lista_en: ahora() }).eq("id", c.id).is("correo_lista_en", null).select("id");
+    if (!ganada?.length) continue; // otra ejecución ya lo mandó
+    const { data: a } = await supabase.from("accesos").select("token, expira_en").eq("id", c.acceso_id).maybeSingle();
+    if (a) await enviarCorreo(c, g?.titulo ?? c.titulo ?? "Tu guía", linkDe(base, a.token), a.expira_en, true, true);
+  }
+}
+
+// El trabajo "resto" de una guía pagada falló después de sus reintentos: la familia ve "Estamos revisando tu guía"
+// (ya no "generando" para siempre), el panel lo muestra en el Resumen y Daniel recibe un correo. Un aviso por falla.
+async function avisarRestoFallido(trabajoId: string) {
+  const { data: marcado } = await supabase.from("trabajos").update({ aviso_error_en: ahora() }).eq("id", trabajoId).eq("alcance", "resto").is("aviso_error_en", null).select("id, guia_id, paso, error");
+  const t = marcado?.[0];
+  if (!t?.guia_id) return;
+  const [{ data: g }, { data: comp }] = await Promise.all([
+    supabase.from("guias").select("titulo").eq("id", t.guia_id).maybeSingle(),
+    supabase.from("compras").select("id, nombre, telefono, correo").eq("guia_id", t.guia_id).eq("estado", "pagada"),
+  ]);
+  console.error("Guía pagada sin terminar (trabajo resto con error):", t.guia_id, t.error);
+  const familias = (comp ?? []).map((c) => `${escHtml(c.nombre)} · ${escHtml(c.telefono)} · ${escHtml(c.correo)} · folio ${escHtml(folioDe(c.id))}`).join("<br>") || "Sin compra pagada.";
+  await avisarDaniel(`⚠️ SparkEd: una guía pagada no se terminó (${g?.titulo ?? "guía"})`,
+    `<p>La guía <b>${escHtml(g?.titulo ?? "")}</b> ya está pagada, pero la IA no pudo terminar los bloques que faltan (paso ${escHtml(t.paso)}).</p><p style="color:#555">${escHtml(t.error ?? "")}</p><p>${familias}</p><p>La familia ve: "${MSG_REVISANDO}"</p><p>Para arreglarlo: en el panel, Biblioteca → Personalizadas → abre la guía → ↻ Reintentar. Al terminar, a la familia le llega sola el correo de que su guía completa está lista.</p>`);
 }
 
 // Vista previa de una guía (si no está guardada, se recorta del cartucho).
@@ -686,21 +853,33 @@ Deno.serve(async (req: Request) => {
       if ((porFamilia ?? 0) >= Number(cfg.sparked_tope_familia)) return error(`Por seguridad, solo se pueden pedir ${cfg.sparked_tope_familia} guías al día por familia.`, 429);
       const { count: porDia } = await supabase.from("compras").select("id", { count: "exact", head: true }).gte("creada_en", hace24).neq("estado", "fallida");
       if ((porDia ?? 0) >= Number(cfg.sparked_tope_diario)) return error("Hoy ya se alcanzó el límite de guías. Intenta mañana.", 429);
+      // Código de descuento (opcional): se revisa antes de apartar la compra. Si no sirve, mensaje neutro.
+      const quien: Quien = { telefono, correo, ip: ipDe(req) };
+      const revision = await revisarCodigo(b.codigo, quien);
+      if (revision && "error" in revision) return json({ error: revision.error, campo: "codigo" }, 400);
+      const cod = revision?.codigo ?? null;
+      const precioFinal = cod ? precioConCodigo(precio, cod) : precio;
+      const conCodigo = { codigo: cod?.codigo ?? null, descuento_mxn: cod ? redondear(precio - precioFinal) : null };
       // Si ya hay una compra pendiente de esta misma guía y familia (últimas 2 h), se reutiliza.
       const { data: pendiente } = await supabase.from("compras").select("*").eq("guia_id", guia.id).eq("telefono", telefono).eq("estado", "pendiente").gte("creada_en", new Date(Date.now() - 2 * 3600 * 1000).toISOString()).order("creada_en", { ascending: false }).limit(1).maybeSingle();
       let compra = pendiente;
       if (!compra) {
-        const { data: c, error: e } = await supabase.from("compras").insert({ guia_id: guia.id, borrador_id: borrador?.id ?? null, monto_mxn: precio, estado: "pendiente", nombre, telefono, correo, colegio_texto: borrador?.colegio_texto ?? (guia as any).colegios?.nombre ?? null, grado: guia.grado, materia: guia.materia, titulo: guia.titulo }).select("*").single();
+        const { data: c, error: e } = await supabase.from("compras").insert({ guia_id: guia.id, borrador_id: borrador?.id ?? null, monto_mxn: precioFinal, ...conCodigo, estado: "pendiente", nombre, telefono, correo, colegio_texto: borrador?.colegio_texto ?? (guia as any).colegios?.nombre ?? null, grado: guia.grado, materia: guia.materia, titulo: guia.titulo }).select("*").single();
         if (e) throw e; compra = c;
+      } else if (Number(compra.monto_mxn) !== precioFinal || (compra.codigo ?? null) !== conCodigo.codigo) {
+        // Una compra apartada lleva el precio de hoy y el código que se escribió esta vez (o ninguno).
+        await supabase.from("compras").update({ monto_mxn: precioFinal, ...conCodigo }).eq("id", compra.id);
+        Object.assign(compra, { monto_mxn: precioFinal, ...conCodigo });
       }
       if (borrador) await supabase.from("borradores").update({ nombre, telefono, correo }).eq("id", borrador.id);
+      // Código gratis: no hay nada que cobrar; la guía se entrega en este momento.
+      if (cod && precioFinal <= 0) return await entregarConCodigo(compra, cod, quien, precio);
+      if (cod) await anotarIntento({ codigo: cod.codigo, codigo_id: cod.id, telefono, correo, ip: quien.ip, resultado: "ok", compra_id: compra.id });
       let mpFallo = false;
       if (mpToken()) {
         // Cobro con Mercado Pago (tarjeta, OXXO y SPEI). Manda sobre Stripe, que queda dormido.
         try {
-          // El link de pago lleva el precio de hoy (una compra apartada puede venir de antes).
-          if (Number(compra.monto_mxn) !== precio) { await supabase.from("compras").update({ monto_mxn: precio }).eq("id", compra.id); compra.monto_mxn = precio; }
-          const pref = await crearPreferenciaMP(compra, guia.titulo ?? "Guía", precio);
+          const pref = await crearPreferenciaMP(compra, guia.titulo ?? "Guía", precioFinal);
           await supabase.from("compras").update({ mp_preferencia_id: pref.id, mp_actualizado_en: ahora() }).eq("id", compra.id);
           await guardarBorradorMientrasPaga(borrador?.id);
           return json({ modo: "mercadopago", url: pref.url, compra_id: compra.id });
@@ -710,7 +889,7 @@ Deno.serve(async (req: Request) => {
           mpFallo = true;
         }
       } else if (Deno.env.get("STRIPE_SECRET_KEY")) {
-        const s = await crearSesionStripe(compra, guia.titulo ?? "Guía", precio);
+        const s = await crearSesionStripe(compra, guia.titulo ?? "Guía", precioFinal);
         await supabase.from("compras").update({ stripe_session_id: s.id }).eq("id", compra.id);
         return json({ modo: "stripe", url: s.url, compra_id: compra.id });
       }
@@ -721,7 +900,7 @@ Deno.serve(async (req: Request) => {
       const mensaje = mpFallo
         ? `En este momento el pago en línea no respondió. Tu guía quedó apartada: ${whatsapp ? "escríbenos por WhatsApp para completar tu compra" : "te contactamos para completar tu compra"}. En cuanto se confirme el pago, tu link aparece aquí y te llega al correo ${correo}.`
         : `Tu guía quedó apartada. El pago en línea se está configurando: en cuanto lo confirmemos ${whatsapp ? "por WhatsApp" : "contigo"}, tu link aparece aquí y te llega al correo ${correo}.`;
-      return json({ modo: "manual", compra_id: compra.id, folio, precio, mensaje, whatsapp });
+      return json({ modo: "manual", compra_id: compra.id, folio, precio: precioFinal, mensaje, whatsapp });
     }
 
     if (r0 === "pago" && r1 === "estado" && esUuid(r2) && m === "GET") {
@@ -745,7 +924,12 @@ Deno.serve(async (req: Request) => {
           out.link = linkDe(await sitio(), acceso.token); out.token = acceso.token; out.expira_en = acceso.expira_en;
           const { data: g } = await supabase.from("guias").select("completo:cartucho->completo").eq("id", c.guia_id).maybeSingle();
           out.guia_lista = g?.completo === true;
-          if (!out.guia_lista) { const { data: t } = await supabase.from("trabajos").select("id, estado, progreso, actualizado_en, intentos").eq("guia_id", c.guia_id).eq("alcance", "resto").order("creado_en", { ascending: false }).limit(1).maybeSingle(); if (t) { out.progreso = t.progreso; await reanudarSiAtorado(t as any); } }
+          if (!out.guia_lista) {
+            // Entrega en dos tiempos: avance del trabajo "resto"; si falló, "revisando" (Daniel ya recibió el aviso).
+            const av = await avanceDeGuia(c.guia_id, new Date(c.pagada_en ?? 0).getTime());
+            out.progreso = av.avance; out.revision = av.revision;
+            out.jugar = (await config()).sparked_jugar_durante_generacion === "si";
+          }
         }
       }
       return json(out);
@@ -758,7 +942,8 @@ Deno.serve(async (req: Request) => {
       if (!c) return error("Esa compra no existe", 404);
       if (c.estado === "pagada") return json({ modo: "pagada", compra_id: c.id });
       if (c.estado !== "pendiente" || !c.guia_id) return error("Esta compra ya no está activa. Vuelve a pedir tu guía desde la página principal.");
-      const precio = Number((await config()).sparked_precio) || 100;
+      // Con código de descuento se conserva el precio ya descontado; sin código, el precio de hoy.
+      const precio = c.codigo ? Number(c.monto_mxn) : Number((await config()).sparked_precio) || 100;
       if (Number(c.monto_mxn) !== precio) { await supabase.from("compras").update({ monto_mxn: precio }).eq("id", c.id); c.monto_mxn = precio; }
       const pref = await crearPreferenciaMP(c, c.titulo ?? "Guía", precio);
       await supabase.from("compras").update({ mp_preferencia_id: pref.id, mp_actualizado_en: ahora() }).eq("id", c.id);
@@ -783,18 +968,30 @@ Deno.serve(async (req: Request) => {
     }
 
     // ---------- Acceso al reproductor ----------
+    // El reproductor pregunta (sin gastar el acceso) si la guía que se está terminando ya quedó completa.
+    if (r0 === "acceso" && esToken(r1) && r2 === "estado" && m === "GET") {
+      const { data: a } = await supabase.from("accesos").select("clase_id, creado_en").eq("token", r1).maybeSingle();
+      const { data: g } = a ? await supabase.from("guias").select("id, completo:cartucho->completo").eq("clase_id", a.clase_id).maybeSingle() : { data: null };
+      if (!a || !g) return json({ estado: "inexistente" }, 404);
+      if (g.completo === true) return json({ completo: true });
+      return json({ completo: false, ...(await avanceDeGuia(g.id, new Date(a.creado_en).getTime())) });
+    }
+
     if (r0 === "acceso" && esToken(r1) && m === "POST") {
       const b = await leerJson(req);
-      const { data: a } = await supabase.from("accesos").select("id, clase_id, alumno, expira_en").eq("token", r1).maybeSingle();
+      const { data: a } = await supabase.from("accesos").select("id, clase_id, alumno, expira_en, creado_en").eq("token", r1).maybeSingle();
       if (!a) return json({ estado: "inexistente" }, 404);
       const { data: cl } = await supabase.from("clases").select("id, tipo").eq("id", a.clase_id).maybeSingle();
       if (!cl || cl.tipo !== "guia") return json({ estado: "inexistente" }, 404);
       const { data: g } = await supabase.from("guias").select("id, titulo, estado, completo:cartucho->completo").eq("clase_id", cl.id).maybeSingle();
       if (!g) return json({ estado: "inexistente" }, 404);
+      // Guía pagada que todavía se está terminando: se muestra el avance, o "revisando" si el trabajo falló. Con el
+      // ajuste sparked_jugar_durante_generacion = "si", se juegan los bloques que ya existen (vista previa).
+      let parcial: { revision: boolean; avance: any } | null = null;
+      const enEspera = (p: { revision: boolean; avance: any }) => p.revision ? json({ estado: "revisando", titulo: g.titulo, avance: p.avance }) : json({ estado: "generando", progreso: p.avance, titulo: g.titulo }, 202);
       if (g.completo !== true) {
-        const { data: t } = await supabase.from("trabajos").select("id, estado, progreso, actualizado_en, intentos").eq("guia_id", g.id).in("alcance", ["resto", "completa"]).order("creado_en", { ascending: false }).limit(1).maybeSingle();
-        if (t) await reanudarSiAtorado(t as any);
-        return json({ estado: "generando", progreso: t?.progreso ?? null, titulo: g.titulo }, 202);
+        parcial = await avanceDeGuia(g.id, new Date(a.creado_en).getTime());
+        if ((await config()).sparked_jugar_durante_generacion !== "si") return enEspera(parcial);
       }
       const dispositivo = esSecreto(b.dispositivo) ? b.dispositivo : nuevoToken(32);
       const { data: res, error: e } = await supabase.rpc("consumir_acceso", { p_token: r1, p_ip: ipDe(req), p_ua: (req.headers.get("user-agent") ?? "").slice(0, 300), p_dispositivo: dispositivo });
@@ -805,7 +1002,8 @@ Deno.serve(async (req: Request) => {
         supabase.from("guias").select("cartucho").eq("id", g.id).maybeSingle(),
         supabase.from("progreso").select("datos").eq("acceso_id", a.id).eq("dispositivo_sha256", await sha256hex(dispositivo)).maybeSingle(),
       ]);
-      return json({ estado: "ok", cartucho: full?.cartucho, guia_id: g.id, dispositivo, progreso: prog?.datos ?? null, expira_en: a.expira_en, alumno: a.alumno && !/^#\d+$/.test(a.alumno) ? a.alumno : null });
+      if (parcial && !(full?.cartucho as any)?.bloques?.length) return enEspera(parcial);
+      return json({ estado: "ok", cartucho: full?.cartucho, guia_id: g.id, dispositivo, progreso: prog?.datos ?? null, expira_en: a.expira_en, alumno: a.alumno && !/^#\d+$/.test(a.alumno) ? a.alumno : null, ...(parcial ? { parcial: true, revision: parcial.revision, avance: parcial.avance } : {}) });
     }
 
     if (r0 === "progreso" && esToken(r1) && m === "POST") {
@@ -858,20 +1056,30 @@ Deno.serve(async (req: Request) => {
       if (rec === "resumen" && m === "GET") {
         const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
         const mes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString();
-        const [guias, compras, solicitudes, reportes, trabajos, borradores] = await Promise.all([
+        const [guias, compras, solicitudes, reportes, trabajos, borradores, fallidos] = await Promise.all([
           supabase.from("guias").select("estado, origen"),
-          supabase.from("compras").select("estado, monto_mxn, pagada_en, creada_en").gte("creada_en", new Date(Date.now() - 45 * 86400 * 1000).toISOString()),
+          supabase.from("compras").select("estado, monto_mxn, pagada_en, creada_en, metodo_pago").gte("creada_en", new Date(Date.now() - 45 * 86400 * 1000).toISOString()),
           supabase.from("solicitudes").select("id", { count: "exact", head: true }).eq("estado", "sin_guia"),
           supabase.from("reportes").select("id", { count: "exact", head: true }).eq("estado", "nuevo"),
           supabase.from("trabajos").select("estado, costo_usd, creado_en").gte("creado_en", mes),
           supabase.from("borradores").select("id", { count: "exact", head: true }).in("estado", ["generando", "vista_previa"]),
+          supabase.from("trabajos").select("id, guia_id, paso, error, actualizado_en").eq("alcance", "resto").eq("estado", "error").order("actualizado_en", { ascending: false }).limit(20),
         ]);
         const cuenta = (arr: any[], f: (x: any) => boolean) => arr.filter(f).length;
         const suma = (arr: any[], f: (x: any) => boolean) => arr.filter(f).reduce((n, x) => n + Number(x.monto_mxn ?? 0), 0);
         const C = compras.data ?? [], T = trabajos.data ?? [], G = guias.data ?? [];
+        // Las guías con código gratis no son ventas ni ingresos: se cuentan aparte.
+        const venta = (c: any) => c.estado === "pagada" && c.metodo_pago !== "codigo";
+        const gratis = (c: any) => c.estado === "pagada" && c.metodo_pago === "codigo";
+        const hoyIso = hoy.toISOString();
+        // Guías pagadas cuyo trabajo "resto" falló y siguen sin terminar (aviso en el Resumen del panel).
+        const F = fallidos.data ?? [];
+        const { data: gF } = F.length ? await supabase.from("guias").select("id, titulo, completo:cartucho->completo").in("id", F.map((t) => t.guia_id).filter(Boolean)) : { data: [] as any[] };
+        const entregasConError = F.map((t) => ({ t, g: (gF ?? []).find((x: any) => x.id === t.guia_id) })).filter(({ g }) => g && g.completo !== true).map(({ t, g }) => ({ trabajo_id: t.id, guia_id: t.guia_id, titulo: g.titulo, paso: t.paso, error: t.error, desde: t.actualizado_en }));
         return json({
           guias: { publicadas: cuenta(G, (g) => g.estado === "publicada" && g.origen === "biblioteca"), borradores: cuenta(G, (g) => g.estado === "borrador" && g.origen === "biblioteca"), personalizadas: cuenta(G, (g) => g.origen === "personalizada" && g.estado !== "archivada"), archivadas: cuenta(G, (g) => g.estado === "archivada") },
-          compras: { pendientes: cuenta(C, (c) => c.estado === "pendiente"), pagadas_hoy: cuenta(C, (c) => c.estado === "pagada" && c.pagada_en >= hoy.toISOString()), ingresos_hoy: suma(C, (c) => c.estado === "pagada" && c.pagada_en >= hoy.toISOString()), pagadas_mes: cuenta(C, (c) => c.estado === "pagada" && c.pagada_en >= mes), ingresos_mes: suma(C, (c) => c.estado === "pagada" && c.pagada_en >= mes) },
+          compras: { pendientes: cuenta(C, (c) => c.estado === "pendiente"), pagadas_hoy: cuenta(C, (c) => venta(c) && c.pagada_en >= hoyIso), ingresos_hoy: suma(C, (c) => venta(c) && c.pagada_en >= hoyIso), pagadas_mes: cuenta(C, (c) => venta(c) && c.pagada_en >= mes), ingresos_mes: suma(C, (c) => venta(c) && c.pagada_en >= mes), con_codigo_hoy: cuenta(C, (c) => gratis(c) && c.pagada_en >= hoyIso), con_codigo_mes: cuenta(C, (c) => gratis(c) && c.pagada_en >= mes) },
+          entregas_con_error: entregasConError,
           solicitudes_sin_guia: solicitudes.count ?? 0, reportes_nuevos: reportes.count ?? 0, borradores_activos: borradores.count ?? 0,
           ia: { trabajos_mes: T.length, corriendo: cuenta(T, (t) => ["pendiente", "corriendo"].includes(t.estado)), errores: cuenta(T, (t) => t.estado === "error"), costo_usd_mes: T.reduce((n, t) => n + Number(t.costo_usd ?? 0), 0) },
         });
@@ -889,11 +1097,11 @@ Deno.serve(async (req: Request) => {
         if (estado) q = q.eq("estado", estado);
         const { data, error: e } = await q; if (e) throw e;
         const ids = (data ?? []).map((g) => g.id);
-        const { data: comp } = ids.length ? await supabase.from("compras").select("guia_id, estado").in("guia_id", ids) : { data: [] };
+        const { data: comp } = ids.length ? await supabase.from("compras").select("guia_id, estado, metodo_pago").in("guia_id", ids) : { data: [] };
         const { data: trab } = ids.length ? await supabase.from("trabajos").select("id, guia_id, borrador_id, estado, progreso, alcance, costo_usd, actualizado_en").order("creado_en", { ascending: false }).limit(400) : { data: [] };
         return json((data ?? []).map((g) => {
           const t = (trab ?? []).find((x) => x.guia_id === g.id || (g.borrador_id && x.borrador_id === g.borrador_id));
-          return { ...g, colegio: (g as any).colegios?.nombre ?? null, colegios: undefined, compras_pagadas: (comp ?? []).filter((c) => c.guia_id === g.id && c.estado === "pagada").length, compras_pendientes: (comp ?? []).filter((c) => c.guia_id === g.id && c.estado === "pendiente").length, trabajo: t ? { id: t.id, estado: t.estado, progreso: t.progreso, alcance: t.alcance, actualizado_en: t.actualizado_en } : null };
+          return { ...g, colegio: (g as any).colegios?.nombre ?? null, colegios: undefined, compras_pagadas: (comp ?? []).filter((c) => c.guia_id === g.id && c.estado === "pagada" && c.metodo_pago !== "codigo").length, compras_codigo: (comp ?? []).filter((c) => c.guia_id === g.id && c.estado === "pagada" && c.metodo_pago === "codigo").length, compras_pendientes: (comp ?? []).filter((c) => c.guia_id === g.id && c.estado === "pendiente").length, trabajo: t ? { id: t.id, estado: t.estado, progreso: t.progreso, alcance: t.alcance, actualizado_en: t.actualizado_en } : null };
         }));
       }
       if (rec === "guias" && !id && m === "POST") {
@@ -918,7 +1126,7 @@ Deno.serve(async (req: Request) => {
         const { data: g, error: e } = await supabase.from("guias").select("*, colegios(nombre)").eq("id", id).maybeSingle(); if (e) throw e;
         if (!g) return error("No existe", 404);
         const { data: t } = await supabase.from("trabajos").select("id, estado, paso, alcance, progreso, error, intentos, costo_usd, tokens_entrada, tokens_salida, creado_en, actualizado_en").or(`guia_id.eq.${id}${g.borrador_id ? `,borrador_id.eq.${g.borrador_id}` : ""}`).order("creado_en", { ascending: false }).limit(5);
-        const { data: comp } = await supabase.from("compras").select("id, estado, nombre, telefono, correo, pagada_en, creada_en").eq("guia_id", id).order("creada_en", { ascending: false });
+        const { data: comp } = await supabase.from("compras").select("id, estado, nombre, telefono, correo, pagada_en, creada_en, monto_mxn, metodo_pago, codigo").eq("guia_id", id).order("creada_en", { ascending: false });
         const { data: bo } = g.borrador_id ? await supabase.from("borradores").select("id, clave, estado, paginas, archivos, colegio_texto").eq("id", g.borrador_id).maybeSingle() : { data: null };
         const { cartucho, ...resto } = g as any;
         return json({ ...resto, colegio: (g as any).colegios?.nombre ?? null, colegios: undefined, completo: cartucho?.completo === true, bloques: cartucho?.bloques?.length ?? 0, actividades: (cartucho?.bloques ?? []).reduce((n: number, b: any) => n + (b.actividades?.length ?? 0) + (b.mini_examen?.length ?? 0), 0), trabajos: t ?? [], compras: comp ?? [], borrador: bo });
@@ -1041,8 +1249,46 @@ Deno.serve(async (req: Request) => {
         const { data: c } = await supabase.from("compras").select("*").eq("id", id).maybeSingle();
         if (!c || c.estado !== "pagada") return error("La compra no está pagada");
         const e = await entregar(c);
-        await enviarCorreo(c, c.titulo ?? "Tu guía", e.link, e.expira_en);
+        await enviarCorreo(c, c.titulo ?? "Tu guía", e.link, e.expira_en, e.lista);
         return json({ ok: true, link: e.link });
+      }
+
+      // ---------- Códigos de descuento ----------
+      if (rec === "codigos" && !id && m === "GET") {
+        const [{ data: cods, error: e }, { data: ints }] = await Promise.all([
+          supabase.from("codigos").select("*").order("creado_en", { ascending: false }).limit(300),
+          supabase.from("codigo_intentos").select("id, codigo, resultado, telefono, correo, ip, compra_id, creado_en").order("creado_en", { ascending: false }).limit(60),
+        ]);
+        if (e) throw e;
+        return json({ codigos: cods ?? [], intentos: ints ?? [] });
+      }
+      if (rec === "codigos" && !id && m === "POST") {
+        const b = await leerJson(req);
+        const codigo = normalizarCodigo(b.codigo);
+        if (!formatoCodigo(codigo)) return error("El código debe tener de 3 a 40 letras o números, sin espacios (puede llevar guion).");
+        const tipo = b.tipo === "porcentaje" ? "porcentaje" : "gratis";
+        const valor = tipo === "gratis" ? 100 : Number(b.valor);
+        if (!(valor >= 1 && valor <= 100)) return error("El descuento debe ser de 1 a 100 %.");
+        const usosMax = b.usos_max === null || b.usos_max === undefined || String(b.usos_max).trim() === "" ? null : Math.floor(Number(b.usos_max));
+        if (usosMax !== null && !(usosMax >= 1)) return error("El límite de usos debe ser 1 o más (vacío = sin límite).");
+        let expira: string | null = null;
+        if (b.expira_en) {
+          // Una fecha sola (del calendario del panel) caduca al terminar ese día, hora del centro de México.
+          const d = /^\d{4}-\d{2}-\d{2}$/.test(String(b.expira_en)) ? new Date(`${b.expira_en}T23:59:59-06:00`) : new Date(String(b.expira_en));
+          if (isNaN(d.getTime())) return error("La fecha de caducidad no es válida.");
+          expira = d.toISOString();
+        }
+        const { data, error: e } = await supabase.from("codigos").insert({ codigo, tipo, valor, usos_max: usosMax, expira_en: expira, nota: texto(b.nota, 200) || null }).select().single();
+        if (e) return /duplicate|unique/i.test(e.message) ? error("Ese código ya existe. Escribe otro.", 409) : error(e.message);
+        return json(data, 201);
+      }
+      if (rec === "codigos" && esUuid(id) && m === "PATCH") {
+        const b = await leerJson(req); const cambios: Record<string, unknown> = {};
+        if (typeof b.activo === "boolean") cambios.activo = b.activo;
+        if (typeof b.nota === "string") cambios.nota = texto(b.nota, 200) || null;
+        if (!Object.keys(cambios).length) return error("Nada que cambiar");
+        const { data, error: e } = await supabase.from("codigos").update(cambios).eq("id", id).select().single(); if (e) throw e;
+        return json(data);
       }
 
       if (rec === "reportes" && m === "GET") {
@@ -1061,7 +1307,7 @@ Deno.serve(async (req: Request) => {
       }
       if (rec === "trabajos" && esUuid(id) && accion === "reintentar" && m === "POST") {
         const t = await cargarTrabajo(id); if (!t) return error("No existe", 404);
-        await supabase.from("trabajos").update({ estado: "pendiente", intentos: 0, error: null, actualizado_en: ahora() }).eq("id", id);
+        await supabase.from("trabajos").update({ estado: "pendiente", intentos: 0, error: null, aviso_error_en: null, actualizado_en: ahora() }).eq("id", id);
         if (t.borrador_id) await supabase.from("borradores").update({ estado: "generando" }).eq("id", t.borrador_id).eq("estado", "fallido");
         disparar(id);
         return json({ ok: true });

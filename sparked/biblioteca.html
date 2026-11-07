@@ -46,7 +46,7 @@
 </div></main>
 
 <script type="module">
-import { api, esc, opciones, GRADOS, MATERIAS, cargarColegios, leerContacto, guardarContacto, contactoGuardado, marcoVistaPrevia, iniciarPago, pantallaEspera, CONFIG, pintarSprites } from "./js/flujo.js";
+import { api, esc, opciones, GRADOS, MATERIAS, cargarColegios, leerContacto, guardarContacto, contactoGuardado, marcoVistaPrevia, iniciarPago, pantallaEspera, CONFIG, pintarSprites, campoCodigo, leerCodigo } from "./js/flujo.js";
 import { sparky, icono } from "./js/arte.js";
 
 const $ = (s) => document.querySelector(s);
@@ -103,20 +103,30 @@ function elegir(g) {
   guiaElegida = g; pasos(3);
   const volver = location.pathname + "?guia=" + encodeURIComponent(g.id) + "&paso=pagar";
   marcoVistaPrevia($("#p3"), `guia.html?vp=${encodeURIComponent(g.id)}&volver=${encodeURIComponent(volver)}`, g.titulo);
-  $("#p3").insertAdjacentHTML("beforeend", `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px"><button class="boton" id="pagar">🔓 Desbloquear la guía entera por $${CONFIG.precio}</button><span class="ayuda">7 días de acceso ilimitado a tu guía · 2 dispositivos por familia · IVA incluido</span></div>`);
-  $("#pagar").onclick = () => pagar(g);
+  $("#p3").insertAdjacentHTML("beforeend", `<form id="fPago" class="rejilla-campos" style="margin-top:14px">${campoCodigo()}<div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="boton" type="submit" id="pagar">🔓 Desbloquear la guía entera por $${CONFIG.precio}</button><span class="ayuda">7 días de acceso ilimitado a tu guía · 2 dispositivos por familia · IVA incluido</span></div><div class="error" id="errPago" style="grid-column:1/-1"></div></form>`);
+  $("#fPago").onsubmit = (e) => { e.preventDefault(); pagar(g, leerCodigo($("#fPago")), (msg) => { pasos(3); $("#errPago").textContent = msg; $("#fPago [name=codigo]")?.focus(); }); };
 }
 
-async function pagar(g) {
+// Pago. Si el código no sirve, se regresa al formulario con el mensaje para corregirlo o borrarlo.
+async function pagar(g, codigo = "", alFallarCodigo = null) {
   pasos(4);
   $("#p4").innerHTML = `<h1>Pago</h1><div id="pago"></div>`;
-  await iniciarPago($("#pago"), { guia_id: g.id, ...contacto }).catch(() => {});
+  await iniciarPago($("#pago"), { guia_id: g.id, ...contacto, codigo }).catch((e) => { if (e.datos?.campo === "codigo" && alFallarCodigo) alFallarCodigo(e.message); });
+}
+
+// Formulario de pago al volver de la vista previa en pantalla completa (con el campo del código).
+function formularioPago(g, codigo = "", mensajeError = "") {
+  pasos(4);
+  $("#p4").innerHTML = `<h1>Pago</h1><div class="resultado-guia"><div class="em">📘</div><div><b style="font-size:18px">${esc(g.titulo)}</b><div class="ayuda">$${CONFIG.precio} MXN · IVA incluido · 7 días de acceso ilimitado a tu guía · 2 dispositivos por familia</div></div></div>
+    <form id="fPago4" class="rejilla-campos" style="margin-top:14px">${campoCodigo()}<div style="grid-column:1/-1"><button class="boton" type="submit">🔓 Desbloquear la guía entera</button></div><div class="error" id="errPago4" style="grid-column:1/-1">${esc(mensajeError)}</div></form>`;
+  const f = $("#fPago4"); f.codigo.value = codigo;
+  f.onsubmit = (e) => { e.preventDefault(); const c = leerCodigo(f); pagar(g, c, (msg) => formularioPago(g, c, msg)); };
 }
 
 // Regreso desde la vista previa en pantalla completa
 if (params.get("guia") && params.get("paso") === "pagar") {
   const id = params.get("guia");
-  api.get(`/vista-previa/${encodeURIComponent(id)}`).then((d) => { contacto = contactoGuardado(); if (!contacto) { pasos(1); return; } pagar({ id, titulo: d.guia?.titulo ?? "Tu guía" }); }).catch(() => pasos(1));
+  api.get(`/vista-previa/${encodeURIComponent(id)}`).then((d) => { contacto = contactoGuardado(); if (!contacto) { pasos(1); return; } formularioPago({ id, titulo: d.guia?.titulo ?? "Tu guía" }); }).catch(() => pasos(1));
 }
 </script>
 </body>

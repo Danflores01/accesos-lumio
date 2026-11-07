@@ -15,7 +15,7 @@
 <header class="cab"><div class="contenedor"><a class="marca" href="index.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span></a></div></header>
 <main class="flujo"><div class="contenedor"><section class="panel-paso" id="caja"><div class="estado-carga"><div>Confirmando tu compra…</div></div></section></div></main>
 <script type="module">
-import { api, esc, mensajeWhatsApp, waLink, CONFIG, textoPagoPendiente, PAGO_VIVO } from "./js/flujo.js";
+import { api, esc, mensajeWhatsApp, waLink, CONFIG, textoPagoPendiente, PAGO_VIVO, pantallaEspera } from "./js/flujo.js";
 import { sparky } from "./js/arte.js";
 const params = new URLSearchParams(location.search);
 const compra = params.get("compra") || params.get("external_reference") || params.get("session_id") || (() => { try { return localStorage.getItem("sparked_compra"); } catch { return null; } })();
@@ -33,7 +33,12 @@ async function revisar() {
   if (!compra) { caja.innerHTML = `<h1>No encontramos tu compra</h1><p>Abre el link que te mandamos por correo o por WhatsApp, o vuelve a la <a href="index.html">página principal</a>.</p>`; return; }
   try {
     const d = await api.get(`/pago/estado/${encodeURIComponent(compra)}${/^\d+$/.test(pagoId) ? `?pago=${pagoId}` : ""}`);
-    if (d.estado === "pagada" && d.link) { vista = "lista"; mostrar(d); return; }
+    if (d.estado === "pagada" && d.link) {
+      // Entrega en dos tiempos: "¡Tu guía está lista!" solo cuando la guía completa ya existe.
+      if (d.guia_lista !== false) { espera?.detener(); espera = null; vista = "lista"; mostrar(d); return; }
+      if (d.revision) { revisando(d); setTimeout(revisar, 60000); return; }
+      terminando(d); setTimeout(revisar, 5000); return;
+    }
     const pagoMP = d.pago_mp || "";
     // Mercado Pago: pago pendiente (OXXO, SPEI o tarjeta en revisión).
     if (PAGO_VIVO.includes(pagoMP) || (!pagoMP && (regreso === "pendiente" || PAGO_VIVO.includes(estadoUrl)))) { pendiente(d); setTimeout(revisar, 15000); return; }
@@ -62,7 +67,38 @@ function fallido(d, vencido) {
     catch (err) { caja.querySelector("#errOtraVez").textContent = err.message; boton.disabled = false; boton.textContent = "🔁 Intentar de nuevo"; }
   };
 }
+// Pago (o código) confirmado, pero la guía completa todavía se está terminando (unos 4 minutos después del pago).
+let espera = null;
+const encabezado = (d) => d.metodo === "codigo" ? "Tu código se aplicó ✅" : "Tu pago se confirmó ✅";
+function terminando(d) {
+  document.title = "SparkEd · Tu guía se está terminando";
+  if (pintar("terminando", `<div><h1 style="margin-bottom:4px">${encabezado(d)}</h1><div class="ayuda">${esc(d.titulo ?? "")}</div></div>
+      <p>Tu guía completa se está terminando: tarda unos 4 minutos. Te avisamos por correo en cuanto esté lista.</p>
+      <div id="espera"></div>
+      ${cajaLink(d, d.jugar ? "Mientras se termina, ya puedes abrirla y jugar los primeros bloques." : "Se abre en cuanto la guía esté completa. Esta página cambia sola cuando esté lista.")}`)) {
+    espera?.detener();
+    espera = pantallaEspera(caja.querySelector("#espera"), "Terminando tu guía…", { estimado: 240, inicio: d.pagada_en ? new Date(d.pagada_en).getTime() : Date.now(), base: 42 });
+    conectarLink(d);
+  }
+  const pr = d.progreso ?? {};
+  espera?.actualizar(pr.pct ?? 42, pr.mensaje ?? "");
+}
+// El trabajo que termina la guía falló: Daniel ya recibió el aviso; la familia no tiene que hacer nada.
+function revisando(d) {
+  espera?.detener(); espera = null;
+  document.title = "SparkEd · Estamos revisando tu guía";
+  if (pintar("revisando", `<div style="display:flex;gap:14px;align-items:center">${sparky("escribiendo", 5)}<div><h1>${encabezado(d)}</h1><div class="ayuda">${esc(d.titulo ?? "")}</div></div></div>
+      <div class="caja-clave"><b>Estamos revisando tu guía; te avisamos por correo en cuanto esté lista.</b><p style="margin:6px 0 0">No necesitas hacer nada más. Folio: <b>${esc(d.folio ?? "")}</b>.</p></div>
+      ${cajaLink(d, d.jugar ? "Mientras tanto, ya puedes abrirla y jugar los primeros bloques." : "Tu link ya está apartado: se abre en cuanto la guía esté completa.")}`)) conectarLink(d);
+}
+function cajaLink(d, nota) {
+  return `<div class="caja-clave" style="margin-top:14px"><b>Tu link</b><div class="link-caja" style="margin-top:6px">${esc(d.link)}</div><p class="ayuda" style="margin:6px 0">${esc(nota)}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${d.jugar ? `<a class="boton linea" href="${esc(d.link)}">▶ Abrir la guía</a>` : ""}<button class="boton linea" data-copiar>📋 Copiar link</button><a class="boton linea" target="_blank" rel="noopener" href="${esc(waLink(d.telefono ?? "", mensajeWhatsApp(d.titulo ?? "Tu guía", d.link)))}">💬 Mandar por WhatsApp</a></div></div>`;
+}
+function conectarLink(d) { const b = caja.querySelector("[data-copiar]"); if (b) b.onclick = async () => { try { await navigator.clipboard.writeText(d.link); b.textContent = "✓ Copiado"; } catch {} }; }
+
 function mostrar(d) {
+  document.title = "SparkEd · Tu guía está lista";
   const link = d.link; const titulo = d.titulo ?? "Tu guía";
   const qr = qrcode(0, "M"); qr.addData(link); qr.make();
   caja.innerHTML = `<div style="display:flex;gap:14px;align-items:center">${sparky("festejo", 6)}<div><h1>¡Tu guía está lista! 🎉</h1><div class="ayuda">${esc(titulo)}</div></div></div>
