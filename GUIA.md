@@ -18,6 +18,7 @@ otras personas ya no abre.
 | Panel avanzado (con nombres y teléfonos) | https://sparkeducation-mx.com/panel.html |
 
 Todo corre en planes gratuitos (GitHub Pages y Supabase Free).
+
 Desde el 7 de noviembre de 2026 el sitio vive en el dominio propio `sparkeducation-mx.com` (DNS en GoDaddy, páginas en GitHub Pages con HTTPS obligatorio). Los links antiguos `danflores01.github.io/accesos-lumio/…` siguen abriendo porque GitHub los redirige al dominio nuevo; no hace falta reenviar nada.
 
 ## Cómo se usa, paso a paso
