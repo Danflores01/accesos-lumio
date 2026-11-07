@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sparky · hoja de personaje · SparkEd</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/sitio.css">
+<style>
+  .hoja { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; display: grid; gap: 18px; }
+  .hoja h1 { font: 800 clamp(26px, 5vw, 40px) var(--titulos); margin: 0; }
+  .hoja p { margin: 0; opacity: .85; max-width: 60ch; }
+  .panel { border-radius: 24px; padding: 22px 18px; display: grid; gap: 14px; }
+  .panel.claro { background: #fff; color: var(--tinta); box-shadow: 0 20px 50px rgba(10, 4, 40, .25); }
+  .panel.oscuro { background: linear-gradient(160deg, #1b1240, #2a1b5e); color: #fff; border: 1px solid rgba(255, 255, 255, .14); }
+  .panel h2 { font: 800 20px var(--titulos); margin: 0; }
+  .poses { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .pose { display: grid; justify-items: center; gap: 8px; padding: 10px 6px; border-radius: 18px; }
+  .claro .pose { background: linear-gradient(160deg, #efe9ff, #ffe1ec); }
+  .oscuro .pose { background: rgba(255, 255, 255, .07); }
+  .pose b { font: 700 15px var(--titulos); }
+  .pose small { font-size: 12px; opacity: .75; text-align: center; }
+  .chicos { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; }
+  .paleta { display: flex; flex-wrap: wrap; gap: 10px; }
+  .paleta i { display: grid; place-items: center; width: 92px; height: 56px; border-radius: 12px; font: 700 11px/1.2 var(--titulos); text-align: center; border: 3px solid #2A2340; color: #2A2340; }
+</style>
+</head>
+<body class="sitio">
+<main class="hoja">
+  <div>
+    <h1>Sparky, versión astronauta‑robot</h1>
+    <p>Casco grande, cuerpo chaparrito y la cara hecha de luces LED en el visor: los ojos, la boca y dos cachetes cambian en cada expresión. Esta hoja sirve para revisar las poses en claro y en oscuro.</p>
+  </div>
+  <section class="panel claro"><h2>Sobre fondo claro (tarjetas del sitio y de las instrucciones)</h2><div class="poses" id="claro"></div></section>
+  <section class="panel oscuro"><h2>Sobre fondo oscuro (juegos y pantallas de carga)</h2><div class="poses" id="oscuro"></div></section>
+  <section class="panel claro"><h2>Tamaños chicos (botones, pasos, héroe de los juegos)</h2><div class="chicos" id="chicos"></div>
+    <h2 style="margin-top:6px">Colores</h2>
+    <div class="paleta">
+      <i style="background:#fff">traje<br>#FFFFFF</i><i style="background:#DCD3F2">sombra<br>#DCD3F2</i><i style="background:#1E1A3A;color:#fff">visor<br>#1E1A3A</i><i style="background:#7DF9FF">LED<br>#7DF9FF</i><i style="background:#FF8FB1">cachetes<br>#FF8FB1</i><i style="background:#FF7A59">coral<br>#FF7A59</i><i style="background:#FFB347">durazno<br>#FFB347</i><i style="background:#6D28D9;color:#fff">morado<br>#6D28D9</i><i style="background:#4C1D95;color:#fff">morado osc.<br>#4C1D95</i>
+    </div>
+  </section>
+</main>
+<script type="module">
+import { sparky, escalador } from "./js/arte.js";
+const POSES = [["quieto", "Quieto", "ojos redondos y sonrisa"], ["saludo", "Saludo", "ojos felices ^ ^ y mano arriba"], ["festejo", "Festejo", "ojos de estrella y boca abierta"], ["triste", "Triste", "luz azul tenue, cejas caídas y lágrima"], ["pensando", "Pensando", "un ojo entrecerrado y mano en el visor"]];
+for (const id of ["claro", "oscuro"]) document.getElementById(id).innerHTML = POSES.map(([p, n, d]) => `<div class="pose">${sparky(p, 9)}<b>${n}</b><small>${d}</small></div>`).join("");
+document.getElementById("chicos").innerHTML = [6, 4, 3].map((e) => sparky("saludo", e)).join("") + escalador(5) + escalador(3);
+</script>
+</body>
+</html>

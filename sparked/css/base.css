@@ -97,3 +97,8 @@ img, svg { display: block; max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Ojos LED de Sparky: parpadean de vez en cuando (el grupo se aplasta y vuelve) */
+.vec .led-ojo { transform-box: fill-box; transform-origin: center; animation: pestaneo 4.6s ease-in-out infinite; }
+@keyframes pestaneo { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.12); } }
+@media (prefers-reduced-motion: reduce) { .vec .led-ojo { animation: none; } }

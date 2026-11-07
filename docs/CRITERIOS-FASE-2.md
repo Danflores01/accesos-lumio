@@ -291,7 +291,14 @@ moderno).
   escalador (Sparky compacto), 15 íconos y las cuatro escenas (ciudad synthwave, montaña con plataformas, castillo,
   planeta). Contorno #2A2340, dos tonos por volumen, brillo pequeño, sombra elíptica en el piso.
 - Las escenas se dibujan con degradados y capas con id (edificios lejanos, cercanos y rayas) para moverse en bucle.
-- Misma silueta y colores de Sparky en cualquier estilo (traje blanco, visor azul marino, acentos amarillos).
+- Sparky 2.0 (referencia de Daniel, 6 de noviembre en la noche: un astronauta chaparrito y tierno): casco grande con
+  visor oscuro y **la cara hecha de luces LED**: ojos, boca y dos cachetes rosas que se encienden distinto en cada
+  expresión (quieto: ojos redondos y sonrisa; saludo: ojos felices ^ ^; festejo: ojos de estrella y boca abierta;
+  triste: luz azul tenue, cejas caídas y lágrima, sin cachetes; pensando: un ojo entrecerrado, mano en el visor y «?»).
+  Los ojos parpadean cada pocos segundos. Traje blanco con sombra lavanda (#DCD3F2), visor #1E1A3A, LED #7DF9FF,
+  cachetes #FF8FB1, bandas y guantes coral #FF7A59, chispa durazno #FFB347 en la antena, mochila, pecho y botas
+  morados (#6D28D9 / #4C1D95), contorno #2A2340. El escalador de montaña y puertas es el mismo Sparky en chico.
+  Hoja de personaje para revisarlo: `sparked/sparky.html`.
 
 **Mecánicas "videojuego actual" (en `sparked/js/juegos.js`).**
 - Carrera: los coches corren todo el tiempo (rayas y edificios en parallax), acierto = acelerón y rebase suave,
