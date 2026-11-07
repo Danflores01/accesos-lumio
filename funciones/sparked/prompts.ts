@@ -279,10 +279,11 @@ Responde SOLO con JSON:
   "mensaje_para_alumno": "🔎 En tus apuntes dice… Según … Estudia esta versión…" } ],
   "busquedas_usadas": 0 }`;
 
+// Sin bbc.co.uk ni fundeu.es: el buscador de la IA no puede consultarlos y rechaza toda la búsqueda (error 400).
 export const DOMINIOS_CONFIABLES = [
-  "gob.mx", "sep.gob.mx", "conaliteg.sep.gob.mx", "inegi.org.mx", "unam.mx", "ipn.mx", "banxico.org.mx", "rae.es", "fundeu.es", "inah.gob.mx",
+  "gob.mx", "sep.gob.mx", "conaliteg.sep.gob.mx", "inegi.org.mx", "unam.mx", "ipn.mx", "banxico.org.mx", "rae.es", "inah.gob.mx",
   "britannica.com", "nationalgeographic.com", "nationalgeographic.es", "nasa.gov", "si.edu", "unesco.org", "who.int", "khanacademy.org",
-  "noaa.gov", "usgs.gov", "nih.gov", "loc.gov", "europa.eu", "cambridge.org", "britishcouncil.org", "bbc.co.uk", "libretexts.org", "openstax.org",
+  "noaa.gov", "usgs.gov", "nih.gov", "loc.gov", "europa.eu", "cambridge.org", "britishcouncil.org", "libretexts.org", "openstax.org",
   "stanford.edu", "mit.edu", "harvard.edu", "ox.ac.uk", "nature.com", "science.org", "scientificamerican.com", "isotopes.gov", "webelements.com",
 ];
 

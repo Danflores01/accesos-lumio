@@ -408,6 +408,8 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const b = r.json;
     const tipoDe = (a: any) => a.tipo ?? (Array.isArray(a.opciones) ? "opcion_multiple" : a.afirmacion !== undefined ? "verdadero_falso" : "completar");
     D.bloques[bi] = { id: pb.id ?? `b${bi + 1}`, titulo: pb.titulo, ...(cortado ? { reducido: true } : {}), ...(parcial ? { parcial: true } : {}), pistas: (b.pistas ?? []).map((p: any, k: number) => ({ ...p, id: p.id ?? `${pb.id ?? "b" + (bi + 1)}p${k + 1}` })), actividades: aplanar(b.actividades), mini_examen: (b.mini_examen ?? []).map((a: any, k: number) => ({ ...a, tipo: tipoDe(a), id: a.id ?? `${pb.id ?? "b" + (bi + 1)}me${k + 1}` })) };
+    // Los juegos de clasificar quedan con dos grupos desde que se escriben (también en la vista previa).
+    for (const a of D.bloques[bi].actividades) normalizarClasificar(a);
     const ultimoVp = t.alcance === "vista_previa";
     let sig: string;
     if (ultimoVp) sig = "armar";
@@ -588,6 +590,31 @@ function planPorCodigo(D: any, fuente: { grado: string; materia: string }): any 
   };
 }
 
+// Juegos de clasificar: el reproductor muestra solo dos grupos. La IA a veces arma tres (la revisión borraba las
+// tarjetas del tercero y ese grupo quedaba vacío), numera los grupos desde 1 o pone el nombre del grupo. Aquí cada
+// tarjeta pasa al número de su grupo (desde 0) y, si hay más de dos grupos, se quedan los dos con más tarjetas.
+export function normalizarClasificar(a: any): void {
+  if (!a || a.tipo !== "clasificar" || !Array.isArray(a.grupos) || !Array.isArray(a.elementos)) return;
+  const nombres = a.grupos.map((g: unknown) => String(g ?? "").trim().toLowerCase());
+  const numero = (g: unknown): number | null => typeof g === "number" ? g : typeof g === "string" && /^ *[0-9]+ *$/.test(g) ? Number(g) : null;
+  const nums = a.elementos.map((e: any) => numero(e?.grupo)).filter((n: number | null) => n !== null) as number[];
+  // Numerados desde 1: alguna tarjeta trae un número igual a la cantidad de grupos y ninguna trae 0.
+  const desdeUno = nums.length > 0 && Math.min(...nums) >= 1 && Math.max(...nums) === a.grupos.length;
+  const indice = (g: unknown): number => {
+    const n = numero(g);
+    if (n === null) return nombres.indexOf(String(g ?? "").trim().toLowerCase());
+    return Number.isInteger(n) ? (desdeUno ? n - 1 : n) : -1;
+  };
+  let elementos = a.elementos.filter((e: any) => e && typeof e === "object").map((e: any) => ({ ...e, grupo: indice(e.grupo) })).filter((e: any) => e.grupo >= 0 && e.grupo < a.grupos.length);
+  if (a.grupos.length > 2) {
+    const cuenta = a.grupos.map((_: unknown, i: number) => elementos.filter((e: any) => e.grupo === i).length);
+    const dos = cuenta.map((n: number, i: number) => [n, i]).sort((x: number[], y: number[]) => y[0] - x[0] || x[1] - y[1]).slice(0, 2).map((x: number[]) => x[1]).sort((x: number, y: number) => x - y);
+    a.grupos = dos.map((i: number) => a.grupos[i]);
+    elementos = elementos.filter((e: any) => dos.includes(e.grupo)).map((e: any) => ({ ...e, grupo: dos.indexOf(e.grupo) }));
+  }
+  a.elementos = elementos;
+}
+
 // Revisiones por código (Documento 1, sección 6). Devuelve true si la actividad sirve.
 function revisarActividad(a: any, citas: string[], nivel: string, huecos: string[], bloque: string): boolean {
   if (!a || !a.tipo) return false;
@@ -604,7 +631,7 @@ function revisarActividad(a: any, citas: string[], nivel: string, huecos: string
   if (a.tipo === "super_dato") { const huecosSD = (String(a.texto ?? "").match(/\[\[(.+?)\]\]/g) ?? []).length; if (huecosSD < 3 || !Array.isArray(a.distractores)) return false; }
   if (a.tipo === "conceptos" || a.tipo === "quien_es_quien") { if (!Array.isArray(a.pares) || a.pares.length < 3) return false; a.pares = a.pares.filter((p: any) => p?.termino && p?.definicion); if (a.pares.length < 3) return false; }
   if (a.tipo === "ordenar") { if (!Array.isArray(a.pasos) || a.pasos.length < 3) return false; a.pasos = a.pasos.map((p: any) => typeof p === "string" ? { texto: p, emoji: "" } : p); }
-  if (a.tipo === "clasificar") { if (!Array.isArray(a.grupos) || a.grupos.length < 2 || !Array.isArray(a.elementos) || a.elementos.length < 4) return false; a.elementos = a.elementos.filter((e: any) => e && (e.grupo === 0 || e.grupo === 1)); if (a.elementos.length < 4) return false; }
+  if (a.tipo === "clasificar") { if (!Array.isArray(a.grupos) || a.grupos.length < 2 || !Array.isArray(a.elementos) || a.elementos.length < 4) return false; normalizarClasificar(a); a.elementos = a.elementos.filter((e: any) => e && (e.grupo === 0 || e.grupo === 1)); if (a.elementos.length < 4 || !a.elementos.some((e: any) => e.grupo === 0) || !a.elementos.some((e: any) => e.grupo === 1)) return false; }
   // cita respaldada
   const cita = a.fuente?.cita;
   if (cita && citas.length && !citaExiste(cita, citas) && a.fuente?.tipo !== "practica") { huecos.push(`Actividad ${a.id} del bloque ${bloque}: su cita no aparece en las fotos`); return false; }

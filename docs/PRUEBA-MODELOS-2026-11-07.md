@@ -105,15 +105,50 @@ mitad de los juegos.
   vez con la mitad de los juegos y salió bien. Depende de cuántos juegos pidió el plan para ese bloque.
 - **Rechazos:** ninguno. Ningún paso pasó de 125 segundos y ninguno cayó a Haiku.
 
-## Hallazgo: la verificación de datos falló en las tres guías
+## Verificación de datos: falló en las tres guías; ya se arregló y se probó
 
-El paso que revisa los datos en internet (Haiku) no corrió en ninguna variante. La IA respondió con el error 400
-*"The following domains are not accessible to our user agent: ['bbc.co.uk', 'fundeu.es']"*: dos sitios de la lista de
-fuentes confiables (`DOMINIOS_CONFIABLES` en `funciones/sparked/prompts.ts`) no los puede consultar la IA, y por eso
-rechaza toda la búsqueda. Las guías salen de todos modos, pero sin verificación (su reporte dice "error").
+**El problema.** El paso que revisa los datos en internet (Haiku) no corrió en ninguna variante. La IA respondió con el
+error 400 *"The following domains are not accessible to our user agent: ['bbc.co.uk', 'fundeu.es']"*: dos sitios de la
+lista de fuentes confiables no los puede consultar el buscador de la IA, y por eso rechazaba toda la búsqueda. Las
+guías salían de todos modos, pero sin verificación. El problema ya existía antes de la prueba y afectaba a toda guía
+completa; no se corrigió a mitad de la prueba para que las tres variantes fueran comparables.
 
-No se corrigió durante la prueba, para que las tres variantes fueran comparables. Este problema ya existía y afecta a
-toda guía completa. Arreglo sugerido: quitar `bbc.co.uk` y `fundeu.es` de esa lista.
+**El arreglo.** Se quitaron `bbc.co.uk` y `fundeu.es` de `DOMINIOS_CONFIABLES` en `funciones/sparked/prompts.ts` (el
+error solo mencionaba esos dos). La función en vivo quedó en la versión 15, idéntica byte a byte al repositorio.
+
+**La prueba.** La guía A se volvió a generar desde el bloque 1 (escribir con Haiku, como hoy) con la versión 15. Esta
+vez la verificación sí corrió, sin errores:
+
+- Revisó **6 datos**: 4 verificados, 1 corregido y 1 que contradice el libro (ese se manda a revisión humana y no se
+  cambia nada).
+- Hizo **4 búsquedas** en internet. El número se calculó con su costo: cada búsqueda cuesta 1 centavo de dólar, y con
+  los tokens que usó solo cuadran 4.
+- Costo de la verificación: **0.0532 USD = 0.98 MXN** (de eso, 0.74 MXN son las búsquedas), en 54.6 segundos.
+- El dato corregido: los apuntes decían que "Word formation" es la parte 1 del examen; según Cambridge es la parte 3.
+  El que contradice el libro: la tarea del correo pide 100 a 120 palabras y la foto menciona 140 a 190.
+- Detalle para revisar después (no se cambió): cuando una corrección no corresponde a ninguna actividad ni pista (aquí
+  era un dato del inventario), el sistema la pega en la primera pista de cada bloque, así que el alumno la ve 3 veces.
+  Además, esa corrección habla del formato del examen, que la guía no debería enseñar.
+- Toda esta nueva corrida de la guía A (escribir 3 bloques, reparar y verificar) costó **0.0767 USD = 1.42 MXN** y
+  tardó 3.7 minutos.
+
+## Arreglo: juegos de clasificar con un grupo vacío
+
+- **Lo encontró** la evaluación a ciegas en las tres guías: cada juego de clasificar tenía 3 grupos, pero uno salía
+  sin tarjetas.
+- **La causa** (confirmada con los datos de las tres guías): la IA armó 3 grupos numerados 0, 1 y 2 (por ejemplo,
+  "sufijos de sustantivo", "sufijos de adjetivo" y "prefijos negativos"). El reproductor solo muestra 2 grupos, y la
+  revisión automática solo dejaba las tarjetas de los grupos 0 y 1: borraba todas las del tercero, que quedaba vacío.
+  No era que la IA numerara desde 1 ni que pusiera el nombre del grupo: todas las tarjetas que quedaban eran del grupo
+  0 o del 1.
+- **El arreglo**, en `funciones/sparked/pipeline.ts`: en cuanto se escribe cada bloque (también en la vista previa),
+  cada juego de clasificar queda con 2 grupos. Si la IA hizo 3, se quedan los 2 con más tarjetas; también se aceptan
+  grupos numerados desde 1 o escritos con su nombre. La revisión ya no deja pasar un juego con un grupo sin tarjetas. El
+  reproductor no se tocó.
+- **Resultado** en la guía A regenerada: su único juego de clasificar quedó con 2 grupos ("Noun suffix" y "Adjective
+  suffix") y 3 tarjetas en cada uno.
+- **Lo que se pierde:** si la IA arma un tercer grupo, sus tarjetas no se usan. Para conservarlas habría que enseñar al
+  reproductor a mostrar 3 grupos (`sparked/js/juegos.js`, función `sort`, que hoy usa solo los 2 primeros grupos).
 
 ## Links de las guías
 
@@ -135,13 +170,75 @@ Las tres quedaron como guías personalizadas publicadas: no aparecen en la búsq
 repositorio es público, así que estos links los puede ver quien abra el repositorio; son guías de prueba, sin datos de
 ninguna familia. Cuando termine la evaluación se pueden borrar desde el panel.
 
-## Calidad
+**Ojo con la guía A:** se volvió a generar después de la evaluación, para probar los dos arreglos; su link y el panel
+muestran ya la versión nueva (52 actividades, con verificación). La versión que se calificó está guardada en
+`guia-X.json`. En el panel su costo aparece sumado dos veces (0.1537 USD); el real es 0.1152 USD (0.0385 de la primera
+corrida más 0.0767 de la segunda).
 
-**Pendiente: evaluación a ciegas.** Las tres guías se exportaron con letras al azar (X, Y y Z), sin decir qué modelo
-hizo cada una; la correspondencia quedó guardada aparte.
+## Calidad (evaluación a ciegas)
+
+Una revisión aparte calificó las tres guías sin saber qué modelo hizo cada una: las recibió con letras al azar (X, Y y
+Z) y revisó, una por una, todas las actividades y preguntas contra el inventario. Aquí ya están traducidas a A, B y C.
+Escala de 1 (muy mal) a 5 (muy bien); en "errores visibles", 5 quiere decir sin errores.
+
+| Punto (de 1 a 5) | A · todo Haiku | B · Sonnet | C · Opus |
+|---|:-:|:-:|:-:|
+| Cobertura de los apuntes | 2 | 4 | 4 |
+| Exactitud | 2 | 5 | 3 |
+| Orden de los temas (el plan) | 4 | 3 | 5 |
+| Variedad y pertinencia de los juegos | 3 | 4 | 3 |
+| Claridad para 3° de secundaria | 3 | 4 | 4 |
+| Errores visibles | 3 | 3 | 2 |
+| **Total (de 30)** | **17** | **23** | **21** |
+
+| Otros datos de la revisión | A | B | C |
+|---|:-:|:-:|:-:|
+| Partes de los apuntes que toca (de 6) | 3 | 6 | 4 |
+| Preguntas que llegaron, contra las planeadas | 81 % | 63 % | 69 % |
+| Errores graves de respuesta | 2 | 0 | 1 |
+| Errores moderados | 3 | 0 | 3 |
+
+- **B fue la mejor, pero por poco** (23 contra 21 de C): ninguna respuesta equivocada y toca las 6 partes de los
+  apuntes. Su punto débil es que es la más corta (36 actividades) y su bloque 2 quedó con muy pocas preguntas.
+- **C** es la más completa, la mejor ordenada y la más parecida al examen, pero tiene un error grave que el alumno vería
+  tres veces, un bloque sin mini-examen y muchas preguntas repetidas sobre los mismos "idioms".
+- **A queda claramente atrás**: dos errores graves, deja fuera una parte completa del examen y repite mucho.
+
+### Los errores más serios
+
+1. **A:** en "I'm ___ getting up early" marca como correcta "be used to" (quedaría "I'm be used to getting up early").
+   Sale también en el calentamiento y en el reto final.
+2. **A:** la respuesta modelo "Because I'm busy this week, so I can't come." está mal: no se usan "because" y "so"
+   juntos.
+3. **C:** en "Ben is very ___. He never tells lies. (HONEST)" marca "dishonest", lo contrario de lo que dice la
+   oración, y "honest" ni siquiera está entre las opciones. Sale también en el calentamiento y en el reto final.
+4. **A** deja fuera toda la parte de expresiones fijas e "idioms", aunque su propio plan la marcaba como punto difícil.
+5. **C:** el bloque 2 salió sin mini-examen y sin preguntas de opción múltiple. **B:** el bloque 2 tiene un mini-examen
+   de una sola pregunta.
+6. **En las tres:** los juegos de clasificar tenían un grupo sin tarjetas, y la verificación de datos no corrió. Las
+   dos cosas ya se arreglaron (ver abajo).
+
+Las preguntas con errores las escribió Haiku en las tres variantes (el paso "escribir" no cambió); el modelo del plan
+decide qué temas entran y cómo se ordenan, no cómo se redacta cada pregunta.
 
 **Advertencia:** es una sola corrida por variante. La IA no responde igual dos veces, así que las diferencias pequeñas
-(por ejemplo, 36 contra 51 actividades, o 4 contra 6 minutos) pueden deberse al azar y no al modelo.
+(por ejemplo, 23 contra 21 puntos, o 4 contra 6 minutos) pueden deberse al azar. Entre B y C la diferencia no es
+segura; entre ellas dos y A sí es clara, aunque también viene de una sola corrida.
+
+## Recomendación por paso (la decide Daniel)
+
+**Los valores por defecto en producción no cambiaron:** todo sigue con Haiku, como antes de la prueba. Lo que sigue es
+solo una recomendación; la decisión es de Daniel. Como es una sola corrida por variante, conviene confirmarla con 2 o
+3 corridas más antes de cambiar algo.
+
+| Paso | Recomendación | Costo por guía | Razón |
+|---|---|---|---|
+| Leer las fotos | Haiku · medio (como hoy) | menos de 0.55 MXN | No se probó otro modelo y leyó las 6 fotos sin perder ninguna. |
+| Plan | **Sonnet · medio** | 1.51 MXN | Cubrió todas las partes de los apuntes (con Haiku faltó una completa) y su guía fue la mejor calificada. Opus ordenó mejor los temas, pero cuesta casi el doble (2.80 MXN) y dos veces dejó un bloque vacío en su plan. |
+| Escribir los bloques | Haiku · bajo (como hoy) | 0.5 a 0.8 MXN | Es el paso que más escribe: con Sonnet costaría unos 10 pesos más por guía y podría pasarse del tiempo límite. Los errores de respuesta salieron de este paso, así que conviene probarlo aparte más adelante. |
+| Reparar | **Sonnet · medio** | 0.95 MXN | Se probó junto con el plan en la guía mejor calificada y cuesta menos de un peso. |
+| Verificar | Haiku · medio (como hoy) | 0.98 MXN | Ya funciona: en la prueba revisó 6 datos con 4 búsquedas. Puede subir hasta unos 2 pesos si usa las 10 búsquedas permitidas. |
+| **Total** | | **cerca de 4.5 MXN** | Con todo Haiku y la verificación funcionando serían cerca de 2.2 MXN. El precio de venta de una guía es de 100 pesos. |
 
 ## Gasto de la prueba
 
@@ -152,9 +249,10 @@ hizo cada una; la correspondencia quedó guardada aparte.
 | Guía A | 0.0385 | 0.71 |
 | Guía B | 0.1591 | 2.94 |
 | Guía C | 0.2863 | 5.30 |
-| **Total** | **0.7173** | **13.27** |
+| Nueva corrida de la guía A (prueba de los arreglos) | 0.0767 | 1.42 |
+| **Total** | **0.7940** | **14.69** |
 
-Tope autorizado: 30 MXN (1.62 USD). Se usó el 44 %.
+Tope autorizado: 30 MXN (1.62 USD). Se usó el 49 %.
 
 ## Archivos de la prueba
 
@@ -173,4 +271,8 @@ En la computadora de Daniel, carpeta temporal
 - `funciones/sparked/index.ts`: 10 ajustes nuevos (`sparked_modelo_*` y `sparked_esfuerzo_*`, por defecto Haiku como
   hoy), las rutas de administrador `POST /admin/pruebas/plan` y `POST /admin/pruebas/generar`, el título
   «[Prueba X]» y las métricas en el reporte de cada guía.
-- Para las familias no cambia nada: mientras no se cambien esos ajustes, todo sigue con Haiku como antes.
+- `funciones/sparked/prompts.ts`: se quitaron `bbc.co.uk` y `fundeu.es` de la lista de fuentes confiables, para que la
+  verificación de datos funcione.
+- `funciones/sparked/pipeline.ts`: los juegos de clasificar quedan siempre con 2 grupos y tarjetas en los dos.
+- Función en vivo: `sparked` versión 15, idéntica byte a byte al repositorio.
+- Para las familias no cambia nada más: mientras no se cambien los ajustes de modelo, todo sigue con Haiku como antes.
