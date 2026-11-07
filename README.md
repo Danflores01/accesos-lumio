@@ -5,6 +5,7 @@ App personal para repartir accesos a clases de Lumio por WhatsApp: cada familia 
 
 - **App (celular y computadora):** `index.html`, publicada con GitHub Pages en
   https://sparkeducation-mx.com/
+- **Dominio propio:** `sparkeducation-mx.com` (comprado en GoDaddy; registros A hacia GitHub Pages y `www` hacia `danflores01.github.io`). Los links antiguos de `danflores01.github.io/accesos-lumio/…` siguen funcionando: GitHub los redirige solo al dominio nuevo.
 - **Página que ven los alumnos:** `entrar.html` (el código del link va después de `#`).
 - **Servidor:** proyecto Supabase `accesos-lumio` (funciones en `funciones/`, esquema inicial en
   `sql/esquema.sql` y migraciones posteriores en `sql/migraciones/`).
