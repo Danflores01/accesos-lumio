@@ -311,10 +311,12 @@ moderno).
   mano y lápiz en la otra; los renglones aparecen mientras escribe y saca la lengüita). En reposo flota, parpadea y mira
   a los lados; el saludo mueve la mano y el festejo agita los brazos. Dónde se usa: la pantalla de espera mientras se
   genera la guía (constructor; también en "Buscando materiales…" de la biblioteca), el paso "Sparky las convierte" del
-  inicio (constructor chico), "Preparando tu pago…" (escribiendo) y el recuadro del inicio, donde cada 8 a 15 segundos
+  inicio y de la biblioteca (constructor chico), la pantalla de carga al abrir una guía (constructor), "Preparando tu
+  pago…" y "Esperando la confirmación del pago…" (escribiendo), los resultados de la guía con menos de 70 % (escribiendo:
+  a repasar) y el recuadro del inicio, donde cada 8 a 15 segundos
   hace algo al azar: saluda, camina de un lado a otro o escribe un dato curioso nuevo letra por letra en la burbuja.
   Reacciona a la gente sin estorbar: mouse encima = saluda; toque o clic = festeja con un brinco. La pose «pensando»
-  con «?» ya no se usa en esas pantallas. Con "reducir movimiento" se queda quieto (sin caminar, brincar ni escribir
+  con «?» ya no se usa en ninguna pantalla (queda solo en la hoja de personaje). Con "reducir movimiento" se queda quieto (sin caminar, brincar ni escribir
   letra por letra). Código: poses y accesorios ("+casco", "+taller") en `arte.js`, `sparkyVivo()` y `escribirTexto()`
   en `ui.js`, animaciones en `base.css` (sección "Sparky vivo"; solo corren dentro de `.sk-anima`).
 
@@ -372,3 +374,10 @@ lenguaje formal, pero muy simple y específico. Se vale repetir un poco para que
 - **Sin coloquialismos:** por ejemplo, "Juegas y estudias", no "la juegas".
 - **Pasos como lista corta y numerada** (1, 2, 3), no como frase corrida: "1. Tomas fotos de tus apuntes", "2. Sparky
   las convierte en una guía", "3. Juegas y estudias".
+
+## 20. Dirección de arte 3.0: moderna, tipo render 3D (pedida el 7 nov 2026, pendiente de hacer)
+- **Misma mecánica de los juegos por ahora; cambia el arte.** Daniel quiere que el juego "se vea muy moderno y no se sienta retro": figuras con volumen tipo render 3D (luces suaves, brillos, sombras y texturas), como los juegos actuales de plataformas en 3D. La referencia que mandó es una escena 3D de un juego de plataformas clásico; sirve solo para el acabado (texturas, iluminación, profundidad), no para copiar personajes ni elementos.
+- **Vehículos y animales realistas:** los carros deben parecer **Fórmula 1 de verdad** (no taxis), los caballos deben verse como caballos con **colores reales** (gris, negro, café, blanco; nunca morado, rojo o azul) y los dragones con colores creíbles, no de neón.
+- **Qué cambia en el dibujo:** sin contorno oscuro grueso; volumen con degradados y brillos; sombra suave en el piso; una sola dirección de luz; fondos con profundidad (capas lejanas más suaves); paleta saturada pero natural. Sparky conserva su identidad 2.1 (casco, cara LED, colores) con este mismo acabado.
+- **Cómo:** primero una hoja de muestras (3 o 4 estilos) para que Daniel elija; luego aplicar a todos los juegos y al reproductor. Vectores SVG con degradados y filtros ligeros, o sprites PNG/WebP prerenderizados si los filtros pesan en iPad. Nada retro, nada pixelado.
+- Imagen de referencia guardada fuera del repositorio: C:\Users\Daniel\Downloads\Claude outputs\SparkEd_referencia_arte_3D_moderno.jpg
