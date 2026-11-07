@@ -1,5 +1,6 @@
 // La cadena de generación por pasos (Documento 1): extraer → unir → planear → generar por bloque → revisar →
 // reparar → verificar → imágenes → armar. Cada ejecución hace UN paso y deja el siguiente listo.
+import { jsonrepair } from "npm:jsonrepair@3";
 import { EXTRACTOR, PLANIFICADOR, ESQUEMA_PLAN, GENERADOR, REPARADOR, VERIFICADOR, DOMINIOS_CONFIABLES, NIVEL_LECTURA } from "./prompts.ts";
 
 export type Trabajo = { id: string; borrador_id: string | null; guia_id: string | null; alcance: string; paso: string; estado: string; progreso: Record<string, unknown>; datos: Record<string, unknown>; intentos: number; costo_usd: number; tokens_entrada: number; tokens_salida: number };
@@ -8,17 +9,25 @@ type Supa = ReturnType<typeof import("npm:@supabase/supabase-js@2").createClient
 const MODELO_HAIKU = "claude-haiku-5-5";
 const MODELO_SONNET = "claude-sonnet-5-5";
 const PRECIO: Record<string, [number, number]> = { [MODELO_HAIKU]: [0.10, 0.50], [MODELO_SONNET]: [2, 10] }; // USD por millón, hasta 100K tokens
-const FOTOS_POR_LOTE = 3; // pocas fotos por llamada para que cada paso termine en menos de 2 minutos
+const FOTOS_POR_LOTE = 2; // pocas fotos por llamada: cada llamada debe terminar en menos de ~110 s
+const LOTE_ANTERIOR = 3; // tamaño de lote de las versiones anteriores, para retomar trabajos que se quedaron a medias
+
+export type Respuesta = { json: any; reparado: boolean; texto: string; parada: string | null; formato: boolean; ms: number; uso: { entrada: number; salida: number; costo: number } };
 
 // ---------- Llamada al API de Claude (fetch directo, sin SDK) ----------
-export async function claude(opts: { modelo?: string; sistema: string; contenido: unknown[]; esquema?: unknown; maxTokens?: number; herramientas?: unknown[]; esfuerzo?: string }): Promise<{ json: any; texto: string; parada: string | null; formato: boolean; uso: { entrada: number; salida: number; costo: number } }> {
+// Una sola llamada por ejecución de la función. "previo" es la segunda oportunidad: se le muestra su respuesta anterior
+// (que no fue JSON) y se le pide únicamente el JSON.
+export async function claude(opts: { modelo?: string; sistema: string; contenido: unknown[]; esquema?: unknown; maxTokens?: number; herramientas?: unknown[]; esfuerzo?: string; previo?: string; etiqueta?: string }): Promise<Respuesta> {
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) throw new Error("Falta configurar ANTHROPIC_API_KEY en los secretos de Supabase");
   const modelo = opts.modelo ?? MODELO_HAIKU;
+  const mensajes: unknown[] = [{ role: "user", content: opts.contenido }];
+  const previo = (opts.previo ?? "").trim();
+  if (previo) mensajes.push({ role: "assistant", content: previo }, { role: "user", content: "Eso no fue JSON válido; responde únicamente con el JSON pedido, sin texto antes ni después." });
   const cuerpo: Record<string, unknown> = {
     model: modelo, max_tokens: opts.maxTokens ?? 12000,
     system: [{ type: "text", text: opts.sistema, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: opts.contenido }],
+    messages: mensajes,
     output_config: { effort: opts.esfuerzo ?? "medium", ...(opts.esquema ? { format: { type: "json_schema", schema: opts.esquema } } : {}) },
   };
   if (opts.herramientas?.length) cuerpo.tools = opts.herramientas;
@@ -28,6 +37,7 @@ export async function claude(opts: { modelo?: string; sistema: string; contenido
   if (helicone) cab["Helicone-Auth"] = `Bearer ${helicone}`;
   // Cada paso debe caber en una ejecución de la función (tope de 150 s): si Claude tarda más, se corta y se reintenta.
   const pedir = () => fetch(url, { method: "POST", headers: cab, body: JSON.stringify(cuerpo), signal: AbortSignal.timeout(125_000) });
+  const inicio = Date.now();
   let r = await pedir();
   const oc = cuerpo.output_config as Record<string, unknown>;
   if (r.status === 400 && oc.format) {
@@ -44,17 +54,28 @@ export async function claude(opts: { modelo?: string; sistema: string; contenido
   }
   if (!r.ok) throw new Error(`Claude ${r.status}: ${(await r.text()).slice(0, 400)}`);
   const d = await r.json();
+  const ms = Date.now() - inicio;
   const texto = (d.content ?? []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n");
   const entrada = (d.usage?.input_tokens ?? 0) + (d.usage?.cache_creation_input_tokens ?? 0) + (d.usage?.cache_read_input_tokens ?? 0) * 0.1;
   const salida = d.usage?.output_tokens ?? 0;
   const [pe, ps] = PRECIO[modelo] ?? PRECIO[MODELO_HAIKU];
   const costo = (entrada * pe + salida * ps) / 1e6 + (d.usage?.server_tool_use?.web_search_requests ?? 0) * 0.01;
   const formato = !!(cuerpo.output_config as any)?.format;
-  return { json: extraerJson(texto), texto, parada: d.stop_reason ?? null, formato, uso: { entrada: Math.round(entrada), salida, costo } };
+  const parada = d.stop_reason ?? null;
+  const { json, reparado } = leerJson(texto);
+  // Una línea por llamada en los logs para medir tiempos y tokens de cada paso.
+  console.log("IA", JSON.stringify({ etiqueta: opts.etiqueta ?? "", modelo, ms, entrada: Math.round(entrada), salida, parada, formato, reparado, json: !!json }));
+  return { json, reparado, texto, parada, formato, ms, uso: { entrada: Math.round(entrada), salida, costo } };
 }
 
 export function extraerJson(texto: string): any {
-  if (!texto) return null;
+  return leerJson(texto).json;
+}
+
+// Lee el JSON de una respuesta. Primero tal cual (o dentro de ```json), luego quitando comas sobrantes y, como último
+// recurso, con jsonrepair, que arregla JSON mal formado o cortado (comillas, comas, llaves sin cerrar).
+function leerJson(texto: string): { json: any; reparado: boolean } {
+  if (!texto) return { json: null, reparado: false };
   const candidatos = [texto];
   const m = texto.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (m) candidatos.push(m[1]);
@@ -63,11 +84,19 @@ export function extraerJson(texto: string): any {
   const a = texto.indexOf("{"), b = texto.lastIndexOf("}");
   if (a >= 0 && b > a) candidatos.push(texto.slice(a, b + 1));
   for (const c of candidatos) {
-    try { return JSON.parse(c); } catch { /* sigue */ }
+    try { return { json: JSON.parse(c), reparado: false }; } catch { /* sigue */ }
     // Reparación común: comas sobrantes antes de } o ].
-    try { return JSON.parse(c.replace(/,\s*([}\]])/g, "$1")); } catch { /* sigue */ }
+    try { return { json: JSON.parse(c.replace(/,\s*([}\]])/g, "$1")), reparado: false }; } catch { /* sigue */ }
   }
-  return null;
+  if (a < 0) return { json: null, reparado: false };
+  // Desde la primera llave hasta el final (si se cortó, jsonrepair cierra lo que quedó abierto).
+  for (const c of [texto.slice(a).replace(/```\s*$/, ""), ...candidatos.slice(1)]) {
+    try {
+      const j = JSON.parse(jsonrepair(c));
+      if (j && typeof j === "object" && !Array.isArray(j)) return { json: j, reparado: true };
+    } catch { /* sigue */ }
+  }
+  return { json: null, reparado: false };
 }
 
 // El primer objeto JSON completo del texto (cuenta llaves fuera de las comillas), por si después viene más texto.
@@ -85,14 +114,17 @@ function primerObjeto(texto: string): string | null {
   return null;
 }
 
-// Guarda qué contestó la IA cuando su respuesta no se pudo usar, para diagnosticar sin repetir la llamada
-// (también guarda el costo de ese intento).
-async function guardarDiagnostico(supabase: Supa, t: Trabajo, campo: string, r: { texto: string; parada: string | null; formato: boolean; uso: { salida: number } }) {
+// Guarda por qué una respuesta de la IA no sirvió (paso, motivo de parada, tokens, tiempo, inicio y fin del texto) y el
+// costo de ese intento, para diagnosticar sin repetir la llamada: datos.diagnostico (el último) y datos.diagnosticos
+// (los últimos 10).
+async function diagnosticar(supabase: Supa, t: Trabajo, paso: string, r: Respuesta, extra: Record<string, unknown> = {}) {
+  const D = t.datos as any;
   const txt = r.texto ?? "";
-  const diag = { parada: r.parada, formato: r.formato, tokens_salida: r.uso.salida, largo: txt.length, inicio: txt.slice(0, 600), fin: txt.slice(-600), en: new Date().toISOString() };
-  console.error("Respuesta de la IA sin JSON útil", campo, JSON.stringify({ ...diag, inicio: diag.inicio.slice(0, 300), fin: diag.fin.slice(-300) }));
-  (t.datos as any)[campo] = diag;
-  await guardar(supabase, t, { datos: t.datos, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
+  const diag = { paso, parada: r.parada, formato: r.formato, reparado: r.reparado, tokens_salida: r.uso.salida, ms: r.ms, largo: txt.length, inicio: txt.slice(0, 600), fin: txt.slice(-600), en: new Date().toISOString(), ...extra };
+  console.error("Respuesta de la IA sin JSON útil", JSON.stringify({ ...diag, inicio: diag.inicio.slice(0, 300), fin: diag.fin.slice(-300) }));
+  D.diagnostico = diag;
+  D.diagnosticos = [...(Array.isArray(D.diagnosticos) ? D.diagnosticos : []), diag].slice(-10);
+  await guardar(supabase, t, { datos: D, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
 }
 
 // ---------- Utilidades ----------
@@ -134,26 +166,71 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
   const D = t.datos as any;
   const nivel = NIVEL_LECTURA(fuente.grado);
   const total = fuente.archivos.length;
-  const lotes = Math.ceil(total / FOTOS_POR_LOTE);
   const progreso = async (pct: number, mensaje: string, paso?: string) => guardar(supabase, t, { progreso: { pct, mensaje, paso: paso ?? t.paso }, ...(paso ? { paso } : {}) });
 
   if (t.paso === "inicio") { await progreso(2, "Leyendo tus fotos 📖", "extraer:0"); return "extraer:0"; }
 
   if (t.paso.startsWith("extraer:")) {
-    const i = Number(t.paso.split(":")[1]);
-    const archivos = fuente.archivos.slice(i * FOTOS_POR_LOTE, (i + 1) * FOTOS_POR_LOTE);
-    const contenido: unknown[] = [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${nivel} · materia indicada ${fuente.materia} · fotos ${i * FOTOS_POR_LOTE + 1}–${i * FOTOS_POR_LOTE + archivos.length} de ${total}. Numera las fotos desde ${i * FOTOS_POR_LOTE + 1}.` }];
+    const k = Number(t.paso.split(":")[1]) || 0;
+    D.inventarios = Array.isArray(D.inventarios) ? D.inventarios : [];
+    // Fila de páginas por leer, en rangos [desde, hasta). Un trabajo que venía de la versión anterior (lotes de 3)
+    // sigue donde se quedó.
+    if (!Array.isArray(D.pendientes)) D.pendientes = rangos(Math.min(total, k * LOTE_ANTERIOR), total);
+    const avanzar = async () => {
+      const sig = D.pendientes.length ? `extraer:${k + 1}` : "unir";
+      const leidas = total - D.pendientes.reduce((n: number, rg: number[]) => n + rg[1] - rg[0], 0);
+      await guardar(supabase, t, { datos: D, paso: sig, progreso: { pct: 5 + Math.round(25 * leidas / Math.max(1, total)), mensaje: `Leyendo tus fotos 📖 (${leidas} de ${total})`, paso: sig }, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
+      return sig;
+    };
+    if (!D.pendientes.length) return await avanzar();
+    const [desde, hasta] = D.pendientes[0] as number[];
+    const rango = `${desde + 1}-${hasta}`;
+    const segunda = D.reintento?.rango === rango ? D.reintento : null; // segunda oportunidad para este rango
+    const archivos = fuente.archivos.slice(desde, hasta);
+    const contenido: unknown[] = [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${nivel} · materia indicada ${fuente.materia} · fotos ${desde + 1}–${hasta} de ${total}. Numera las fotos desde ${desde + 1}.` }];
     for (const a of archivos) contenido.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: await base64De(supabase, a.ruta) } });
-    const r = await claude({ sistema: EXTRACTOR, contenido, maxTokens: 9000 });
-    sumar(t, r.uso);
-    if (!r.json || !r.json.inventario) {
-      await guardarDiagnostico(supabase, t, "diagnostico_extraer", r);
-      throw new Error(`El extractor no devolvió inventario (${r.parada ?? "sin motivo"}, ${(r.texto ?? "").length} caracteres)`);
+    let r: Respuesta;
+    try {
+      r = await claude({ sistema: EXTRACTOR, contenido, maxTokens: 16000, previo: segunda?.previo, etiqueta: `extraer ${rango}` });
+    } catch (e) {
+      // Si la llamada se pasa de tiempo dos veces con el mismo rango, se parte o se marca sin leer. Los demás errores del
+      // API (saturado, sin saldo) siguen el reintento normal del trabajo.
+      const tiempo = (e as Error).name === "TimeoutError" || /timed out|abort/i.test((e as Error).message ?? "");
+      const veces = Number(D.tiempos_agotados?.[rango] ?? 0) + 1;
+      if (!tiempo || veces < 2) {
+        if (tiempo) { D.tiempos_agotados = { ...(D.tiempos_agotados ?? {}), [rango]: veces }; await guardar(supabase, t, { datos: D }); }
+        throw e;
+      }
+      partirOMarcar(D, "se pasó de tiempo");
+      return await avanzar();
     }
-    D.inventarios = D.inventarios ?? []; D.inventarios[i] = r.json;
-    const sig = i + 1 < lotes ? `extraer:${i + 1}` : "unir";
-    await guardar(supabase, t, { datos: D, progreso: { pct: 5 + Math.round(25 * (i + 1) / lotes), mensaje: `Leyendo tus fotos 📖 (${Math.min(total, (i + 1) * FOTOS_POR_LOTE)} de ${total})`, paso: sig }, paso: sig, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
-    return sig;
+    sumar(t, r.uso);
+    const j = r.json && typeof r.json === "object" ? r.json : null;
+    const leido = j && (j.inventario && typeof j.inventario === "object" || j.estado === "no_es_material_de_estudio") ? { inventario: {}, ...j } : null;
+    if (leido && r.parada !== "max_tokens") {
+      D.inventarios.push(leido); D.pendientes.shift(); delete D.reintento;
+      return await avanzar();
+    }
+    await diagnosticar(supabase, t, `extraer ${rango}`, r);
+    if (r.parada === "max_tokens" && hasta - desde > 1) {
+      // Se cortó por largo: el rango se parte en dos y se lee por mitades.
+      delete D.reintento; partirOMarcar(D, "");
+      return await avanzar();
+    }
+    if (leido) {
+      // Una sola foto que se cortó: se usa lo que alcanzó a leer (JSON reparado).
+      D.inventarios.push({ ...leido, estado: "parcial", nota: "Lectura cortada por largo; se usa lo que alcanzó a leer." });
+      D.pendientes.shift(); delete D.reintento;
+      return await avanzar();
+    }
+    if (!segunda && r.parada !== "refusal" && r.texto.trim()) {
+      // Segunda oportunidad: se le muestra lo que contestó y se le pide solo el JSON.
+      D.reintento = { rango, previo: r.texto.trim().slice(0, 40000) };
+      return await avanzar();
+    }
+    // Ni así: se parte el rango; si ya es una sola foto, se marca como no leída y la guía sigue con las demás.
+    delete D.reintento; partirOMarcar(D, r.parada === "refusal" ? "rechazada por el filtro de seguridad" : "sin JSON válido");
+    return await avanzar();
   }
 
   if (t.paso === "unir") {
@@ -185,16 +262,27 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
   }
 
   if (t.paso === "planear") {
-    const contenido = [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${nivel} · idioma del alumno ${fuente.idioma_alumno ?? "es"} · fotos subidas ${total} · materia indicada ${fuente.materia} · tipo de material ${JSON.stringify(D.tipo_material)}.\n\nINVENTARIO:\n${JSON.stringify(D.inventario)}` }];
-    // El plan sale con un esquema JSON obligatorio (structured outputs) y con esfuerzo bajo: el pensamiento de la IA
-    // cuenta dentro de max_tokens y, con esfuerzo medio, el plan se cortaba o salía con un JSON que no se podía leer.
-    const r = await claude({ sistema: PLANIFICADOR, contenido, esquema: ESQUEMA_PLAN, esfuerzo: "low", maxTokens: 16000 });
-    sumar(t, r.uso);
-    const plan = r.json?.bloques?.length ? r.json : r.json?.plan?.bloques?.length ? r.json.plan : null;
-    if (!plan) {
-      await guardarDiagnostico(supabase, t, "diagnostico_plan", r);
-      throw new Error(`El planificador no devolvió bloques (${r.parada ?? "sin motivo"}, ${(r.texto ?? "").length} caracteres)`);
+    const n = D.intento_ia?.paso === "planear" ? Number(D.intento_ia.n) || 0 : 0;
+    let plan: any = null;
+    if (n < 2) {
+      const contenido = [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${nivel} · idioma del alumno ${fuente.idioma_alumno ?? "es"} · fotos subidas ${total} · materia indicada ${fuente.materia} · tipo de material ${JSON.stringify(D.tipo_material)}.\n\nINVENTARIO:\n${JSON.stringify(D.inventario)}` }];
+      // El plan sale con un esquema JSON obligatorio (structured outputs) y con esfuerzo bajo: el pensamiento de la IA
+      // cuenta dentro de max_tokens. Segundo intento: tope mayor si se cortó, o se le muestra su respuesta si no fue JSON.
+      const cortado = n === 1 && D.intento_ia?.motivo === "max_tokens";
+      const r = await claude({ sistema: PLANIFICADOR, contenido, esquema: ESQUEMA_PLAN, esfuerzo: "low", maxTokens: cortado ? 24000 : 16000, previo: n === 1 && !cortado ? D.intento_ia?.previo : undefined, etiqueta: "planear" });
+      sumar(t, r.uso);
+      plan = r.parada !== "max_tokens" || n === 1 ? planDe(r.json) : null;
+      if (!plan) {
+        D.intento_ia = { paso: "planear", n: n + 1, motivo: r.parada === "max_tokens" ? "max_tokens" : "sin_json", previo: r.texto.trim().slice(0, 40000) || undefined };
+        await diagnosticar(supabase, t, "planear", r);
+        return "planear";
+      }
+    } else {
+      // Tercer intento: el plan lo arma el código con el inventario, para que siempre salga una guía.
+      plan = planPorCodigo(D, fuente);
+      console.warn("Plan armado por código", t.id);
     }
+    delete D.intento_ia;
     // Solo se quedan los ids que existen en el inventario (si un bloque se queda sin ids, el Generador recibe todo).
     const idsValidos = new Set(Object.values(D.inventario as Record<string, any[]>).flat().map((e: any) => e?.id));
     plan.bloques = plan.bloques.slice(0, 5).map((pb: any, i: number) => ({ ...pb, id: pb.id || `b${i + 1}`, juegos: pb.juegos ?? {}, ids_inventario: (Array.isArray(pb.ids_inventario) ? pb.ids_inventario : []).filter((x: unknown) => idsValidos.has(x)) }));
@@ -212,19 +300,34 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
     const invBloque: Record<string, any[]> = {};
     for (const [k, lista] of Object.entries(D.inventario as Record<string, any[]>)) { const sel = ids.size ? lista.filter((e) => ids.has(e.id)) : lista; if (sel.length) invBloque[k] = sel; }
     if (!Object.keys(invBloque).length) Object.assign(invBloque, D.inventario);
+    const n = D.intento_ia?.paso === t.paso ? Number(D.intento_ia.n) || 0 : 0;
+    const cortado = n > 0 && D.intento_ia?.motivo === "max_tokens";
+    // Si la respuesta anterior se cortó por largo, se pide la mitad de los juegos (respuesta más corta).
+    const pbPedido = cortado ? { ...pb, juegos: mitad(pb.juegos), mini_examen: Math.min(4, Number(pb.mini_examen) || 6) } : pb;
     const sistema = GENERADOR.replaceAll("{idioma_guia}", plan.idioma_guia ?? "es").replaceAll("{perfil_edad}", plan.perfil_edad ?? "juvenil");
-    const contenido = [{ type: "text", text: `Datos: nivel ${nivel} · perfil ${plan.perfil_edad} · idioma de la guía ${plan.idioma_guia} · apoyo ${JSON.stringify(plan.apoyo)}\nPlan del bloque: ${JSON.stringify(pb)}\nInventario del bloque: ${JSON.stringify(invBloque)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
+    const contenido = [{ type: "text", text: `Datos: nivel ${nivel} · perfil ${plan.perfil_edad} · idioma de la guía ${plan.idioma_guia} · apoyo ${JSON.stringify(plan.apoyo)}\nPlan del bloque: ${JSON.stringify(pbPedido)}\nInventario del bloque: ${JSON.stringify(invBloque)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
     // Esfuerzo bajo y tope amplio: el pensamiento de la IA cuenta dentro de max_tokens. Con esfuerzo medio pensaba
     // ~15 000 tokens y el bloque salía cortado (max_tokens con solo ~3 700 caracteres de JSON).
-    const r = await claude({ sistema, contenido, esfuerzo: "low", maxTokens: 16000 });
+    const r = await claude({ sistema, contenido, esfuerzo: "low", maxTokens: 16000, previo: n > 0 && !cortado ? D.intento_ia?.previo : undefined, etiqueta: `generar ${bi + 1}` });
     sumar(t, r.uso);
-    if (!r.json?.pistas) {
-      await guardarDiagnostico(supabase, t, "diagnostico_generar", r);
-      throw new Error(`El generador no devolvió el bloque ${bi + 1} (${r.parada ?? "sin motivo"}, ${(r.texto ?? "").length} caracteres)`);
+    const completo = Array.isArray(r.json?.pistas) && r.parada !== "max_tokens";
+    // Tercer intento: si aun así se cortó, se usa lo que alcanzó a escribir (JSON reparado) con tal de que traiga pistas.
+    const parcial = !completo && n >= 2 && Array.isArray(r.json?.pistas) && r.json.pistas.length > 0;
+    if (!completo && !parcial) {
+      if (n >= 2) {
+        // Se acabó la escalera: el reintento normal del trabajo la empieza de nuevo (hasta 3 veces).
+        delete D.intento_ia;
+        await diagnosticar(supabase, t, `generar ${bi + 1}`, r);
+        throw new Error(`El generador no devolvió el bloque ${bi + 1} (${r.parada ?? "sin motivo"}, ${r.texto.length} caracteres)`);
+      }
+      D.intento_ia = { paso: t.paso, n: n + 1, motivo: r.parada === "max_tokens" ? "max_tokens" : "sin_json", previo: r.texto.trim().slice(0, 40000) || undefined };
+      await diagnosticar(supabase, t, `generar ${bi + 1}`, r);
+      return t.paso;
     }
+    delete D.intento_ia;
     const b = r.json;
     const tipoDe = (a: any) => a.tipo ?? (Array.isArray(a.opciones) ? "opcion_multiple" : a.afirmacion !== undefined ? "verdadero_falso" : "completar");
-    D.bloques[bi] = { id: pb.id ?? `b${bi + 1}`, titulo: pb.titulo, pistas: (b.pistas ?? []).map((p: any, k: number) => ({ ...p, id: p.id ?? `${pb.id ?? "b" + (bi + 1)}p${k + 1}` })), actividades: aplanar(b.actividades), mini_examen: (b.mini_examen ?? []).map((a: any, k: number) => ({ ...a, tipo: tipoDe(a), id: a.id ?? `${pb.id ?? "b" + (bi + 1)}me${k + 1}` })) };
+    D.bloques[bi] = { id: pb.id ?? `b${bi + 1}`, titulo: pb.titulo, ...(cortado ? { reducido: true } : {}), ...(parcial ? { parcial: true } : {}), pistas: (b.pistas ?? []).map((p: any, k: number) => ({ ...p, id: p.id ?? `${pb.id ?? "b" + (bi + 1)}p${k + 1}` })), actividades: aplanar(b.actividades), mini_examen: (b.mini_examen ?? []).map((a: any, k: number) => ({ ...a, tipo: tipoDe(a), id: a.id ?? `${pb.id ?? "b" + (bi + 1)}me${k + 1}` })) };
     const ultimoVp = t.alcance === "vista_previa";
     let sig: string;
     if (ultimoVp) sig = "armar";
@@ -255,8 +358,9 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
     const sistema = REPARADOR;
     const contenido = [{ type: "text", text: `Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n")}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => b.actividades.map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
     try {
-      const r = await claude({ sistema, contenido, maxTokens: 8000 });
+      const r = await claude({ sistema, contenido, esfuerzo: "low", maxTokens: 16000, etiqueta: "reparar" });
       sumar(t, r.uso);
+      if (!r.json?.actividades_nuevas) await diagnosticar(supabase, t, "reparar", r);
       const nuevas = aplanar(r.json?.actividades_nuevas);
       const citas: string[] = D.citas ?? [];
       const okNuevas = nuevas.filter((a: any) => revisarActividad(a, citas, nivel, [], "r"));
@@ -275,8 +379,9 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
       const bloquesResumen = (D.bloques as any[]).map((b) => ({ id: b.id, pistas: b.pistas.map((p: any) => ({ id: p.id, titulo: p.titulo, ideas: p.ideas })), actividades: [...b.actividades, ...b.mini_examen].map((a: any) => ({ id: a.id, tipo: a.tipo, pregunta: a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.texto ?? a.instruccion, respuesta: a.opciones ? a.opciones[a.correcta] : a.respuesta ?? (a.es_verdadera !== undefined ? String(a.es_verdadera) : undefined), pares: a.pares, pasos: a.pasos?.map((p: any) => p.texto), grupos: a.grupos, elementos: a.elementos })) }));
       const sospechas = Object.values(D.inventario as Record<string, any[]>).flat().filter((e: any) => e?.motivo);
       const contenido = [{ type: "text", text: `Idioma: ${plan.idioma_guia}. Materia: ${plan.materia}. Grado: ${fuente.grado}. Tipos de foto: ${JSON.stringify(tipos)}. ${hayApuntes ? "Hay apuntes a mano o pizarrón: verifica las afirmaciones clave." : "Es libro impreso: verifica solo lo dudoso."}\nSospechas del extractor: ${JSON.stringify(sospechas)}\n\nCONTENIDO A VERIFICAR:\n${JSON.stringify(bloquesResumen)}` }];
-      const r = await claude({ sistema: VERIFICADOR, contenido, maxTokens: 8000, herramientas: [{ type: "web_search_20260209", name: "web_search", max_uses: hayApuntes ? 10 : 4, allowed_domains: DOMINIOS_CONFIABLES }] });
+      const r = await claude({ sistema: VERIFICADOR, contenido, maxTokens: 16000, herramientas: [{ type: "web_search_20260209", name: "web_search", max_uses: hayApuntes ? 10 : 4, allowed_domains: DOMINIOS_CONFIABLES }], etiqueta: "verificar" });
       sumar(t, r.uso);
+      if (!Array.isArray(r.json?.resultados)) await diagnosticar(supabase, t, "verificar", r);
       for (const res of r.json?.resultados ?? []) {
         reporte.push(res);
         const id = String(res.actividad ?? "");
@@ -342,6 +447,63 @@ export function aplanar(obj: any): any[] {
   const out: any[] = [];
   for (const [tipo, lista] of Object.entries(obj)) for (const a of (lista as any[]) ?? []) if (a && typeof a === "object") out.push({ ...a, tipo: a.tipo ?? tipo });
   return out;
+}
+
+// ---------- Respaldos para que siempre salga una guía ----------
+function rangos(desde: number, total: number): number[][] {
+  const out: number[][] = [];
+  for (let i = desde; i < total; i += FOTOS_POR_LOTE) out.push([i, Math.min(total, i + FOTOS_POR_LOTE)]);
+  return out;
+}
+// Parte en dos el primer rango pendiente; si ya es de una sola foto, la marca como no leída (la guía sigue con las
+// demás y solo falla si no se pudo leer ninguna).
+function partirOMarcar(D: any, motivo: string) {
+  const [desde, hasta] = D.pendientes.shift() as number[];
+  if (hasta - desde > 1) { const m = desde + Math.ceil((hasta - desde) / 2); D.pendientes.unshift([desde, m], [m, hasta]); return; }
+  D.no_leidas = [...(Array.isArray(D.no_leidas) ? D.no_leidas : []), desde + 1];
+  D.inventarios.push({ fotos: [{ indice: desde + 1, legible: false, motivo }], estado: "ilegible", inventario: {} });
+}
+const mitad = (juegos: Record<string, unknown> | undefined) => Object.fromEntries(Object.entries(juegos ?? {}).map(([k, v]) => [k, Math.ceil((Number(v) || 0) / 2)]));
+// Un plan sirve si trae al menos un bloque con título.
+function planDe(j: any): any {
+  const p = Array.isArray(j?.bloques) ? j : Array.isArray(j?.plan?.bloques) ? j.plan : null;
+  const bloques = (p?.bloques ?? []).filter((b: any) => b && typeof b === "object" && typeof b.titulo === "string" && b.titulo.trim());
+  return bloques.length ? { ...p, bloques, identidad: { ...(p.identidad ?? {}) } } : null;
+}
+function perfilDe(grado: string): string {
+  const g = String(grado ?? "").toLowerCase(); const n = Number((g.match(/\d/) ?? ["0"])[0]);
+  if (g.includes("primaria")) return n <= 3 ? "infantil" : "caricatura";
+  if (g.includes("secundaria")) return n <= 1 ? "caricatura" : "juvenil";
+  return "sobrio";
+}
+function paletaDe(materia: string): string {
+  const m = String(materia ?? "").toLowerCase().normalize("NFD").replace(/[^a-z ]/g, "");
+  const reglas: [RegExp, string][] = [[/histor/, "historia_azul"], [/espanol|lengua|literatura|lectura/, "espanol_rojo"], [/mate|algebra|geometr|calculo/, "mate_naranja"], [/cienc|quimic|fisic|biolog/, "ciencias_verde"], [/frances|french/, "frances_cielo"], [/civic|etica/, "civica_morado"], [/ingles|english/, "ingles_mostaza"], [/geograf/, "geo_turquesa"]];
+  return reglas.find(([re]) => re.test(m))?.[1] ?? "otra";
+}
+// Plan de respaldo armado por código cuando la IA no devolvió un plan válido: hasta 3 bloques en el orden de las fotos,
+// con juegos sencillos.
+function planPorCodigo(D: any, fuente: { grado: string; materia: string }): any {
+  const inv = (D.inventario ?? {}) as Record<string, any[]>;
+  const temas = (inv.temas ?? []) as any[];
+  const elementos = Object.entries(inv).filter(([k]) => !["sospechas", "recursos_mencionados", "formato_examen"].includes(k)).flatMap(([, l]) => Array.isArray(l) ? l : []).filter((e: any) => e?.id).sort((a: any, b: any) => (Number(a.foto) || 0) - (Number(b.foto) || 0));
+  const nb = Math.max(1, Math.min(3, Math.ceil(elementos.length / 25)));
+  const tam = Math.max(1, Math.ceil(elementos.length / nb));
+  const idiomas = (D.fotos ?? []).map((f: any) => f?.idioma);
+  const idioma = ["es", "en", "fr"].sort((a, b) => idiomas.filter((x: string) => x === b).length - idiomas.filter((x: string) => x === a).length)[0];
+  const extranjera = /ingl|franc|english|french/i.test(fuente.materia ?? "");
+  const corto = (s: unknown) => String(s ?? "").slice(0, 70);
+  const bloques = Array.from({ length: nb }, (_, i) => {
+    const parte = elementos.slice(i * tam, (i + 1) * tam);
+    const titulos = parte.filter((e: any) => temas.includes(e)).map((e: any) => corto(e.texto)).filter(Boolean);
+    return { id: `b${i + 1}`, titulo: titulos[0] || `Parte ${i + 1}`, temas: titulos.slice(0, 4), ids_inventario: parte.map((e: any) => e.id), pistas: titulos.slice(0, 3), slides_teoria: 1, juegos: { opcion_multiple: 6, completar: 3, verdadero_falso: 4, super_dato: 0, conceptos: 0, ordenar: 0, clasificar: 0, quien_es_quien: 0 }, formato_practica: null, mini_examen: 6 };
+  });
+  return {
+    materia: fuente.materia, es_lengua_extranjera: extranjera, idioma_guia: idioma, apoyo: extranjera && idioma !== "es" ? { idioma: "es", formato: "linea_corta" } : null,
+    camino: "convertir", temas_a_investigar: [], presupuesto_slides: 20, perfil_edad: perfilDe(fuente.grado), plantillas_sugeridas: [],
+    identidad: { paleta: paletaDe(fuente.materia), titulo: `${fuente.materia}: tu guía de estudio`, subtitulo: fuente.grado, emojis_portada: ["📘", "✏️", "🧠"], objetivos: temas.slice(0, 3).map((e: any) => corto(e.texto)).filter(Boolean), retratos_portada: [] },
+    puntos_dificiles: [], bloques, reto_final: 15, inventario_no_usado: [], nota_planificador: "Plan armado por código: la IA no devolvió un plan válido.",
+  };
 }
 
 // Revisiones por código (Documento 1, sección 6). Devuelve true si la actividad sirve.

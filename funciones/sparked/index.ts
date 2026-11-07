@@ -122,7 +122,8 @@ async function correrPaso(id: string) {
     const fuente = await fuenteDe(t);
     const sig = await ejecutarPaso(supabase as any, t, fuente);
     if (sig === null) await alFinalizar(t);
-    else { await supabase.from("trabajos").update({ estado: "pendiente", actualizado_en: ahora() }).eq("id", id); disparar(id); }
+    // Cada paso que sale bien vuelve a tener sus 3 intentos (antes se acumulaban en todo el trabajo).
+    else { await supabase.from("trabajos").update({ estado: "pendiente", intentos: 0, actualizado_en: ahora() }).eq("id", id); disparar(id); }
   } catch (e) {
     const msg = (e as Error).message ?? String(e);
     console.error("Paso falló", id, t.paso, msg);
@@ -166,7 +167,7 @@ async function alFinalizar(t: Trabajo) {
     const { data: g, error: e } = await supabase.from("guias").insert({
       ...base, estado: "borrador", origen: "personalizada", colegio_id: borrador?.colegio_id ?? null, grado: borrador?.grado ?? null, materia: borrador?.materia ?? null,
       borrador_id: t.borrador_id, costo_mxn: costoMxn.toFixed(2),
-      reporte: { etapa: "vista_previa", costo_usd: Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, bloques_plan: plan.bloques_plan?.length ?? 0 },
+      reporte: { etapa: "vista_previa", costo_usd: Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, bloques_plan: plan.bloques_plan?.length ?? 0, paginas_no_leidas: D.no_leidas ?? [] },
     }).select("id").single();
     if (e) throw e;
     await supabase.from("borradores").update({ estado: "vista_previa", guia_id: g.id }).eq("id", t.borrador_id);
@@ -350,7 +351,7 @@ async function enviarCorreo(compra: any, titulo: string, link: string, expira: s
       <p><a href="${esc(link)}" style="display:inline-block;background:#FFD400;color:#1b1b1f;padding:12px 18px;border-radius:10px;font-weight:800;text-decoration:none">▶ Abrir la guía</a></p>
       <p style="font-size:13px;color:#555;word-break:break-all">Si el botón no abre, copia este link: ${esc(link)}</p>
       <div style="background:#fff8d6;border-left:4px solid #FFD400;padding:10px 12px;border-radius:8px;font-size:14px">
-        <b>Cómo funciona tu acceso</b><ul style="margin:6px 0 0;padding-left:18px"><li>Vale <b>${DIAS_ACCESO} días</b>: hasta el ${esc(fecha)}.</li><li>Acepta <b>${APARATOS} aparatos</b> (por ejemplo tu celular y el iPad del alumno). Al tercero le aparece "Acceso en uso en otros aparatos".</li><li>Es de tu familia: no lo compartas en otros chats.</li></ul></div>
+        <b>Cómo funciona tu acceso</b><ul style="margin:6px 0 0;padding-left:18px"><li>Vale <b>${DIAS_ACCESO} días de acceso ilimitado a tu guía</b>: hasta el ${esc(fecha)}.</li><li>Acepta <b>${APARATOS} dispositivos</b> (por ejemplo tu celular y el iPad del alumno). El tercer dispositivo ve el aviso "Acceso en uso en otros dispositivos".</li><li>Es de tu familia: no lo compartas en otros chats.</li></ul></div>
       <p style="font-size:12px;color:#888">Folio ${esc(String(compra.id).slice(0, 8).toUpperCase())} · $${esc(compra.monto_mxn)} MXN IVA incluido</p>
     </div></div>`;
   const enviar = (to: string, subject: string, cuerpo: string) => fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ from: cfg.sparked_correo_remitente, to: [to], subject, html: cuerpo }) }).then(async (r) => { if (!r.ok) console.warn("Resend", r.status, (await r.text()).slice(0, 200)); });
