@@ -291,14 +291,18 @@ moderno).
   escalador (Sparky compacto), 15 íconos y las cuatro escenas (ciudad synthwave, montaña con plataformas, castillo,
   planeta). Contorno #2A2340, dos tonos por volumen, brillo pequeño, sombra elíptica en el piso.
 - Las escenas se dibujan con degradados y capas con id (edificios lejanos, cercanos y rayas) para moverse en bucle.
-- Sparky 2.0 (referencia de Daniel, 6 de noviembre en la noche: un astronauta chaparrito y tierno): casco grande con
-  visor oscuro y **la cara hecha de luces LED**: ojos, boca y dos cachetes rosas que se encienden distinto en cada
-  expresión (quieto: ojos redondos y sonrisa; saludo: ojos felices ^ ^; festejo: ojos de estrella y boca abierta;
-  triste: luz azul tenue, cejas caídas y lágrima, sin cachetes; pensando: un ojo entrecerrado, mano en el visor y «?»).
-  Los ojos parpadean cada pocos segundos. Traje blanco con sombra lavanda (#DCD3F2), visor #1E1A3A, LED #7DF9FF,
-  cachetes #FF8FB1, bandas y guantes coral #FF7A59, chispa durazno #FFB347 en la antena, mochila, pecho y botas
-  morados (#6D28D9 / #4C1D95), contorno #2A2340. El escalador de montaña y puertas es el mismo Sparky en chico.
-  Hoja de personaje para revisarlo: `sparked/sparky.html`.
+- Sparky 2.1 (referencia de Daniel, 6 de noviembre en la noche: un astronauta chaparrito "detallado, con sus
+  rayitas retro, pero sin pixeles, y con identidad robótica"): casco grande con visera y audífonos laterales, visor
+  oscuro con **la cara hecha de luces LED** (ojos, boca y dos cachetes rosas que se encienden distinto en cada
+  expresión: quieto, saludo ^ ^, festejo con ojos de estrella, triste en azul tenue con cejas caídas y lágrima,
+  pensando con un ojo entrecerrado, la mano en el visor y «?»; los ojos parpadean). Traje crema con todos los
+  detalles del traje de la foto, en vector: hombreras, panel de pecho amarillo con botones y pantallita, cinturón
+  naranja con hebilla, costuras, bolsillo, articulaciones grises con rayitas, reloj en la muñeca, guantes naranja,
+  botas con suela y hebilla, mochila gris con luz roja y tanques, anillo del cuello y chispa amarilla en la antena.
+  Las sombras (gris lavanda) llevan rayitas finas como impresión retro y el visor, líneas de pantalla tenues.
+  Colores: crema #FBF7EE, sombra #DAD8E8, visor #1A1733, LED #7DF9FF, cachetes #FF8FB1, naranja #FF7A3D, amarillo
+  #FFC247, gris #9CA2B8 / #636A86, luz roja #FF4D5E, contorno #2A2340. El escalador de montaña y puertas es el mismo
+  Sparky en chico. Hoja de personaje para revisarlo: `sparked/sparky.html`.
 
 **Mecánicas "videojuego actual" (en `sparked/js/juegos.js`).**
 - Carrera: los coches corren todo el tiempo (rayas y edificios en parallax), acierto = acelerón y rebase suave,

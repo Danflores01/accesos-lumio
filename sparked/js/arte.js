@@ -15,10 +15,13 @@ const envoltura = (w, h, escala, clase, inner, extra = "") => `<svg class="vec $
 const grupo = (dx, dy, inner, extra = "") => `<g transform="translate(${dx} ${dy})" ${extra}>${inner}</g>`;
 
 // ---------- Sparky, el astronauta-robot (16 × 20) ----------
-// Versión 2 (6 nov 2026, referencia de Daniel: astronauta chaparrito y tierno). La cara son luces LED sobre el visor:
-// los ojos, la boca y dos cachetes rosas se encienden distinto en cada expresión. Traje blanco con sombra lavanda,
-// mochila, botas y pecho morados, bandas coral y durazno, guantes coral y una chispa en la antena (la "spark" de SparkEd).
-const S = { luz: "#FFFFFF", sombra: "#DCD3F2", visor: "#1E1A3A", led: "#7DF9FF", ledSuave: "#5BB8FF", cachete: "#FF8FB1", coral: "#FF7A59", durazno: "#FFB347", morado: "#6D28D9", moradoOscuro: "#4C1D95" };
+// Versión 2.1 (6 nov 2026, referencia de Daniel: astronauta chaparrito, detallado y con "rayitas" retro, sin pixeles).
+// La cara son luces LED sobre el visor: ojos, boca y cachetes se encienden distinto en cada expresión. El traje es crema
+// con sombra gris-lavanda rayada (como impresión retro), franjas y guantes naranja, panel de pecho amarillo, hombreras,
+// articulaciones con rayitas, reloj en la muñeca, bolsillo, botas con suela y hebilla, mochila gris con luz roja y
+// tanques, anillo del cuello, visera sobre el visor y una chispa en la antena (la "spark" de SparkEd).
+const S = { luz: "#FBF7EE", sombra: "#DAD8E8", costura: "#B9B4D0", gris: "#9CA2B8", grisOscuro: "#636A86", naranja: "#FF7A3D", amarillo: "#FFC247", rojo: "#FF4D5E", visor: "#1A1733", led: "#7DF9FF", ledSuave: "#5BB8FF", cachete: "#FF8FB1" };
+const RAYAS = `<defs><pattern id="sk-rayas" width="1" height=".6" patternUnits="userSpaceOnUse"><rect width="1" height=".2" fill="#2A2340" opacity=".13"/></pattern><pattern id="sk-scan" width="1" height=".5" patternUnits="userSpaceOnUse"><rect width="1" height=".16" fill="#fff" opacity=".07"/></pattern></defs>`;
 const chispa = (cx, cy, R, r, fill, sw = .3) => { const k = r * Math.SQRT1_2; return `<path d="M${cx} ${cy - R} L${cx + k} ${cy - k} L${cx + R} ${cy} L${cx + k} ${cy + k} L${cx} ${cy + R} L${cx - k} ${cy + k} L${cx - R} ${cy} L${cx - k} ${cy - k} Z" fill="${fill}" ${o(sw)}/>`; };
 const ojoLed = (x, y, w, h, color) => `<g class="led-ojo"><rect x="${x - .35}" y="${y - .35}" width="${w + .7}" height="${h + .7}" rx="${h / 2}" fill="${color}" opacity=".28"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.min(w, h) * .4}" fill="${color}"/></g>`;
 const bocaLed = (d, color, sw = .5) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -31,46 +34,70 @@ function caraLed(pose) {
   if (pose === "pensando") return `${ojoLed(5.9, 4.9, 1.5, 2, S.led)}<rect x="8.6" y="5.55" width="1.5" height=".65" rx=".32" fill="${S.led}"/>${bocaLed("M7.3 7.7 l1.4 -.35", S.led)}${cachetes()}`;
   return `${ojoLed(5.9, 4.9, 1.5, 2, S.led)}${ojoLed(8.6, 4.9, 1.5, 2, S.led)}${bocaLed("M7.1 7.5 q.9 .85 1.8 0", S.led)}${cachetes()}`;
 }
-const brazo = (x, y, rot, cx, cy) => `<g transform="rotate(${rot} ${cx} ${cy})"><rect x="${x}" y="${y}" width="2.3" height="4.9" rx="1.15" fill="${S.luz}" ${o(.5)}/><rect x="${x}" y="${y + 1.3}" width="2.3" height=".9" fill="${S.coral}" ${o(.3)}/></g>`;
-const guante = (cx, cy) => `<circle cx="${cx}" cy="${cy}" r="1.15" fill="${S.coral}" ${o(.45)}/><ellipse cx="${cx - .35}" cy="${cy - .4}" rx=".4" ry=".25" fill="#fff" opacity=".55"/>`;
+// Brazo articulado: hombro-brazo con franja naranja, articulación gris con rayita, antebrazo (con reloj si se pide) y
+// guante naranja. Gira alrededor del hombro, así que el guante siempre queda en la punta.
+const brazo = (x, y, rot, reloj) => `<g transform="rotate(${rot} ${x + 1.15} ${y + .2})">
+  <rect x="${x}" y="${y}" width="2.3" height="2.3" rx="1" fill="${S.luz}" ${o(.5)}/>
+  <rect x="${x}" y="${y + .95}" width="2.3" height=".75" fill="${S.naranja}" ${o(.3)}/>
+  <rect x="${x + .15}" y="${y + 2.15}" width="2" height=".85" fill="${S.sombra}" ${o(.4)}/>
+  <line x1="${x + .45}" y1="${y + 2.58}" x2="${x + 1.85}" y2="${y + 2.58}" stroke="${S.costura}" stroke-width=".2"/>
+  <rect x="${x + .1}" y="${y + 2.85}" width="2.1" height="1.75" rx=".8" fill="${S.luz}" ${o(.5)}/>
+  ${reloj ? `<rect x="${x + .35}" y="${y + 3.55}" width="1.6" height=".8" rx=".22" fill="${S.grisOscuro}" ${o(.3)}/><rect x="${x + .65}" y="${y + 3.78}" width="1" height=".35" fill="${S.led}"/>` : ""}
+  <circle cx="${x + 1.15}" cy="${y + 5.1}" r="1.15" fill="${S.naranja}" ${o(.45)}/><ellipse cx="${x + .8}" cy="${y + 4.7}" rx=".4" ry=".25" fill="#fff" opacity=".5"/>
+</g>`;
+const pierna = (x) => `
+    <rect x="${x}" y="16" width="2.8" height="2.6" rx="1.1" fill="${S.luz}" ${o(.5)}/>
+    <rect x="${x}" y="16.6" width="2.8" height=".7" fill="${S.naranja}" ${o(.3)}/>
+    <line x1="${x + .5}" y1="17.75" x2="${x + 2.3}" y2="17.75" stroke="${S.costura}" stroke-width=".22"/><line x1="${x + .5}" y1="18.1" x2="${x + 2.3}" y2="18.1" stroke="${S.costura}" stroke-width=".22"/>
+    <rect x="${x - .4}" y="17.9" width="3.6" height="1.4" rx=".65" fill="${S.luz}"/>
+    <rect x="${x - .4}" y="18.75" width="3.6" height=".55" rx=".27" fill="${S.grisOscuro}"/>
+    <rect x="${x - .4}" y="17.9" width="3.6" height="1.4" rx=".65" fill="none" ${o(.45)}/>
+    <rect x="${x + .7}" y="18.15" width=".9" height=".45" rx=".15" fill="${S.gris}" ${o(.25)}/>`;
 function cuerpoSparky(pose) {
-  const brazoIzq = pose === "festejo" ? brazo(1.6, 6.3, 30, 2.75, 8.8) + guante(1.3, 5.5) : brazo(2.1, 10.6, 0, 0, 0) + guante(3.25, 15.6);
-  const brazoDer = pose === "saludo" || pose === "festejo" ? brazo(12.1, 6.3, -30, 13.25, 8.8) + guante(14.7, 5.5)
-    : pose === "pensando" ? "" : brazo(11.6, 10.6, 0, 0, 0) + guante(12.75, 15.6);
+  const festejo = pose === "festejo";
+  const brazoIzq = festejo ? brazo(2.1, 10.9, 160, false) : brazo(2.1, 10.9, 0, true);
+  const brazoDer = pose === "saludo" || festejo ? brazo(11.6, 10.9, -160, false) : pose === "pensando" ? "" : brazo(11.6, 10.9, 0, false);
   // En "pensando" el brazo se dibuja al final, encima del casco: la mano toca el visor.
-  const brazoEncima = pose === "pensando" ? brazo(11.7, 6.7, -18, 12.85, 11) + guante(12, 6.5) : "";
-  const extras = pose === "festejo"
-    ? `${chispa(1.9, 3.2, 1.1, .4, S.durazno)}${chispa(14.4, 2.2, 1.3, .45, S.durazno)}${chispa(13.2, 5.2, .6, .22, S.coral)}`
+  const brazoEncima = pose === "pensando" ? brazo(11.6, 10.9, 169, false) : "";
+  const extras = festejo
+    ? `${chispa(1.9, 3.2, 1.1, .4, S.amarillo)}${chispa(14.4, 2.2, 1.3, .45, S.amarillo)}${chispa(13.2, 5.2, .6, .22, S.naranja)}`
     : pose === "pensando"
       ? `<circle cx="12.3" cy="4.5" r=".45" fill="${S.visor}" ${o(.3)}/><circle cx="11.6" cy="5.4" r=".3" fill="${S.visor}" ${o(.3)}/><circle cx="13.7" cy="2.4" r="1.7" fill="${S.visor}" ${o(.4)}/><text x="13.7" y="3.25" font-size="2.4" font-weight="800" text-anchor="middle" fill="${S.led}" font-family="Outfit, Arial, sans-serif">?</text>`
       : "";
   const inclinacion = pose === "triste" ? `transform="rotate(8 8 7)"` : "";
-  return `
-    <ellipse cx="8" cy="19.3" rx="5.2" ry=".8" fill="${C.sombra}"/>
-    <rect x="3.3" y="9.4" width="9.4" height="6.6" rx="2" fill="${S.morado}" ${o(.5)}/>
-    <rect x="3.6" y="13.6" width="8.8" height="2.1" rx="1.2" fill="${S.moradoOscuro}"/>
+  return `${RAYAS}
+    <ellipse cx="8" cy="19.35" rx="5.4" ry=".62" fill="${C.sombra}"/>
+    <rect x="3.3" y="8.5" width="1.2" height="1.4" rx=".5" fill="${S.grisOscuro}" ${o(.4)}/><rect x="11.5" y="8.5" width="1.2" height="1.4" rx=".5" fill="${S.grisOscuro}" ${o(.4)}/>
+    <rect x="3" y="9.4" width="10" height="6.8" rx="1.8" fill="${S.gris}" ${o(.5)}/>
+    <rect x="3.3" y="14" width="9.4" height="1.9" rx="1" fill="${S.grisOscuro}"/>
+    <rect x="12" y="10.2" width=".6" height="1.5" rx=".25" fill="${S.rojo}"/><rect x="11.8" y="10" width="1" height="1.9" rx=".4" fill="${S.rojo}" opacity=".35"/>
+    ${pierna(4.6)}${pierna(8.6)}
     ${brazoIzq}${brazoDer}
-    <rect x="4" y="10.2" width="8" height="6.4" rx="2.2" fill="${S.luz}"/>
-    <rect x="4" y="13.9" width="8" height="2.7" rx="1.6" fill="${S.sombra}"/>
-    <rect x="4" y="13.3" width="8" height=".9" fill="${S.coral}" ${o(.3)}/>
-    <rect x="4" y="10.2" width="8" height="6.4" rx="2.2" fill="none" ${o(.6)}/>
-    <rect x="6.3" y="11" width="3.4" height="2" rx=".6" fill="${S.morado}" ${o(.4)}/>
-    <circle cx="7.1" cy="12" r=".36" fill="${S.coral}"/><circle cx="8.1" cy="12" r=".36" fill="${S.durazno}"/><rect x="8.85" y="11.55" width=".55" height=".9" rx=".2" fill="${S.led}"/>
-    <rect x="4.7" y="15.8" width="2.7" height="2.8" rx="1.2" fill="${S.luz}" ${o(.5)}/><rect x="8.6" y="15.8" width="2.7" height="2.8" rx="1.2" fill="${S.luz}" ${o(.5)}/>
-    <rect x="4.7" y="16.6" width="2.7" height=".8" fill="${S.coral}" ${o(.3)}/><rect x="8.6" y="16.6" width="2.7" height=".8" fill="${S.coral}" ${o(.3)}/>
-    <rect x="4.3" y="17.6" width="3.4" height="1.7" rx=".8" fill="${S.morado}" ${o(.45)}/><rect x="8.3" y="17.6" width="3.4" height="1.7" rx=".8" fill="${S.morado}" ${o(.45)}/>
-    <rect x="4.8" y="17.9" width="1.2" height=".45" rx=".22" fill="#fff" opacity=".4"/><rect x="8.8" y="17.9" width="1.2" height=".45" rx=".22" fill="#fff" opacity=".4"/>
+    <rect x="3.6" y="10.4" width="8.8" height="6" rx="2" fill="${S.luz}"/>
+    <rect x="3.6" y="13.9" width="8.8" height="2.5" rx="1.5" fill="${S.sombra}"/><rect x="3.6" y="13.9" width="8.8" height="2.5" rx="1.5" fill="url(#sk-rayas)"/>
+    <rect x="3.6" y="13.2" width="8.8" height=".9" fill="${S.naranja}" ${o(.3)}/><rect x="7.4" y="13.05" width="1.2" height="1.2" rx=".2" fill="${S.gris}" ${o(.3)}/>
+    <line x1="4.7" y1="11.3" x2="4.7" y2="12.9" stroke="${S.costura}" stroke-width=".22"/><line x1="11.3" y1="11.3" x2="11.3" y2="12.9" stroke="${S.costura}" stroke-width=".22"/>
+    <rect x="4.4" y="14.5" width="1.7" height="1.1" rx=".25" fill="none" stroke="${S.costura}" stroke-width=".25"/><line x1="4.4" y1="14.85" x2="6.1" y2="14.85" stroke="${S.costura}" stroke-width=".22"/>
+    <rect x="3.6" y="10.4" width="8.8" height="6" rx="2" fill="none" ${o(.6)}/>
+    <ellipse cx="3.9" cy="10.8" rx="1.55" ry="1" fill="${S.luz}" ${o(.45)}/><ellipse cx="12.1" cy="10.8" rx="1.55" ry="1" fill="${S.luz}" ${o(.45)}/>
+    <line x1="2.9" y1="11.05" x2="4.9" y2="11.05" stroke="${S.costura}" stroke-width=".22"/><line x1="11.1" y1="11.05" x2="13.1" y2="11.05" stroke="${S.costura}" stroke-width=".22"/>
+    <rect x="6.4" y="11.1" width="3.6" height="2" rx=".5" fill="${S.amarillo}" ${o(.4)}/>
+    <circle cx="7.1" cy="11.8" r=".33" fill="${S.rojo}" ${o(.2)}/><circle cx="8" cy="11.8" r=".33" fill="${S.grisOscuro}" ${o(.2)}/><circle cx="8.9" cy="11.8" r=".33" fill="${S.led}" ${o(.2)}/>
+    <rect x="6.9" y="12.3" width="2.6" height=".55" rx=".15" fill="${S.visor}"/><rect x="7.1" y="12.48" width="1.3" height=".2" fill="${S.led}"/>
     <g ${inclinacion}>
+      <rect x="5.3" y="9.8" width="5.4" height="1.1" rx=".5" fill="${S.gris}" ${o(.4)}/>
       <line x1="8" y1="1.9" x2="8" y2="1.3" ${o(.5)}/>
-      ${chispa(8, 1, .85, .3, S.durazno)}
-      <rect x="2.9" y="5.2" width="1.4" height="2.6" rx=".7" fill="${S.morado}" ${o(.45)}/><rect x="11.7" y="5.2" width="1.4" height="2.6" rx=".7" fill="${S.morado}" ${o(.45)}/>
-      <circle cx="3.6" cy="6.5" r=".3" fill="${S.coral}"/><circle cx="12.4" cy="6.5" r=".3" fill="${S.coral}"/>
-      <circle cx="8" cy="6.2" r="4.6" fill="${S.sombra}" ${o(.6)}/>
-      <circle cx="7.7" cy="5.8" r="4" fill="${S.luz}"/>
-      <rect x="4.7" y="3.3" width="6.6" height="5.3" rx="2.4" fill="${S.visor}" ${o(.45)}/>
+      ${chispa(8, .95, .85, .3, S.amarillo)}
+      <rect x="2.7" y="5" width="1.4" height="2.7" rx=".6" fill="${S.gris}" ${o(.45)}/><rect x="11.9" y="5" width="1.4" height="2.7" rx=".6" fill="${S.gris}" ${o(.45)}/>
+      <circle cx="3.4" cy="5.85" r=".3" fill="${S.naranja}"/><circle cx="12.6" cy="5.85" r=".3" fill="${S.naranja}"/>
+      <line x1="3" y1="6.65" x2="3.8" y2="6.65" stroke="${S.grisOscuro}" stroke-width=".2"/><line x1="3" y1="7.05" x2="3.8" y2="7.05" stroke="${S.grisOscuro}" stroke-width=".2"/><line x1="12.2" y1="6.65" x2="13" y2="6.65" stroke="${S.grisOscuro}" stroke-width=".2"/><line x1="12.2" y1="7.05" x2="13" y2="7.05" stroke="${S.grisOscuro}" stroke-width=".2"/>
+      <circle cx="8" cy="6.1" r="4.7" fill="${S.sombra}" ${o(.6)}/><circle cx="8" cy="6.1" r="4.7" fill="url(#sk-rayas)"/>
+      <circle cx="7.7" cy="5.7" r="4.1" fill="${S.luz}"/>
+      <rect x="4.7" y="3.4" width="6.6" height="5.3" rx="2.4" fill="${S.visor}" ${o(.45)}/><rect x="4.7" y="3.4" width="6.6" height="5.3" rx="2.4" fill="url(#sk-scan)"/>
       <path d="M5.3 5.2 q.1 -1.3 1.3 -1.5 h1.3 l-2.3 3.6 q-.5 -1 -.3 -2.1 z" fill="#fff" opacity=".12"/>
       ${caraLed(pose)}
-      <ellipse cx="5.7" cy="4.1" rx=".7" ry=".38" fill="#fff" opacity=".55" transform="rotate(-25 5.7 4.1)"/>
+      <rect x="4.4" y="2.75" width="7.2" height=".85" rx=".4" fill="${S.gris}" ${o(.35)}/>
+      <ellipse cx="5.7" cy="4.35" rx=".65" ry=".34" fill="#fff" opacity=".5" transform="rotate(-25 5.7 4.35)"/>
     </g>
     ${brazoEncima}${extras}`;
 }
