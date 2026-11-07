@@ -306,9 +306,19 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
     const pbPedido = cortado ? { ...pb, juegos: mitad(pb.juegos), mini_examen: Math.min(4, Number(pb.mini_examen) || 6) } : pb;
     const sistema = GENERADOR.replaceAll("{idioma_guia}", plan.idioma_guia ?? "es").replaceAll("{perfil_edad}", plan.perfil_edad ?? "juvenil");
     const contenido = [{ type: "text", text: `Datos: nivel ${nivel} · perfil ${plan.perfil_edad} · idioma de la guía ${plan.idioma_guia} · apoyo ${JSON.stringify(plan.apoyo)}\nPlan del bloque: ${JSON.stringify(pbPedido)}\nInventario del bloque: ${JSON.stringify(invBloque)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
-    // Esfuerzo bajo y tope amplio: el pensamiento de la IA cuenta dentro de max_tokens. Con esfuerzo medio pensaba
-    // ~15 000 tokens y el bloque salía cortado (max_tokens con solo ~3 700 caracteres de JSON).
-    const r = await claude({ sistema, contenido, esfuerzo: "low", maxTokens: 16000, previo: n > 0 && !cortado ? D.intento_ia?.previo : undefined, etiqueta: `generar ${bi + 1}` });
+    // Esfuerzo bajo y tope de 20 000 tokens (~80 s a la velocidad medida): el pensamiento de la IA cuenta dentro de
+    // max_tokens, y un bloque de inglés con apoyo en español pasó de 16 000 aun con esfuerzo bajo.
+    let r: Respuesta;
+    try {
+      r = await claude({ sistema, contenido, esfuerzo: "low", maxTokens: 20000, previo: n > 0 && !cortado ? D.intento_ia?.previo : undefined, etiqueta: `generar ${bi + 1}` });
+    } catch (e) {
+      // Si se pasó de tiempo, se trata como respuesta demasiado larga: el siguiente intento pide la mitad de los juegos.
+      const tiempo = (e as Error).name === "TimeoutError" || /timed out|abort/i.test((e as Error).message ?? "");
+      if (!tiempo || n >= 2) throw e;
+      D.intento_ia = { paso: t.paso, n: n + 1, motivo: "max_tokens" };
+      await guardar(supabase, t, { datos: D });
+      return t.paso;
+    }
     sumar(t, r.uso);
     const completo = Array.isArray(r.json?.pistas) && r.parada !== "max_tokens";
     // Tercer intento: si aun así se cortó, se usa lo que alcanzó a escribir (JSON reparado) con tal de que traiga pistas.
