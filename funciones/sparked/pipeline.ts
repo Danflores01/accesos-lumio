@@ -11,7 +11,7 @@ const PRECIO: Record<string, [number, number]> = { [MODELO_HAIKU]: [0.10, 0.50],
 const FOTOS_POR_LOTE = 3; // pocas fotos por llamada para que cada paso termine en menos de 2 minutos
 
 // ---------- Llamada al API de Claude (fetch directo, sin SDK) ----------
-export async function claude(opts: { modelo?: string; sistema: string; contenido: unknown[]; esquema?: unknown; maxTokens?: number; herramientas?: unknown[]; esfuerzo?: string }): Promise<{ json: any; texto: string; uso: { entrada: number; salida: number; costo: number } }> {
+export async function claude(opts: { modelo?: string; sistema: string; contenido: unknown[]; esquema?: unknown; maxTokens?: number; herramientas?: unknown[]; esfuerzo?: string }): Promise<{ json: any; texto: string; parada: string | null; uso: { entrada: number; salida: number; costo: number } }> {
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) throw new Error("Falta configurar ANTHROPIC_API_KEY en los secretos de Supabase");
   const modelo = opts.modelo ?? MODELO_HAIKU;
@@ -43,16 +43,21 @@ export async function claude(opts: { modelo?: string; sistema: string; contenido
   const salida = d.usage?.output_tokens ?? 0;
   const [pe, ps] = PRECIO[modelo] ?? PRECIO[MODELO_HAIKU];
   const costo = (entrada * pe + salida * ps) / 1e6 + (d.usage?.server_tool_use?.web_search_requests ?? 0) * 0.01;
-  return { json: extraerJson(texto), texto, uso: { entrada: Math.round(entrada), salida, costo } };
+  return { json: extraerJson(texto), texto, parada: d.stop_reason ?? null, uso: { entrada: Math.round(entrada), salida, costo } };
 }
 
 export function extraerJson(texto: string): any {
   if (!texto) return null;
-  try { return JSON.parse(texto); } catch { /* sigue */ }
+  const candidatos = [texto];
   const m = texto.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (m) { try { return JSON.parse(m[1]); } catch { /* sigue */ } }
+  if (m) candidatos.push(m[1]);
   const a = texto.indexOf("{"), b = texto.lastIndexOf("}");
-  if (a >= 0 && b > a) { try { return JSON.parse(texto.slice(a, b + 1)); } catch { /* sigue */ } }
+  if (a >= 0 && b > a) candidatos.push(texto.slice(a, b + 1));
+  for (const c of candidatos) {
+    try { return JSON.parse(c); } catch { /* sigue */ }
+    // Reparación común: comas sobrantes antes de } o ].
+    try { return JSON.parse(c.replace(/,\s*([}\]])/g, "$1")); } catch { /* sigue */ }
+  }
   return null;
 }
 
@@ -144,10 +149,18 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
 
   if (t.paso === "planear") {
     const contenido = [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${nivel} · idioma del alumno ${fuente.idioma_alumno ?? "es"} · fotos subidas ${total} · materia indicada ${fuente.materia} · tipo de material ${JSON.stringify(D.tipo_material)}.\n\nINVENTARIO:\n${JSON.stringify(D.inventario)}` }];
-    const r = await claude({ sistema: PLANIFICADOR, contenido, maxTokens: 8000 });
+    const r = await claude({ sistema: PLANIFICADOR, contenido, maxTokens: 16000 });
     sumar(t, r.uso);
-    if (!r.json?.bloques?.length) throw new Error("El planificador no devolvió bloques");
-    D.plan = r.json;
+    const plan = r.json?.bloques?.length ? r.json : r.json?.plan?.bloques?.length ? r.json.plan : null;
+    if (!plan) {
+      // Se guarda qué contestó la IA para poder diagnosticar sin repetir la llamada.
+      const txt = r.texto ?? "";
+      console.error("Planificador sin bloques", JSON.stringify({ parada: r.parada, largo: txt.length, inicio: txt.slice(0, 300), fin: txt.slice(-300) }));
+      D.diagnostico_plan = { parada: r.parada, largo: txt.length, inicio: txt.slice(0, 600), fin: txt.slice(-600), en: new Date().toISOString() };
+      await guardar(supabase, t, { datos: D, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
+      throw new Error(`El planificador no devolvió bloques (${r.parada ?? "sin motivo"}, ${txt.length} caracteres)`);
+    }
+    D.plan = plan;
     D.plan.grado = fuente.grado; D.plan.presupuesto_slides = Math.min(40, D.plan.presupuesto_slides ?? 25);
     D.bloques = [];
     await guardar(supabase, t, { datos: D, paso: "generar:0", progreso: { pct: 40, mensaje: `Escribiendo el bloque 1 de ${D.plan.bloques.length} ✍️`, paso: "generar:0" }, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });

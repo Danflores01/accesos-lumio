@@ -26,7 +26,7 @@ La landing "Bienvenido a SparkEd" ofrece **dos caminos** (libreta de Daniel, 6 n
 3. **Carga:** "Arrastra tu contenido para hacer tu guía". Fotos, PDF, Word, Excel, PowerPoint. Tope: 15 páginas por guía (decidido el 5 nov 2026).
 4. **"Generando tu guía":** pantalla de carga con avance real por pasos ("Leyendo tus apuntes 2 de 4", "Planeando la guía", "Escribiendo el bloque 1"). Dura entre dos y cuatro minutos.
 5. **Vista previa de 3 slides:** portada real, índice real con los bloques y un juego real del bloque 1.
-6. **"Desbloquea tu guía entera":** pago en línea. Precio: 85 MXN con IVA incluido (decidido el 5 nov 2026).
+6. **"Desbloquea tu guía entera":** pago en línea. Precio: 100 MXN con IVA incluido (decidido el 7 nov 2026; del 5 al 7 de nov fue 85).
 7. **Link único:** se crea solo al confirmarse el pago, con el nombre del formulario, 7 días de vigencia y 2 aparatos.
 8. **Guía jugable** en el reproductor. Última slide con "Crea otra guía".
 
@@ -63,29 +63,29 @@ Para la mamá que no quiere ni sabe subir materiales: llena un formulario y comp
 - **El pago confirmado es el conector.** Estados: borrador (sin pago, se borra a las 24 h) → pagada (arrancan los 7 días) → vencida (al día 7 se borran cartucho, fotos y progreso; queda una ficha con nombre, colegio, grado, materia, monto y fecha para cuentas y estadísticas). Renovar después del día 7 significa volver a generar.
 - **Topes contra el abuso:** tres vistas previas al día por teléfono, por correo y por aparato; tope de gasto diario dentro de la función ("vuelve mañana"); límite de gasto mensual en la consola de Anthropic; filtro gratuito contra robots en el formulario.
 - **Fotos subidas:** se borran a los 30 días como máximo, y con la guía al día 7.
-- **Precio decidido: 85 MXN por guía, IVA incluido** (5 nov 2026). Economía por guía vendida, con las comisiones del análisis de costos del 4 nov (confirmar con el contador):
+- **Precio decidido: 100 MXN por guía, IVA incluido** (7 nov 2026; antes 85). Se cobra con Mercado Pago (tarjeta, OXXO y SPEI); Stripe queda dormido. Economía por guía vendida, con las comisiones del análisis de costos del 4 nov (confirmar con el contador):
 
 | Concepto | MXN |
 |---|---|
-| Precio con IVA | 85.00 |
-| IVA (16 %) que se entera al SAT | 11.72 |
-| Base sin IVA | 73.28 |
-| Comisión Stripe (3.6 % + $3 + IVA) | 7.03 |
-| Comisión Mercado Pago (3.49 % + IVA) | 3.44 |
-| Comisión OpenPay (2.9 % + $2.50 + IVA) | 5.76 |
-| Comisión PayPal (3.95 % + $4 + IVA) | 8.53 |
+| Precio con IVA | 100.00 |
+| IVA (16 %) que se entera al SAT | 13.79 |
+| Base sin IVA | 86.21 |
+| Comisión Stripe (3.6 % + $3 + IVA) | 7.66 |
+| Comisión Mercado Pago (3.49 % + IVA) | 4.05 |
+| Comisión OpenPay (2.9 % + $2.50 + IVA) | 6.26 |
+| Comisión PayPal (3.95 % + $4 + IVA) | 9.22 |
 | IA por guía vendida (guía completa, verificación de apuntes y unas 4 vistas previas abandonadas) | 3 a 5 |
-| **Queda por guía con Stripe** | **≈ 62** |
-| **Queda por guía con Mercado Pago** | **≈ 66** |
+| **Queda por guía con Stripe** | **≈ 74** |
+| **Queda por guía con Mercado Pago** | **≈ 78** |
 
   Antes de ISR, contador, publicidad y tiempo propio. La IA pesa menos del 6 % del precio: se puede subir a Sonnet en consolidación o verificación si la calidad lo pide; lo que no conviene es regalar vistas previas con Sonnet. En un ticket de 85 pesos la cuota fija de Stripe pesa el doble que Mercado Pago. Costos fijos de la fase 2 en planes gratis ≈ 0 más dominio (~30 al mes); Supabase Pro (~460 a 650 al mes) se paga con 8 a 10 guías al mes.
 
 | Guías al mes | Ingreso con IVA | Queda con Stripe | Queda con Mercado Pago |
 |---|---|---|---|
-| 20 | 1,700 | ~1,240 | ~1,320 |
-| 100 | 8,500 | ~6,200 | ~6,600 |
-| 500 | 42,500 | ~31,000 | ~33,000 |
-| 1,000 | 85,000 | ~62,000 | ~66,000 |
+| 20 | 2,000 | ~1,480 | ~1,560 |
+| 100 | 10,000 | ~7,400 | ~7,800 |
+| 500 | 50,000 | ~37,000 | ~39,000 |
+| 1,000 | 100,000 | ~74,000 | ~78,000 |
 
 ## 4. Accesos
 - **Ilimitados hasta que venza la guía.** Sin tope de clics ni cierre a los minutos. Solo dos controles: vigencia de 7 días desde el pago y 2 aparatos por familia. Las clases de Lumio de la fase 1 conservan sus límites, porque ahí no se controla el destino.
@@ -199,7 +199,7 @@ Referencia: la lección **Historia de México 2 · El encuentro de dos mundos** 
 
 ## 12d. Pendientes nuevos del camino de la biblioteca
 - **WhatsApp automático desde el servidor** para la entrega: requiere la API oficial de WhatsApp de Meta (cuenta de empresa, aprobación y costo por mensaje). Alternativa sin costo para arrancar: correo automático, link y QR en pantalla y botón "Mandar por WhatsApp" con el mensaje listo.
-- **Precio de la guía de biblioteca:** el mismo de 85 pesos o uno distinto. Por simplicidad, el mismo al inicio.
+- **Precio de la guía de biblioteca:** el mismo de 100 pesos o uno distinto. Por simplicidad, el mismo al inicio.
 - **Mismo colegio, varios grupos:** si una maestra pone exámenes distintos por grupo, la guía se identifica también por grupo o por nombre del examen.
 
 ## 13. Referencia: estimación previa de costo por tamaño de guía

@@ -147,7 +147,7 @@ export function candado(s, ctx) {
   const c = ctx.c;
   const el = h(`<div class="sl candado"><div class="caja">${sparky("saludo", 5)}<h2>${esc(ctx.t("desbloquea"))}</h2>
     <ul><li><b>${c.bloques_totales ?? c.bloques.length}</b> ${esc(ctx.t("bloque")).toLowerCase()}s con teoría a todo color</li><li><b>${c.actividades_totales ?? "+40"}</b> actividades y juegos con retroalimentación al instante</li><li>${esc(ctx.t("mini"))} por bloque y ${esc(ctx.t("reto")).toLowerCase()}</li><li>7 días de acceso · 2 aparatos por familia</li></ul>
-    <div class="precio">$${ctx.precio ?? 85}<small>MXN · IVA incluido</small></div>
+    <div class="precio">$${ctx.precio ?? 100}<small>MXN · IVA incluido</small></div>
     <button class="boton" id="pagar">🔓 ${esc(ctx.t("desbloquea"))}</button></div></div>`);
   el.querySelector("#pagar").onclick = () => ctx.desbloquear();
   return el;
