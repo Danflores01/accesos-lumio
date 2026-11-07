@@ -109,51 +109,86 @@ export function panelPregunta(a, ctx, onAns) {
 
 // ---------- Sparky vivo (7 nov 2026) ----------
 // Sparky con vida en las páginas del sitio. En reposo flota, parpadea y mira a los lados; cada 8–15 s hace algo al
-// azar: saludar, caminar de un lado a otro de su recuadro o escribir un dato curioso letra por letra en la burbuja.
-// Si le pasan el mouse encima saluda y si lo tocan festeja con un brinco, sin estorbar lo demás de la página.
-// En la pantalla de espera se queda construyendo (reposo "construyendo"). Con "reducir movimiento" no camina, no
-// brinca ni escribe letra por letra: solo cambia de pose.
-// op = { escala, reposo, acciones: ["saludar", "caminar", "escribir"], burbuja (elemento donde escribe),
-//        siguienteDato: () => texto, cada: [ms, ms], saludoInicial, accesorios ("+casco+taller" en la espera,
-//        para que al reaccionar conserve el casco y los bloques) }. Devuelve { detener, hacer(accion) }.
+// azar: saluda, camina de un lado a otro de su recuadro, escribe un dato curioso letra por letra en la burbuja, vuela
+// con su jetpack y hace una travesura, o el dato se traba y Sparky sube volando con su llave a arreglarlo.
+// Si le pasan el mouse encima saluda; si lo tocan hace una de sus reacciones (brinco, giro, voltereta con jetpack,
+// risa, corazones o baile) con un sonidito robótico de alegría. Nada de esto estorba lo demás de la página.
+// En la pantalla de espera se queda construyendo (reposo "construyendo") y al tocarlo reacciona sin moverse de su
+// lugar (los bloques van en el mismo dibujo). Con "reducir movimiento" no camina, no vuela, no brinca ni escribe letra
+// por letra: solo cambia de pose (y suena si lo tocan).
+// op = { escala, reposo, acciones, burbuja (donde escribe), globo (la burbuja completa; si no, la .burbuja que la
+//        contiene), siguienteDato: () => texto, cada: [ms, ms], saludoInicial, accesorios ("+casco+taller" en la
+//        espera) }. Devuelve { detener, hacer(accion o reacción) }.
 const CORTE = Symbol("corte");
 export const movimientoReducido = () => !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+const GLIFOS = "▓▒░#%&@$*¿?!§";
 
-// Escribe un texto letra por letra dentro de "el", con cursor. Devuelve { listo (promesa), terminar() }.
+// Escribe un texto letra por letra dentro de "el", con cursor. Devuelve { listo, terminar(), trabado, destrabar() }.
+// Con op.trabar, a media frase se "traba": la caja op.caja tiembla y salen símbolos raros hasta que llaman destrabar().
 // Los lectores de pantalla reciben el texto completo desde el principio.
-export function escribirTexto(el, texto, ms = 32) {
+export function escribirTexto(el, texto, ms = 32, op = {}) {
   const letras = Array.from(String(texto ?? ""));
-  el.innerHTML = `<span class="sr"></span><span class="tecleo activo" aria-hidden="true"></span>`;
-  const [sr, vis] = el.children;
+  el.innerHTML = `<span class="sr"></span><span class="tecleo activo" aria-hidden="true"><span class="t"></span><span class="basura"></span></span>`;
+  const sr = el.firstElementChild, vis = el.lastElementChild, txt = vis.firstElementChild, basura = vis.lastElementChild;
   sr.textContent = letras.join("");
-  let i = 0, id = null, fin;
+  const caja = op.caja ?? el;
+  let i = 0, id = null, ruido = null, fin, avisar, velocidad = ms, hecho = false, atorado = false, destrabado = !op.trabar;
   const listo = new Promise((r) => (fin = r));
-  const terminar = () => { clearTimeout(id); vis.textContent = letras.join(""); vis.classList.remove("activo"); fin(); };
-  if (!letras.length || movimientoReducido()) { terminar(); return { listo, terminar }; }
+  const trabado = new Promise((r) => (avisar = r));
+  const corte = op.trabar ? Math.max(4, Math.floor(letras.length * (.35 + Math.random() * .2))) : -1;
+  const limpiar = () => { clearInterval(ruido); ruido = null; basura.textContent = ""; caja.classList.remove("sk-trabado", "sk-reparando"); };
+  const terminar = () => { if (hecho) return; hecho = true; clearTimeout(id); limpiar(); txt.textContent = letras.join(""); vis.classList.remove("activo"); avisar(); fin(); };
+  const trabar = () => {
+    atorado = true; caja.classList.add("sk-trabado");
+    const raro = () => { basura.textContent = Array.from({ length: 2 + Math.floor(Math.random() * 3) }, () => GLIFOS[Math.floor(Math.random() * GLIFOS.length)]).join(""); };
+    raro(); ruido = setInterval(raro, 110);
+    avisar();
+  };
   const paso = () => {
     if (!el.isConnected) return terminar();
     i = Math.min(letras.length, i + (Math.random() < .3 ? 2 : 1));
-    vis.textContent = letras.slice(0, i).join("");
+    if (!destrabado && i >= corte) i = corte;
+    txt.textContent = letras.slice(0, i).join("");
     if (i >= letras.length) return terminar();
+    if (!destrabado && i === corte) return trabar();
     const c = letras[i - 1];
-    id = setTimeout(paso, ms * (/[.,;:!?…]/.test(c) ? 5 : c === " " ? 1.5 : 1) * (.7 + Math.random() * .6));
+    id = setTimeout(paso, velocidad * (/[.,;:!?…]/.test(c) ? 5 : c === " " ? 1.5 : 1) * (.7 + Math.random() * .6));
   };
-  id = setTimeout(paso, ms);
-  return { listo, terminar };
+  const destrabar = () => {
+    if (hecho || destrabado) return;
+    destrabado = true; velocidad = ms * .75;
+    if (atorado) { atorado = false; limpiar(); id = setTimeout(paso, velocidad); }
+  };
+  if (!letras.length || movimientoReducido()) terminar();
+  else id = setTimeout(paso, ms);
+  return { listo, terminar, trabado, destrabar };
 }
 
 export function sparkyVivo(destino, op = {}) {
   const escala = op.escala ?? 6, reposo = op.reposo ?? "quieto", acc = op.accesorios ?? "";
+  // En el taller (pantalla de espera) los bloques van en el mismo dibujo: ahí reacciona sin moverse de su lugar.
+  const taller = reposo === "construyendo" || acc.includes("taller");
   const [minimo, maximo] = op.cada ?? [8000, 15000];
-  const lista = (op.acciones ?? ["saludar", "caminar", "escribir"]).filter((a) => a !== "escribir" || (op.burbuja && op.siguienteDato));
+  const globo = op.globo ?? op.burbuja?.closest?.(".burbuja") ?? null;
+  const lista = (op.acciones ?? ["saludar", "caminar", "escribir", "volar", "arreglar"])
+    .filter((a) => !["escribir", "arreglar"].includes(a) || (op.burbuja && op.siguienteDato))
+    .filter((a) => a !== "arreglar" || globo);
   // La capa .sk-toque (transparente, encima del dibujo) recibe el mouse y los toques: como nunca se reemplaza, un clic
-  // no se pierde aunque el dibujo cambie de pose en ese instante.
-  destino.innerHTML = `<div class="sparky-vivo sk-anima" aria-hidden="true"><div class="sk-pista"><div class="sk-actor"><div class="sk-dibujo"></div><i class="sk-toque"></i></div></div></div>`;
-  const raiz = destino.firstElementChild, pista = raiz.firstElementChild, actor = pista.firstElementChild, dibujo = actor.firstElementChild;
-  let pose = "", x = 0, timer = null, tarea = null, prioridad = 0, vivo = true, ultima = "", enfriar = 0;
+  // no se pierde aunque el dibujo cambie de pose en ese instante. .sk-vuelo lo sube con el jetpack y .sk-piso es su
+  // sombra, que se queda en el piso.
+  destino.innerHTML = `<div class="sparky-vivo sk-anima" aria-hidden="true"><div class="sk-pista"><i class="sk-piso"></i><div class="sk-vuelo"><div class="sk-actor"><div class="sk-dibujo"></div><i class="sk-toque"></i></div></div></div></div>`;
+  const raiz = destino.firstElementChild, pista = raiz.firstElementChild, piso = pista.firstElementChild, vuelo = piso.nextElementSibling;
+  const actor = vuelo.firstElementChild, dibujo = actor.firstElementChild, toque = actor.lastElementChild;
+  let pose = "", x = 0, alto = 0, timer = null, tarea = null, prioridad = 0, vivo = true, ultima = "", ultimaReaccion = "", enfriar = 0;
   let primera = op.saludoInicial ? "saludar" : null;
 
-  const pon = (p) => { const f = p === reposo ? p : p + acc; if (f !== pose) { dibujo.innerHTML = sparky(f, escala); pose = f; } };
+  // Cambia de pose. Si la tarea que la pide ya fue interrumpida, se detiene ahí (no le pisa la pose a la nueva).
+  const pon = (p, t) => {
+    if (t && (t.cortado || t !== tarea)) throw CORTE;
+    const f = p === reposo ? p : p + acc;
+    if (f !== pose) { dibujo.innerHTML = sparky(f, escala); pose = f; }
+  };
+  const sigue = (t) => { if (t.cortado || t !== tarea) throw CORTE; };
   const mirar = (dir) => actor.classList.toggle("izquierda", dir < 0);
   // Cada acción recibe una "tarea" t; si otra la interrumpe (un toque, por ejemplo), sus esperas se cortan.
   const alCortar = (t, f) => { t.alCortar.add(f); return () => t.alCortar.delete(f); };
@@ -162,25 +197,72 @@ export function sparkyVivo(destino, op = {}) {
     const quitar = alCortar(t, () => { clearTimeout(id); no(CORTE); });
     const id = setTimeout(() => { quitar(); ok(); }, ms);
   });
-  // Camina hasta "a" (px desde el centro de su recuadro) a media figura por segundo, mirando hacia donde va.
-  const ir = (t, a) => new Promise((ok, no) => {
+  // Camina (o vuela de lado) hasta "a" px desde el centro de su recuadro, mirando hacia donde va. "rapidez" en figuras
+  // por segundo. La promesa trae parar() para detenerse donde va sin cortar la tarea. Si el navegador no avisa que la
+  // animación terminó (pestaña oculta, ahorro de batería), un temporizador de respaldo la da por terminada.
+  const ir = (t, a, rapidez = .5) => {
+    let parar = () => {};
+    const p = new Promise((ok, no) => {
+      if (t.cortado) return no(CORTE);
+      const de = x, dur = Math.abs(a - de) / Math.max(30, actor.offsetWidth * rapidez) * 1000;
+      if (dur < 40) { x = a; pista.style.transform = a ? `translateX(${a}px)` : ""; return ok(); }
+      mirar(a - de);
+      const an = pista.animate([{ transform: `translateX(${de}px)` }, { transform: `translateX(${a}px)` }], { duration: dur, easing: "linear", fill: "forwards" });
+      let hecho = false;
+      const fija = (v) => { hecho = true; clearTimeout(respaldo); x = v; pista.style.transform = `translateX(${v}px)`; an.cancel(); };
+      const aqui = () => { let v = x; try { v = new DOMMatrixReadOnly(getComputedStyle(pista).transform).m41; } catch {} fija(v); };
+      const quitar = alCortar(t, () => { if (!hecho) aqui(); no(CORTE); });
+      const acabar = () => { if (hecho) return; quitar(); fija(a); ok(); };
+      const respaldo = setTimeout(acabar, dur + 250);
+      an.onfinish = acabar;
+      parar = () => { if (hecho) return; quitar(); aqui(); ok(); };
+    });
+    p.parar = () => parar();
+    return p;
+  };
+  // Jetpack: sube a "y" px sobre el piso en "ms", con "vueltas" volteretas; la sombra del piso se achica al subir.
+  const sombraDe = (y) => { const h = actor.offsetHeight || 100; return { opacity: y > 1 ? Math.max(.25, .9 - y / h) : 0, transform: `scale(${Math.max(.45, 1 - y / (h * 1.4))})` }; };
+  const volarA = (t, y, ms, vueltas = 0) => new Promise((ok, no) => {
     if (t.cortado) return no(CORTE);
-    const de = x, dur = Math.abs(a - de) / Math.max(30, actor.offsetWidth * .5) * 1000;
-    if (dur < 40) { x = a; pista.style.transform = a ? `translateX(${a}px)` : ""; return ok(); }
-    mirar(a - de);
-    const an = pista.animate([{ transform: `translateX(${de}px)` }, { transform: `translateX(${a}px)` }], { duration: dur, easing: "linear", fill: "forwards" });
-    const fija = (v) => { x = v; pista.style.transform = `translateX(${v}px)`; an.cancel(); };
-    const quitar = alCortar(t, () => { let v = x; try { v = new DOMMatrixReadOnly(getComputedStyle(pista).transform).m41; } catch {} fija(v); no(CORTE); });
-    an.onfinish = () => { quitar(); fija(a); ok(); };
+    const de = alto;
+    raiz.classList.add("en-vuelo");
+    const a = vuelo.animate([{ transform: `translateY(${-de}px) rotate(0deg)` }, { transform: `translateY(${-y}px) rotate(${360 * vueltas}deg)` }], { duration: ms, easing: "ease-in-out", fill: "forwards" });
+    const s = piso.animate([sombraDe(de), sombraDe(y)], { duration: ms, easing: "ease-in-out", fill: "forwards" });
+    let hecho = false;
+    const fija = (v) => {
+      hecho = true; clearTimeout(respaldo);
+      alto = v; a.cancel(); s.cancel();
+      vuelo.style.transform = v ? `translateY(${-v}px)` : "";
+      const sb = sombraDe(v); piso.style.opacity = v ? sb.opacity : ""; piso.style.transform = v ? sb.transform : "";
+      if (!v) raiz.classList.remove("en-vuelo");
+    };
+    const quitar = alCortar(t, () => { if (!hecho) { let v = alto; try { v = -new DOMMatrixReadOnly(getComputedStyle(vuelo).transform).m42; } catch {} fija(Math.max(0, v)); } no(CORTE); });
+    // Igual que al caminar: si el navegador no avisa que terminó, el respaldo la da por terminada (nunca se queda en el aire).
+    const acabar = () => { if (hecho) return; quitar(); fija(y); ok(); };
+    const respaldo = setTimeout(acabar, ms + 250);
+    a.onfinish = acabar;
   });
+  // Cuánto puede subir sin salirse de su recuadro y cuánto le falta para que la llave toque la burbuja.
+  const svg = () => dibujo.firstElementChild?.getBoundingClientRect();
+  const techoLibre = () => {
+    const s = svg(), c = (raiz.closest(".tile") ?? raiz.parentElement)?.getBoundingClientRect();
+    return s && c ? Math.max(0, s.top + alto - c.top - 4) : actor.offsetHeight * .5;
+  };
+  const hastaGlobo = () => {
+    const s = svg(), g = globo?.getBoundingClientRect();
+    if (!s || !g) return actor.offsetHeight * .4;
+    // La boca de la llave queda como 1.5 unidades (de 20) abajo del borde de arriba del dibujo.
+    return Math.max(8, Math.min(techoLibre(), s.top + alto + s.height * 1.5 / 20 - g.bottom + 3));
+  };
+  const reaccionMovida = (clase) => { if (taller || movimientoReducido()) return; actor.classList.remove("brinca", "gira", "rie", "baila"); void actor.offsetWidth; actor.classList.add(clase); };
 
   const ACCIONES = {
-    async saludar(t) { pon("saludo"); await esperar(t, 2600); },
+    async saludar(t) { pon("saludo", t); await esperar(t, 2600); },
     async caminar(t) {
       const lado = Math.floor((raiz.clientWidth - actor.offsetWidth) / 2) - 6;
       if (lado < 24 || movimientoReducido()) return ACCIONES.saludar(t);
       const d = Math.random() < .5 ? 1 : -1;
-      pon("caminando");
+      pon("caminando", t);
       await ir(t, d * lado); await esperar(t, 300);
       await ir(t, -d * lado); await esperar(t, 300);
       await ir(t, 0);
@@ -188,12 +270,75 @@ export function sparkyVivo(destino, op = {}) {
     async escribir(t) {
       const texto = op.siguienteDato?.();
       if (!texto) return ACCIONES.saludar(t);
-      pon("escribiendo"); await esperar(t, 500);
+      pon("escribiendo", t); await esperar(t, 500);
       const e = escribirTexto(op.burbuja, texto, op.msLetra ?? 34);
       const quitar = alCortar(t, e.terminar);
-      await e.listo; quitar();
+      await e.listo; quitar(); sigue(t);
       await esperar(t, 1200);
     },
+    // Travesura con el jetpack: sube, da una voltereta o se pasea por el aire de un lado a otro, y aterriza.
+    async volar(t) {
+      if (taller || movimientoReducido()) return ACCIONES.saludar(t);
+      const h = actor.offsetHeight;
+      pon("volando", t); await esperar(t, 250);
+      await volarA(t, Math.min(h * .4, techoLibre()), 520);
+      const lado = Math.floor((raiz.clientWidth - actor.offsetWidth) / 2) - 6;
+      if (lado > 24 && Math.random() < .5) {
+        const d = Math.random() < .5 ? 1 : -1;
+        await ir(t, d * lado * .8, 1.1); await ir(t, -d * lado * .5, 1.1); await ir(t, 0, 1.1); mirar(1);
+      } else {
+        await volarA(t, Math.min(h * .5, techoLibre()), 650, 1);
+        await esperar(t, 250);
+      }
+      await volarA(t, 0, 520);
+      pon("festejo", t); await esperar(t, 700);
+    },
+    // El dato se traba mientras Sparky camina: se sorprende, saca su jetpack y su llave, sube a la burbuja, la aprieta
+    // hasta que se compone, da una voltereta de gusto y aterriza mientras el dato termina de escribirse bien.
+    async arreglar(t) {
+      const texto = op.siguienteDato?.();
+      if (!texto || !globo || taller || movimientoReducido()) return ACCIONES.escribir(t);
+      const e = escribirTexto(op.burbuja, texto, 42, { trabar: true, caja: globo });
+      const quitarE = alCortar(t, e.terminar);
+      const lado = Math.floor((raiz.clientWidth - actor.offsetWidth) / 2) - 6;
+      if (lado > 24) {
+        pon("caminando", t);
+        const paseo = ir(t, (Math.random() < .5 ? 1 : -1) * lado * .65);
+        await Promise.race([paseo, e.trabado]); sigue(t);
+        paseo.parar();
+        pon("quieto", t);
+      }
+      await e.trabado; sigue(t);
+      mirar(1); pon("sorprendido", t); await esperar(t, 900);
+      pon("arreglando", t); await esperar(t, 200);
+      await volarA(t, hastaGlobo(), 700);
+      globo.classList.add("sk-reparando");
+      await esperar(t, 1600);
+      globo.classList.remove("sk-reparando");
+      e.destrabar();
+      pon("volando", t);
+      await volarA(t, Math.min(alto + 14, techoLibre()), 600, 1);
+      await volarA(t, 0, 560);
+      pon("festejo", t); await esperar(t, 800);
+      await e.listo; quitarE(); sigue(t);
+      if (x !== 0) { pon("caminando", t); await ir(t, 0); }
+    },
+  };
+  // Repertorio cuando lo tocan (cada una con su sonidito, ver sonido.sparky).
+  const REACCIONES = {
+    async brinco(t) { pon("festejo", t); reaccionMovida("brinca"); await esperar(t, 1500); },
+    async giro(t) { pon("festejo", t); reaccionMovida("gira"); await esperar(t, 1100); },
+    async voltereta(t) {
+      const h = actor.offsetHeight;
+      pon("volando", t);
+      await volarA(t, Math.min(h * .35, techoLibre()), 380);
+      await volarA(t, Math.min(h * .5, techoLibre()), 560, 1);
+      await volarA(t, 0, 420);
+      pon("festejo", t); await esperar(t, 650);
+    },
+    async risa(t) { pon("riendo", t); reaccionMovida("rie"); await esperar(t, 1500); },
+    async corazones(t) { pon("enamorado", t); await esperar(t, 1900); },
+    async baile(t) { pon("festejo", t); reaccionMovida("baila"); await esperar(t, 1800); },
   };
 
   function cortar(t) { t.cortado = true; for (const f of [...t.alCortar]) f(); t.alCortar.clear(); }
@@ -204,6 +349,8 @@ export function sparkyVivo(destino, op = {}) {
     try { await fn(t); } catch (e) { if (e !== CORTE) console.error(e); }
     if (tarea !== t || !vivo) return;
     tarea = null; prioridad = 0;
+    globo?.classList.remove("sk-reparando");
+    if (alto) { alto = 0; vuelo.style.transform = ""; piso.style.opacity = ""; piso.style.transform = ""; raiz.classList.remove("en-vuelo"); }
     if (x !== 0) { x = 0; pista.style.transform = ""; }
     mirar(1); pon(reposo); programar();
   }
@@ -221,32 +368,37 @@ export function sparkyVivo(destino, op = {}) {
     primera = null;
     correr(ACCIONES[ultima]);
   }
-  // Reacción a la gente: mouse encima → saluda; toque o clic → festeja con un brinco. Luego vuelve a lo suyo.
-  function reaccionar(tipo) {
+  // Reacción a la gente: mouse encima → saluda; toque o clic → una reacción del repertorio, con su sonidito.
+  function reaccionar(tipo, cual) {
     if (!vivo) return;
     const prio = tipo === "toque" ? 2 : 1;
     if (tarea && prioridad >= prio) return;
     if (prio === 1 && Date.now() < enfriar) return;
     enfriar = Date.now() + 3000;
+    let nombre = "";
+    if (prio === 2) {
+      const repertorio = taller || movimientoReducido() ? ["brinco", "risa", "corazones"] : Object.keys(REACCIONES);
+      const opciones = repertorio.filter((r) => r !== ultimaReaccion);
+      nombre = ultimaReaccion = REACCIONES[cual] ? cual : opciones[Math.floor(Math.random() * opciones.length)];
+      sonido.sparky(nombre);
+    }
     correr(async (t) => {
-      const festeja = prio === 2;
-      actor.classList.remove("brinca");
-      pon(festeja ? "festejo" : "saludo");
-      if (festeja && !movimientoReducido()) { void actor.offsetWidth; actor.classList.add("brinca"); }
-      await esperar(t, festeja ? 1500 : 2000);
-      actor.classList.remove("brinca");
-      if (x !== 0) { pon("caminando"); await ir(t, 0); }
+      if (alto) { pon("volando", t); await volarA(t, 0, 320); }
+      if (nombre) await REACCIONES[nombre](t);
+      else { pon("saludo", t); await esperar(t, 2000); }
+      actor.classList.remove("brinca", "gira", "rie", "baila");
+      if (x !== 0) { pon("caminando", t); await ir(t, 0); }
     }, prio);
   }
   function detener() { vivo = false; clearTimeout(timer); if (tarea) cortar(tarea); }
 
   actor.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") reaccionar("mouse"); });
-  actor.addEventListener("pointerdown", () => reaccionar("toque"));
+  toque.addEventListener("click", () => reaccionar("toque"));
   pon(reposo);
   programar(primera ? 1800 : undefined);
   return {
     detener,
-    hacer(a) { if (ACCIONES[a]) { ultima = a; correr(ACCIONES[a]); } else reaccionar(a === "festejo" ? "toque" : "mouse"); },
+    hacer(a) { if (ACCIONES[a]) { ultima = a; correr(ACCIONES[a]); } else reaccionar(a === "saludo" ? "mouse" : "toque", a); },
   };
 }
 

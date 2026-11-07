@@ -16,35 +16,51 @@ const grupo = (dx, dy, inner, extra = "") => `<g transform="translate(${dx} ${dy
 
 // ---------- Sparky, el astronauta-robot (16 × 20) ----------
 // Versión 2.1 (6 nov 2026, referencia de Daniel: astronauta chaparrito, detallado y con "rayitas" retro, sin pixeles).
-// La cara son luces LED sobre el visor: ojos, boca y cachetes se encienden distinto en cada expresión. El traje es crema
-// con sombra gris-lavanda rayada (como impresión retro), franjas y guantes naranja, panel de pecho amarillo, hombreras,
-// articulaciones con rayitas, reloj en la muñeca, bolsillo, botas con suela y hebilla, mochila gris con luz roja y
-// tanques, anillo del cuello, visera sobre el visor y una chispa en la antena (la "spark" de SparkEd).
+// La cara son luces LED sobre el visor: ojos y boca se encienden distinto en cada expresión (desde el 7 nov ya no
+// lleva cachetes rosas, para que se note la lengüita cuando se concentra). El traje es crema con sombra gris-lavanda
+// rayada (como impresión retro), franjas y guantes naranja, panel de pecho amarillo, hombreras, articulaciones con
+// rayitas, reloj en la muñeca, bolsillo, botas con suela y hebilla, mochila gris con luz roja y tanques, anillo del
+// cuello, visera sobre el visor y una chispa en la antena (la "spark" de SparkEd).
 // Sparky vivo (7 nov 2026, Daniel: "que tenga un poquito más de vida y no parezca que está confundido todo el tiempo"):
-// poses nuevas que se mueven solo con CSS (construyendo, caminando, escribiendo) y accesorios que se suman a cualquier
-// pose con "+": "+casco" (casco amarillo de obra; la antena sale por arriba) y "+taller" (bloques de colores en el piso;
-// el dibujo se hace más ancho). Las piezas que se mueven van en grupos con clase (sk-cuerpo, sk-cara, sk-mano,
-// sk-martillo, sk-pierna-a…); las animaciones están en base.css y solo corren dentro de un contenedor .sk-anima.
-const S = { luz: "#FBF7EE", sombra: "#DAD8E8", costura: "#B9B4D0", gris: "#9CA2B8", grisOscuro: "#636A86", naranja: "#FF7A3D", amarillo: "#FFC247", rojo: "#FF4D5E", visor: "#1A1733", led: "#7DF9FF", ledSuave: "#5BB8FF", cachete: "#FF8FB1" };
+// poses que se mueven solo con CSS (construyendo, caminando, escribiendo, volando, arreglando…) y accesorios que se
+// suman a cualquier pose con "+": "+casco" (casco amarillo de obra; la antena sale por arriba), "+taller" (bloques de
+// colores en el piso; el dibujo se hace más ancho) y "+jetpack" (propulsores en la mochila). Las piezas que se mueven
+// van en grupos con clase (sk-cuerpo, sk-cara, sk-mano, sk-martillo, sk-llave, sk-llama, sk-pierna-a…); las
+// animaciones están en base.css y solo corren dentro de un contenedor .sk-anima.
+const S = { luz: "#FBF7EE", sombra: "#DAD8E8", costura: "#B9B4D0", gris: "#9CA2B8", grisOscuro: "#636A86", naranja: "#FF7A3D", amarillo: "#FFC247", rojo: "#FF4D5E", visor: "#1A1733", led: "#7DF9FF", ledSuave: "#5BB8FF", lengua: "#FF7FA8", rosa: "#FF6B9D" };
 const r2 = (v) => Math.round(v * 100) / 100;
 const RAYAS = `<defs><pattern id="sk-rayas" width="1" height=".6" patternUnits="userSpaceOnUse"><rect width="1" height=".2" fill="#2A2340" opacity=".13"/></pattern><pattern id="sk-scan" width="1" height=".5" patternUnits="userSpaceOnUse"><rect width="1" height=".16" fill="#fff" opacity=".07"/></pattern></defs>`;
 const chispa = (cx, cy, R, r, fill, sw = .3) => { const k = r * Math.SQRT1_2; return `<path d="M${cx} ${cy - R} L${cx + k} ${cy - k} L${cx + R} ${cy} L${cx + k} ${cy + k} L${cx} ${cy + R} L${cx - k} ${cy + k} L${cx - R} ${cy} L${cx - k} ${cy - k} Z" fill="${fill}" ${o(sw)}/>`; };
 const ojoLed = (x, y, w, h, color) => `<g class="led-ojo"><rect x="${x - .35}" y="${y - .35}" width="${w + .7}" height="${h + .7}" rx="${h / 2}" fill="${color}" opacity=".28"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.min(w, h) * .4}" fill="${color}"/></g>`;
 const bocaLed = (d, color, sw = .5) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`;
-const cachetes = (color = S.cachete) => `<circle cx="5.5" cy="7.05" r=".38" fill="${color}" opacity=".9"/><circle cx="10.5" cy="7.05" r=".38" fill="${color}" opacity=".9"/>`;
+// Corazón centrado en (cx, cy); s es su tamaño.
+const pathCorazon = (cx, cy, s) => `M${cx} ${r2(cy + .85 * s)} C${r2(cx - 1.5 * s)} ${r2(cy - .05 * s)} ${r2(cx - .75 * s)} ${r2(cy - 1.15 * s)} ${cx} ${r2(cy - .3 * s)} C${r2(cx + .75 * s)} ${r2(cy - 1.15 * s)} ${r2(cx + 1.5 * s)} ${r2(cy - .05 * s)} ${cx} ${r2(cy + .85 * s)} Z`;
+const corazonLed = (cx, cy, s, color) => `<g class="led-ojo"><path d="${pathCorazon(cx, cy, s)}" fill="${color}" stroke="${color}" stroke-width=".55" stroke-linejoin="round" opacity=".3"/><path d="${pathCorazon(cx, cy, s)}" fill="${color}"/></g>`;
+// Lengüita de concentración: sale por un lado de la sonrisa, con su rayita en medio para que se lea como lengua.
+const lengua = (x, y) => `<path d="M${x} ${y} h.95 v.32 a.475 .475 0 0 1 -.95 0 z" fill="${S.lengua}"/><path d="M${r2(x + .475)} ${r2(y + .1)} v.42" stroke="#C93F6E" stroke-width=".13" stroke-linecap="round"/>`;
 // La expresión de cada pose, dibujada solo con luces.
 function caraLed(pose) {
-  if (pose === "saludo") return `${bocaLed("M5.75 6.25 q.85 -1.35 1.7 0", S.led, .6)}${bocaLed("M8.55 6.25 q.85 -1.35 1.7 0", S.led, .6)}${bocaLed("M6.9 7.3 q1.1 1.3 2.2 0", S.led)}${cachetes()}`;
-  if (pose === "festejo") return `${chispa(6.65, 5.9, 1.05, .38, S.led, 0)}${chispa(9.35, 5.9, 1.05, .38, S.led, 0)}<path d="M6.8 7.15 h2.4 a1.2 1.1 0 0 1 -2.4 0 z" fill="${S.led}"/>${cachetes()}`;
+  if (pose === "saludo") return `${bocaLed("M5.75 6.25 q.85 -1.35 1.7 0", S.led, .6)}${bocaLed("M8.55 6.25 q.85 -1.35 1.7 0", S.led, .6)}${bocaLed("M6.9 7.3 q1.1 1.3 2.2 0", S.led)}`;
+  if (pose === "festejo") return `${chispa(6.65, 5.9, 1.05, .38, S.led, 0)}${chispa(9.35, 5.9, 1.05, .38, S.led, 0)}<path d="M6.8 7.15 h2.4 a1.2 1.1 0 0 1 -2.4 0 z" fill="${S.led}"/>`;
   if (pose === "triste") return `${ojoLed(5.9, 5.5, 1.5, 1.3, S.ledSuave)}${ojoLed(8.6, 5.5, 1.5, 1.3, S.ledSuave)}${bocaLed("M5.8 5.35 l1.5 -.55", S.ledSuave, .4)}${bocaLed("M10.2 5.35 l-1.5 -.55", S.ledSuave, .4)}${bocaLed("M7.1 7.95 q.9 -.85 1.8 0", S.ledSuave)}<path d="M6.5 7.1 q.55 .95 0 1.35 q-.55 -.4 0 -1.35 z" fill="${S.ledSuave}"/>`;
-  if (pose === "pensando") return `${ojoLed(5.9, 4.9, 1.5, 2, S.led)}<rect x="8.6" y="5.55" width="1.5" height=".65" rx=".32" fill="${S.led}"/>${bocaLed("M7.3 7.7 l1.4 -.35", S.led)}${cachetes()}`;
+  if (pose === "pensando") return `${ojoLed(5.9, 4.9, 1.5, 2, S.led)}<rect x="8.6" y="5.55" width="1.5" height=".65" rx=".32" fill="${S.led}"/>${bocaLed("M7.3 7.7 l1.4 -.35", S.led)}`;
   // Construyendo: mira el martillo (abajo a la derecha) muy contento, con la boca abierta.
-  if (pose === "construyendo") return `${ojoLed(6.3, 5.15, 1.5, 1.85, S.led)}${ojoLed(9, 5.15, 1.5, 1.85, S.led)}<path d="M7.45 7.3 h2.2 a1.1 1 0 0 1 -2.2 0 z" fill="${S.led}"/>${cachetes()}`;
+  if (pose === "construyendo") return `${ojoLed(6.3, 5.15, 1.5, 1.85, S.led)}${ojoLed(9, 5.15, 1.5, 1.85, S.led)}<path d="M7.45 7.3 h2.2 a1.1 1 0 0 1 -2.2 0 z" fill="${S.led}"/>`;
   // Caminando: los ojos miran hacia donde va (a la derecha; al voltear, el dibujo se refleja).
-  if (pose === "caminando") return `${ojoLed(6.35, 4.9, 1.5, 2, S.led)}${ojoLed(9.05, 4.9, 1.5, 2, S.led)}${bocaLed("M7.55 7.5 q.9 .85 1.8 0", S.led)}${cachetes()}`;
+  if (pose === "caminando") return `${ojoLed(6.35, 4.9, 1.5, 2, S.led)}${ojoLed(9.05, 4.9, 1.5, 2, S.led)}${bocaLed("M7.55 7.5 q.9 .85 1.8 0", S.led)}`;
   // Escribiendo: mira la hoja (abajo) y saca la lengüita, como quien escribe con cuidado.
-  if (pose === "escribiendo") return `${ojoLed(5.75, 5.45, 1.5, 1.7, S.led)}${ojoLed(8.45, 5.45, 1.5, 1.7, S.led)}${bocaLed("M6.85 7.6 q.8 .7 1.6 0", S.led)}<path d="M7.95 7.88 q.48 -.04 .48 .42 q0 .36 -.36 .34 q-.34 -.04 -.28 -.42 z" fill="${S.cachete}"/>${cachetes()}`;
-  return `${ojoLed(5.9, 4.9, 1.5, 2, S.led)}${ojoLed(8.6, 4.9, 1.5, 2, S.led)}${bocaLed("M7.1 7.5 q.9 .85 1.8 0", S.led)}${cachetes()}`;
+  if (pose === "escribiendo") return `${ojoLed(5.75, 5.45, 1.5, 1.7, S.led)}${ojoLed(8.45, 5.45, 1.5, 1.7, S.led)}${bocaLed("M6.85 7.6 q.8 .7 1.6 0", S.led)}${lengua(7.8, 7.78)}`;
+  // Volando: ojos felices ^ ^ y boca abierta, como diciendo "¡wiii!".
+  if (pose === "volando") return `${bocaLed("M5.75 6.25 q.85 -1.35 1.7 0", S.led, .6)}${bocaLed("M8.55 6.25 q.85 -1.35 1.7 0", S.led, .6)}<path d="M6.9 7.2 h2.2 a1.1 1.05 0 0 1 -2.2 0 z" fill="${S.led}"/>`;
+  // Arreglando: mira hacia arriba (lo que arregla) y saca la lengüita de concentración.
+  if (pose === "arreglando") return `${ojoLed(6.2, 4.15, 1.5, 1.75, S.led)}${ojoLed(8.9, 4.15, 1.5, 1.75, S.led)}${bocaLed("M7.15 7.05 q.85 .65 1.7 0", S.led)}${lengua(8.15, 7.25)}`;
+  // Sorprendido: ojos muy abiertos y boca en "o" (cuando el dato se traba).
+  if (pose === "sorprendido") return `${ojoLed(5.7, 4.5, 1.8, 2.4, S.led)}${ojoLed(8.5, 4.5, 1.8, 2.4, S.led)}<circle cx="8" cy="7.85" r=".5" fill="none" stroke="${S.led}" stroke-width=".42"/>`;
+  // Riendo: ojos apretados > < y boca grande.
+  if (pose === "riendo") return `${bocaLed("M5.8 5.1 l1.3 .75 l-1.3 .75", S.led, .55)}${bocaLed("M10.2 5.1 l-1.3 .75 l1.3 .75", S.led, .55)}<path d="M6.6 7 h2.8 a1.4 1.3 0 0 1 -2.8 0 z" fill="${S.led}"/>`;
+  // Enamorado: ojos de corazón (cuando lo tocan con cariño).
+  if (pose === "enamorado") return `${corazonLed(6.65, 5.9, .95, S.rosa)}${corazonLed(9.35, 5.9, .95, S.rosa)}${bocaLed("M7.1 7.65 q.9 .8 1.8 0", S.led)}`;
+  return `${ojoLed(5.9, 4.9, 1.5, 2, S.led)}${ojoLed(8.6, 4.9, 1.5, 2, S.led)}${bocaLed("M7.1 7.5 q.9 .85 1.8 0", S.led)}`;
 }
 // Brazo articulado: hombro-brazo con franja naranja, articulación gris con rayita, antebrazo (con reloj si se pide) y
 // guante naranja. Gira alrededor del hombro, así que el guante siempre queda en la punta.
@@ -65,6 +81,8 @@ const pierna = (x) => `
     <rect x="${x - .4}" y="18.75" width="3.6" height=".55" rx=".27" fill="${S.grisOscuro}"/>
     <rect x="${x - .4}" y="17.9" width="3.6" height="1.4" rx=".65" fill="none" ${o(.45)}/>
     <rect x="${x + .7}" y="18.15" width=".9" height=".45" rx=".15" fill="${S.gris}" ${o(.25)}/>`;
+// Piernas en grupos (para caminar o patalear en el aire); "sk-arriba" hace que giren desde la cadera.
+const piernasAnimadas = () => `<g class="sk-arriba sk-pierna sk-pierna-a">${pierna(4.6)}</g><g class="sk-arriba sk-pierna sk-pierna-b">${pierna(8.6)}</g>`;
 // Grupo que gira alrededor de (cx, cy) —un hombro, una muñeca—: el cuadro invisible centrado en ese punto hace que
 // "transform-box: fill-box; transform-origin: center" caiga justo ahí en Chrome, Safari y Firefox.
 const giro = (cx, cy, clase, inner, r = 7) => `<g class="sk-giro ${clase}"><rect x="${r2(cx - r)}" y="${r2(cy - r)}" width="${r2(2 * r)}" height="${r2(2 * r)}" fill="none"/>${inner}</g>`;
@@ -82,6 +100,22 @@ const cascoObra = () => `<g class="sk-casco-obra">
   <line x1="8" y1=".8" x2="8" y2=".1" ${o(.5)}/>
   ${chispa(8, -.32, .8, .28, S.amarillo)}
 </g>`;
+// Jetpack: dos propulsores a los lados de la mochila (franja naranja y tobera oscura). Con fuego, cada tobera echa una
+// llama naranja, amarilla y blanca que titila con la animación.
+const propulsor = (x) => `<rect x="${x}" y="12.3" width="1.75" height="3.5" rx=".6" fill="${S.gris}"/>
+  <rect x="${r2(x + 1)}" y="12.3" width=".75" height="3.5" rx=".35" fill="${S.grisOscuro}"/>
+  <rect x="${x}" y="13.25" width="1.75" height=".55" fill="${S.naranja}"/>
+  <rect x="${x}" y="12.3" width="1.75" height="3.5" rx=".6" fill="none" ${o(.45)}/>
+  <path d="M${r2(x + .2)} 15.75 h1.35 l.35 .95 h-2.05 z" fill="${S.grisOscuro}" ${o(.4)}/>`;
+const llama = (cx, clase) => `<g class="sk-arriba sk-llama ${clase}"><path d="M${r2(cx - .78)} 16.7 Q${r2(cx - .95)} 18.4 ${cx} 19.95 Q${r2(cx + .95)} 18.4 ${r2(cx + .78)} 16.7 Z" fill="#FF7A3D"/><path d="M${r2(cx - .48)} 16.7 Q${r2(cx - .55)} 17.9 ${cx} 19 Q${r2(cx + .55)} 17.9 ${r2(cx + .48)} 16.7 Z" fill="#FFD23F"/><path d="M${r2(cx - .2)} 16.7 Q${r2(cx - .22)} 17.3 ${cx} 17.85 Q${r2(cx + .22)} 17.3 ${r2(cx + .2)} 16.7 Z" fill="#fff"/></g>`;
+const jetpack = (fuego) => `${propulsor(1.5)}${propulsor(12.75)}${fuego ? llama(2.38, "sk-llama-a") + llama(13.63, "sk-llama-b") : ""}`;
+// Llave de tuercas dibujada sobre el brazo colgando (guante en 12.75, 16): mango hacia abajo y boca abierta al final.
+// Con el brazo arriba (-172°) la boca queda hacia arriba, lista para apretar lo que se trabó.
+const llave = () => `<rect x="12.42" y="16.3" width=".66" height="2.7" rx=".3" fill="${S.gris}" ${o(.35)}/>
+  <path d="M11.75 18.95 q0 -.2 .2 -.2 h1.6 q.2 0 .2 .2 v.95 q0 .2 -.2 .2 h-.45 v-.6 h-.7 v.6 h-.45 q-.2 0 -.2 -.2 z" fill="${S.gris}" ${o(.4)}/>
+  <rect x="11.95" y="18.95" width=".3" height=".9" rx=".15" fill="#fff" opacity=".45"/>`;
+// Chispitas en la boca de la llave (invisibles hasta que la animación las enciende con cada apretón).
+const chispasLlave = () => [[12.6, 1.5, .55], [15.1, 1.25, .6], [14.25, .5, .42]].map(([x, y, R], i) => `<g class="sk-centro sk-chispa-llave sk-chispa-llave-${i + 1}" opacity="0">${chispa(x, y, R, r2(R * .36), i % 2 ? S.amarillo : "#FFE680", .22)}</g>`).join("");
 // Martillo dibujado sobre el brazo colgando (guante en 12.75, 16): mango de madera hacia abajo-derecha y cabeza de acero.
 // Con el brazo a -52.3° el mango queda horizontal y la cara de la cabeza pega hacia abajo, sobre el bloque de arriba.
 const martillo = () => `<g transform="translate(13.91 17.5) rotate(52.3)">
@@ -125,9 +159,11 @@ const manoConLapiz = () => `${guante(8.93, 14.17)}<g transform="translate(8.93 1
   <path d="M-.39 .85 L.39 .85 L0 1.5 Z" fill="#F6D7AE" ${o(.3)}/><path d="M-.13 1.22 L.13 1.22 L0 1.5 Z" fill="${C.linea}"/>
   <circle cx="-.55" cy="-.25" r=".46" fill="${S.naranja}" ${o(.3)}/>
 </g>`;
+// Corazoncitos que suben cuando está enamorado.
+const corazoncitos = () => [[13.3, 2.6, .62, 1], [2.75, 3.3, .5, 2]].map(([x, y, s, i]) => `<g class="sk-centro sk-corazoncito sk-corazoncito-${i}"><path d="${pathCorazon(x, y, s)}" fill="${S.rosa}" ${o(.25)}/></g>`).join("");
 
 function cuerpoSparky(frame) {
-  const { pose, casco, taller } = typeof frame === "string" ? leerPose(frame) : frame;
+  const { pose, casco, taller, jetpack: conJetpack, vuelo } = typeof frame === "string" ? leerPose(frame) : frame;
   let brazosAtras = `${brazo(2.1, 10.9, 0, true)}${brazo(11.6, 10.9, 0, false)}`;
   let piernas = `${pierna(4.6)}${pierna(8.6)}`, frente = "", encima = "", extras = "";
   if (pose === "festejo") {
@@ -141,7 +177,7 @@ function cuerpoSparky(frame) {
     encima = brazo(11.6, 10.9, 169, false);
     extras = `<circle cx="12.3" cy="4.5" r=".45" fill="${S.visor}" ${o(.3)}/><circle cx="11.6" cy="5.4" r=".3" fill="${S.visor}" ${o(.3)}/><circle cx="13.7" cy="2.4" r="1.7" fill="${S.visor}" ${o(.4)}/><text x="13.7" y="3.25" font-size="2.4" font-weight="800" text-anchor="middle" fill="${S.led}" font-family="Outfit, Arial, sans-serif">?</text>`;
   } else if (pose === "caminando") {
-    piernas = `<g class="sk-pierna sk-pierna-a">${pierna(4.6)}</g><g class="sk-pierna sk-pierna-b">${pierna(8.6)}</g>`;
+    piernas = piernasAnimadas();
     brazosAtras = giro(3.25, 11.1, "sk-braceo", brazo(2.1, 10.9, 0, true)) + giro(12.75, 11.1, "sk-braceo", brazo(11.6, 10.9, 0, false));
   } else if (pose === "construyendo") {
     // Quieto, el martillo queda arriba listo para pegar (-130°); la animación lo baja hasta el bloque (+78°).
@@ -151,17 +187,30 @@ function cuerpoSparky(frame) {
     // escribe encima de la hoja (renglón por renglón, con el lápiz garabateando).
     brazosAtras = "";
     frente = `${brazo(11.6, 10.9, 51.2, false)}${brazo(2.1, 10.9, -31.6, true)}${tablaNotas()}${guante(5.82, 15.27)}<g class="sk-escritura">${giro(8.93, 14.17, "sk-garabato", manoConLapiz(), 3.5)}</g>`;
+  } else if (pose === "volando") {
+    // Brazos arriba como alas (se mecen) y piernas colgando que patalean; el jetpack echa fuego.
+    piernas = piernasAnimadas();
+    brazosAtras = giro(3.25, 11.1, "sk-ala-a", brazo(2.1, 10.9, 155, true)) + giro(12.75, 11.1, "sk-ala-b", brazo(11.6, 10.9, -155, false));
+  } else if (pose === "arreglando") {
+    // Vuela con la llave arriba (-172°) para apretar lo que se trabó; la otra mano arriba para equilibrarse.
+    piernas = piernasAnimadas();
+    brazosAtras = giro(3.25, 11.1, "sk-ala-a", brazo(2.1, 10.9, 155, true)) + giro(12.75, 11.1, "sk-llave", `<g transform="rotate(-172 12.75 11.1)">${llave()}${brazo(11.6, 10.9, 0, false)}</g>`, 9.3);
+    extras = chispasLlave();
+  } else if (pose === "enamorado") {
+    extras = corazoncitos();
   }
   const inclinacion = pose === "triste" ? `transform="rotate(8 8 7)"` : "";
   const antena = casco ? "" : `<line x1="8" y1="1.9" x2="8" y2="1.3" ${o(.5)}/>${chispa(8, .95, .85, .3, S.amarillo)}`;
+  // En el aire no se dibuja la sombra del piso (la pone sparkyVivo abajo, en su lugar).
   return `${RAYAS}
-    <ellipse class="sk-sombra" cx="8" cy="19.35" rx="5.4" ry=".62" fill="${C.sombra}"/>
+    ${vuelo ? "" : `<ellipse class="sk-sombra" cx="8" cy="19.35" rx="5.4" ry=".62" fill="${C.sombra}"/>`}
     ${taller ? tallerBloques() : ""}
     <g class="sk-cuerpo"><rect x="-5" y="-2" width="26" height="21.3" fill="none"/>
     <rect x="3.3" y="8.5" width="1.2" height="1.4" rx=".5" fill="${S.grisOscuro}" ${o(.4)}/><rect x="11.5" y="8.5" width="1.2" height="1.4" rx=".5" fill="${S.grisOscuro}" ${o(.4)}/>
     <rect x="3" y="9.4" width="10" height="6.8" rx="1.8" fill="${S.gris}" ${o(.5)}/>
     <rect x="3.3" y="14" width="9.4" height="1.9" rx="1" fill="${S.grisOscuro}"/>
     <rect x="12" y="10.2" width=".6" height="1.5" rx=".25" fill="${S.rojo}"/><rect x="11.8" y="10" width="1" height="1.9" rx=".4" fill="${S.rojo}" opacity=".35"/>
+    ${conJetpack ? jetpack(vuelo) : ""}
     ${piernas}
     ${brazosAtras}
     <rect x="3.6" y="10.4" width="8.8" height="6" rx="2" fill="${S.luz}"/>
@@ -194,12 +243,14 @@ function cuerpoSparky(frame) {
     ${encima}</g>
     ${extras}${taller ? chispasGolpe() : ""}`;
 }
-const POSES = ["quieto", "saludo", "festejo", "triste", "pensando", "construyendo", "caminando", "escribiendo"];
-// "festejo+casco+taller" → pose festejo con casco de obra y los bloques del taller. "construyendo" ya trae los dos.
+const POSES = ["quieto", "saludo", "festejo", "triste", "pensando", "construyendo", "caminando", "escribiendo", "volando", "arreglando", "sorprendido", "riendo", "enamorado"];
+const EN_EL_AIRE = ["volando", "arreglando"];
+// "festejo+casco+taller" → pose festejo con casco de obra y los bloques del taller. "construyendo" ya trae los dos y
+// las poses en el aire ya traen el jetpack encendido.
 function leerPose(frame) {
   const [p, ...acc] = String(frame ?? "quieto").split("+");
-  const pose = POSES.includes(p) ? p : "quieto";
-  return { pose, casco: pose === "construyendo" || acc.includes("casco"), taller: pose === "construyendo" || acc.includes("taller") };
+  const pose = POSES.includes(p) ? p : "quieto", vuelo = EN_EL_AIRE.includes(pose);
+  return { pose, vuelo, casco: pose === "construyendo" || acc.includes("casco"), taller: pose === "construyendo" || acc.includes("taller"), jetpack: vuelo || acc.includes("jetpack") };
 }
 // Marco del dibujo: 16 × 20 de siempre; con casco crece hacia arriba (la antena) y con taller hacia la derecha (bloques).
 const marcoSparky = ({ casco, taller }) => [0, casco ? -1.4 : 0, taller ? 21.8 : 16, casco ? 21.4 : 20];

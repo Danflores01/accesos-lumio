@@ -110,6 +110,7 @@ img, svg { display: block; max-width: 100%; }
    (Sparky mide 16 × 20). Con "reducir movimiento" la regla de arriba deja todo en su pose fija. */
 .vec .sk-giro, .vec .sk-centro, .vec .sk-sombra { transform-box: fill-box; transform-origin: center; }
 .vec .sk-pie, .vec .sk-cuerpo { transform-box: fill-box; transform-origin: 50% 100%; }
+.vec .sk-arriba { transform-box: fill-box; transform-origin: 50% 0; }
 
 /* Reposo: flota suave (la sombra se encoge cuando sube) y de vez en cuando mira a un lado y al otro. */
 .sk-anima .pose-quieto .sk-cuerpo, .sk-anima .pose-saludo .sk-cuerpo, .sk-anima .pose-escribiendo .sk-cuerpo { animation: sk-flotar 3.2s ease-in-out infinite; }
@@ -182,14 +183,61 @@ img, svg { display: block; max-width: 100%; }
 @keyframes sk-linea2 { 0%, 33.3% { stroke-dashoffset: 1; } 63.3%, 100% { stroke-dashoffset: 0; } }
 @keyframes sk-linea3 { 0%, 66.6% { stroke-dashoffset: 1; } 86%, 100% { stroke-dashoffset: 0; } }
 
-/* Contenedor de sparkyVivo(): la pista se desliza cuando camina, el actor brinca al tocarlo y el dibujo se voltea. */
+/* Jetpack (Daniel, 7 nov 2026): las llamas titilan; en el aire flota más rápido, los brazos se mecen como alas y las
+   piernas patalean. Arreglando: la llave aprieta de un lado a otro y saltan chispitas en su boca. */
+.sk-anima .sk-llama { animation: sk-llama .13s ease-in-out infinite alternate; }
+.sk-anima .sk-llama-b { animation-delay: -.07s; }
+@keyframes sk-llama { from { transform: scale(.9, .78); opacity: .85; } to { transform: scale(1.06, 1.12); opacity: 1; } }
+.sk-anima .pose-volando .sk-cuerpo, .sk-anima .pose-arreglando .sk-cuerpo { animation: sk-flotar 1.1s ease-in-out infinite; }
+.sk-anima .pose-volando .sk-ala-a, .sk-anima .pose-arreglando .sk-ala-a { animation: sk-ala .5s ease-in-out infinite alternate; }
+.sk-anima .pose-volando .sk-ala-b { animation: sk-ala .5s ease-in-out infinite alternate-reverse; }
+@keyframes sk-ala { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+.sk-anima .pose-volando .sk-pierna-a, .sk-anima .pose-arreglando .sk-pierna-a { animation: sk-patalear .36s ease-in-out infinite alternate; }
+.sk-anima .pose-volando .sk-pierna-b, .sk-anima .pose-arreglando .sk-pierna-b { animation: sk-patalear .36s ease-in-out -.18s infinite alternate; }
+@keyframes sk-patalear { from { transform: translateY(-.15px) rotate(-5deg); } to { transform: translateY(.1px) rotate(5deg); } }
+.sk-anima .pose-arreglando .sk-llave { animation: sk-llave .34s ease-in-out infinite alternate; }
+@keyframes sk-llave { from { transform: rotate(-11deg); } to { transform: rotate(11deg); } }
+.sk-anima .pose-arreglando .sk-chispa-llave { animation: sk-chispa-llave .68s ease-out infinite; }
+.sk-anima .pose-arreglando .sk-chispa-llave-2 { animation-delay: .34s; }
+.sk-anima .pose-arreglando .sk-chispa-llave-3 { animation-delay: .17s; }
+@keyframes sk-chispa-llave { 0%, 100% { opacity: 0; transform: scale(.3); } 12% { opacity: 1; transform: scale(1.2); } 45% { opacity: 0; transform: scale(.8) translateY(-.5px); } }
+
+/* Caras para cuando lo tocan: se ríe a carcajadas (rebota) o se enamora (suben corazoncitos). */
+.sk-anima .pose-riendo .sk-cuerpo { animation: sk-reir .15s ease-in-out infinite alternate; }
+@keyframes sk-reir { to { transform: translateY(-.3px); } }
+.sk-anima .pose-enamorado .sk-cuerpo { animation: sk-flotar 1.6s ease-in-out infinite; }
+.sk-anima .pose-enamorado .sk-corazoncito { animation: sk-corazoncito 1.5s ease-out infinite; }
+.sk-anima .pose-enamorado .sk-corazoncito-2 { animation-delay: .6s; }
+@keyframes sk-corazoncito { 0% { opacity: 0; transform: translateY(1px) scale(.5); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-2.4px) scale(1.15); } }
+.sk-anima .pose-sorprendido .sk-cuerpo { animation: sk-susto .35s ease-out; }
+@keyframes sk-susto { 30% { transform: translateY(-.6px) scale(1.03, .97); } }
+
+/* Contenedor de sparkyVivo(): la pista se desliza cuando camina, "vuelo" lo sube con el jetpack (la sombra del piso se
+   queda abajo y se achica), el actor hace las reacciones al tocarlo y el dibujo se voltea. */
 .sparky-vivo { display: flex; justify-content: center; align-items: flex-end; pointer-events: none; }
+.sparky-vivo.en-vuelo { position: relative; z-index: 2; }
+.sparky-vivo .sk-pista { position: relative; }
+.sparky-vivo .sk-vuelo { transform-origin: 50% 55%; }
+.sparky-vivo .sk-piso { position: absolute; left: 16%; width: 68%; bottom: .5%; height: 6%; border-radius: 50%; background: rgba(42, 35, 64, .22); opacity: 0; pointer-events: none; }
 .sparky-vivo .sk-actor { position: relative; transform-origin: 50% 100%; }
 .sparky-vivo .sk-dibujo svg { transition: transform .22s ease; }
 .sparky-vivo .sk-toque { position: absolute; inset: 0; pointer-events: auto; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .sparky-vivo .sk-actor.izquierda svg { transform: scaleX(-1); }
 .sparky-vivo .sk-actor.brinca { animation: sk-brinco .55s cubic-bezier(.3, .7, .4, 1) 2; }
 @keyframes sk-brinco { 0%, 100% { transform: translateY(0) scale(1, 1); } 15% { transform: translateY(0) scale(1.06, .92); } 50% { transform: translateY(-14%) scale(.97, 1.04); } 85% { transform: translateY(0) scale(1.04, .96); } }
-/* Texto que Sparky va escribiendo letra por letra (con cursor mientras escribe). */
+.sparky-vivo .sk-actor.gira { animation: sk-gira .8s ease-in-out; }
+@keyframes sk-gira { 0%, 100% { transform: scaleX(1) translateY(0); } 25%, 75% { transform: scaleX(.06) translateY(-7%); } 50% { transform: scaleX(-1) translateY(-11%); } }
+.sparky-vivo .sk-actor.rie { animation: sk-rie .14s ease-in-out 9 alternate; }
+@keyframes sk-rie { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+.sparky-vivo .sk-actor.baila { animation: sk-baila .44s ease-in-out 4; }
+@keyframes sk-baila { 0%, 100% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(-7%, -4%) rotate(-7deg); } 75% { transform: translate(7%, -4%) rotate(7deg); } }
+/* Texto que Sparky va escribiendo letra por letra (con cursor mientras escribe). Cuando se "traba", la burbuja tiembla,
+   las letras se desfasan y aparecen símbolos raros; mientras Sparky la arregla, da saltitos con cada apretón. */
 .tecleo.activo::after { content: ""; display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -.15em; border-radius: 1px; background: currentColor; animation: sk-cursor .8s steps(1) infinite; }
 @keyframes sk-cursor { 50% { opacity: 0; } }
+.tecleo .basura { color: #be185d; }
+.sk-trabado { animation: sk-temblor .16s steps(2) infinite; }
+.sk-trabado .tecleo { text-shadow: 1.5px 0 rgba(255, 43, 214, .5), -1.5px 0 rgba(0, 200, 255, .5); }
+@keyframes sk-temblor { 0% { transform: translate(0, 0); } 50% { transform: translate(-1.5px, .5px); } 100% { transform: translate(1px, -.5px); } }
+.sk-reparando { animation: sk-golpecitos .34s ease-in-out infinite; }
+@keyframes sk-golpecitos { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-2px) rotate(-.4deg); } }

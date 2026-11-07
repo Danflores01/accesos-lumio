@@ -57,6 +57,20 @@ export const sonido = {
   salto() { tono({ f: 300, f2: 760, dur: .2, vol: .06 }); },
   whoosh() { rafaga({ dur: .26, vol: .06, f: 500, f2: 2600, q: .8 }); },
   golpe() { tono({ f: 130, f2: 60, dur: .22, vol: .09 }); rafaga({ dur: .07, vol: .05, tipo: "lowpass", f: 500 }); },
+  // Voz de Sparky (Daniel, 7 nov 2026): bips robóticos de alegría cuando lo tocan, uno distinto para cada reacción.
+  // Solo suena con un toque o un clic de la persona (nunca solo), y respeta el botón de silencio de las guías.
+  sparky(reaccion = "brinco") {
+    const bip = (f, f2, dur, inicio, onda = "square", vol = .04) => tono({ f, f2, dur, inicio, tipo: onda, vol, filtro: 2600, q: .8 });
+    const VOZ = {
+      brinco: () => { bip(660, 990, .09, 0); bip(990, 1480, .12, .1); bip(1480, 1980, .1, .23, "triangle", .05); },
+      giro: () => [740, 1110, 830, 1245, 990].forEach((f, i) => bip(f, f * 1.12, .07, i * .065, "triangle", .05)),
+      voltereta: () => { rafaga({ dur: .45, vol: .035, f: 380, f2: 1900, q: .7 }); bip(520, 1560, .38, .08, "sine", .05); bip(1560, 2080, .1, .48, "triangle", .045); },
+      risa: () => [1250, 1080, 1180, 1000, 1120].forEach((f, i) => bip(f, f * .82, .06, i * .085)),
+      corazones: () => { bip(523, 784, .24, 0, "sine", .055); bip(784, 1175, .32, .2, "sine", .05); bip(1568, 1568, .12, .48, "triangle", .03); },
+      baile: () => [784, 988, 1175, 1568, 1175, 1568].forEach((f, i) => bip(f, f, .07, i * .09, i % 2 ? "triangle" : "square", .04)),
+    };
+    (VOZ[reaccion] ?? VOZ.brinco)();
+  },
   // momentos
   nivel() { [523, 659, 784, 1047].forEach((f, i) => { tono({ f, dur: .18, vol: .06, inicio: i * .09 }); tono({ f: f / 2, dur: .2, tipo: "triangle", vol: .03, inicio: i * .09 }); }); },
   gameover() { [392, 349, 311, 262].forEach((f, i) => tono({ f, dur: .3, tipo: "triangle", vol: .07, inicio: i * .2 })); rafaga({ dur: .9, vol: .04, tipo: "lowpass", f: 900, f2: 120, inicio: .1 }); },

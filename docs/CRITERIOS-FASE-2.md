@@ -293,14 +293,15 @@ moderno).
 - Las escenas se dibujan con degradados y capas con id (edificios lejanos, cercanos y rayas) para moverse en bucle.
 - Sparky 2.1 (referencia de Daniel, 6 de noviembre en la noche: un astronauta chaparrito "detallado, con sus
   rayitas retro, pero sin pixeles, y con identidad robótica"): casco grande con visera y audífonos laterales, visor
-  oscuro con **la cara hecha de luces LED** (ojos, boca y dos cachetes rosas que se encienden distinto en cada
-  expresión: quieto, saludo ^ ^, festejo con ojos de estrella, triste en azul tenue con cejas caídas y lágrima,
-  pensando con un ojo entrecerrado, la mano en el visor y «?»; los ojos parpadean). Traje crema con todos los
+  oscuro con **la cara hecha de luces LED** (ojos y boca que se encienden distinto en cada expresión: quieto, saludo
+  ^ ^, festejo con ojos de estrella, triste en azul tenue con cejas caídas y lágrima, pensando con un ojo entrecerrado,
+  la mano en el visor y «?»; los ojos parpadean; desde el 7 de noviembre ya no lleva cachetes rosas, para que se note
+  la lengüita). Traje crema con todos los
   detalles del traje de la foto, en vector: hombreras, panel de pecho amarillo con botones y pantallita, cinturón
   naranja con hebilla, costuras, bolsillo, articulaciones grises con rayitas, reloj en la muñeca, guantes naranja,
   botas con suela y hebilla, mochila gris con luz roja y tanques, anillo del cuello y chispa amarilla en la antena.
   Las sombras (gris lavanda) llevan rayitas finas como impresión retro y el visor, líneas de pantalla tenues.
-  Colores: crema #FBF7EE, sombra #DAD8E8, visor #1A1733, LED #7DF9FF, cachetes #FF8FB1, naranja #FF7A3D, amarillo
+  Colores: crema #FBF7EE, sombra #DAD8E8, visor #1A1733, LED #7DF9FF, lengua #FF7FA8, naranja #FF7A3D, amarillo
   #FFC247, gris #9CA2B8 / #636A86, luz roja #FF4D5E, contorno #2A2340. El escalador de montaña y puertas es el mismo
   Sparky en chico. Hoja de personaje para revisarlo: `sparked/sparky.html`.
 - Sparky vivo (Daniel, 7 de noviembre de 2026: "que tenga un poquito más de vida y no parezca que está confundido todo
@@ -313,12 +314,25 @@ moderno).
   genera la guía (constructor; también en "Buscando materiales…" de la biblioteca), el paso "Sparky las convierte" del
   inicio y de la biblioteca (constructor chico), la pantalla de carga al abrir una guía (constructor), "Preparando tu
   pago…" y "Esperando la confirmación del pago…" (escribiendo), los resultados de la guía con menos de 70 % (escribiendo:
-  a repasar) y el recuadro del inicio, donde cada 8 a 15 segundos hace algo al azar: saluda, camina de un lado a otro o
-  escribe un dato curioso nuevo letra por letra en la burbuja. Reacciona a la gente sin estorbar: mouse encima =
-  saluda; toque o clic = festeja con un brinco. La pose «pensando» con «?» ya no se usa en ninguna pantalla (queda solo
-  en la hoja de personaje). Con "reducir movimiento" se queda quieto (sin caminar, brincar ni escribir letra por
-  letra). Código: poses y accesorios ("+casco", "+taller") en `arte.js`, `sparkyVivo()` y `escribirTexto()` en `ui.js`,
-  animaciones en `base.css` (sección "Sparky vivo"; solo corren dentro de `.sk-anima`).
+  a repasar) y el recuadro del inicio, donde cada 8 a 15 segundos hace algo al azar: saluda, camina de un lado a otro,
+  escribe un dato curioso nuevo letra por letra en la burbuja, vuela con su jetpack o arregla un dato que se trabó.
+  Reacciona a la gente sin estorbar: mouse encima = saluda; toque o clic = una reacción del repertorio. La pose
+  «pensando» con «?» ya no se usa en ninguna pantalla (queda solo en la hoja de personaje). Con "reducir movimiento" se
+  queda quieto (sin caminar, volar, brincar ni escribir letra por letra). Código: poses y accesorios ("+casco",
+  "+taller", "+jetpack") en `arte.js`, `sparkyVivo()` y `escribirTexto()` en `ui.js`, animaciones en `base.css`
+  (sección "Sparky vivo"; solo corren dentro de `.sk-anima`) y su voz en `sonido.js` (`sonido.sparky`).
+- Sparky con jetpack y travesuras (Daniel, 7 de noviembre de 2026: "cada vez me gusta más Sparky"). Sin cachetes rosas,
+  para que la lengüita de concentración se lea como lengua. **Jetpack:** dos propulsores grises con franja naranja a los
+  lados de la mochila que echan llamas titilantes; en el aire flota más rápido, los brazos se mecen como alas, las
+  piernas patalean y su sombra se queda en el piso y se achica. Poses nuevas: **volando**, **arreglando** (llave de
+  tuercas arriba, chispitas y lengüita), **sorprendido** (ojos muy abiertos y boca en «o»), **riendo** (> < y carcajada) y
+  **enamorado** (ojos de corazón y corazoncitos). En el inicio, a veces el dato curioso **se traba** mientras Sparky
+  camina (la burbuja tiembla y salen símbolos raros): se sorprende, saca el jetpack y la llave, sube a la burbuja, la
+  aprieta hasta que se compone, da una voltereta de gusto, aterriza y el dato termina de escribirse bien. Otras veces
+  vuela por travesura (voltereta o paseo por el aire). **Al tocarlo** hace una de seis reacciones al azar, sin repetir la
+  anterior: brinco, giro, voltereta con jetpack, risa, corazones o baile, cada una con su **sonidito robótico de
+  alegría** (bips sintetizados, nunca suena solo y respeta el silencio de las guías). En la pantalla de espera reacciona
+  sin moverse de su lugar (festejo, risa o corazones) porque los bloques van en el mismo dibujo.
 
 **Mecánicas "videojuego actual" (en `sparked/js/juegos.js`).**
 - Carrera: los coches corren todo el tiempo (rayas y edificios en parallax), acierto = acelerón y rebase suave,
