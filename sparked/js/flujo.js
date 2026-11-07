@@ -2,6 +2,7 @@
 import { api, esc, opciones, GRADOS, MATERIAS, limpiarTel, waLink, pintarSprites } from "./sitio.js";
 import { CONFIG } from "./config.js";
 import { sparky } from "./arte.js";
+import { sparkyVivo, escribirTexto } from "./ui.js";
 
 export { api, esc, opciones, GRADOS, MATERIAS, limpiarTel, waLink, pintarSprites, CONFIG };
 
@@ -40,7 +41,7 @@ export function marcoVistaPrevia(destino, src, titulo) {
 
 // Pago: pide al servidor crear el cobro. Con Stripe redirige; sin Stripe (motor en blanco) muestra el modo manual.
 export async function iniciarPago(destino, datos) {
-  destino.innerHTML = `<div class="estado-carga">${sparky("pensando", 5)}<div>Preparando tu pago…</div></div>`;
+  destino.innerHTML = `<div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div><div>Preparando tu pago…</div></div>`;
   try {
     const r = await api.post("/pago/crear", datos);
     if (r.modo === "stripe" && r.url) { location.href = r.url; return r; }
@@ -71,11 +72,19 @@ export function esperarPago(el, compraId, cada = 5000) {
 }
 
 // Pantalla "Buscando…" o "Generando…" con Sparky y un dato curioso cada 9 segundos.
+// Sparky trabaja con casco de obra, martillo y bloques mientras tanto (Daniel, 7 nov 2026); si lo tocan, festeja y
+// vuelve a martillar. Cada dato curioso se escribe letra por letra.
 // opciones.paginas (cuántas páginas se leen) sirve para estimar el tiempo; opciones.estimado son segundos totales si ya se conocen.
 export function pantallaEspera(destino, titulo, opciones = {}) {
-  destino.innerHTML = `<div class="estado-carga"><div class="flot">${sparky("pensando", 6)}</div><h2 id="esp-titulo">${esc(titulo)}</h2><div class="barra"><i id="esp-barra"></i></div><div id="esp-paso" class="ayuda"></div><div id="esp-tiempo" class="ayuda"></div><div class="dato" id="esp-dato"></div></div>`;
+  destino.innerHTML = `<div class="estado-carga"><div class="esp-sparky"></div><h2 id="esp-titulo">${esc(titulo)}</h2><div class="barra"><i id="esp-barra"></i></div><div id="esp-paso" class="ayuda"></div><div id="esp-tiempo" class="ayuda"></div><div class="dato" id="esp-dato"></div></div>`;
+  const obrero = sparkyVivo(destino.querySelector(".esp-sparky"), { escala: 7, reposo: "construyendo", accesorios: "+casco+taller", acciones: [] });
   let datos = [], i = 0, timer = null;
-  const pinta = () => { if (!datos.length) return; const d = datos[i++ % datos.length]; destino.querySelector("#esp-dato").innerHTML = `¿Sabías que…? ${esc(d.emoji ?? "")} ${esc(d.texto)} <small style="display:block;color:var(--gris)">${d.fuente ? "Fuente: " + esc(d.fuente) : ""}</small>`; };
+  const pinta = () => {
+    const caja = destino.querySelector("#esp-dato"); if (!datos.length || !caja) return;
+    const d = datos[i++ % datos.length];
+    caja.innerHTML = `¿Sabías que…? ${esc(d.emoji ?? "")} <span class="esp-texto"></span><small style="display:block;color:var(--gris)">${d.fuente ? "Fuente: " + esc(d.fuente) : ""}</small>`;
+    escribirTexto(caja.querySelector(".esp-texto"), d.texto, 26);
+  };
   fetch("datos/curiosos.json").then((r) => r.json()).then((d) => { datos = d.sort(() => Math.random() - .5); pinta(); timer = setInterval(pinta, 9000); }).catch(() => {});
   // Tiempo estimado: arranca con un cálculo por páginas (lectura + plan + primer bloque, medido en pruebas reales)
   // y se va corrigiendo con el avance real de la barra.
@@ -98,7 +107,7 @@ export function pantallaEspera(destino, titulo, opciones = {}) {
   const reloj = setInterval(pintaTiempo, 1000);
   return {
     actualizar(p, paso) { pct = Number(p) || pct; const b = destino.querySelector("#esp-barra"); if (b) b.style.width = Math.max(2, Math.min(100, pct)) + "%"; const el = destino.querySelector("#esp-paso"); if (el && paso) el.textContent = paso; pintaTiempo(); },
-    detener() { clearInterval(timer); clearInterval(reloj); const el = destino.querySelector("#esp-tiempo"); if (el) el.textContent = ""; },
+    detener() { clearInterval(timer); clearInterval(reloj); obrero.detener(); const el = destino.querySelector("#esp-tiempo"); if (el) el.textContent = ""; },
   };
 }
 

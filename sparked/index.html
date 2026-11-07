@@ -26,7 +26,7 @@
     <div class="chips"><span>$100 MXN · IVA incluido</span><span>7 días de acceso</span><span>2 aparatos por familia</span></div>
   </div>
   <div class="sparky-hero"><div class="tarjeta-sparky">
-    <div class="tile"><span data-sprite="sparky:pensando" data-escala="9"></span><div class="burbuja" id="burbuja-dato">¿Sabías que…? La luz del Sol tarda unos 8 minutos en llegar a la Tierra.</div></div>
+    <div class="tile"><div class="sparky-sitio" id="sparky-inicio"><span data-sprite="sparky:quieto" data-escala="9"></span></div><div class="burbuja"><b>¿Sabías que…?</b> <span id="burbuja-dato">La luz del Sol tarda unos 8 minutos en llegar a la Tierra.</span></div></div>
     <div class="fila"><b>Guía de ejemplo: De las primeras aldeas a un mundo global</b><span>HISTORIA 1°</span></div>
     <div class="barra"><i style="width:100%"></i></div>
     <small>5 bloques · 40 slides · teoría con fotografías reales, juegos, mini-exámenes y reto final</small>
@@ -50,7 +50,7 @@
     <h2>Personaliza tu propia guía interactiva</h2>
     <div class="pasos3">
       <div class="paso"><div class="dib"><span data-sprite="camara" data-escala="5"></span></div>Tomas fotos de tus apuntes<small>hasta 15 páginas</small></div>
-      <div class="paso"><div class="dib"><span data-sprite="sparky:pensando" data-escala="4"></span></div>Sparky las convierte en una guía<small>en unos minutos</small></div>
+      <div class="paso"><div class="dib sk-anima"><span data-sprite="sparky:construyendo" data-escala="4"></span></div>Sparky las convierte en una guía<small>en unos minutos</small></div>
       <div class="paso"><div class="dib"><span data-sprite="check" data-escala="6"></span></div>La juegas y estudias<small>con tus propios temas</small></div>
     </div>
     <div class="para">Si tienes tus propios apuntes: la guía sale de lo que tú subas, verificado.</div>
@@ -82,13 +82,18 @@
 <footer class="pie"><div class="contenedor">SparkEd · Guías de estudio interactivas · <a href="../" style="color:inherit">Acceso a clases</a></div></footer>
 
 <script type="module">
-import { pintarSprites, esc } from "./js/sitio.js";
+import { pintarSprites } from "./js/sitio.js";
+import { sparkyVivo } from "./js/ui.js";
 pintarSprites();
-// La burbuja de Sparky muestra un dato curioso al azar del banco local (sin inteligencia artificial).
-fetch("datos/curiosos.json").then((r) => r.json()).then((datos) => {
-  const b = document.getElementById("burbuja-dato"); if (!b || !datos.length) return;
-  const d = datos[Math.floor(Math.random() * datos.length)];
-  b.textContent = `¿Sabías que…? ${d.texto}`;
+// Sparky vivo: flota y parpadea; cada 8–15 s saluda, camina por su recuadro o escribe en la burbuja otro dato curioso
+// del banco local (sin inteligencia artificial). Si lo tocan festeja; si le pasan el mouse, saluda.
+let datos = [], i = 0;
+const burbuja = document.getElementById("burbuja-dato");
+sparkyVivo(document.getElementById("sparky-inicio"), { escala: 9, burbuja, saludoInicial: true, siguienteDato: () => datos.length ? datos[i++ % datos.length].texto : null });
+fetch("datos/curiosos.json").then((r) => r.json()).then((d) => {
+  if (!d.length) return;
+  datos = d.slice().sort(() => Math.random() - .5);
+  burbuja.textContent = datos[i++].texto;
 }).catch(() => {});
 document.getElementById("abrir-demo").onclick = () => {
   // En pantallas angostas (teléfonos) la guía se abre en pantalla completa; dentro del marco quedaría diminuta.

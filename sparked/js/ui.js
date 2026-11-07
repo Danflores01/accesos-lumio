@@ -107,6 +107,149 @@ export function panelPregunta(a, ctx, onAns) {
   return el;
 }
 
+// ---------- Sparky vivo (7 nov 2026) ----------
+// Sparky con vida en las páginas del sitio. En reposo flota, parpadea y mira a los lados; cada 8–15 s hace algo al
+// azar: saludar, caminar de un lado a otro de su recuadro o escribir un dato curioso letra por letra en la burbuja.
+// Si le pasan el mouse encima saluda y si lo tocan festeja con un brinco, sin estorbar lo demás de la página.
+// En la pantalla de espera se queda construyendo (reposo "construyendo"). Con "reducir movimiento" no camina, no
+// brinca ni escribe letra por letra: solo cambia de pose.
+// op = { escala, reposo, acciones: ["saludar", "caminar", "escribir"], burbuja (elemento donde escribe),
+//        siguienteDato: () => texto, cada: [ms, ms], saludoInicial, accesorios ("+casco+taller" en la espera,
+//        para que al reaccionar conserve el casco y los bloques) }. Devuelve { detener, hacer(accion) }.
+const CORTE = Symbol("corte");
+export const movimientoReducido = () => !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+// Escribe un texto letra por letra dentro de "el", con cursor. Devuelve { listo (promesa), terminar() }.
+// Los lectores de pantalla reciben el texto completo desde el principio.
+export function escribirTexto(el, texto, ms = 32) {
+  const letras = Array.from(String(texto ?? ""));
+  el.innerHTML = `<span class="sr"></span><span class="tecleo activo" aria-hidden="true"></span>`;
+  const [sr, vis] = el.children;
+  sr.textContent = letras.join("");
+  let i = 0, id = null, fin;
+  const listo = new Promise((r) => (fin = r));
+  const terminar = () => { clearTimeout(id); vis.textContent = letras.join(""); vis.classList.remove("activo"); fin(); };
+  if (!letras.length || movimientoReducido()) { terminar(); return { listo, terminar }; }
+  const paso = () => {
+    if (!el.isConnected) return terminar();
+    i = Math.min(letras.length, i + (Math.random() < .3 ? 2 : 1));
+    vis.textContent = letras.slice(0, i).join("");
+    if (i >= letras.length) return terminar();
+    const c = letras[i - 1];
+    id = setTimeout(paso, ms * (/[.,;:!?…]/.test(c) ? 5 : c === " " ? 1.5 : 1) * (.7 + Math.random() * .6));
+  };
+  id = setTimeout(paso, ms);
+  return { listo, terminar };
+}
+
+export function sparkyVivo(destino, op = {}) {
+  const escala = op.escala ?? 6, reposo = op.reposo ?? "quieto", acc = op.accesorios ?? "";
+  const [minimo, maximo] = op.cada ?? [8000, 15000];
+  const lista = (op.acciones ?? ["saludar", "caminar", "escribir"]).filter((a) => a !== "escribir" || (op.burbuja && op.siguienteDato));
+  // La capa .sk-toque (transparente, encima del dibujo) recibe el mouse y los toques: como nunca se reemplaza, un clic
+  // no se pierde aunque el dibujo cambie de pose en ese instante.
+  destino.innerHTML = `<div class="sparky-vivo sk-anima" aria-hidden="true"><div class="sk-pista"><div class="sk-actor"><div class="sk-dibujo"></div><i class="sk-toque"></i></div></div></div>`;
+  const raiz = destino.firstElementChild, pista = raiz.firstElementChild, actor = pista.firstElementChild, dibujo = actor.firstElementChild;
+  let pose = "", x = 0, timer = null, tarea = null, prioridad = 0, vivo = true, ultima = "", enfriar = 0;
+  let primera = op.saludoInicial ? "saludar" : null;
+
+  const pon = (p) => { const f = p === reposo ? p : p + acc; if (f !== pose) { dibujo.innerHTML = sparky(f, escala); pose = f; } };
+  const mirar = (dir) => actor.classList.toggle("izquierda", dir < 0);
+  // Cada acción recibe una "tarea" t; si otra la interrumpe (un toque, por ejemplo), sus esperas se cortan.
+  const alCortar = (t, f) => { t.alCortar.add(f); return () => t.alCortar.delete(f); };
+  const esperar = (t, ms) => new Promise((ok, no) => {
+    if (t.cortado) return no(CORTE);
+    const quitar = alCortar(t, () => { clearTimeout(id); no(CORTE); });
+    const id = setTimeout(() => { quitar(); ok(); }, ms);
+  });
+  // Camina hasta "a" (px desde el centro de su recuadro) a media figura por segundo, mirando hacia donde va.
+  const ir = (t, a) => new Promise((ok, no) => {
+    if (t.cortado) return no(CORTE);
+    const de = x, dur = Math.abs(a - de) / Math.max(30, actor.offsetWidth * .5) * 1000;
+    if (dur < 40) { x = a; pista.style.transform = a ? `translateX(${a}px)` : ""; return ok(); }
+    mirar(a - de);
+    const an = pista.animate([{ transform: `translateX(${de}px)` }, { transform: `translateX(${a}px)` }], { duration: dur, easing: "linear", fill: "forwards" });
+    const fija = (v) => { x = v; pista.style.transform = `translateX(${v}px)`; an.cancel(); };
+    const quitar = alCortar(t, () => { let v = x; try { v = new DOMMatrixReadOnly(getComputedStyle(pista).transform).m41; } catch {} fija(v); no(CORTE); });
+    an.onfinish = () => { quitar(); fija(a); ok(); };
+  });
+
+  const ACCIONES = {
+    async saludar(t) { pon("saludo"); await esperar(t, 2600); },
+    async caminar(t) {
+      const lado = Math.floor((raiz.clientWidth - actor.offsetWidth) / 2) - 6;
+      if (lado < 24 || movimientoReducido()) return ACCIONES.saludar(t);
+      const d = Math.random() < .5 ? 1 : -1;
+      pon("caminando");
+      await ir(t, d * lado); await esperar(t, 300);
+      await ir(t, -d * lado); await esperar(t, 300);
+      await ir(t, 0);
+    },
+    async escribir(t) {
+      const texto = op.siguienteDato?.();
+      if (!texto) return ACCIONES.saludar(t);
+      pon("escribiendo"); await esperar(t, 500);
+      const e = escribirTexto(op.burbuja, texto, op.msLetra ?? 34);
+      const quitar = alCortar(t, e.terminar);
+      await e.listo; quitar();
+      await esperar(t, 1200);
+    },
+  };
+
+  function cortar(t) { t.cortado = true; for (const f of [...t.alCortar]) f(); t.alCortar.clear(); }
+  async function correr(fn, prio = 0) {
+    if (tarea) cortar(tarea);
+    const t = { cortado: false, alCortar: new Set() };
+    tarea = t; prioridad = prio;
+    try { await fn(t); } catch (e) { if (e !== CORTE) console.error(e); }
+    if (tarea !== t || !vivo) return;
+    tarea = null; prioridad = 0;
+    if (x !== 0) { x = 0; pista.style.transform = ""; }
+    mirar(1); pon(reposo); programar();
+  }
+  function programar(ms) {
+    clearTimeout(timer);
+    if (!vivo || !lista.length || movimientoReducido()) return;
+    timer = setTimeout(turno, ms ?? minimo + Math.random() * (maximo - minimo));
+  }
+  function turno() {
+    if (!vivo) return;
+    if (!raiz.isConnected) return detener();
+    if (document.hidden || tarea) return programar();
+    const opciones = lista.length > 1 ? lista.filter((a) => a !== ultima) : lista;
+    ultima = primera && lista.includes(primera) ? primera : opciones[Math.floor(Math.random() * opciones.length)];
+    primera = null;
+    correr(ACCIONES[ultima]);
+  }
+  // Reacción a la gente: mouse encima → saluda; toque o clic → festeja con un brinco. Luego vuelve a lo suyo.
+  function reaccionar(tipo) {
+    if (!vivo) return;
+    const prio = tipo === "toque" ? 2 : 1;
+    if (tarea && prioridad >= prio) return;
+    if (prio === 1 && Date.now() < enfriar) return;
+    enfriar = Date.now() + 3000;
+    correr(async (t) => {
+      const festeja = prio === 2;
+      actor.classList.remove("brinca");
+      pon(festeja ? "festejo" : "saludo");
+      if (festeja && !movimientoReducido()) { void actor.offsetWidth; actor.classList.add("brinca"); }
+      await esperar(t, festeja ? 1500 : 2000);
+      actor.classList.remove("brinca");
+      if (x !== 0) { pon("caminando"); await ir(t, 0); }
+    }, prio);
+  }
+  function detener() { vivo = false; clearTimeout(timer); if (tarea) cortar(tarea); }
+
+  actor.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") reaccionar("mouse"); });
+  actor.addEventListener("pointerdown", () => reaccionar("toque"));
+  pon(reposo);
+  programar(primera ? 1800 : undefined);
+  return {
+    detener,
+    hacer(a) { if (ACCIONES[a]) { ultima = a; correr(ACCIONES[a]); } else reaccionar(a === "festejo" ? "toque" : "mouse"); },
+  };
+}
+
 // Barra de tiempo: devuelve {detener}. Llama a onFin cuando se acaba.
 export function temporizador(barra, segundos, onFin, ctx) {
   const fin = performance.now() + segundos * 1000;

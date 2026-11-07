@@ -20,7 +20,13 @@ const grupo = (dx, dy, inner, extra = "") => `<g transform="translate(${dx} ${dy
 // con sombra gris-lavanda rayada (como impresión retro), franjas y guantes naranja, panel de pecho amarillo, hombreras,
 // articulaciones con rayitas, reloj en la muñeca, bolsillo, botas con suela y hebilla, mochila gris con luz roja y
 // tanques, anillo del cuello, visera sobre el visor y una chispa en la antena (la "spark" de SparkEd).
+// Sparky vivo (7 nov 2026, Daniel: "que tenga un poquito más de vida y no parezca que está confundido todo el tiempo"):
+// poses nuevas que se mueven solo con CSS (construyendo, caminando, escribiendo) y accesorios que se suman a cualquier
+// pose con "+": "+casco" (casco amarillo de obra; la antena sale por arriba) y "+taller" (bloques de colores en el piso;
+// el dibujo se hace más ancho). Las piezas que se mueven van en grupos con clase (sk-cuerpo, sk-cara, sk-mano,
+// sk-martillo, sk-pierna-a…); las animaciones están en base.css y solo corren dentro de un contenedor .sk-anima.
 const S = { luz: "#FBF7EE", sombra: "#DAD8E8", costura: "#B9B4D0", gris: "#9CA2B8", grisOscuro: "#636A86", naranja: "#FF7A3D", amarillo: "#FFC247", rojo: "#FF4D5E", visor: "#1A1733", led: "#7DF9FF", ledSuave: "#5BB8FF", cachete: "#FF8FB1" };
+const r2 = (v) => Math.round(v * 100) / 100;
 const RAYAS = `<defs><pattern id="sk-rayas" width="1" height=".6" patternUnits="userSpaceOnUse"><rect width="1" height=".2" fill="#2A2340" opacity=".13"/></pattern><pattern id="sk-scan" width="1" height=".5" patternUnits="userSpaceOnUse"><rect width="1" height=".16" fill="#fff" opacity=".07"/></pattern></defs>`;
 const chispa = (cx, cy, R, r, fill, sw = .3) => { const k = r * Math.SQRT1_2; return `<path d="M${cx} ${cy - R} L${cx + k} ${cy - k} L${cx + R} ${cy} L${cx + k} ${cy + k} L${cx} ${cy + R} L${cx - k} ${cy + k} L${cx - R} ${cy} L${cx - k} ${cy - k} Z" fill="${fill}" ${o(sw)}/>`; };
 const ojoLed = (x, y, w, h, color) => `<g class="led-ojo"><rect x="${x - .35}" y="${y - .35}" width="${w + .7}" height="${h + .7}" rx="${h / 2}" fill="${color}" opacity=".28"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.min(w, h) * .4}" fill="${color}"/></g>`;
@@ -32,6 +38,12 @@ function caraLed(pose) {
   if (pose === "festejo") return `${chispa(6.65, 5.9, 1.05, .38, S.led, 0)}${chispa(9.35, 5.9, 1.05, .38, S.led, 0)}<path d="M6.8 7.15 h2.4 a1.2 1.1 0 0 1 -2.4 0 z" fill="${S.led}"/>${cachetes()}`;
   if (pose === "triste") return `${ojoLed(5.9, 5.5, 1.5, 1.3, S.ledSuave)}${ojoLed(8.6, 5.5, 1.5, 1.3, S.ledSuave)}${bocaLed("M5.8 5.35 l1.5 -.55", S.ledSuave, .4)}${bocaLed("M10.2 5.35 l-1.5 -.55", S.ledSuave, .4)}${bocaLed("M7.1 7.95 q.9 -.85 1.8 0", S.ledSuave)}<path d="M6.5 7.1 q.55 .95 0 1.35 q-.55 -.4 0 -1.35 z" fill="${S.ledSuave}"/>`;
   if (pose === "pensando") return `${ojoLed(5.9, 4.9, 1.5, 2, S.led)}<rect x="8.6" y="5.55" width="1.5" height=".65" rx=".32" fill="${S.led}"/>${bocaLed("M7.3 7.7 l1.4 -.35", S.led)}${cachetes()}`;
+  // Construyendo: mira el martillo (abajo a la derecha) muy contento, con la boca abierta.
+  if (pose === "construyendo") return `${ojoLed(6.3, 5.15, 1.5, 1.85, S.led)}${ojoLed(9, 5.15, 1.5, 1.85, S.led)}<path d="M7.45 7.3 h2.2 a1.1 1 0 0 1 -2.2 0 z" fill="${S.led}"/>${cachetes()}`;
+  // Caminando: los ojos miran hacia donde va (a la derecha; al voltear, el dibujo se refleja).
+  if (pose === "caminando") return `${ojoLed(6.35, 4.9, 1.5, 2, S.led)}${ojoLed(9.05, 4.9, 1.5, 2, S.led)}${bocaLed("M7.55 7.5 q.9 .85 1.8 0", S.led)}${cachetes()}`;
+  // Escribiendo: mira la hoja (abajo) y saca la lengüita, como quien escribe con cuidado.
+  if (pose === "escribiendo") return `${ojoLed(5.75, 5.45, 1.5, 1.7, S.led)}${ojoLed(8.45, 5.45, 1.5, 1.7, S.led)}${bocaLed("M6.85 7.6 q.8 .7 1.6 0", S.led)}<path d="M7.95 7.88 q.48 -.04 .48 .42 q0 .36 -.36 .34 q-.34 -.04 -.28 -.42 z" fill="${S.cachete}"/>${cachetes()}`;
   return `${ojoLed(5.9, 4.9, 1.5, 2, S.led)}${ojoLed(8.6, 4.9, 1.5, 2, S.led)}${bocaLed("M7.1 7.5 q.9 .85 1.8 0", S.led)}${cachetes()}`;
 }
 // Brazo articulado: hombro-brazo con franja naranja, articulación gris con rayita, antebrazo (con reloj si se pide) y
@@ -53,41 +65,120 @@ const pierna = (x) => `
     <rect x="${x - .4}" y="18.75" width="3.6" height=".55" rx=".27" fill="${S.grisOscuro}"/>
     <rect x="${x - .4}" y="17.9" width="3.6" height="1.4" rx=".65" fill="none" ${o(.45)}/>
     <rect x="${x + .7}" y="18.15" width=".9" height=".45" rx=".15" fill="${S.gris}" ${o(.25)}/>`;
-function cuerpoSparky(pose) {
-  const festejo = pose === "festejo";
-  const brazoIzq = festejo ? brazo(2.1, 10.9, 160, false) : brazo(2.1, 10.9, 0, true);
-  const brazoDer = pose === "saludo" || festejo ? brazo(11.6, 10.9, -160, false) : pose === "pensando" ? "" : brazo(11.6, 10.9, 0, false);
-  // En "pensando" el brazo se dibuja al final, encima del casco: la mano toca el visor.
-  const brazoEncima = pose === "pensando" ? brazo(11.6, 10.9, 169, false) : "";
-  const extras = festejo
-    ? `${chispa(1.9, 3.2, 1.1, .4, S.amarillo)}${chispa(14.4, 2.2, 1.3, .45, S.amarillo)}${chispa(13.2, 5.2, .6, .22, S.naranja)}`
-    : pose === "pensando"
-      ? `<circle cx="12.3" cy="4.5" r=".45" fill="${S.visor}" ${o(.3)}/><circle cx="11.6" cy="5.4" r=".3" fill="${S.visor}" ${o(.3)}/><circle cx="13.7" cy="2.4" r="1.7" fill="${S.visor}" ${o(.4)}/><text x="13.7" y="3.25" font-size="2.4" font-weight="800" text-anchor="middle" fill="${S.led}" font-family="Outfit, Arial, sans-serif">?</text>`
-      : "";
+// Grupo que gira alrededor de (cx, cy) —un hombro, una muñeca—: el cuadro invisible centrado en ese punto hace que
+// "transform-box: fill-box; transform-origin: center" caiga justo ahí en Chrome, Safari y Firefox.
+const giro = (cx, cy, clase, inner, r = 7) => `<g class="sk-giro ${clase}"><rect x="${r2(cx - r)}" y="${r2(cy - r)}" width="${r2(2 * r)}" height="${r2(2 * r)}" fill="none"/>${inner}</g>`;
+
+// Accesorios de las poses nuevas.
+// Casco amarillo de obra sobre el casco de astronauta: cúpula con cresta, sombra rayada, ala y la antena saliendo arriba.
+const cascoObra = () => `<g class="sk-casco-obra">
+  <path d="M3.3 3.3 C3.5 0 12.5 0 12.7 3.3 Z" fill="#FFD23F"/>
+  <path d="M3.4 2.6 C5.5 2.2 10.5 2.2 12.6 2.6 L12.7 3.3 L3.3 3.3 Z" fill="#E9A21B"/><path d="M3.4 2.6 C5.5 2.2 10.5 2.2 12.6 2.6 L12.7 3.3 L3.3 3.3 Z" fill="url(#sk-rayas)"/>
+  <path d="M7.2 .95 Q8 .7 8.8 .95 L9 3.25 L7 3.25 Z" fill="#FFE27A" ${o(.3)}/>
+  <ellipse cx="5.2" cy="1.8" rx=".85" ry=".4" fill="#fff" opacity=".6" transform="rotate(-30 5.2 1.8)"/>
+  <path d="M3.3 3.3 C3.5 0 12.5 0 12.7 3.3 Z" fill="none" ${o(.5)}/>
+  <rect x="2.4" y="3.05" width="11.2" height=".95" rx=".47" fill="#E9A21B" ${o(.45)}/>
+  <rect x="3" y="3.17" width="10" height=".3" rx=".15" fill="#fff" opacity=".4"/>
+  <line x1="8" y1=".8" x2="8" y2=".1" ${o(.5)}/>
+  ${chispa(8, -.32, .8, .28, S.amarillo)}
+</g>`;
+// Martillo dibujado sobre el brazo colgando (guante en 12.75, 16): mango de madera hacia abajo-derecha y cabeza de acero.
+// Con el brazo a -52.3° el mango queda horizontal y la cara de la cabeza pega hacia abajo, sobre el bloque de arriba.
+const martillo = () => `<g transform="translate(13.91 17.5) rotate(52.3)">
+  <rect x="-2.15" y="-.32" width="2.4" height=".64" rx=".32" fill="#C98B4D" ${o(.35)}/>
+  <rect x="-.75" y="-1.5" width="1.5" height="3" rx=".35" fill="${S.gris}"/>
+  <rect x=".1" y="-1.5" width=".65" height="3" rx=".3" fill="${S.grisOscuro}"/>
+  <rect x="-.55" y="-1.25" width=".35" height="1.9" rx=".17" fill="#fff" opacity=".45"/>
+  <rect x="-.75" y="-1.5" width="1.5" height="3" rx=".35" fill="none" ${o(.45)}/>
+</g>`;
+// Un bloque 2.5D (cara clara arriba, sombra rayada abajo, brillo y contorno), con letra si se pide.
+const bloque = (x, y, w, h, luz, sombra, letra = "") => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx=".4" fill="${luz}"/>
+  <rect x="${x}" y="${r2(y + h * .58)}" width="${w}" height="${r2(h * .42)}" rx=".35" fill="${sombra}"/><rect x="${x}" y="${r2(y + h * .58)}" width="${w}" height="${r2(h * .42)}" rx=".35" fill="url(#sk-rayas)"/>
+  <rect x="${r2(x + .35)}" y="${r2(y + .25)}" width="${r2(w - .7)}" height=".28" rx=".14" fill="#fff" opacity=".5"/>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx=".4" fill="none" ${o(.45)}/>
+  ${letra ? `<text x="${r2(x + w / 2)}" y="${r2(y + h * .74)}" font-size="${r2(h * .66)}" font-weight="800" text-anchor="middle" fill="#fff" stroke="${C.linea}" stroke-width=".2" paint-order="stroke" font-family="Outfit, Arial, sans-serif">${letra}</text>` : ""}`;
+// El taller: bloques de letras A, B y C en el piso (los bloques de la guía) que Sparky acomoda a martillazos.
+const tallerBloques = () => `<ellipse cx="18.5" cy="19.35" rx="3.1" ry=".5" fill="${C.sombra}"/>
+  ${bloque(16.2, 17.45, 2.2, 1.85, C.teal, C.tealOscuro, "A")}${bloque(18.65, 17.45, 2.2, 1.85, "#8F6BFF", "#5A2ED6", "B")}
+  <g class="sk-pie sk-golpeado">${bloque(17.4, 15.6, 2.25, 1.85, S.naranja, "#D9541A", "C")}</g>`;
+// Chispitas del golpe (invisibles hasta que la animación las enciende en cada martillazo).
+const chispasGolpe = () => [[16.7, 14.75, .85], [20.4, 14.55, .9], [20.05, 12.85, .6], [17.05, 13.05, .55]].map(([x, y, R], i) => `<g class="sk-centro sk-chispa sk-chispa-${i + 1}" opacity="0">${chispa(x, y, R, r2(R * .36), i % 2 ? S.amarillo : "#FFE680", .25)}</g>`).join("");
+// Tabla con hoja delante del cuerpo: pinza, título naranja y tres renglones que se van escribiendo (trazos ondulados
+// con pathLength 1 para que la animación los "dibuje" de izquierda a derecha).
+const tablaNotas = () => `<g class="sk-tabla">
+  <rect x="5.25" y="11.95" width="5.5" height="4.3" rx=".45" fill="#C98B4D"/>
+  <rect x="5.25" y="15.2" width="5.5" height="1.05" rx=".4" fill="#A46B33"/><rect x="5.25" y="15.2" width="5.5" height="1.05" rx=".4" fill="url(#sk-rayas)"/>
+  <rect x="5.25" y="11.95" width="5.5" height="4.3" rx=".45" fill="none" ${o(.45)}/>
+  <rect x="5.7" y="12.45" width="4.6" height="3.45" rx=".2" fill="#FFFDF6" ${o(.3)}/>
+  <rect x="6.25" y="12.85" width="2.2" height=".38" rx=".19" fill="${S.naranja}"/>
+  ${[13.65, 14.35, 15.05].map((y, i) => `<path class="sk-linea sk-linea-${i + 1}" d="M6.3 ${y} q.18 -.26 .36 0${" t.36 0".repeat(i < 2 ? 8 : 5)}" pathLength="1" fill="none" stroke="${S.visor}" stroke-width=".2" stroke-linecap="round" opacity=".7"/>`).join("")}
+  <rect x="7.1" y="11.55" width="1.8" height="1.15" rx=".35" fill="${S.gris}" ${o(.35)}/><rect x="7.5" y="11.8" width="1" height=".35" rx=".17" fill="${S.grisOscuro}"/>
+</g>`;
+const guante = (cx, cy) => `<circle cx="${cx}" cy="${cy}" r="1.15" fill="${S.naranja}" ${o(.45)}/><ellipse cx="${r2(cx - .35)}" cy="${r2(cy - .4)}" rx=".4" ry=".25" fill="#fff" opacity=".5"/>`;
+// Mano que escribe (guante en 8.93, 14.17) con un lápiz amarillo de goma rosa; la punta queda en 7.73, 15.07 (inicio
+// del tercer renglón) y el pulgar lo sujeta.
+const manoConLapiz = () => `${guante(8.93, 14.17)}<g transform="translate(8.93 14.17) rotate(53.1)">
+  <rect x="-.39" y="-2" width=".78" height=".6" rx=".22" fill="#FF8FB1" ${o(.3)}/>
+  <rect x="-.39" y="-1.45" width=".78" height=".38" fill="${S.gris}" ${o(.25)}/>
+  <rect x="-.39" y="-1.1" width=".78" height="1.95" fill="${S.amarillo}"/><rect x=".1" y="-1.1" width=".29" height="1.95" fill="#E89B1C"/>
+  <rect x="-.39" y="-1.1" width=".78" height="1.95" fill="none" ${o(.3)}/>
+  <path d="M-.39 .85 L.39 .85 L0 1.5 Z" fill="#F6D7AE" ${o(.3)}/><path d="M-.13 1.22 L.13 1.22 L0 1.5 Z" fill="${C.linea}"/>
+  <circle cx="-.55" cy="-.25" r=".46" fill="${S.naranja}" ${o(.3)}/>
+</g>`;
+
+function cuerpoSparky(frame) {
+  const { pose, casco, taller } = typeof frame === "string" ? leerPose(frame) : frame;
+  let brazosAtras = `${brazo(2.1, 10.9, 0, true)}${brazo(11.6, 10.9, 0, false)}`;
+  let piernas = `${pierna(4.6)}${pierna(8.6)}`, frente = "", encima = "", extras = "";
+  if (pose === "festejo") {
+    brazosAtras = giro(3.25, 11.1, "sk-fiesta-a", brazo(2.1, 10.9, 160, false)) + giro(12.75, 11.1, "sk-fiesta-b", brazo(11.6, 10.9, -160, false));
+    extras = [[1.9, 3.2, 1.1, .4, S.amarillo], [14.4, 2.2, 1.3, .45, S.amarillo], [13.2, 5.2, .6, .22, S.naranja]].map(([x, y, R, r, c]) => `<g class="sk-centro sk-destello">${chispa(x, y, R, r, c)}</g>`).join("");
+  } else if (pose === "saludo") {
+    brazosAtras = brazo(2.1, 10.9, 0, true) + giro(12.75, 11.1, "sk-mano", brazo(11.6, 10.9, -160, false));
+  } else if (pose === "pensando") {
+    // El brazo se dibuja al final, encima del casco: la mano toca el visor.
+    brazosAtras = brazo(2.1, 10.9, 0, true);
+    encima = brazo(11.6, 10.9, 169, false);
+    extras = `<circle cx="12.3" cy="4.5" r=".45" fill="${S.visor}" ${o(.3)}/><circle cx="11.6" cy="5.4" r=".3" fill="${S.visor}" ${o(.3)}/><circle cx="13.7" cy="2.4" r="1.7" fill="${S.visor}" ${o(.4)}/><text x="13.7" y="3.25" font-size="2.4" font-weight="800" text-anchor="middle" fill="${S.led}" font-family="Outfit, Arial, sans-serif">?</text>`;
+  } else if (pose === "caminando") {
+    piernas = `<g class="sk-pierna sk-pierna-a">${pierna(4.6)}</g><g class="sk-pierna sk-pierna-b">${pierna(8.6)}</g>`;
+    brazosAtras = giro(3.25, 11.1, "sk-braceo", brazo(2.1, 10.9, 0, true)) + giro(12.75, 11.1, "sk-braceo", brazo(11.6, 10.9, 0, false));
+  } else if (pose === "construyendo") {
+    // Quieto, el martillo queda arriba listo para pegar (-130°); la animación lo baja hasta el bloque (+78°).
+    brazosAtras = brazo(2.1, 10.9, 0, true) + giro(12.75, 11.1, "sk-martillo", `<g transform="rotate(-130 12.75 11.1)">${martillo()}${brazo(11.6, 10.9, 0, false)}</g>`, 8.3);
+  } else if (pose === "escribiendo") {
+    // Los dos brazos van al frente, detrás de la tabla: la mano izquierda la sostiene por la orilla y la derecha
+    // escribe encima de la hoja (renglón por renglón, con el lápiz garabateando).
+    brazosAtras = "";
+    frente = `${brazo(11.6, 10.9, 51.2, false)}${brazo(2.1, 10.9, -31.6, true)}${tablaNotas()}${guante(5.82, 15.27)}<g class="sk-escritura">${giro(8.93, 14.17, "sk-garabato", manoConLapiz(), 3.5)}</g>`;
+  }
   const inclinacion = pose === "triste" ? `transform="rotate(8 8 7)"` : "";
+  const antena = casco ? "" : `<line x1="8" y1="1.9" x2="8" y2="1.3" ${o(.5)}/>${chispa(8, .95, .85, .3, S.amarillo)}`;
   return `${RAYAS}
-    <ellipse cx="8" cy="19.35" rx="5.4" ry=".62" fill="${C.sombra}"/>
+    <ellipse class="sk-sombra" cx="8" cy="19.35" rx="5.4" ry=".62" fill="${C.sombra}"/>
+    ${taller ? tallerBloques() : ""}
+    <g class="sk-cuerpo"><rect x="-5" y="-2" width="26" height="21.3" fill="none"/>
     <rect x="3.3" y="8.5" width="1.2" height="1.4" rx=".5" fill="${S.grisOscuro}" ${o(.4)}/><rect x="11.5" y="8.5" width="1.2" height="1.4" rx=".5" fill="${S.grisOscuro}" ${o(.4)}/>
     <rect x="3" y="9.4" width="10" height="6.8" rx="1.8" fill="${S.gris}" ${o(.5)}/>
     <rect x="3.3" y="14" width="9.4" height="1.9" rx="1" fill="${S.grisOscuro}"/>
     <rect x="12" y="10.2" width=".6" height="1.5" rx=".25" fill="${S.rojo}"/><rect x="11.8" y="10" width="1" height="1.9" rx=".4" fill="${S.rojo}" opacity=".35"/>
-    ${pierna(4.6)}${pierna(8.6)}
-    ${brazoIzq}${brazoDer}
+    ${piernas}
+    ${brazosAtras}
     <rect x="3.6" y="10.4" width="8.8" height="6" rx="2" fill="${S.luz}"/>
     <rect x="3.6" y="13.9" width="8.8" height="2.5" rx="1.5" fill="${S.sombra}"/><rect x="3.6" y="13.9" width="8.8" height="2.5" rx="1.5" fill="url(#sk-rayas)"/>
     <rect x="3.6" y="13.2" width="8.8" height=".9" fill="${S.naranja}" ${o(.3)}/><rect x="7.4" y="13.05" width="1.2" height="1.2" rx=".2" fill="${S.gris}" ${o(.3)}/>
     <line x1="4.7" y1="11.3" x2="4.7" y2="12.9" stroke="${S.costura}" stroke-width=".22"/><line x1="11.3" y1="11.3" x2="11.3" y2="12.9" stroke="${S.costura}" stroke-width=".22"/>
     <rect x="4.4" y="14.5" width="1.7" height="1.1" rx=".25" fill="none" stroke="${S.costura}" stroke-width=".25"/><line x1="4.4" y1="14.85" x2="6.1" y2="14.85" stroke="${S.costura}" stroke-width=".22"/>
     <rect x="3.6" y="10.4" width="8.8" height="6" rx="2" fill="none" ${o(.6)}/>
-    <ellipse cx="3.9" cy="10.8" rx="1.55" ry="1" fill="${S.luz}" ${o(.45)}/><ellipse cx="12.1" cy="10.8" rx="1.55" ry="1" fill="${S.luz}" ${o(.45)}/>
-    <line x1="2.9" y1="11.05" x2="4.9" y2="11.05" stroke="${S.costura}" stroke-width=".22"/><line x1="11.1" y1="11.05" x2="13.1" y2="11.05" stroke="${S.costura}" stroke-width=".22"/>
     <rect x="6.4" y="11.1" width="3.6" height="2" rx=".5" fill="${S.amarillo}" ${o(.4)}/>
     <circle cx="7.1" cy="11.8" r=".33" fill="${S.rojo}" ${o(.2)}/><circle cx="8" cy="11.8" r=".33" fill="${S.grisOscuro}" ${o(.2)}/><circle cx="8.9" cy="11.8" r=".33" fill="${S.led}" ${o(.2)}/>
     <rect x="6.9" y="12.3" width="2.6" height=".55" rx=".15" fill="${S.visor}"/><rect x="7.1" y="12.48" width="1.3" height=".2" fill="${S.led}"/>
+    ${frente}
+    <ellipse cx="3.9" cy="10.8" rx="1.55" ry="1" fill="${S.luz}" ${o(.45)}/><ellipse cx="12.1" cy="10.8" rx="1.55" ry="1" fill="${S.luz}" ${o(.45)}/>
+    <line x1="2.9" y1="11.05" x2="4.9" y2="11.05" stroke="${S.costura}" stroke-width=".22"/><line x1="11.1" y1="11.05" x2="13.1" y2="11.05" stroke="${S.costura}" stroke-width=".22"/>
     <g ${inclinacion}>
       <rect x="5.3" y="9.8" width="5.4" height="1.1" rx=".5" fill="${S.gris}" ${o(.4)}/>
-      <line x1="8" y1="1.9" x2="8" y2="1.3" ${o(.5)}/>
-      ${chispa(8, .95, .85, .3, S.amarillo)}
+      ${antena}
       <rect x="2.7" y="5" width="1.4" height="2.7" rx=".6" fill="${S.gris}" ${o(.45)}/><rect x="11.9" y="5" width="1.4" height="2.7" rx=".6" fill="${S.gris}" ${o(.45)}/>
       <circle cx="3.4" cy="5.85" r=".3" fill="${S.naranja}"/><circle cx="12.6" cy="5.85" r=".3" fill="${S.naranja}"/>
       <line x1="3" y1="6.65" x2="3.8" y2="6.65" stroke="${S.grisOscuro}" stroke-width=".2"/><line x1="3" y1="7.05" x2="3.8" y2="7.05" stroke="${S.grisOscuro}" stroke-width=".2"/><line x1="12.2" y1="6.65" x2="13" y2="6.65" stroke="${S.grisOscuro}" stroke-width=".2"/><line x1="12.2" y1="7.05" x2="13" y2="7.05" stroke="${S.grisOscuro}" stroke-width=".2"/>
@@ -95,15 +186,28 @@ function cuerpoSparky(pose) {
       <circle cx="7.7" cy="5.7" r="4.1" fill="${S.luz}"/>
       <rect x="4.7" y="3.4" width="6.6" height="5.3" rx="2.4" fill="${S.visor}" ${o(.45)}/><rect x="4.7" y="3.4" width="6.6" height="5.3" rx="2.4" fill="url(#sk-scan)"/>
       <path d="M5.3 5.2 q.1 -1.3 1.3 -1.5 h1.3 l-2.3 3.6 q-.5 -1 -.3 -2.1 z" fill="#fff" opacity=".12"/>
-      ${caraLed(pose)}
+      <g class="sk-cara">${caraLed(pose)}</g>
       <rect x="4.4" y="2.75" width="7.2" height=".85" rx=".4" fill="${S.gris}" ${o(.35)}/>
       <ellipse cx="5.7" cy="4.35" rx=".65" ry=".34" fill="#fff" opacity=".5" transform="rotate(-25 5.7 4.35)"/>
+      ${casco ? cascoObra() : ""}
     </g>
-    ${brazoEncima}${extras}`;
+    ${encima}</g>
+    ${extras}${taller ? chispasGolpe() : ""}`;
 }
-const POSES = ["quieto", "saludo", "festejo", "triste", "pensando"];
-export const sparky = (frame = "quieto", escala = 4, extra = "") => envoltura(16, 20, escala, "sparky", cuerpoSparky(POSES.includes(frame) ? frame : "quieto"), extra);
-export const capaSparky = (frame, dx, dy) => grupo(dx, dy, cuerpoSparky(POSES.includes(frame) ? frame : "quieto"));
+const POSES = ["quieto", "saludo", "festejo", "triste", "pensando", "construyendo", "caminando", "escribiendo"];
+// "festejo+casco+taller" → pose festejo con casco de obra y los bloques del taller. "construyendo" ya trae los dos.
+function leerPose(frame) {
+  const [p, ...acc] = String(frame ?? "quieto").split("+");
+  const pose = POSES.includes(p) ? p : "quieto";
+  return { pose, casco: pose === "construyendo" || acc.includes("casco"), taller: pose === "construyendo" || acc.includes("taller") };
+}
+// Marco del dibujo: 16 × 20 de siempre; con casco crece hacia arriba (la antena) y con taller hacia la derecha (bloques).
+const marcoSparky = ({ casco, taller }) => [0, casco ? -1.4 : 0, taller ? 21.8 : 16, casco ? 21.4 : 20];
+export const sparky = (frame = "quieto", escala = 4, extra = "") => {
+  const f = leerPose(frame), [x, y, w, h] = marcoSparky(f);
+  return `<svg class="vec sparky pose-${f.pose}" viewBox="${x} ${y} ${w} ${h}" width="${r2(w * escala)}" height="${r2(h * escala)}" xmlns="http://www.w3.org/2000/svg" ${extra}>${cuerpoSparky(f)}</svg>`;
+};
+export const capaSparky = (frame, dx, dy) => grupo(dx, dy, cuerpoSparky(leerPose(frame)));
 
 // ---------- Coches (24 × 10): perfil con techo en sombra y cara superior clara ----------
 const COLORES_COCHE = { rojo: [C.rojo, C.rojoOscuro], azul: [C.azul, C.azulOscuro], amarillo: [C.amarillo, C.amarilloOscuro], verde: [C.verde, C.verdeOscuro], morado: [C.morado, C.moradoOscuro] };

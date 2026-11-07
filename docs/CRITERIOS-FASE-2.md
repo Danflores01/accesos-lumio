@@ -287,7 +287,7 @@ ni en los juegos ni en las ilustraciones de la landing (las ve una señora, debe
 moderno).
 
 **Reglas de arte (aplicadas en `sparked/js/arte.js`).**
-- Todo es vector: Sparky (5 poses), coches de perfil con techo en sombra y cara superior clara, soldado, arquero,
+- Todo es vector: Sparky (8 poses), coches de perfil con techo en sombra y cara superior clara, soldado, arquero,
   escalador (Sparky compacto), 15 íconos y las cuatro escenas (ciudad synthwave, montaña con plataformas, castillo,
   planeta). Contorno #2A2340, dos tonos por volumen, brillo pequeño, sombra elíptica en el piso.
 - Las escenas se dibujan con degradados y capas con id (edificios lejanos, cercanos y rayas) para moverse en bucle.
@@ -303,6 +303,20 @@ moderno).
   Colores: crema #FBF7EE, sombra #DAD8E8, visor #1A1733, LED #7DF9FF, cachetes #FF8FB1, naranja #FF7A3D, amarillo
   #FFC247, gris #9CA2B8 / #636A86, luz roja #FF4D5E, contorno #2A2340. El escalador de montaña y puertas es el mismo
   Sparky en chico. Hoja de personaje para revisarlo: `sparked/sparky.html`.
+- Sparky vivo (Daniel, 7 de noviembre de 2026: "que tenga un poquito más de vida y no parezca que está confundido todo
+  el tiempo"). Tres poses nuevas que se mueven solo con CSS sobre el mismo dibujo (sin GIF, Lottie ni librerías):
+  **construyendo** (casco amarillo de obra sobre el casco, con la antena saliendo por arriba; martillo que sube y baja
+  sobre bloques de letras A, B y C, chispitas en cada golpe; bucle de 2.4 s), **caminando** (piernas y brazos por
+  turnos, se bambolea, mira hacia donde va y voltea al cambiar de dirección) y **escribiendo** (tabla con hoja en una
+  mano y lápiz en la otra; los renglones aparecen mientras escribe y saca la lengüita). En reposo flota, parpadea y mira
+  a los lados; el saludo mueve la mano y el festejo agita los brazos. Dónde se usa: la pantalla de espera mientras se
+  genera la guía (constructor; también en "Buscando materiales…" de la biblioteca), el paso "Sparky las convierte" del
+  inicio (constructor chico), "Preparando tu pago…" (escribiendo) y el recuadro del inicio, donde cada 8 a 15 segundos
+  hace algo al azar: saluda, camina de un lado a otro o escribe un dato curioso nuevo letra por letra en la burbuja.
+  Reacciona a la gente sin estorbar: mouse encima = saluda; toque o clic = festeja con un brinco. La pose «pensando»
+  con «?» ya no se usa en esas pantallas. Con "reducir movimiento" se queda quieto (sin caminar, brincar ni escribir
+  letra por letra). Código: poses y accesorios ("+casco", "+taller") en `arte.js`, `sparkyVivo()` y `escribirTexto()`
+  en `ui.js`, animaciones en `base.css` (sección "Sparky vivo"; solo corren dentro de `.sk-anima`).
 
 **Mecánicas "videojuego actual" (en `sparked/js/juegos.js`).**
 - Carrera: los coches corren todo el tiempo (rayas y edificios en parallax), acierto = acelerón y rebase suave,

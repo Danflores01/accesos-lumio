@@ -25,6 +25,14 @@
   .chicos { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; }
   .paleta { display: flex; flex-wrap: wrap; gap: 10px; }
   .paleta i { display: grid; place-items: center; width: 92px; height: 56px; border-radius: 12px; font: 700 11px/1.2 var(--titulos); text-align: center; border: 3px solid #2A2340; color: #2A2340; }
+  .vivos { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+  .vivos .tarjeta-sparky { box-shadow: none; padding: 0; width: 100%; }
+  .botones-vivo { display: flex; flex-wrap: wrap; gap: 8px; }
+  .botones-vivo .boton { width: auto; box-shadow: none; }
+  .espera-demo { display: grid; justify-items: center; gap: 8px; padding: 18px 12px; border-radius: 20px; background: #f6f3ff; text-align: center; }
+  .espera-demo b { font: 800 20px var(--titulos); }
+  .espera-demo small { font-size: 13px; opacity: .75; max-width: 34ch; }
+  @media (min-width: 760px) { .vivos { grid-template-columns: 1.2fr .8fr; } }
 </style>
 </head>
 <body class="sitio">
@@ -32,7 +40,15 @@
   <div>
     <h1>Sparky, versión astronauta‑robot</h1>
     <p>Casco grande con visera, traje crema detallado como el de un astronauta de verdad (hombreras, panel con botones, cinturón, costuras, articulaciones con rayitas, reloj, botas, mochila con luz) y la cara hecha de luces LED en el visor: los ojos, la boca y dos cachetes cambian en cada expresión. Las sombras llevan rayitas finas, como una impresión retro. Esta hoja sirve para revisar las poses en claro y en oscuro.</p>
+    <p style="margin-top:8px">Sparky vivo (7 nov 2026): flota, parpadea y mira a los lados; cada 8 a 15 segundos saluda, camina por su recuadro o escribe un dato curioso; si le pasas el mouse saluda y si lo tocas festeja. Mientras se genera una guía trabaja con casco de obra. Todo se mueve con CSS sobre el mismo dibujo (sin GIF ni videos).</p>
   </div>
+  <section class="panel claro"><h2>Sparky vivo (así se ve en el inicio y en la pantalla de espera)</h2>
+    <div class="vivos">
+      <div class="tarjeta-sparky"><div class="tile"><div class="sparky-sitio" id="vivo"></div><div class="burbuja"><b>¿Sabías que…?</b> <span id="vivo-dato">La luz del Sol tarda unos 8 minutos en llegar a la Tierra.</span></div></div>
+        <div class="botones-vivo"><button class="boton chico" data-hacer="saludar">👋 Saludar</button><button class="boton chico" data-hacer="caminar">🚶 Caminar</button><button class="boton chico" data-hacer="escribir">✏️ Escribir el dato</button><button class="boton chico" data-hacer="festejo">🎉 Tocarlo</button></div></div>
+      <div class="espera-demo"><div id="obrero"></div><b>Generando tu guía…</b><small>Pantalla de espera: martilla los bloques A, B y C con su casco de obra. Tócalo y festeja.</small></div>
+    </div>
+  </section>
   <section class="panel claro"><h2>Sobre fondo claro (tarjetas del sitio y de las instrucciones)</h2><div class="poses" id="claro"></div></section>
   <section class="panel oscuro"><h2>Sobre fondo oscuro (juegos y pantallas de carga)</h2><div class="poses" id="oscuro"></div></section>
   <section class="panel claro"><h2>Tamaños chicos (botones, pasos, héroe de los juegos)</h2><div class="chicos" id="chicos"></div>
@@ -44,9 +60,16 @@
 </main>
 <script type="module">
 import { sparky, escalador } from "./js/arte.js";
-const POSES = [["quieto", "Quieto", "ojos redondos y sonrisa"], ["saludo", "Saludo", "ojos felices ^ ^ y mano arriba"], ["festejo", "Festejo", "ojos de estrella y boca abierta"], ["triste", "Triste", "luz azul tenue, cejas caídas y lágrima"], ["pensando", "Pensando", "un ojo entrecerrado y mano en el visor"]];
-for (const id of ["claro", "oscuro"]) document.getElementById(id).innerHTML = POSES.map(([p, n, d]) => `<div class="pose">${sparky(p, 9)}<b>${n}</b><small>${d}</small></div>`).join("");
+import { sparkyVivo } from "./js/ui.js";
+const POSES = [["quieto", "Quieto", "ojos redondos y sonrisa; flota y mira a los lados"], ["saludo", "Saludo", "ojos felices ^ ^ y la mano que saluda"], ["festejo", "Festejo", "ojos de estrella, brazos que se agitan y chispas"], ["triste", "Triste", "luz azul tenue, cejas caídas y lágrima"], ["pensando", "Pensando", "un ojo entrecerrado y mano en el visor (ya no se usa en el inicio ni en la espera)"], ["construyendo", "Construyendo", "casco de obra, martillo, bloques A B C y chispitas (pantalla de espera)"], ["caminando", "Caminando", "mira hacia donde va; piernas y brazos por turnos"], ["escribiendo", "Escribiendo", "tabla con hoja y lápiz: escribe el dato curioso, con la lengüita de fuera"]];
+for (const id of ["claro", "oscuro"]) document.getElementById(id).innerHTML = POSES.map(([p, n, d]) => `<div class="pose sk-anima">${sparky(p, 9)}<b>${n}</b><small>${d}</small></div>`).join("");
 document.getElementById("chicos").innerHTML = [6, 4, 3].map((e) => sparky("saludo", e)).join("") + escalador(5) + escalador(3);
+// Sparky vivo con botones para ver cada comportamiento sin esperar el turno al azar.
+let datos = [], i = 0;
+const vivo = sparkyVivo(document.getElementById("vivo"), { escala: 9, burbuja: document.getElementById("vivo-dato"), siguienteDato: () => datos.length ? datos[i++ % datos.length].texto : "El pulpo tiene tres corazones y su sangre es azul." });
+fetch("datos/curiosos.json").then((r) => r.json()).then((d) => { datos = d.sort(() => Math.random() - .5); }).catch(() => {});
+document.querySelectorAll("[data-hacer]").forEach((b) => b.onclick = () => vivo.hacer(b.dataset.hacer));
+sparkyVivo(document.getElementById("obrero"), { escala: 6, reposo: "construyendo", accesorios: "+casco+taller", acciones: [] });
 </script>
 </body>
 </html>

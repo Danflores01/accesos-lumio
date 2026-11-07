@@ -102,3 +102,94 @@ img, svg { display: block; max-width: 100%; }
 .vec .led-ojo { transform-box: fill-box; transform-origin: center; animation: pestaneo 4.6s ease-in-out infinite; }
 @keyframes pestaneo { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.12); } }
 @media (prefers-reduced-motion: reduce) { .vec .led-ojo { animation: none; } }
+
+/* ---------- Sparky vivo (7 nov 2026) ----------
+   Las piezas de Sparky se mueven solo dentro de .sk-anima (la ponen sparkyVivo() de ui.js y la hoja de personaje);
+   en el resto del sitio las poses quedan fijas. Cada pieza que gira trae en el dibujo un cuadro invisible centrado en
+   su eje (hombro, muñeca), por eso "fill-box + center" gira justo ahí. Las medidas en px son unidades del dibujo
+   (Sparky mide 16 × 20). Con "reducir movimiento" la regla de arriba deja todo en su pose fija. */
+.vec .sk-giro, .vec .sk-centro, .vec .sk-sombra { transform-box: fill-box; transform-origin: center; }
+.vec .sk-pie, .vec .sk-cuerpo { transform-box: fill-box; transform-origin: 50% 100%; }
+
+/* Reposo: flota suave (la sombra se encoge cuando sube) y de vez en cuando mira a un lado y al otro. */
+.sk-anima .pose-quieto .sk-cuerpo, .sk-anima .pose-saludo .sk-cuerpo, .sk-anima .pose-escribiendo .sk-cuerpo { animation: sk-flotar 3.2s ease-in-out infinite; }
+.sk-anima .pose-quieto .sk-sombra, .sk-anima .pose-saludo .sk-sombra, .sk-anima .pose-escribiendo .sk-sombra { animation: sk-sombra 3.2s ease-in-out infinite; }
+.sk-anima .pose-quieto .sk-cara { animation: sk-mirar 9s ease-in-out infinite; }
+@keyframes sk-flotar { 50% { transform: translateY(-.5px); } }
+@keyframes sk-sombra { 50% { transform: scaleX(.86); opacity: .75; } }
+@keyframes sk-mirar { 0%, 52%, 96%, 100% { transform: translateX(0); } 57%, 66% { transform: translateX(-.45px); } 73%, 86% { transform: translateX(.45px); } }
+
+/* Saludo: la mano se mueve de un lado a otro. Festejo: brazos arriba que se agitan y chispas que titilan. */
+.sk-anima .pose-saludo .sk-mano { animation: sk-saludar 1.05s ease-in-out infinite; }
+@keyframes sk-saludar { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(16deg); } 70% { transform: rotate(-10deg); } }
+.sk-anima .pose-festejo .sk-fiesta-a { animation: sk-fiesta .45s ease-in-out infinite alternate; }
+.sk-anima .pose-festejo .sk-fiesta-b { animation: sk-fiesta .45s ease-in-out infinite alternate-reverse; }
+.sk-anima .pose-festejo .sk-destello { animation: sk-titilar .55s ease-in-out infinite alternate; }
+@keyframes sk-fiesta { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+@keyframes sk-titilar { from { transform: scale(.6); opacity: .65; } to { transform: scale(1.15) rotate(20deg); opacity: 1; } }
+
+/* Caminando: el cuerpo se bambolea, las piernas se levantan por turnos y los brazos acompañan. */
+.sk-anima .pose-caminando .sk-cuerpo { animation: sk-bambolear .64s ease-in-out infinite; }
+.sk-anima .pose-caminando .sk-pierna-b { animation: sk-paso .64s ease-in-out infinite; }
+.sk-anima .pose-caminando .sk-pierna-a { animation: sk-paso .64s ease-in-out -.32s infinite; }
+.sk-anima .pose-caminando .sk-braceo { animation: sk-bracear .64s ease-in-out infinite; }
+@keyframes sk-bambolear { 0%, 50%, 100% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-.35px) rotate(-3deg); } 75% { transform: translateY(-.35px) rotate(3deg); } }
+@keyframes sk-paso { 0%, 50%, 100% { transform: translateY(0); } 25% { transform: translateY(-.9px); } }
+@keyframes sk-bracear { 0%, 50%, 100% { transform: rotate(0); } 25% { transform: rotate(13deg); } 75% { transform: rotate(-13deg); } }
+
+/* Construyendo (2.4 s, dos martillazos): sube el martillo, pega en el bloque, rebota; chispitas y el bloque se aplasta. */
+.sk-anima .pose-construyendo .sk-martillo { animation: sk-martillar 2.4s infinite; }
+.sk-anima .pose-construyendo .sk-golpeado { animation: sk-golpeado 2.4s infinite; }
+.sk-anima .pose-construyendo .sk-chispa { animation: sk-chispa 2.4s ease-out infinite; }
+.sk-anima .pose-construyendo .sk-chispa-3, .sk-anima .pose-construyendo .sk-chispa-4 { animation-delay: .05s; }
+.sk-anima .pose-construyendo .sk-cuerpo { animation: sk-empuje 2.4s infinite; }
+@keyframes sk-martillar {
+  0% { transform: rotate(0); animation-timing-function: ease-in-out; }
+  16% { transform: rotate(-8deg); animation-timing-function: cubic-bezier(.55, 0, 1, .55); }
+  26% { transform: rotate(78deg); animation-timing-function: ease-out; }
+  30% { transform: rotate(66deg); animation-timing-function: ease-in-out; }
+  34% { transform: rotate(77deg); animation-timing-function: ease-in-out; }
+  50% { transform: rotate(4deg); animation-timing-function: ease-in-out; }
+  64% { transform: rotate(-6deg); animation-timing-function: cubic-bezier(.55, 0, 1, .55); }
+  74% { transform: rotate(78deg); animation-timing-function: ease-out; }
+  78% { transform: rotate(67deg); animation-timing-function: ease-in-out; }
+  82% { transform: rotate(77deg); animation-timing-function: ease-in-out; }
+  100% { transform: rotate(0); }
+}
+@keyframes sk-golpeado { 0%, 25.5%, 33%, 73.5%, 81%, 100% { transform: scale(1, 1); } 27%, 75% { transform: scale(1.07, .84); } }
+@keyframes sk-chispa {
+  0%, 25.5%, 73.5%, 100% { opacity: 0; transform: scale(.2); }
+  27.5%, 75.5% { opacity: 1; transform: scale(1.2); }
+  38%, 86% { opacity: 0; transform: scale(.75) translateY(-.6px); }
+}
+@keyframes sk-empuje { 0%, 24%, 34%, 72%, 82%, 100% { transform: translateY(0); } 27%, 75% { transform: translateY(.22px); } }
+
+/* Escribiendo (3.3 s): la mano recorre cada renglón mientras aparece, el lápiz garabatea y al final empieza otra hoja.
+   Las distancias llevan la punta del lápiz (7.73, 15.07) al inicio y al final de cada renglón de la tabla. */
+.sk-anima .pose-escribiendo .sk-escritura { animation: sk-escritura 3.3s linear infinite; }
+.sk-anima .pose-escribiendo .sk-garabato { animation: sk-garabato .22s ease-in-out infinite alternate; }
+.sk-anima .pose-escribiendo .sk-linea { stroke-dasharray: 1; animation: sk-linea1 3.3s linear infinite; }
+.sk-anima .pose-escribiendo .sk-linea-2 { animation-name: sk-linea2; }
+.sk-anima .pose-escribiendo .sk-linea-3 { animation-name: sk-linea3; }
+@keyframes sk-escritura {
+  0% { transform: translate(-1.43px, -1.42px); } 30% { transform: translate(1.81px, -1.42px); }
+  33.3% { transform: translate(-1.43px, -.72px); } 63.3% { transform: translate(1.81px, -.72px); }
+  66.6% { transform: translate(-1.43px, -.02px); } 86% { transform: translate(.73px, -.02px); }
+  95% { transform: translate(.73px, -.02px); } 100% { transform: translate(-1.43px, -1.42px); }
+}
+@keyframes sk-garabato { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+@keyframes sk-linea1 { 0% { stroke-dashoffset: 1; } 30%, 100% { stroke-dashoffset: 0; } }
+@keyframes sk-linea2 { 0%, 33.3% { stroke-dashoffset: 1; } 63.3%, 100% { stroke-dashoffset: 0; } }
+@keyframes sk-linea3 { 0%, 66.6% { stroke-dashoffset: 1; } 86%, 100% { stroke-dashoffset: 0; } }
+
+/* Contenedor de sparkyVivo(): la pista se desliza cuando camina, el actor brinca al tocarlo y el dibujo se voltea. */
+.sparky-vivo { display: flex; justify-content: center; align-items: flex-end; pointer-events: none; }
+.sparky-vivo .sk-actor { position: relative; transform-origin: 50% 100%; }
+.sparky-vivo .sk-dibujo svg { transition: transform .22s ease; }
+.sparky-vivo .sk-toque { position: absolute; inset: 0; pointer-events: auto; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.sparky-vivo .sk-actor.izquierda svg { transform: scaleX(-1); }
+.sparky-vivo .sk-actor.brinca { animation: sk-brinco .55s cubic-bezier(.3, .7, .4, 1) 2; }
+@keyframes sk-brinco { 0%, 100% { transform: translateY(0) scale(1, 1); } 15% { transform: translateY(0) scale(1.06, .92); } 50% { transform: translateY(-14%) scale(.97, 1.04); } 85% { transform: translateY(0) scale(1.04, .96); } }
+/* Texto que Sparky va escribiendo letra por letra (con cursor mientras escribe). */
+.tecleo.activo::after { content: ""; display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -.15em; border-radius: 1px; background: currentColor; animation: sk-cursor .8s steps(1) infinite; }
+@keyframes sk-cursor { 50% { opacity: 0; } }

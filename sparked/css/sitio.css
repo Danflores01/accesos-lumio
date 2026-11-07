@@ -34,10 +34,15 @@ body.sitio.claro header.cab nav a:hover { background: var(--gris-suave); color: 
 /* Tarjeta flotante de Sparky */
 .sparky-hero { display: flex; justify-content: center; }
 .tarjeta-sparky { background: #fff; color: var(--tinta); border-radius: 28px; box-shadow: 0 34px 70px rgba(10, 4, 40, .45); padding: 20px; width: min(456px, 100%); display: flex; flex-direction: column; gap: 14px; }
-.tarjeta-sparky .tile { position: relative; height: 250px; border-radius: 20px; background: linear-gradient(160deg, #efe9ff, #ffe1ec); display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
-.tarjeta-sparky .tile svg { animation: flotar 3s ease-in-out infinite; margin-bottom: 6px; }
-@keyframes flotar { 50% { transform: translateY(-12px); } }
-.tarjeta-sparky .burbuja { position: absolute; left: 14px; top: 16px; background: #fff; border-radius: 14px; padding: 10px 12px; font-size: 13px; font-weight: 700; color: #4c1d95; box-shadow: 0 8px 20px rgba(76, 29, 149, .18); max-width: 170px; line-height: 1.3; }
+.tarjeta-sparky .tile { position: relative; height: 296px; border-radius: 20px; background: linear-gradient(160deg, #efe9ff, #ffe1ec); overflow: hidden; }
+/* Sparky vive abajo en su recuadro: flota, saluda, camina de lado a lado y escribe el dato de la burbuja (sparkyVivo, ui.js).
+   Las alturas del recuadro y el tamaño de Sparky (abajo, por ancho de pantalla) dejan lugar para datos de hasta ~130
+   letras sin que la burbuja tape la antena. */
+.tarjeta-sparky .sparky-sitio { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; justify-content: center; }
+.tarjeta-sparky .sparky-sitio .sparky-vivo { width: 100%; }
+.tarjeta-sparky .burbuja { position: absolute; z-index: 1; left: 14px; right: 14px; top: 14px; background: #fff; border-radius: 14px; padding: 10px 12px; font-size: 13px; font-weight: 700; color: #4c1d95; box-shadow: 0 8px 20px rgba(76, 29, 149, .18); line-height: 1.3; }
+.tarjeta-sparky .burbuja::after { content: ""; position: absolute; left: calc(50% - 8px); bottom: -8px; border: 8px solid transparent; border-bottom: 0; border-top-color: #fff; }
+.tarjeta-sparky .burbuja b { color: #be185d; }
 .tarjeta-sparky .fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .tarjeta-sparky .fila b { font: 800 17px var(--titulos); }
 .tarjeta-sparky .fila span { font: 9px var(--pixel); color: #6d28d9; }
@@ -121,6 +126,11 @@ body.sitio.claro .pasos-barra div { background: var(--borde); }
   .rejilla-campos { grid-template-columns: 1fr 1fr; }
   .aviso-vacio { grid-template-columns: 160px 1fr; }
 }
+/* Tablets: la tarjeta de Sparky queda angosta junto al título, la burbuja ocupa más renglones y Sparky se achica. */
+@media (min-width: 760px) and (max-width: 1099px) {
+  .tarjeta-sparky .tile { height: 300px; }
+  .tarjeta-sparky .tile svg { width: 116px; height: auto; }
+}
 
 /* Teléfonos en vertical (hasta 559 px): cabecera compacta y menos aire. */
 @media (max-width: 559px) {
@@ -134,8 +144,8 @@ body.sitio.claro .pasos-barra div { background: var(--borde); }
   .hero h1 { font-size: clamp(30px, 9vw, 40px); }
   .hero p { font-size: 17px; }
   .tarjeta-sparky { padding: 14px; border-radius: 22px; }
-  .tarjeta-sparky .tile { height: 210px; }
-  .tarjeta-sparky .tile svg { width: 112px; height: auto; }
+  .tarjeta-sparky .tile { height: 270px; }
+  .tarjeta-sparky .tile svg { width: 104px; height: auto; }
   .servicios { gap: 16px; padding-bottom: 28px; }
   .servicio { padding: 18px 16px 20px; border-radius: 22px; gap: 12px; }
   .servicio h2 { font-size: 23px; }
@@ -156,6 +166,6 @@ body.sitio.claro .pasos-barra div { background: var(--borde); }
 @media (max-height: 460px) and (orientation: landscape) {
   header.cab { position: static; }
   .hero { padding: 18px 0 12px; }
-  .tarjeta-sparky .tile { height: 170px; }
-  .tarjeta-sparky .tile svg { width: 96px; height: auto; }
+  .tarjeta-sparky .tile { height: 210px; }
+  .tarjeta-sparky .tile svg { width: 80px; height: auto; }
 }
