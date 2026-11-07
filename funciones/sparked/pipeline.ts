@@ -5,10 +5,26 @@ import { EXTRACTOR, PLANIFICADOR, ESQUEMA_PLAN, GENERADOR, REPARADOR, VERIFICADO
 
 export type Trabajo = { id: string; borrador_id: string | null; guia_id: string | null; alcance: string; paso: string; estado: string; progreso: Record<string, unknown>; datos: Record<string, unknown>; intentos: number; costo_usd: number; tokens_entrada: number; tokens_salida: number };
 type Supa = ReturnType<typeof import("npm:@supabase/supabase-js@2").createClient>;
+export type Fuente = { archivos: { ruta: string; nombre: string }[]; grado: string; materia: string; colegio?: string; idioma_alumno?: string; opciones?: Record<string, unknown> };
 
 const MODELO_HAIKU = "claude-haiku-5-5";
 const MODELO_SONNET = "claude-sonnet-5-5";
-const PRECIO: Record<string, [number, number]> = { [MODELO_HAIKU]: [0.10, 0.50], [MODELO_SONNET]: [2, 10] }; // USD por millón, hasta 100K tokens
+const MODELO_OPUS = "claude-opus-5-5";
+const MODELOS: Record<string, string> = { haiku: MODELO_HAIKU, sonnet: MODELO_SONNET, opus: MODELO_OPUS };
+// USD por millón de tokens con prompts de hasta 100K: [entrada, salida, lectura de caché]. Escribir en caché cuesta 1.25×
+// la entrada.
+const PRECIO: Record<string, [number, number, number]> = { [MODELO_HAIKU]: [0.10, 0.50, 0.01], [MODELO_SONNET]: [2, 10, 0.20], [MODELO_OPUS]: [4, 20, 0.20] };
+// Modelo y esfuerzo de cada paso. El defecto es el comportamiento de siempre; se cambia con la tabla config
+// (sparked_modelo_plan, sparked_esfuerzo_plan, …) o, para pruebas, por trabajo en datos.opciones.
+const AJUSTES: Record<string, [string, string]> = { extraer: ["haiku", "medium"], plan: ["haiku", "low"], escribir: ["haiku", "low"], reparar: ["haiku", "low"], verificar: ["haiku", "medium"] };
+const ESFUERZOS = ["low", "medium", "high"];
+export function ajusteDe(paso: string, opciones: Record<string, unknown> = {}): { nombre: string; modelo: string; esfuerzo: string } {
+  const [m0, e0] = AJUSTES[paso];
+  const m = String(opciones[`modelo_${paso}`] ?? "").toLowerCase().trim();
+  const e = String(opciones[`esfuerzo_${paso}`] ?? "").toLowerCase().trim();
+  const nombre = MODELOS[m] ? m : m0;
+  return { nombre, modelo: MODELOS[nombre], esfuerzo: ESFUERZOS.includes(e) ? e : e0 };
+}
 const FOTOS_POR_LOTE = 2; // pocas fotos por llamada: cada llamada debe terminar en menos de ~110 s
 const LOTE_ANTERIOR = 3; // tamaño de lote de las versiones anteriores, para retomar trabajos que se quedaron a medias
 
@@ -56,16 +72,67 @@ export async function claude(opts: { modelo?: string; sistema: string; contenido
   const d = await r.json();
   const ms = Date.now() - inicio;
   const texto = (d.content ?? []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n");
-  const entrada = (d.usage?.input_tokens ?? 0) + (d.usage?.cache_creation_input_tokens ?? 0) + (d.usage?.cache_read_input_tokens ?? 0) * 0.1;
-  const salida = d.usage?.output_tokens ?? 0;
-  const [pe, ps] = PRECIO[modelo] ?? PRECIO[MODELO_HAIKU];
-  const costo = (entrada * pe + salida * ps) / 1e6 + (d.usage?.server_tool_use?.web_search_requests ?? 0) * 0.01;
+  const u = d.usage ?? {};
+  const entrada = (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0);
+  const salida = u.output_tokens ?? 0;
+  const [pe, ps, pc] = PRECIO[modelo] ?? PRECIO[MODELO_HAIKU];
+  const costo = ((u.input_tokens ?? 0) * pe + (u.cache_creation_input_tokens ?? 0) * pe * 1.25 + (u.cache_read_input_tokens ?? 0) * pc + salida * ps) / 1e6 + (u.server_tool_use?.web_search_requests ?? 0) * 0.01;
   const formato = !!(cuerpo.output_config as any)?.format;
   const parada = d.stop_reason ?? null;
   const { json, reparado } = leerJson(texto);
   // Una línea por llamada en los logs para medir tiempos y tokens de cada paso.
-  console.log("IA", JSON.stringify({ etiqueta: opts.etiqueta ?? "", modelo, ms, entrada: Math.round(entrada), salida, parada, formato, reparado, json: !!json }));
-  return { json, reparado, texto, parada, formato, ms, uso: { entrada: Math.round(entrada), salida, costo } };
+  console.log("IA", JSON.stringify({ etiqueta: opts.etiqueta ?? "", modelo, esfuerzo: (cuerpo.output_config as any)?.effort ?? null, ms, entrada, salida, parada, formato, reparado, json: !!json }));
+  return { json, reparado, texto, parada, formato, ms, uso: { entrada, salida, costo } };
+}
+
+// Una llamada a la IA con el modelo y el esfuerzo del paso; queda anotada en datos.metricas (costo y tiempo por paso).
+// Regla para los modelos caros (Sonnet, Opus): si se pasan de 125 s no se repiten (se anota y el paso sigue con Haiku);
+// si rechazan la petición, se anota y se reintenta una sola vez más tarde; si la rechazan otra vez, el paso sigue con Haiku.
+const REPETIR = "repetir" as const;
+const esTiempo = (e: unknown) => (e as Error)?.name === "TimeoutError" || /timed out|abort/i.test((e as Error)?.message ?? "");
+async function llamar(supabase: Supa, t: Trabajo, fuente: Fuente, paso: string, etiqueta: string, opts: { sistema: string; contenido: unknown[]; esquema?: unknown; maxTokens: number; herramientas?: unknown[]; previo?: string }): Promise<Respuesta | typeof REPETIR> {
+  const D = t.datos as any;
+  const a = ajusteDe(paso, D.con_haiku?.[paso] ? {} : fuente.opciones ?? {});
+  const caro = a.nombre !== "haiku";
+  const anotar = (resultado: string, r?: Respuesta) => {
+    D.metricas = [...(Array.isArray(D.metricas) ? D.metricas : []), { paso: etiqueta, modelo: a.nombre, esfuerzo: a.esfuerzo, entrada: r?.uso.entrada ?? 0, salida: r?.uso.salida ?? 0, costo_usd: r?.uso.costo ?? 0, ms: r?.ms ?? 0, parada: r?.parada ?? null, resultado, en: new Date().toISOString() }].slice(-80);
+  };
+  let r: Respuesta;
+  try {
+    r = await claude({ ...opts, modelo: a.modelo, esfuerzo: a.esfuerzo, etiqueta: `${etiqueta} · ${a.nombre}/${a.esfuerzo}` });
+  } catch (e) {
+    if (!caro || !esTiempo(e)) throw e;
+    anotar("se pasó de 125 s; el paso sigue con Haiku");
+    D.con_haiku = { ...(D.con_haiku ?? {}), [paso]: true };
+    await guardar(supabase, t, { datos: D });
+    return REPETIR;
+  }
+  sumar(t, r.uso);
+  if (caro && r.parada === "refusal") {
+    const veces = Number(D.rechazos?.[paso] ?? 0) + 1;
+    D.rechazos = { ...(D.rechazos ?? {}), [paso]: veces };
+    if (veces >= 2) D.con_haiku = { ...(D.con_haiku ?? {}), [paso]: true };
+    anotar(veces >= 2 ? "rechazada otra vez; el paso sigue con Haiku" : "rechazada; se reintenta una vez más tarde", r);
+    await guardar(supabase, t, { datos: D, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
+    if (veces < 2) throw Object.assign(new Error(`${a.nombre} rechazó el paso ${etiqueta}; se reintenta una vez`), { reintentar: true });
+    return REPETIR;
+  }
+  anotar(r.parada === "max_tokens" ? "cortada por largo" : r.json ? "ok" : "sin JSON", r);
+  return r;
+}
+
+// Prueba de velocidad: una sola llamada del planificador con el modelo y el esfuerzo dados, sobre el inventario de un
+// trabajo ya leído. No guarda nada; devuelve tiempo, tokens, costo y un resumen del plan.
+const contenidoPlan = (D: any, fuente: Fuente) => [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${NIVEL_LECTURA(fuente.grado)} · idioma del alumno ${fuente.idioma_alumno ?? "es"} · fotos subidas ${fuente.archivos.length} · materia indicada ${fuente.materia} · tipo de material ${JSON.stringify(D.tipo_material)}.\n\nINVENTARIO:\n${JSON.stringify(D.inventario)}` }];
+export async function medirPlan(D: any, fuente: Fuente, modelo: string, esfuerzo: string) {
+  const a = ajusteDe("plan", { modelo_plan: modelo, esfuerzo_plan: esfuerzo });
+  try {
+    const r = await claude({ sistema: PLANIFICADOR, contenido: contenidoPlan(D, fuente), esquema: ESQUEMA_PLAN, modelo: a.modelo, esfuerzo: a.esfuerzo, maxTokens: 16000, etiqueta: `medir plan · ${a.nombre}/${a.esfuerzo}` });
+    const plan = planDe(r.json);
+    return { modelo: a.nombre, esfuerzo: a.esfuerzo, ms: r.ms, entrada: r.uso.entrada, salida: r.uso.salida, costo_usd: r.uso.costo, parada: r.parada, plan_valido: !!plan, titulo: plan?.identidad?.titulo ?? null, bloques: plan ? plan.bloques.map((b: any) => ({ titulo: b.titulo, ids: Array.isArray(b.ids_inventario) ? b.ids_inventario.length : 0, juegos: b.juegos, mini_examen: b.mini_examen })) : null };
+  } catch (e) {
+    return { modelo: a.nombre, esfuerzo: a.esfuerzo, error: (e as Error).message, tiempo_agotado: esTiempo(e) };
+  }
 }
 
 export function extraerJson(texto: string): any {
@@ -162,7 +229,7 @@ function sumar(t: Trabajo, uso: { entrada: number; salida: number; costo: number
 
 // ---------- Un paso ----------
 // Devuelve el nombre del siguiente paso, o null si terminó. Lanza error si falla.
-export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivos: { ruta: string; nombre: string }[]; grado: string; materia: string; colegio?: string; idioma_alumno?: string }): Promise<string | null> {
+export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): Promise<string | null> {
   const D = t.datos as any;
   const nivel = NIVEL_LECTURA(fuente.grado);
   const total = fuente.archivos.length;
@@ -191,7 +258,9 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
     for (const a of archivos) contenido.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: await base64De(supabase, a.ruta) } });
     let r: Respuesta;
     try {
-      r = await claude({ sistema: EXTRACTOR, contenido, maxTokens: 16000, previo: segunda?.previo, etiqueta: `extraer ${rango}` });
+      const res = await llamar(supabase, t, fuente, "extraer", `extraer ${rango}`, { sistema: EXTRACTOR, contenido, maxTokens: 16000, previo: segunda?.previo });
+      if (res === REPETIR) return t.paso;
+      r = res;
     } catch (e) {
       // Si la llamada se pasa de tiempo dos veces con el mismo rango, se parte o se marca sin leer. Los demás errores del
       // API (saturado, sin saldo) siguen el reintento normal del trabajo.
@@ -204,7 +273,6 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
       partirOMarcar(D, "se pasó de tiempo");
       return await avanzar();
     }
-    sumar(t, r.uso);
     const j = r.json && typeof r.json === "object" ? r.json : null;
     const leido = j && (j.inventario && typeof j.inventario === "object" || j.estado === "no_es_material_de_estudio") ? { inventario: {}, ...j } : null;
     if (leido && r.parada !== "max_tokens") {
@@ -265,12 +333,13 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
     const n = D.intento_ia?.paso === "planear" ? Number(D.intento_ia.n) || 0 : 0;
     let plan: any = null;
     if (n < 2) {
-      const contenido = [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${nivel} · idioma del alumno ${fuente.idioma_alumno ?? "es"} · fotos subidas ${total} · materia indicada ${fuente.materia} · tipo de material ${JSON.stringify(D.tipo_material)}.\n\nINVENTARIO:\n${JSON.stringify(D.inventario)}` }];
-      // El plan sale con un esquema JSON obligatorio (structured outputs) y con esfuerzo bajo: el pensamiento de la IA
-      // cuenta dentro de max_tokens. Segundo intento: tope mayor si se cortó, o se le muestra su respuesta si no fue JSON.
+      // El plan sale con un esquema JSON obligatorio (structured outputs); el esfuerzo por defecto es bajo porque el
+      // pensamiento de la IA cuenta dentro de max_tokens. Segundo intento: tope mayor si se cortó, o se le muestra su
+      // respuesta si no fue JSON.
       const cortado = n === 1 && D.intento_ia?.motivo === "max_tokens";
-      const r = await claude({ sistema: PLANIFICADOR, contenido, esquema: ESQUEMA_PLAN, esfuerzo: "low", maxTokens: cortado ? 24000 : 16000, previo: n === 1 && !cortado ? D.intento_ia?.previo : undefined, etiqueta: "planear" });
-      sumar(t, r.uso);
+      const res = await llamar(supabase, t, fuente, "plan", "planear", { sistema: PLANIFICADOR, contenido: contenidoPlan(D, fuente), esquema: ESQUEMA_PLAN, maxTokens: cortado ? 24000 : 16000, previo: n === 1 && !cortado ? D.intento_ia?.previo : undefined });
+      if (res === REPETIR) return "planear";
+      const r = res;
       plan = r.parada !== "max_tokens" || n === 1 ? planDe(r.json) : null;
       if (!plan) {
         D.intento_ia = { paso: "planear", n: n + 1, motivo: r.parada === "max_tokens" ? "max_tokens" : "sin_json", previo: r.texto.trim().slice(0, 40000) || undefined };
@@ -306,11 +375,13 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
     const pbPedido = cortado ? { ...pb, juegos: mitad(pb.juegos), mini_examen: Math.min(4, Number(pb.mini_examen) || 6) } : pb;
     const sistema = GENERADOR.replaceAll("{idioma_guia}", plan.idioma_guia ?? "es").replaceAll("{perfil_edad}", plan.perfil_edad ?? "juvenil");
     const contenido = [{ type: "text", text: `Datos: nivel ${nivel} · perfil ${plan.perfil_edad} · idioma de la guía ${plan.idioma_guia} · apoyo ${JSON.stringify(plan.apoyo)}\nPlan del bloque: ${JSON.stringify(pbPedido)}\nInventario del bloque: ${JSON.stringify(invBloque)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
-    // Esfuerzo bajo y tope de 20 000 tokens (~80 s a la velocidad medida): el pensamiento de la IA cuenta dentro de
-    // max_tokens, y un bloque de inglés con apoyo en español pasó de 16 000 aun con esfuerzo bajo.
+    // Esfuerzo bajo por defecto y tope de 20 000 tokens (~80 s a la velocidad medida de Haiku): el pensamiento de la IA
+    // cuenta dentro de max_tokens, y un bloque de inglés con apoyo en español pasó de 16 000 aun con esfuerzo bajo.
     let r: Respuesta;
     try {
-      r = await claude({ sistema, contenido, esfuerzo: "low", maxTokens: 20000, previo: n > 0 && !cortado ? D.intento_ia?.previo : undefined, etiqueta: `generar ${bi + 1}` });
+      const res = await llamar(supabase, t, fuente, "escribir", `generar ${bi + 1}`, { sistema, contenido, maxTokens: 20000, previo: n > 0 && !cortado ? D.intento_ia?.previo : undefined });
+      if (res === REPETIR) return t.paso;
+      r = res;
     } catch (e) {
       // Si se pasó de tiempo, se trata como respuesta demasiado larga: el siguiente intento pide la mitad de los juegos.
       const tiempo = (e as Error).name === "TimeoutError" || /timed out|abort/i.test((e as Error).message ?? "");
@@ -319,7 +390,6 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
       await guardar(supabase, t, { datos: D });
       return t.paso;
     }
-    sumar(t, r.uso);
     const completo = Array.isArray(r.json?.pistas) && r.parada !== "max_tokens";
     // Tercer intento: si aun así se cortó, se usa lo que alcanzó a escribir (JSON reparado) con tal de que traiga pistas.
     const parcial = !completo && n >= 2 && Array.isArray(r.json?.pistas) && r.json.pistas.length > 0;
@@ -368,15 +438,16 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
     const sistema = REPARADOR;
     const contenido = [{ type: "text", text: `Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n")}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => b.actividades.map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
     try {
-      const r = await claude({ sistema, contenido, esfuerzo: "low", maxTokens: 16000, etiqueta: "reparar" });
-      sumar(t, r.uso);
+      const res = await llamar(supabase, t, fuente, "reparar", "reparar", { sistema, contenido, maxTokens: 16000 });
+      if (res === REPETIR) return "reparar";
+      const r = res;
       if (!r.json?.actividades_nuevas) await diagnosticar(supabase, t, "reparar", r);
       const nuevas = aplanar(r.json?.actividades_nuevas);
       const citas: string[] = D.citas ?? [];
       const okNuevas = nuevas.filter((a: any) => revisarActividad(a, citas, nivel, [], "r"));
       // se reparten en el bloque del punto difícil o en el primero
       for (const a of okNuevas) { const b = (D.bloques as any[]).find((x) => x.actividades.some((y: any) => y.punto_dificil && y.punto_dificil === a.punto_dificil)) ?? D.bloques[0]; b.actividades.push(a); }
-    } catch (e) { console.warn("Reparación falló, sigue sin ella:", (e as Error).message); }
+    } catch (e) { if ((e as any)?.reintentar) throw e; console.warn("Reparación falló, sigue sin ella:", (e as Error).message); }
     await guardar(supabase, t, { datos: D, paso: "verificar", progreso: { pct: 78, mensaje: "Verificando los datos 🔎", paso: "verificar" }, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
     return "verificar";
   }
@@ -389,8 +460,9 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
       const bloquesResumen = (D.bloques as any[]).map((b) => ({ id: b.id, pistas: b.pistas.map((p: any) => ({ id: p.id, titulo: p.titulo, ideas: p.ideas })), actividades: [...b.actividades, ...b.mini_examen].map((a: any) => ({ id: a.id, tipo: a.tipo, pregunta: a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.texto ?? a.instruccion, respuesta: a.opciones ? a.opciones[a.correcta] : a.respuesta ?? (a.es_verdadera !== undefined ? String(a.es_verdadera) : undefined), pares: a.pares, pasos: a.pasos?.map((p: any) => p.texto), grupos: a.grupos, elementos: a.elementos })) }));
       const sospechas = Object.values(D.inventario as Record<string, any[]>).flat().filter((e: any) => e?.motivo);
       const contenido = [{ type: "text", text: `Idioma: ${plan.idioma_guia}. Materia: ${plan.materia}. Grado: ${fuente.grado}. Tipos de foto: ${JSON.stringify(tipos)}. ${hayApuntes ? "Hay apuntes a mano o pizarrón: verifica las afirmaciones clave." : "Es libro impreso: verifica solo lo dudoso."}\nSospechas del extractor: ${JSON.stringify(sospechas)}\n\nCONTENIDO A VERIFICAR:\n${JSON.stringify(bloquesResumen)}` }];
-      const r = await claude({ sistema: VERIFICADOR, contenido, maxTokens: 16000, herramientas: [{ type: "web_search_20260209", name: "web_search", max_uses: hayApuntes ? 10 : 4, allowed_domains: DOMINIOS_CONFIABLES }], etiqueta: "verificar" });
-      sumar(t, r.uso);
+      const res = await llamar(supabase, t, fuente, "verificar", "verificar", { sistema: VERIFICADOR, contenido, maxTokens: 16000, herramientas: [{ type: "web_search_20260209", name: "web_search", max_uses: hayApuntes ? 10 : 4, allowed_domains: DOMINIOS_CONFIABLES }] });
+      if (res === REPETIR) return "verificar";
+      const r = res;
       if (!Array.isArray(r.json?.resultados)) await diagnosticar(supabase, t, "verificar", r);
       for (const res of r.json?.resultados ?? []) {
         reporte.push(res);
@@ -406,7 +478,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: { archivo
           }
         }
       }
-    } catch (e) { console.warn("Verificación falló, se marca para revisión:", (e as Error).message); reporte.push({ estado: "error", detalle: (e as Error).message }); }
+    } catch (e) { if ((e as any)?.reintentar) throw e; console.warn("Verificación falló, se marca para revisión:", (e as Error).message); reporte.push({ estado: "error", detalle: (e as Error).message }); }
     D.verificacion = reporte;
     await guardar(supabase, t, { datos: D, paso: "imagenes", progreso: { pct: 88, mensaje: "Buscando las fotografías de los personajes 🖼️", paso: "imagenes" }, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
     return "imagenes";

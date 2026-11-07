@@ -15,7 +15,7 @@
 // encienden solos cuando Daniel pone cada secreto en Supabase. Sin cobro en línea, el pago es manual desde el panel.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { ejecutarPaso, recortarVistaPrevia, aplanar, type Trabajo } from "./pipeline.ts";
+import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, type Trabajo } from "./pipeline.ts";
 
 const VERSION = "2026-11-07.1";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
@@ -66,6 +66,12 @@ const CONFIG_DEF: Record<string, string> = {
   sparked_whatsapp: "",            // WhatsApp de SparkEd (10 dígitos) para confirmar pagos manuales
   sparked_correo_aviso: "",        // correo de Daniel para avisos de ventas
   sparked_correo_remitente: "SparkEd <onboarding@resend.dev>",
+  // Modelo (haiku | sonnet | opus) y esfuerzo (low | medium | high) de cada paso de la IA. El defecto es el de siempre.
+  sparked_modelo_extraer: "haiku", sparked_esfuerzo_extraer: "medium",
+  sparked_modelo_plan: "haiku", sparked_esfuerzo_plan: "low",
+  sparked_modelo_escribir: "haiku", sparked_esfuerzo_escribir: "low",
+  sparked_modelo_reparar: "haiku", sparked_esfuerzo_reparar: "low",
+  sparked_modelo_verificar: "haiku", sparked_esfuerzo_verificar: "medium",
 };
 let configCache: { en: number; valores: Record<string, string> } | null = null;
 async function config(): Promise<Record<string, string>> {
@@ -109,7 +115,12 @@ async function cargarTrabajo(id: string): Promise<(Trabajo & { actualizado_en: s
 async function fuenteDe(t: Trabajo) {
   const { data: b } = await supabase.from("borradores").select("archivos, grado, materia, colegio_texto").eq("id", t.borrador_id).maybeSingle();
   if (!b) throw new Error("El borrador de este trabajo ya no existe");
-  return { archivos: (b.archivos ?? []) as { ruta: string; nombre: string }[], grado: b.grado ?? "", materia: b.materia ?? "", colegio: b.colegio_texto ?? "", idioma_alumno: "es" };
+  // Modelo y esfuerzo por paso: los de la tabla config y, encima, los del trabajo (pruebas).
+  const cfg = await config();
+  const opciones: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(cfg)) if (/^sparked_(modelo|esfuerzo)_/.test(k)) opciones[k.slice(8)] = v;
+  Object.assign(opciones, (t.datos as any)?.opciones ?? {});
+  return { archivos: (b.archivos ?? []) as { ruta: string; nombre: string }[], grado: b.grado ?? "", materia: b.materia ?? "", colegio: b.colegio_texto ?? "", idioma_alumno: "es", opciones };
 }
 const ERRORES_DEFINITIVOS = /no parecen material|No se pudo leer ninguna foto|Falta configurar|ya no existe|no_es_material/i;
 
@@ -161,7 +172,7 @@ async function alFinalizar(t: Trabajo) {
   const plan = cartucho.plan;
   const { data: borrador } = await supabase.from("borradores").select("*").eq("id", t.borrador_id).maybeSingle();
   const base = {
-    titulo: texto(plan.identidad?.titulo, 120) || `${borrador?.materia ?? "Guía"} · ${borrador?.grado ?? ""}`.trim(),
+    titulo: ((D.prueba?.etiqueta ? `[Prueba ${D.prueba.etiqueta}] ` : "") + (texto(plan.identidad?.titulo, 120) || `${borrador?.materia ?? "Guía"} · ${borrador?.grado ?? ""}`.trim())).slice(0, 120),
     idioma: plan.idioma_guia ?? "es", perfil_edad: plan.perfil_edad ?? null, paleta: plan.identidad?.paleta ?? null,
     cartucho, vista_previa: recortarVistaPrevia(cartucho),
   };
@@ -169,7 +180,7 @@ async function alFinalizar(t: Trabajo) {
     const { data: g, error: e } = await supabase.from("guias").insert({
       ...base, estado: "borrador", origen: "personalizada", colegio_id: borrador?.colegio_id ?? null, grado: borrador?.grado ?? null, materia: borrador?.materia ?? null,
       borrador_id: t.borrador_id, costo_mxn: costoMxn.toFixed(2),
-      reporte: { etapa: "vista_previa", costo_usd: Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, bloques_plan: plan.bloques_plan?.length ?? 0, paginas_no_leidas: D.no_leidas ?? [] },
+      reporte: { etapa: "vista_previa", costo_usd: Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, bloques_plan: plan.bloques_plan?.length ?? 0, paginas_no_leidas: D.no_leidas ?? [], metricas: D.metricas ?? [] },
     }).select("id").single();
     if (e) throw e;
     await supabase.from("borradores").update({ estado: "vista_previa", guia_id: g.id }).eq("id", t.borrador_id);
@@ -182,7 +193,7 @@ async function alFinalizar(t: Trabajo) {
   const costoPrevio = Number(g?.reporte?.costo_usd ?? 0);
   const cambios: Record<string, unknown> = {
     ...base, costo_mxn: (Number(g?.costo_mxn ?? 0) + costoMxn).toFixed(2),
-    reporte: { etapa: "completa", costo_usd: costoPrevio + Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, verificacion: D.verificacion ?? [], huecos: D.huecos ?? [], fotos: D.fotos ?? [], tipo_material: D.tipo_material ?? [], imagenes: Object.keys(D.imagenes ?? {}).length, terminado_en: ahora() },
+    reporte: { etapa: "completa", costo_usd: costoPrevio + Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, verificacion: D.verificacion ?? [], huecos: D.huecos ?? [], fotos: D.fotos ?? [], tipo_material: D.tipo_material ?? [], imagenes: Object.keys(D.imagenes ?? {}).length, terminado_en: ahora(), metricas: D.metricas ?? [] },
   };
   if (g?.origen === "personalizada") cambios.estado = "publicada";
   const { error: e2 } = await supabase.from("guias").update(cambios).eq("id", guiaId);
@@ -1054,6 +1065,31 @@ Deno.serve(async (req: Request) => {
         if (t.borrador_id) await supabase.from("borradores").update({ estado: "generando" }).eq("id", t.borrador_id).eq("estado", "fallido");
         disparar(id);
         return json({ ok: true });
+      }
+
+      // Pruebas de modelos (solo administrador): medir un plan y generar guías completas con otro modelo por paso, a
+      // partir de un trabajo ya leído (no se vuelven a pagar las fotos).
+      if (rec === "pruebas" && (id === "plan" || id === "generar") && m === "POST") {
+        const b = await leerJson(req);
+        const t0 = esUuid(b.trabajo_origen) ? await cargarTrabajo(b.trabajo_origen) : null;
+        const D0 = (t0?.datos ?? {}) as any;
+        if (!t0 || !D0.inventario) return error("Ese trabajo no tiene inventario");
+        if (id === "plan") return json(await medirPlan(D0, await fuenteDe(t0), texto(b.modelo, 10), texto(b.esfuerzo, 10)));
+        const { data: bo } = await supabase.from("borradores").select("*").eq("id", t0.borrador_id).maybeSingle();
+        if (!bo) return error("No existe el borrador de ese trabajo", 404);
+        const etiqueta = texto(b.etiqueta, 40) || "prueba";
+        const opciones = Object.fromEntries(Object.entries(b.opciones ?? {}).filter(([k, v]) => /^(modelo|esfuerzo)_(extraer|plan|escribir|reparar|verificar)$/.test(k) && typeof v === "string").map(([k, v]) => [k, texto(v, 10)]));
+        const bid = crypto.randomUUID(); const clave = nuevoToken(24);
+        const { error: eb } = await supabase.from("borradores").insert({ id: bid, clave, servicio: 2, colegio_id: bo.colegio_id, colegio_texto: bo.colegio_texto, grado: bo.grado, materia: bo.materia, paginas: bo.paginas, archivos: bo.archivos, estado: "generando", expira_en: enDias(7) });
+        if (eb) throw eb;
+        const { data: g, error: eg } = await supabase.from("guias").insert({ estado: "borrador", origen: "personalizada", titulo: `Prueba ${etiqueta}`, colegio_id: bo.colegio_id, grado: bo.grado, materia: bo.materia, examen: `Prueba de modelos ${etiqueta}`, borrador_id: bid }).select("id").single();
+        if (eg) throw eg;
+        const datos = { inventario: D0.inventario, fotos: D0.fotos, citas: D0.citas, tipo_material: D0.tipo_material, opciones, prueba: { etiqueta, origen: t0.id } };
+        const { data: nt, error: et } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: bid, guia_id: g.id, alcance: "completa", paso: "planear", estado: "pendiente", datos, progreso: { pct: 32, mensaje: "Planeando tu guía 🧭", paso: "planear" } }).select("id").single();
+        if (et) throw et;
+        await supabase.from("borradores").update({ trabajo_id: nt.id, guia_id: g.id }).eq("id", bid);
+        disparar(nt.id);
+        return json({ ok: true, clave, guia_id: g.id, trabajo_id: nt.id, link: `${base}crear.html?clave=${clave}` }, 202);
       }
 
       if (rec === "limpiar" && m === "POST") return json(await limpieza());
