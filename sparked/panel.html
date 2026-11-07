@@ -110,7 +110,7 @@
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
         <select id="filtroCompras" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="pendiente">Pendientes de pago</option><option value="pagada">Pagadas</option><option value="">Todas</option></select>
         <button class="boton linea chico" id="btnRefrescarCompras">⟳ Actualizar</button>
-        <span class="ayuda">Mientras Stripe no esté encendido, aquí confirmas los pagos a mano: al marcar "Pagada" se crea el link y se manda el correo.</span>
+        <span class="ayuda">Con Mercado Pago encendido, cada guía se activa sola al confirmarse el pago (tarjeta, OXXO o SPEI). Sin cobro en línea, aquí confirmas los pagos a mano: al marcar "Pagada" se crea el link y se manda el correo.</span>
       </div>
       <div id="listaCompras"></div>
     </section>
@@ -135,7 +135,7 @@
           <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="boton" type="submit">Guardar ajustes</button><button class="boton linea" type="button" id="btnLimpiar">🧹 Limpiar borradores vencidos</button></div>
         </form>
       </div>
-      <div class="caja-clave" style="margin-top:14px"><b>Cómo se encienden los motores</b><p style="margin:6px 0 0">Cada motor se enciende poniendo su llave en Supabase → Edge Functions → Secrets (nunca en el código ni en WhatsApp): <code>ANTHROPIC_API_KEY</code> (la IA que escribe las guías), <code>STRIPE_SECRET_KEY</code> y <code>STRIPE_WEBHOOK_SECRET</code> (cobro en línea), <code>RESEND_API_KEY</code> (correos) y, opcional, <code>HELICONE_API_KEY</code> (medición de costos). Mientras un motor está apagado, el sitio sigue funcionando en modo manual.</p></div>
+      <div class="caja-clave" style="margin-top:14px"><b>Cómo se encienden los motores</b><p style="margin:6px 0 0">Cada motor se enciende poniendo su llave en Supabase → Edge Functions → Secrets (nunca en el código ni en WhatsApp): <code>ANTHROPIC_API_KEY</code> (la IA que escribe las guías), <code>MP_ACCESS_TOKEN</code> y <code>MP_WEBHOOK_SECRET</code> (cobro en línea con Mercado Pago: tarjeta, OXXO y SPEI), <code>RESEND_API_KEY</code> (correos) y, opcional, <code>HELICONE_API_KEY</code> (medición de costos). Stripe (<code>STRIPE_SECRET_KEY</code> y <code>STRIPE_WEBHOOK_SECRET</code>) queda dormido: solo se usaría si Mercado Pago no estuviera puesto. Mientras un motor está apagado, el sitio sigue funcionando en modo manual. Los pasos para Mercado Pago están en GUIA.md.</p></div>
     </section>
   </div>
 </div></main>
@@ -201,8 +201,8 @@ async function cargarResumen() {
 }
 function pintarMotores(p) {
   const m = p.motores ?? {};
-  const lista = [["ia", "Inteligencia artificial", "ANTHROPIC_API_KEY", "Escribe las guías del Servicio 2 y de la biblioteca"], ["stripe", "Cobro en línea (Stripe)", "STRIPE_SECRET_KEY", "Apagado = las compras se confirman a mano aquí"], ["webhook", "Aviso de pago de Stripe", "STRIPE_WEBHOOK_SECRET", "Confirma el pago automáticamente"], ["correo", "Correos (Resend)", "RESEND_API_KEY", "Manda el link y el QR al correo del cliente"], ["helicone", "Medición de costos (Helicone)", "HELICONE_API_KEY", "Opcional: cuánto cuesta cada guía"]];
-  $("#motores").innerHTML = lista.map(([k, nombre, sec, desc]) => `<div class="motor ${m[k] ? "on" : ""}"><b>${m[k] ? "🟢" : "⚪"} ${esc(nombre)}</b><span class="ayuda">${esc(desc)}</span><div style="margin-top:6px"><code>${esc(sec)}</code> ${m[k] ? "configurada" : "sin configurar"}</div></div>`).join("");
+  const lista = [["ia", "Inteligencia artificial", "ANTHROPIC_API_KEY", "Escribe las guías del Servicio 2 y de la biblioteca"], ["mercadopago", "Cobro en línea (Mercado Pago)", "MP_ACCESS_TOKEN", m.mercadopago_prueba ? "MODO DE PRUEBA: no cobra de verdad. Al terminar las pruebas pon la llave de producción" : "Tarjeta, OXXO y SPEI. Apagado = las compras se confirman a mano aquí"], ["mercadopago_webhook", "Aviso de pago de Mercado Pago", "MP_WEBHOOK_SECRET", "Activa la guía sola en cuanto Mercado Pago confirma el pago"], ["correo", "Correos (Resend)", "RESEND_API_KEY", "Manda el link y el QR al correo del cliente"], ["stripe", "Stripe (dormido)", "STRIPE_SECRET_KEY", "No se usa: el cobro en línea es con Mercado Pago"], ["webhook", "Aviso de pago de Stripe", "STRIPE_WEBHOOK_SECRET", "Solo si algún día se usa Stripe"], ["helicone", "Medición de costos (Helicone)", "HELICONE_API_KEY", "Opcional: cuánto cuesta cada guía"]];
+  $("#motores").innerHTML = lista.map(([k, nombre, sec, desc]) => `<div class="motor ${m[k] ? "on" : ""}"><b>${m[k] ? (k === "mercadopago" && m.mercadopago_prueba ? "🟡" : "🟢") : "⚪"} ${esc(nombre)}</b><span class="ayuda">${esc(desc)}</span><div style="margin-top:6px"><code>${esc(sec)}</code> ${m[k] ? "configurada" : "sin configurar"}</div></div>`).join("");
 }
 
 // ---------- Guías ----------
@@ -354,20 +354,25 @@ $("#formNueva").onsubmit = async (e) => {
 $("#filtroGuias").onchange = cargarGuias; $("#btnRefrescarGuias").onclick = cargarGuias;
 
 // ---------- Compras ----------
+const METODOS_MP = { tarjeta: "tarjeta", oxxo: "OXXO", spei: "SPEI", mercadopago: "saldo de Mercado Pago", efectivo: "efectivo" };
+const ESTADOS_MP = { approved: "aprobado", pending: "esperando el pago", in_process: "en revisión", authorized: "autorizado", rejected: "rechazado", cancelled: "cancelado o vencido", refunded: "reembolsado", charged_back: "contracargo", revisar_monto: "llegó un monto distinto: revísalo en Mercado Pago" };
 async function cargarCompras() {
   const f = $("#filtroCompras").value;
   const lista = await api("/compras" + (f ? `?estado=${f}` : ""));
   $("#listaCompras").innerHTML = lista.map((c) => `<div class="fila-g"><div class="info"><b>${esc(c.titulo ?? "Guía")}</b>${chip(c.estado)}
       <div class="ayuda">Folio <b>${esc(c.folio)}</b> · ${esc(fecha(c.creada_en))} · ${dinero(c.monto_mxn)} MXN${c.pagada_en ? " · pagada " + esc(fecha(c.pagada_en)) : ""}</div>
       <div class="ayuda">${esc(c.nombre ?? "")} · <a href="${esc(waLink(c.telefono ?? "", ""))}" target="_blank" rel="noopener">${esc(c.telefono ?? "")}</a> · <a href="mailto:${esc(c.correo ?? "")}">${esc(c.correo ?? "")}</a> · ${esc([c.colegio_texto, c.grado, c.materia].filter(Boolean).join(" · "))}</div>
+      ${c.mp_preferencia_id || c.mp_estado ? `<div class="ayuda">Mercado Pago: ${esc(METODOS_MP[c.metodo_pago] ?? c.metodo_pago ?? "todavía sin pago")}${c.mp_estado ? " · " + esc(ESTADOS_MP[c.mp_estado] ?? c.mp_estado) : ""}${c.mp_vence_en && c.estado === "pendiente" ? " · se puede pagar hasta el " + esc(fecha(c.mp_vence_en)) : ""}${c.mp_pago_id ? " · pago " + esc(c.mp_pago_id) : ""}${c.mp_ficha_url ? ` · <a href="${esc(c.mp_ficha_url)}" target="_blank" rel="noopener">ver ficha</a>` : ""}</div>` : ""}
       ${c.link ? `<div class="link-caja" style="margin-top:6px">${esc(c.link)}</div><div class="ayuda">Acceso: ${esc(c.acceso?.estado ?? "")} · vence ${esc(fecha(c.acceso?.expira_en))} · ${c.acceso?.usos ?? 0} aperturas</div>` : ""}
     </div><div class="acciones">
+      ${c.estado === "pendiente" && c.mp_preferencia_id ? `<button class="boton linea" data-act="revisar" data-id="${c.id}">🔄 Revisar en Mercado Pago</button>` : ""}
       ${c.estado === "pendiente" ? `<button class="boton" data-act="pagar" data-id="${c.id}">✅ Marcar pagada</button><button class="boton linea" data-act="cancelar" data-id="${c.id}">✖ Cancelar</button>` : ""}
       ${c.link ? `<button class="boton linea" data-act="copiar" data-link="${esc(c.link)}">📋 Copiar link</button><a class="boton linea" target="_blank" rel="noopener" href="${esc(waLink(c.telefono ?? "", mensajeWhatsApp(c.titulo ?? "Tu guía", c.link)))}">💬 WhatsApp</a><button class="boton linea" data-act="reenviar" data-id="${c.id}">✉️ Reenviar correo</button>` : ""}
     </div></div>`).join("") || "<p class='ayuda'>No hay compras en esta lista.</p>";
   $$("#listaCompras [data-act]").forEach((b) => b.onclick = async () => {
     try {
       if (b.dataset.act === "pagar") { if (!confirm("¿Confirmas que esta compra ya se pagó? Se creará el link de 7 días y se enviará el correo.")) return; const r = await api(`/compras/${b.dataset.id}/pagar`, { method: "POST" }); aviso("Pago confirmado. Link creado."); cargarCompras(); cargarResumen(); modal(`<h2>Link listo 🎉</h2><div class="link-caja">${esc(r.link)}</div><p class="ayuda">${r.lista ? "La guía está completa." : "La IA sigue armando los bloques que faltan; el link ya funciona y mostrará el avance."}</p><a class="boton" target="_blank" rel="noopener" href="${esc(waLink(r.compra.telefono ?? "", mensajeWhatsApp(r.compra.titulo ?? "Tu guía", r.link)))}">💬 Mandar por WhatsApp</a>`); }
+      if (b.dataset.act === "revisar") { b.disabled = true; const r = await api(`/compras/${b.dataset.id}/revisar`, { method: "POST" }); aviso(r.compra?.estado === "pagada" ? "Pagada en Mercado Pago: guía activada y correo enviado." : r.resultado === "sin_pagos" ? "Mercado Pago todavía no tiene ningún pago de esta compra." : "Mercado Pago dice: " + (ESTADOS_MP[r.compra?.mp_estado] ?? r.resultado), false, 6000); cargarCompras(); cargarResumen(); }
       if (b.dataset.act === "cancelar") { if (!confirm("¿Cancelar esta compra pendiente?")) return; await api(`/compras/${b.dataset.id}/cancelar`, { method: "POST" }); cargarCompras(); }
       if (b.dataset.act === "copiar") { await navigator.clipboard.writeText(b.dataset.link); aviso("Link copiado"); }
       if (b.dataset.act === "reenviar") { await api(`/compras/${b.dataset.id}/reenviar`, { method: "POST" }); aviso("Correo reenviado (si el motor de correo está encendido)"); }

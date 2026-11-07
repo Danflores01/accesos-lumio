@@ -4,18 +4,20 @@
 // Rutas públicas (sin llave):
 //   GET  /colegios · POST /buscar · POST /solicitud · GET /vista-previa/:guia_id
 //   POST /borrador · GET /borrador/:clave · POST /borrador/:clave/generar
-//   POST /pago/crear · GET /pago/estado/:compra_id · POST /pago/webhook (Stripe)
+//   POST /pago/crear · GET /pago/estado/:compra_id · POST /pago/reintentar/:compra_id
+//   POST /pago/mercadopago (avisos de Mercado Pago) · POST /pago/webhook (Stripe)
 //   POST /acceso/:token · POST /progreso/:token · POST /reporte · GET /datos-curiosos
 // Rutas internas: POST /trabajo/:id/paso (solo la propia función, cabecera x-interno)
 // Rutas de administración (cabecera x-admin-key, la misma llave del panel de accesos): /admin/...
 //
-// Motores: la IA (ANTHROPIC_API_KEY), Stripe (STRIPE_SECRET_KEY, motor en blanco mientras no exista)
-// y el correo (RESEND_API_KEY) se encienden solos cuando Daniel pone cada secreto en Supabase.
+// Motores: la IA (ANTHROPIC_API_KEY), el cobro con Mercado Pago (MP_ACCESS_TOKEN + MP_WEBHOOK_SECRET; tarjeta, OXXO
+// y SPEI), Stripe (STRIPE_SECRET_KEY, dormido: solo se usa si no hay Mercado Pago) y el correo (RESEND_API_KEY) se
+// encienden solos cuando Daniel pone cada secreto en Supabase. Sin cobro en línea, el pago es manual desde el panel.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ejecutarPaso, recortarVistaPrevia, aplanar, type Trabajo } from "./pipeline.ts";
 
-const VERSION = "2026-11-06.1";
+const VERSION = "2026-11-07.1";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -43,7 +45,7 @@ const esSecreto = (s: unknown): s is string => typeof s === "string" && /^[A-Za-
 const esClave = (c: unknown): c is string => typeof c === "string" && /^[A-Za-z0-9]{16,40}$/.test(c);
 const esCorreo = (c: unknown): c is string => typeof c === "string" && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c) && c.length <= 120;
 function limpiarTel(t: unknown): string { let d = String(t ?? "").replace(/\D/g, ""); if (d.length === 12 && d.startsWith("52")) d = d.slice(2); if (d.length === 13 && d.startsWith("521")) d = d.slice(3); return d; }
-const texto = (v: unknown, max = 120) => String(v ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+const texto = (v: unknown, max = 120) => String(v ?? "").replace(/[\x00-\x1f\x7f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 const ipDe = (req: Request) => (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || (req.headers.get("cf-connecting-ip") ?? "") || null;
 const ahora = () => new Date().toISOString();
 const enDias = (d: number) => new Date(Date.now() + d * 86400 * 1000).toISOString();
@@ -266,6 +268,179 @@ async function firmaStripeValida(cuerpo: string, cabecera: string | null, secret
   const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(secreto), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const f = [...new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(`${t}.${cuerpo}`)))].map((x) => x.toString(16).padStart(2, "0")).join("");
   return firmas.includes(f);
+}
+
+// ---------- Mercado Pago (Checkout Pro, México): tarjeta, OXXO y SPEI ----------
+// Se enciende solo cuando existe el secreto MP_ACCESS_TOKEN; si no existe, todo sigue como antes (Stripe o manual).
+// Los avisos de pago llegan a POST /pago/mercadopago y se validan con MP_WEBHOOK_SECRET. Aun con la firma válida, el
+// estado del pago siempre se le pregunta a la API de Mercado Pago con nuestra llave: nunca se cree lo que diga el aviso.
+const MP_API = "https://api.mercadopago.com";
+const MP_DIAS_EFECTIVO = 3; // días para pagar en OXXO o por SPEI (Mercado Pago recomienda al menos 3)
+const mpToken = () => Deno.env.get("MP_ACCESS_TOKEN") ?? "";
+const mpPrueba = () => mpToken().startsWith("TEST-");
+// Fecha en hora del centro de México (UTC-6, sin horario de verano desde 2022), con el formato que pide Mercado Pago.
+const fechaMx = (ms: number) => new Date(ms - 6 * 3600 * 1000).toISOString().replace("Z", "-06:00");
+
+async function mp(ruta: string, op: { method?: string; body?: unknown } = {}): Promise<{ ok: boolean; status: number; datos: any }> {
+  const r = await fetch(`${MP_API}${ruta}`, { method: op.method ?? "GET", headers: { authorization: `Bearer ${mpToken()}`, "content-type": "application/json" }, body: op.body === undefined ? undefined : JSON.stringify(op.body), signal: AbortSignal.timeout(15_000) });
+  return { ok: r.ok, status: r.status, datos: await r.json().catch(() => ({})) };
+}
+
+// Crea el link de pago (preferencia) de una compra. Al pagar con tarjeta regresa solo a listo.html; si queda pendiente
+// (OXXO o SPEI) o falla, regresa a listo.html con ?pago=pendiente o ?pago=fallido.
+async function crearPreferenciaMP(compra: any, titulo: string, precio: number): Promise<{ id: string; url: string }> {
+  const base = await sitio();
+  const volver = (estado = "") => `${base}listo.html?compra=${compra.id}${estado ? `&pago=${estado}` : ""}`;
+  const cuerpo: Record<string, any> = {
+    items: [{ id: String(compra.guia_id ?? compra.id), title: `Guía SparkEd: ${titulo}`.slice(0, 120), description: `${DIAS_ACCESO} días de acceso ilimitado a tu guía, en ${APARATOS} dispositivos`, category_id: "learnings", quantity: 1, currency_id: "MXN", unit_price: precio }],
+    external_reference: compra.id,
+    back_urls: { success: volver(), pending: volver("pendiente"), failure: volver("fallido") },
+    auto_return: "approved",
+    notification_url: `${SELF}/pago/mercadopago`,
+    statement_descriptor: "SPARKED",
+    date_of_expiration: fechaMx(Date.now() + MP_DIAS_EFECTIVO * 86400 * 1000),
+    // Solo tarjeta, OXXO y SPEI: fuera pagos en cajero, PayCash y crédito de Mercado Pago (el saldo de una cuenta
+    // de Mercado Pago no se puede quitar). Sin meses: una sola exhibición.
+    payment_methods: { excluded_payment_types: [{ id: "atm" }, { id: "digital_currency" }], excluded_payment_methods: [{ id: "paycash" }], installments: 1 },
+  };
+  // Con llaves de prueba no se manda el correo real: Mercado Pago no deja mezclar cuentas de prueba con cuentas reales.
+  if (!mpPrueba() && esCorreo(compra.correo)) cuerpo.payer = { email: compra.correo };
+  let r = await mp("/checkout/preferences", { method: "POST", body: cuerpo });
+  if (r.status === 400) {
+    // Si Mercado Pago no acepta el filtro de métodos o la categoría, se intenta sin ellos: mejor cobrar que fallar.
+    console.warn("Mercado Pago rechazó la preferencia; se reintenta sin filtros:", JSON.stringify(r.datos).slice(0, 300));
+    delete cuerpo.payment_methods; delete cuerpo.items[0].category_id;
+    r = await mp("/checkout/preferences", { method: "POST", body: cuerpo });
+  }
+  const url = (mpPrueba() && r.datos?.sandbox_init_point) || r.datos?.init_point;
+  if (!r.ok || !r.datos?.id || !url) throw new Error("Mercado Pago: " + (r.datos?.message ?? r.status));
+  return { id: String(r.datos.id), url };
+}
+
+// Firma de los avisos (documentación de Mercado Pago, "Validar origen de la notificación"): la cabecera x-signature trae
+// "ts=<ts>,v1=<firma>" y la firma es el HMAC-SHA256 en hexadecimal, con la clave secreta del webhook, del manifiesto
+// "id:<data.id de la URL>;request-id:<cabecera x-request-id>;ts:<ts>;". Si falta data.id o x-request-id, esa parte se
+// quita del manifiesto; un data.id con letras va en minúsculas.
+async function firmaMPValida(secreto: string, xSignature: string | null, xRequestId: string | null, dataId: string | null): Promise<boolean> {
+  if (!secreto || !xSignature) return false;
+  let ts = "", v1 = "";
+  for (const parte of xSignature.split(",")) {
+    const i = parte.indexOf("="); if (i < 0) continue;
+    const k = parte.slice(0, i).trim(), v = parte.slice(i + 1).trim();
+    if (k === "ts") ts = v; else if (k === "v1") v1 = v.toLowerCase();
+  }
+  if (!/^\d+$/.test(ts) || !/^[0-9a-f]{64}$/.test(v1)) return false;
+  const manifiesto = (dataId ? `id:${dataId.toLowerCase()};` : "") + (xRequestId ? `request-id:${xRequestId};` : "") + `ts:${ts};`;
+  const llave = await crypto.subtle.importKey("raw", new TextEncoder().encode(secreto), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const firma = [...new Uint8Array(await crypto.subtle.sign("HMAC", llave, new TextEncoder().encode(manifiesto)))].map((x) => x.toString(16).padStart(2, "0")).join("");
+  let dif = 0; for (let i = 0; i < 64; i++) dif |= firma.charCodeAt(i) ^ v1.charCodeAt(i);
+  return dif === 0;
+}
+
+// Cómo se pagó, en palabras del sitio: tarjeta, oxxo, spei, mercadopago (saldo de la cuenta) u otro.
+function metodoMP(p: any): string {
+  const tipo = String(p?.payment_type_id ?? ""), metodo = String(p?.payment_method_id ?? "");
+  if (["credit_card", "debit_card", "prepaid_card"].includes(tipo)) return "tarjeta";
+  if (metodo === "oxxo") return "oxxo";
+  if (tipo === "bank_transfer" || metodo === "clabe" || metodo === "spei") return "spei";
+  if (tipo === "account_money") return "mercadopago";
+  if (tipo === "ticket") return "efectivo";
+  return metodo || tipo || "otro";
+}
+const MP_VIVOS = ["pending", "in_process", "authorized"]; // pagos que todavía pueden aprobarse
+
+// Aplica un pago de Mercado Pago a su compra (external_reference = id de la compra). Idempotente: si la compra ya
+// está pagada no hace nada, y si llegan dos avisos al mismo tiempo solo uno "gana" la compra y entrega el link.
+async function procesarPagoMP(p: any): Promise<string> {
+  const compraId = String(p?.external_reference ?? "");
+  if (!esUuid(compraId) || !p?.id) return "sin_compra";
+  const { data: compra } = await supabase.from("compras").select("id, estado, monto_mxn, mp_pago_id, mp_estado").eq("id", compraId).maybeSingle();
+  if (!compra) return "sin_compra";
+  const estadoMP = String(p.status ?? "");
+  const datos: Record<string, unknown> = {
+    mp_pago_id: String(p.id), mp_estado: estadoMP, metodo_pago: metodoMP(p),
+    mp_ficha_url: p.transaction_details?.external_resource_url ?? p.point_of_interaction?.transaction_data?.ticket_url ?? null,
+    mp_vence_en: p.date_of_expiration ?? null, mp_actualizado_en: ahora(),
+  };
+  if (compra.estado === "pagada") {
+    // Ya pagada: no se vuelve a entregar. Solo se anota si ese mismo pago cambió (por ejemplo, un reembolso).
+    if (String(compra.mp_pago_id ?? "") === String(p.id) && compra.mp_estado !== estadoMP) await supabase.from("compras").update({ mp_estado: estadoMP, mp_actualizado_en: ahora() }).eq("id", compraId);
+    return "ya_pagada";
+  }
+  if (estadoMP === "approved") {
+    if (String(p.currency_id ?? "MXN").toUpperCase() !== "MXN" || Number(p.transaction_amount ?? 0) + 0.01 < Number(compra.monto_mxn ?? 0)) {
+      console.error("Pago de Mercado Pago con monto o moneda distintos; queda para revisión en el panel", compraId, p.id, p.transaction_amount, p.currency_id);
+      await supabase.from("compras").update({ ...datos, mp_estado: "revisar_monto" }).eq("id", compraId).neq("estado", "pagada");
+      return "revisar_monto";
+    }
+    // Paso atómico: solo la ejecución que cambia la compra de pendiente a pagada entrega el link (una sola vez).
+    const { data: ganada, error: e } = await supabase.from("compras").update({ ...datos, estado: "pagada", pagada_en: ahora(), monto_mxn: Number(p.transaction_amount) }).eq("id", compraId).in("estado", ["pendiente", "fallida"]).select("id");
+    if (e) throw e;
+    if (!ganada?.length) return "ya_pagada";
+    await confirmarPago(compraId); // la compra ya está pagada: crea el acceso de 7 días y manda el correo
+    return "pagada";
+  }
+  // Pendiente (OXXO, SPEI o tarjeta en revisión), rechazado, cancelado o vencido: la compra sigue pendiente y se anota
+  // el método para que el sitio muestre la instrucción adecuada. Un intento rechazado no tapa una ficha que sigue viva.
+  if (compra.mp_pago_id && String(compra.mp_pago_id) !== String(p.id) && MP_VIVOS.includes(String(compra.mp_estado)) && !MP_VIVOS.includes(estadoMP)) return "se_conserva_" + compra.mp_estado;
+  await supabase.from("compras").update(datos).eq("id", compraId).neq("estado", "pagada");
+  return estadoMP || "sin_estado";
+}
+
+// Pregunta directo a Mercado Pago por los pagos de una compra (por si el aviso tarda o no llega) y aplica el más
+// importante: aprobado, luego pendiente, luego el más reciente. pagoId = el que Mercado Pago puso al regresar al sitio.
+async function revisarCompraMP(compraId: string, pagoId?: string | null): Promise<string | null> {
+  const pagos: any[] = [];
+  if (pagoId && /^\d{1,20}$/.test(pagoId)) {
+    const r = await mp(`/v1/payments/${pagoId}`);
+    if (r.ok && String(r.datos?.external_reference ?? "") === compraId) {
+      if (r.datos.status === "approved") return await procesarPagoMP(r.datos);
+      pagos.push(r.datos);
+    }
+  }
+  const r = await mp(`/v1/payments/search?external_reference=${encodeURIComponent(compraId)}&sort=date_created&criteria=desc&limit=20`);
+  if (!r.ok && !pagos.length) throw new Error(`Mercado Pago respondió ${r.status} al buscar los pagos`);
+  for (const x of (r.ok ? r.datos?.results ?? [] : []) as any[]) if (!pagos.some((y) => String(y.id) === String(x.id))) pagos.push(x);
+  if (!pagos.length) return null;
+  return await procesarPagoMP(pagos.find((x) => x.status === "approved") ?? pagos.find((x) => MP_VIVOS.includes(x.status)) ?? pagos[0]);
+}
+// Guía personalizada: su vista previa (borrador) se guarda mientras corre el plazo para pagar en OXXO o por SPEI;
+// sin esto se borraría a las 24 horas y un pago en OXXO del día siguiente ya no tendría guía que entregar.
+async function guardarBorradorMientrasPaga(borradorId: string | null | undefined) {
+  if (!borradorId) return;
+  const hasta = new Date(Date.now() + (MP_DIAS_EFECTIVO + 1) * 86400 * 1000).toISOString();
+  await supabase.from("borradores").update({ expira_en: hasta }).eq("id", borradorId).lt("expira_en", hasta).not("estado", "in", "(pagado,listo)");
+}
+// Freno para no preguntarle a Mercado Pago en cada consulta de estado: una vez cada 20 s por compra.
+const revisadasMP = new Map<string, number>();
+function tocaRevisarMP(compraId: string): boolean {
+  const antes = revisadasMP.get(compraId) ?? 0;
+  if (Date.now() - antes < 20_000) return false;
+  if (revisadasMP.size > 500) revisadasMP.clear();
+  revisadasMP.set(compraId, Date.now());
+  return true;
+}
+
+// Aviso de Mercado Pago (Webhooks, tema "Pagos"): POST /pago/mercadopago?data.id=<pago>&type=payment.
+async function avisoMercadoPago(req: Request, url: URL): Promise<Response> {
+  const cuerpo = await leerJson(req);
+  const idUrl = url.searchParams.get("data.id");
+  // Formato viejo (IPN, ?topic=…&id=…): Mercado Pago no permite validar su firma. Se contesta 200 sin hacer nada;
+  // el mismo pago llega también como aviso Webhook firmado.
+  if (!idUrl && url.searchParams.get("topic")) return json({ ok: true, ignorado: "ipn" });
+  const xSignature = req.headers.get("x-signature");
+  if (!xSignature || !/ts=/.test(xSignature) || !/v1=/.test(xSignature)) return error("Firma no válida", 401);
+  const secreto = Deno.env.get("MP_WEBHOOK_SECRET") ?? "";
+  if (!secreto) return error("El motor de pagos aún no está configurado", 503); // Mercado Pago reintenta más tarde
+  if (!(await firmaMPValida(secreto, xSignature, req.headers.get("x-request-id"), idUrl))) return error("Firma no válida", 401);
+  const tipo = String(url.searchParams.get("type") ?? cuerpo?.type ?? "");
+  const pagoId = String(idUrl ?? cuerpo?.data?.id ?? "");
+  if (tipo !== "payment" || !/^\d{1,20}$/.test(pagoId)) return json({ ok: true, ignorado: tipo || "sin_tipo" });
+  if (!mpToken()) return error("El motor de pagos aún no está configurado", 503);
+  const r = await mp(`/v1/payments/${pagoId}`);
+  if (r.status === 404) return json({ ok: true, ignorado: "pago_inexistente" }); // p. ej. la prueba "Simular" del panel
+  if (!r.ok) return error(`Mercado Pago respondió ${r.status}`, 502); // Mercado Pago vuelve a mandar el aviso
+  return json({ ok: true, resultado: await procesarPagoMP(r.datos) });
 }
 
 async function confirmarPago(compraId: string, extra: { stripe_session_id?: string; monto?: number; manual?: boolean } = {}) {
@@ -508,32 +683,79 @@ Deno.serve(async (req: Request) => {
         if (e) throw e; compra = c;
       }
       if (borrador) await supabase.from("borradores").update({ nombre, telefono, correo }).eq("id", borrador.id);
-      if (Deno.env.get("STRIPE_SECRET_KEY")) {
+      let mpFallo = false;
+      if (mpToken()) {
+        // Cobro con Mercado Pago (tarjeta, OXXO y SPEI). Manda sobre Stripe, que queda dormido.
+        try {
+          // El link de pago lleva el precio de hoy (una compra apartada puede venir de antes).
+          if (Number(compra.monto_mxn) !== precio) { await supabase.from("compras").update({ monto_mxn: precio }).eq("id", compra.id); compra.monto_mxn = precio; }
+          const pref = await crearPreferenciaMP(compra, guia.titulo ?? "Guía", precio);
+          await supabase.from("compras").update({ mp_preferencia_id: pref.id, mp_actualizado_en: ahora() }).eq("id", compra.id);
+          await guardarBorradorMientrasPaga(borrador?.id);
+          return json({ modo: "mercadopago", url: pref.url, compra_id: compra.id });
+        } catch (e) {
+          // Si Mercado Pago no responde, la venta no se pierde: la compra queda apartada en modo manual.
+          console.error("Mercado Pago no respondió; la compra queda en modo manual:", (e as Error).message);
+          mpFallo = true;
+        }
+      } else if (Deno.env.get("STRIPE_SECRET_KEY")) {
         const s = await crearSesionStripe(compra, guia.titulo ?? "Guía", precio);
         await supabase.from("compras").update({ stripe_session_id: s.id }).eq("id", compra.id);
         return json({ modo: "stripe", url: s.url, compra_id: compra.id });
       }
-      // Motor en blanco: la compra queda apartada y se confirma a mano desde el panel SparkEd.
+      // Motor en blanco (o Mercado Pago sin responder): la compra queda apartada y se confirma a mano desde el panel.
       const folio = String(compra.id).slice(0, 8).toUpperCase();
       const wa = cfg.sparked_whatsapp.replace(/\D/g, "");
       const whatsapp = wa.length >= 10 ? `https://wa.me/${wa.length === 10 ? "52" + wa : wa}?text=${encodeURIComponent(`Hola, quiero confirmar mi compra de la guía "${guia.titulo ?? ""}" (folio ${folio}). Soy ${nombre}.`)}` : null;
-      return json({ modo: "manual", compra_id: compra.id, folio, precio, mensaje: `Tu guía quedó apartada. El pago en línea se está configurando: en cuanto lo confirmemos ${whatsapp ? "por WhatsApp" : "contigo"}, tu link aparece aquí y te llega al correo ${correo}.`, whatsapp });
+      const mensaje = mpFallo
+        ? `En este momento el pago en línea no respondió. Tu guía quedó apartada: ${whatsapp ? "escríbenos por WhatsApp para completar tu compra" : "te contactamos para completar tu compra"}. En cuanto se confirme el pago, tu link aparece aquí y te llega al correo ${correo}.`
+        : `Tu guía quedó apartada. El pago en línea se está configurando: en cuanto lo confirmemos ${whatsapp ? "por WhatsApp" : "contigo"}, tu link aparece aquí y te llega al correo ${correo}.`;
+      return json({ modo: "manual", compra_id: compra.id, folio, precio, mensaje, whatsapp });
     }
 
     if (r0 === "pago" && r1 === "estado" && esUuid(r2) && m === "GET") {
-      const { data: c } = await supabase.from("compras").select("id, estado, titulo, correo, telefono, acceso_id, guia_id, pagada_en, monto_mxn").eq("id", r2).maybeSingle();
+      const columnas = "id, estado, titulo, correo, telefono, acceso_id, guia_id, pagada_en, monto_mxn, mp_preferencia_id, mp_estado, metodo_pago, mp_ficha_url, mp_vence_en";
+      let { data: c } = await supabase.from("compras").select(columnas).eq("id", r2).maybeSingle();
       if (!c) return error("Esa compra no existe", 404);
+      // Mercado Pago: si su aviso todavía no llega, se le pregunta directo (máximo una vez cada 20 s por compra).
+      if (c.estado !== "pagada" && c.mp_preferencia_id && mpToken() && tocaRevisarMP(c.id)) {
+        try { if (await revisarCompraMP(c.id, url.searchParams.get("pago"))) c = (await supabase.from("compras").select(columnas).eq("id", r2).maybeSingle()).data ?? c; }
+        catch (e) { console.warn("No se pudo revisar el pago en Mercado Pago:", (e as Error).message); }
+      }
       const out: Record<string, unknown> = { estado: c.estado, titulo: c.titulo, correo: c.correo, telefono: c.telefono, pagada_en: c.pagada_en, folio: String(c.id).slice(0, 8).toUpperCase() };
+      // Para que el sitio muestre la instrucción adecuada (OXXO, SPEI o tarjeta en revisión).
+      if (c.mp_preferencia_id || c.metodo_pago) Object.assign(out, { metodo: c.metodo_pago, pago_mp: c.mp_estado, ficha_url: c.mp_ficha_url, vence_en: c.mp_vence_en });
       if (c.estado === "pagada") {
         let acceso = c.acceso_id ? (await supabase.from("accesos").select("token, expira_en").eq("id", c.acceso_id).maybeSingle()).data : null;
-        if (!acceso) { const e = await entregar(c); acceso = { token: e.token, expira_en: e.expira_en }; }
-        out.link = linkDe(await sitio(), acceso.token); out.token = acceso.token; out.expira_en = acceso.expira_en;
-        const { data: g } = await supabase.from("guias").select("completo:cartucho->completo").eq("id", c.guia_id).maybeSingle();
-        out.guia_lista = g?.completo === true;
-        if (!out.guia_lista) { const { data: t } = await supabase.from("trabajos").select("id, estado, progreso, actualizado_en, intentos").eq("guia_id", c.guia_id).eq("alcance", "resto").order("creado_en", { ascending: false }).limit(1).maybeSingle(); if (t) { out.progreso = t.progreso; await reanudarSiAtorado(t as any); } }
+        // Si el link no existe (la entrega se interrumpió), se crea aquí. Se esperan 30 s desde el pago para no
+        // duplicarlo mientras la entrega original (aviso de pago o panel) sigue en curso.
+        if (!acceso && Date.now() - new Date(c.pagada_en ?? 0).getTime() > 30_000) { const e = await entregar(c); acceso = { token: e.token, expira_en: e.expira_en }; }
+        if (acceso) {
+          out.link = linkDe(await sitio(), acceso.token); out.token = acceso.token; out.expira_en = acceso.expira_en;
+          const { data: g } = await supabase.from("guias").select("completo:cartucho->completo").eq("id", c.guia_id).maybeSingle();
+          out.guia_lista = g?.completo === true;
+          if (!out.guia_lista) { const { data: t } = await supabase.from("trabajos").select("id, estado, progreso, actualizado_en, intentos").eq("guia_id", c.guia_id).eq("alcance", "resto").order("creado_en", { ascending: false }).limit(1).maybeSingle(); if (t) { out.progreso = t.progreso; await reanudarSiAtorado(t as any); } }
+        }
       }
       return json(out);
     }
+
+    // Otro intento con Mercado Pago para una compra que sigue pendiente (por ejemplo, después de una tarjeta rechazada).
+    if (r0 === "pago" && r1 === "reintentar" && esUuid(r2) && m === "POST") {
+      if (!mpToken()) return error("El pago en línea no está disponible en este momento. Escríbenos por WhatsApp para completar tu compra.", 503);
+      const { data: c } = await supabase.from("compras").select("*").eq("id", r2).maybeSingle();
+      if (!c) return error("Esa compra no existe", 404);
+      if (c.estado === "pagada") return json({ modo: "pagada", compra_id: c.id });
+      if (c.estado !== "pendiente" || !c.guia_id) return error("Esta compra ya no está activa. Vuelve a pedir tu guía desde la página principal.");
+      const precio = Number((await config()).sparked_precio) || 100;
+      if (Number(c.monto_mxn) !== precio) { await supabase.from("compras").update({ monto_mxn: precio }).eq("id", c.id); c.monto_mxn = precio; }
+      const pref = await crearPreferenciaMP(c, c.titulo ?? "Guía", precio);
+      await supabase.from("compras").update({ mp_preferencia_id: pref.id, mp_actualizado_en: ahora() }).eq("id", c.id);
+      await guardarBorradorMientrasPaga(c.borrador_id);
+      return json({ modo: "mercadopago", url: pref.url, compra_id: c.id });
+    }
+
+    if (r0 === "pago" && r1 === "mercadopago" && m === "POST") return await avisoMercadoPago(req, url);
 
     if (r0 === "pago" && r1 === "webhook" && m === "POST") {
       const secreto = Deno.env.get("STRIPE_WEBHOOK_SECRET");
@@ -612,7 +834,7 @@ Deno.serve(async (req: Request) => {
 
       if (rec === "ping") {
         const cfg = await config();
-        return json({ ok: true, version: VERSION, sitio: base, motores: { ia: !!Deno.env.get("ANTHROPIC_API_KEY"), stripe: !!Deno.env.get("STRIPE_SECRET_KEY"), webhook: !!Deno.env.get("STRIPE_WEBHOOK_SECRET"), correo: !!Deno.env.get("RESEND_API_KEY"), helicone: !!Deno.env.get("HELICONE_API_KEY") }, config: cfg });
+        return json({ ok: true, version: VERSION, sitio: base, motores: { ia: !!Deno.env.get("ANTHROPIC_API_KEY"), mercadopago: !!Deno.env.get("MP_ACCESS_TOKEN"), mercadopago_webhook: !!Deno.env.get("MP_WEBHOOK_SECRET"), mercadopago_prueba: mpPrueba(), stripe: !!Deno.env.get("STRIPE_SECRET_KEY"), webhook: !!Deno.env.get("STRIPE_WEBHOOK_SECRET"), correo: !!Deno.env.get("RESEND_API_KEY"), helicone: !!Deno.env.get("HELICONE_API_KEY") }, config: cfg });
       }
       if (rec === "config" && m === "POST") {
         const b = await leerJson(req);
@@ -792,6 +1014,13 @@ Deno.serve(async (req: Request) => {
       if (rec === "compras" && esUuid(id) && accion === "pagar" && m === "POST") {
         const r = await confirmarPago(id, { manual: true });
         return json({ ok: true, compra: r.compra, link: r.link, token: r.token, expira_en: r.expira_en, lista: r.lista });
+      }
+      if (rec === "compras" && esUuid(id) && accion === "revisar" && m === "POST") {
+        // Botón del panel: pregunta a Mercado Pago por los pagos de esta compra y aplica lo que encuentre.
+        if (!mpToken()) return error("Mercado Pago no está encendido (falta MP_ACCESS_TOKEN)");
+        const resultado = await revisarCompraMP(id);
+        const { data: c } = await supabase.from("compras").select("*").eq("id", id).maybeSingle();
+        return json({ ok: true, resultado: resultado ?? "sin_pagos", compra: c });
       }
       if (rec === "compras" && esUuid(id) && accion === "cancelar" && m === "POST") {
         const { error: e } = await supabase.from("compras").update({ estado: "fallida" }).eq("id", id).eq("estado", "pendiente"); if (e) throw e;

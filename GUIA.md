@@ -257,16 +257,89 @@ crea un acceso normal dentro de esa clase: vale 7 días desde el pago y entra en
 
 **Motores (se encienden con secretos en Supabase → Edge Functions → Secrets; nunca en el código).**
 - `ANTHROPIC_API_KEY`: la IA que lee las fotos y escribe las guías (ponle un límite de gasto en la consola de Anthropic).
-- `STRIPE_SECRET_KEY` y `STRIPE_WEBHOOK_SECRET`: cobro en línea. Mientras no existan, el pago es manual: la compra queda
-  "pendiente" con un folio y tú la marcas pagada en el panel; en ese momento se crea el link y se manda el correo.
+- `MP_ACCESS_TOKEN` y `MP_WEBHOOK_SECRET`: cobro en línea con Mercado Pago (tarjeta, OXXO y SPEI); la guía se activa
+  sola en cuanto se confirma el pago. Cómo ponerlas: sección "Cobro con Mercado Pago" al final de esta guía. Mientras no
+  existan, el pago es manual: la compra queda "pendiente" con un folio y tú la marcas pagada en el panel; en ese momento
+  se crea el link y se manda el correo.
+- `STRIPE_SECRET_KEY` y `STRIPE_WEBHOOK_SECRET`: Stripe queda dormido; solo se usaría si no estuviera Mercado Pago.
 - `RESEND_API_KEY`: correos con el link y las reglas del acceso (opcional `HELICONE_API_KEY` para medir costos).
 
 **Publicar una guía de la biblioteca.** En el panel: ＋ Nueva guía → colegio, grado, materia, examen → sube las fotos
 (o un cartucho `.json` ya hecho) → "Generar con IA" → cuando termine, "Ver como profesor" para revisarla → Publicar.
 Al publicar, los pedidos sin guía que coincidan aparecen para avisarles por WhatsApp.
 
-**Ajustes del sitio** (pestaña Ajustes del panel): precio (85 MXN con IVA), WhatsApp para confirmar pagos manuales,
+**Ajustes del sitio** (pestaña Ajustes del panel): precio (100 MXN, IVA incluido; es lo que cobra Mercado Pago), WhatsApp para confirmar pagos manuales,
 topes de compras por día y por familia, correo de aviso de ventas y remitente.
 
 **Pruebas locales.** `node herramientas/servir.js 8787` sirve la carpeta en `http://localhost:8787/sparked/`
 (`guia.html?demo=civics3` abre la guía de ejemplo sin servidor).
+
+## Cobro con Mercado Pago (tarjeta, OXXO y SPEI)
+
+Desde el 7 de noviembre de 2026 el sitio ya sabe cobrar con Mercado Pago (Checkout Pro). Se enciende solo cuando pones
+dos llaves en Supabase. Mientras no estén, todo sigue en modo manual, como hoy. Las llaves **nunca** se mandan por
+WhatsApp ni se pegan en el código: solo en Supabase.
+
+**Encender Mercado Pago (una sola vez)**
+
+1. Entra a https://www.mercadopago.com.mx/developers con la cuenta de Mercado Pago de SparkEd y abre **Tus integraciones**.
+2. Oprime **Crear aplicación**. Ponle un nombre (por ejemplo "SparkEd guías"), elige **Pagos en línea** y después
+   **Checkout Pro**. Si pregunta si usas una plataforma de comercio electrónico, contesta que no. Acepta y crea la aplicación.
+3. Dentro de la aplicación, abre **Credenciales de producción** (si te lo pide, actívalas con los datos del negocio; el
+   sitio web es `https://sparkeducation-mx.com`). Copia el **Access Token** (empieza con `APP_USR-`).
+4. En la misma aplicación, abre **Webhooks → Configurar notificaciones**. En **Modo productivo** pega esta dirección:
+   `https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/sparked/pago/mercadopago`
+   En eventos marca **Pagos** y oprime **Guardar**.
+5. Al guardar aparece la **clave secreta** del webhook (hay un botón para mostrarla). Cópiala.
+6. Entra a Supabase (https://supabase.com/dashboard/project/wfqfqfsbkqbaejnkhidz) → **Edge Functions** → **Secrets** y
+   agrega dos secretos:
+   - Nombre `MP_ACCESS_TOKEN`, valor: el Access Token del paso 3.
+   - Nombre `MP_WEBHOOK_SECRET`, valor: la clave secreta del paso 5.
+7. Abre el panel de guías (pestaña **Resumen**, sección Motores): "Cobro en línea (Mercado Pago)" y "Aviso de pago de
+   Mercado Pago" deben verse en verde 🟢.
+8. Revisa en **Ajustes** del panel que el precio diga **100**: es lo que Mercado Pago le cobra a la familia.
+
+**Probar sin cobrar de verdad (recomendado antes de vender)**
+
+1. En Tus integraciones → tu aplicación → **Cuentas de prueba**, crea una cuenta de prueba de tipo **comprador**, de
+   México. Anota su usuario y su contraseña.
+2. En la aplicación, copia el **Access Token de prueba** (está en Credenciales de prueba y empieza con `TEST-`) y ponlo
+   en Supabase como `MP_ACCESS_TOKEN` en lugar del de producción. El panel muestra 🟡 "MODO DE PRUEBA". Mientras dure la
+   prueba, nadie puede pagar de verdad: hazla en un momento sin ventas y no la dejes puesta.
+3. En **Webhooks → Configurar notificaciones**, pestaña **Modo de pruebas**, pega la misma dirección del paso 4, marca
+   **Pagos** y guarda. La clave secreta es la misma de la aplicación (si te muestra otra, usa esa en `MP_WEBHOOK_SECRET`
+   mientras pruebas).
+4. Abre una ventana de incógnito, entra a https://sparkeducation-mx.com/sparked/biblioteca.html, elige una guía y
+   oprime pagar. En Mercado Pago entra con el comprador de prueba y paga con esta tarjeta de prueba: Mastercard
+   `5474 9254 3267 0366`, vencimiento `11/30`, código `123` y, como nombre del titular, **APRO** (pago aprobado).
+   Con **OTHE** el pago sale rechazado y con **CONT** queda pendiente.
+5. Con APRO, Mercado Pago te regresa solo a "¡Tu guía está lista!" y la compra aparece como pagada en el panel.
+6. Para ver OXXO, elige OXXO al pagar: en pruebas la ficha no se puede pagar, así que la prueba sale bien si la compra
+   queda pendiente y la página dice "Tu pago en OXXO puede tardar hasta 1 hora en reflejarse…".
+7. Al terminar, vuelve a poner en `MP_ACCESS_TOKEN` el **Access Token de producción** (`APP_USR-`). Las compras de
+   prueba se quedan en el panel; puedes ignorarlas.
+8. Si Mercado Pago dice que "una de las partes es de prueba", escribe en el formulario de SparkEd el correo del
+   comprador de prueba.
+
+**Qué pasa con cada forma de pago**
+
+- **Tarjeta aprobada:** la guía se activa al momento; la familia ve su link y le llega el correo.
+- **OXXO o SPEI:** la familia recibe su ficha y tiene **3 días** para pagar. Al pagar, Mercado Pago avisa (puede tardar
+  hasta 1 hora) y la guía se activa sola y llega al correo. Mientras tanto, la página le explica qué sigue y le deja
+  volver a ver su ficha. La vista previa de una guía personalizada se guarda esos días.
+- **Pago rechazado:** la familia ve "El pago no se completó" y el botón "Intentar de nuevo".
+- **Si una familia dice que ya pagó y no le llega:** panel → Compras → **🔄 Revisar en Mercado Pago**. Si el pago está
+  aprobado, la guía se activa en ese momento.
+- **Si Mercado Pago no responde:** la compra queda apartada en modo manual, como hoy, para no perder la venta.
+- Mercado Pago aparece en el estado de cuenta de la tarjeta como **SPARKED**.
+
+**Para quien le dé mantenimiento (técnico).** `POST /pago/crear` crea la preferencia de Checkout Pro
+(`external_reference` = id de la compra, regreso a `listo.html?compra=<id>`, `&pago=pendiente` o `&pago=fallido`;
+fichas con vencimiento de 3 días; sin cajero, PayCash ni crédito de Mercado Pago). `POST /pago/mercadopago` recibe los
+avisos: valida `x-signature` (HMAC-SHA256 del manifiesto `id:<data.id>;request-id:<x-request-id>;ts:<ts>;` con
+`MP_WEBHOOK_SECRET`; firma mala = 401), consulta el pago en `GET /v1/payments/:id` y lo aplica una sola vez (cambio
+atómico de `pendiente` a `pagada` y luego `confirmarPago`). `GET /pago/estado/:id` también pregunta a Mercado Pago si el
+aviso no ha llegado (una vez cada 20 s por compra) y devuelve `metodo`, `pago_mp`, `ficha_url` y `vence_en`.
+`POST /pago/reintentar/:id` hace un link de pago nuevo para una compra pendiente. Columnas nuevas en `compras`:
+migración `sql/migraciones/20261107_sparked_mercadopago.sql`. Prueba sin llaves: `node herramientas/probar-mercadopago.ts`
+(Node 23.6 o más nuevo).

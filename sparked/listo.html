@@ -15,19 +15,52 @@
 <header class="cab"><div class="contenedor"><a class="marca" href="index.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span></a></div></header>
 <main class="flujo"><div class="contenedor"><section class="panel-paso" id="caja"><div class="estado-carga"><div>Confirmando tu compra…</div></div></section></div></main>
 <script type="module">
-import { api, esc, mensajeWhatsApp, waLink, CONFIG } from "./js/flujo.js";
+import { api, esc, mensajeWhatsApp, waLink, CONFIG, textoPagoPendiente, PAGO_VIVO } from "./js/flujo.js";
 import { sparky } from "./js/arte.js";
 const params = new URLSearchParams(location.search);
-const compra = params.get("compra") || params.get("session_id") || (() => { try { return localStorage.getItem("sparked_compra"); } catch { return null; } })();
+const compra = params.get("compra") || params.get("external_reference") || params.get("session_id") || (() => { try { return localStorage.getItem("sparked_compra"); } catch { return null; } })();
+// Al regresar de Mercado Pago la dirección trae ?pago=pendiente o ?pago=fallido y sus propios datos del pago.
+const regreso = params.get("pago") || "";
+const pagoId = params.get("payment_id") || params.get("collection_id") || "";
+const estadoUrl = params.get("collection_status") || params.get("status") || "";
+const tipoUrl = params.get("payment_type") || "";
 const caja = document.getElementById("caja");
+let vista = "";
+// Solo se vuelve a dibujar cuando cambia lo que hay que mostrar (así no parpadea ni se pierde un botón a medio usar).
+function pintar(clave, html) { if (clave === vista) return false; vista = clave; caja.innerHTML = html; return true; }
 
 async function revisar() {
   if (!compra) { caja.innerHTML = `<h1>No encontramos tu compra</h1><p>Abre el link que te mandamos por correo o por WhatsApp, o vuelve a la <a href="index.html">página principal</a>.</p>`; return; }
   try {
-    const d = await api.get(`/pago/estado/${encodeURIComponent(compra)}`);
-    if (d.estado !== "pagada" || !d.link) { caja.innerHTML = `<div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div><h2>Esperando la confirmación del pago…</h2><p class="ayuda">Esta página se actualiza sola. Cuando se confirme el pago, también te mandamos tu guía por correo y por WhatsApp.</p></div>`; setTimeout(revisar, 5000); return; }
-    mostrar(d);
-  } catch (e) { caja.innerHTML = `<p class="error">${esc(e.message)}</p>`; setTimeout(revisar, 8000); }
+    const d = await api.get(`/pago/estado/${encodeURIComponent(compra)}${/^\d+$/.test(pagoId) ? `?pago=${pagoId}` : ""}`);
+    if (d.estado === "pagada" && d.link) { vista = "lista"; mostrar(d); return; }
+    const pagoMP = d.pago_mp || "";
+    // Mercado Pago: pago pendiente (OXXO, SPEI o tarjeta en revisión).
+    if (PAGO_VIVO.includes(pagoMP) || (!pagoMP && (regreso === "pendiente" || PAGO_VIVO.includes(estadoUrl)))) { pendiente(d); setTimeout(revisar, 15000); return; }
+    // Mercado Pago: el pago no se completó (rechazado, cancelado o vencido).
+    if (["rejected", "cancelled"].includes(pagoMP) || regreso === "fallido" || estadoUrl === "rejected") { fallido(d, pagoMP === "cancelled"); setTimeout(revisar, 15000); return; }
+    pintar("esperando", `<div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div><h2>Esperando la confirmación del pago…</h2><p class="ayuda">Esta página se actualiza sola. Cuando se confirme el pago, también te mandamos tu guía por correo y por WhatsApp.</p></div>`);
+    setTimeout(revisar, 5000);
+  } catch (e) { pintar("error:" + e.message, `<p class="error">${esc(e.message)}</p>`); setTimeout(revisar, 8000); }
+}
+function pendiente(d) {
+  const t = textoPagoPendiente(d, tipoUrl);
+  pintar(["pendiente", d.metodo || tipoUrl, d.vence_en, d.ficha_url].join("|"), `<div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div><h2>${esc(t.titulo)}</h2></div>
+    <div class="caja-clave">${t.html}</div>
+    <p class="ayuda">Puedes cerrar esta página: no necesitas volver a pagar. Esta página se actualiza sola. Folio: <b>${esc(d.folio ?? "")}</b>.</p>`);
+}
+function fallido(d, vencido) {
+  const nuevo = pintar("fallido:" + vencido, `<div style="display:flex;gap:14px;align-items:center">${sparky("triste", 5)}<div><h1>${vencido ? "El plazo para pagar terminó" : "El pago no se completó"}</h1><div class="ayuda">${esc(d.titulo ?? "")}</div></div></div>
+    <p>${vencido ? "Mercado Pago canceló este pago porque no se completó a tiempo." : "Mercado Pago no pudo completar tu pago."} No se realizó ningún cargo. Puedes intentarlo de nuevo con tarjeta, en OXXO o por SPEI.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="boton" id="otraVez">🔁 Intentar de nuevo</button><a class="boton linea" href="index.html">Volver al inicio</a></div>
+    <p class="error" id="errOtraVez"></p>`);
+  if (!nuevo) return;
+  const boton = caja.querySelector("#otraVez");
+  boton.onclick = async () => {
+    boton.disabled = true; boton.textContent = "Abriendo Mercado Pago…";
+    try { const r = await api.post(`/pago/reintentar/${encodeURIComponent(compra)}`); if (r.url) { location.href = r.url; return; } vista = ""; revisar(); }
+    catch (err) { caja.querySelector("#errOtraVez").textContent = err.message; boton.disabled = false; boton.textContent = "🔁 Intentar de nuevo"; }
+  };
 }
 function mostrar(d) {
   const link = d.link; const titulo = d.titulo ?? "Tu guía";

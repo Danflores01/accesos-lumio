@@ -39,11 +39,18 @@ export function marcoVistaPrevia(destino, src, titulo) {
       : `<div class="marco-demo" style="margin-top:12px"><iframe src="${esc(src)}" title="Vista previa de tu guía"></iframe></div><div class="ayuda" style="margin-top:6px"><a href="${esc(src)}">Ver en pantalla completa ↗</a></div>`}`;
 }
 
-// Pago: pide al servidor crear el cobro. Con Stripe redirige; sin Stripe (motor en blanco) muestra el modo manual.
+// Pago: pide al servidor crear el cobro. Con Mercado Pago (o Stripe) lleva a su página de pago; sin cobro en línea
+// (motor en blanco) muestra el modo manual.
 export async function iniciarPago(destino, datos) {
   destino.innerHTML = `<div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div><div>Preparando tu pago…</div></div>`;
   try {
     const r = await api.post("/pago/crear", datos);
+    if (r.modo === "mercadopago" && r.url) {
+      // Se guarda la compra por si al regresar de Mercado Pago la dirección no la trae.
+      try { localStorage.setItem("sparked_compra", r.compra_id); } catch {}
+      const aviso = destino.querySelector(".estado-carga > div:last-child"); if (aviso) aviso.textContent = "Abriendo Mercado Pago…";
+      location.href = r.url; return r;
+    }
     if (r.modo === "stripe" && r.url) { location.href = r.url; return r; }
     // Modo manual: la compra queda pendiente y Daniel la confirma desde el panel.
     destino.innerHTML = `<div class="panel-paso" style="box-shadow:none;padding:0"><h2>Tu guía está apartada 🎟️</h2>
@@ -65,10 +72,29 @@ export function esperarPago(el, compraId, cada = 5000) {
     try {
       const d = await api.get(`/pago/estado/${encodeURIComponent(compraId)}`);
       if (d.estado === "pagada" && d.link) { location.href = `listo.html?compra=${encodeURIComponent(compraId)}`; return; }
+      // Mercado Pago: si el pago quedó pendiente (OXXO, SPEI o tarjeta en revisión), se explica qué sigue.
+      if (el && PAGO_VIVO.includes(d.pago_mp)) { const t = textoPagoPendiente(d); el.innerHTML = `<b>${esc(t.titulo)}</b>${t.html}`; }
     } catch {}
     setTimeout(tick, cada);
   };
   setTimeout(tick, cada);
+}
+
+// Estados de Mercado Pago en los que el pago todavía puede confirmarse.
+export const PAGO_VIVO = ["pending", "in_process", "authorized"];
+
+// Mercado Pago: qué se le dice a la familia mientras su pago no se confirma (OXXO, SPEI o tarjeta en revisión).
+// d = respuesta de GET /pago/estado; pista = el tipo de pago que Mercado Pago pone en la dirección al regresar al sitio
+// ("ticket" = OXXO, "bank_transfer" = SPEI), por si su aviso todavía no llega al servidor.
+export function textoPagoPendiente(d, pista = "") {
+  const metodo = d?.metodo || { ticket: "oxxo", bank_transfer: "spei", credit_card: "tarjeta", debit_card: "tarjeta", prepaid_card: "tarjeta" }[pista] || "";
+  const correo = `<b>${esc(d?.correo || "tu correo")}</b>`;
+  const vence = d?.vence_en ? new Date(d.vence_en).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short" }) : "";
+  const ficha = (texto) => (d?.ficha_url ? `<p><a class="boton linea" target="_blank" rel="noopener" href="${esc(d.ficha_url)}">${texto}</a></p>` : "");
+  if (metodo === "oxxo") return { titulo: "Tu pago en OXXO está en camino 🧾", html: `<p>Tu pago en OXXO puede tardar hasta 1 hora en reflejarse. En cuanto se confirme, tu guía se activa sola y te llega al correo ${correo}.</p>${vence ? `<p class="ayuda">Si todavía no pagas, tienes hasta el <b>${esc(vence)}</b> para llevar tu ficha a cualquier tienda OXXO.</p>` : ""}${ficha("🧾 Ver mi ficha de pago")}` };
+  if (metodo === "spei") return { titulo: "Tu transferencia SPEI está en camino 🏦", html: `<p>Tu transferencia por SPEI puede tardar hasta 1 hora en reflejarse. En cuanto se confirme, tu guía se activa sola y te llega al correo ${correo}.</p>${vence ? `<p class="ayuda">Si todavía no transfieres, tienes hasta el <b>${esc(vence)}</b> para hacer la transferencia con los datos de tu ficha.</p>` : ""}${ficha("🏦 Ver los datos para transferir")}` };
+  if (metodo === "tarjeta") return { titulo: "Mercado Pago está revisando tu pago 💳", html: `<p>La revisión de un pago con tarjeta puede tardar unos minutos. En cuanto se apruebe, tu guía se activa sola y te llega al correo ${correo}.</p>` };
+  return { titulo: "Esperando la confirmación del pago…", html: `<p>En cuanto se confirme el pago, tu guía se activa sola y te llega al correo ${correo}.</p>` };
 }
 
 // Pantalla "Buscando…" o "Generando…" con Sparky y un dato curioso cada 9 segundos.

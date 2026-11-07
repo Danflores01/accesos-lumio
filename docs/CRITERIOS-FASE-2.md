@@ -43,7 +43,7 @@ Para la mamá que no quiere ni sabe subir materiales: llena un formulario y comp
 1. **Formulario:** colegio (lista de colegios participantes, con "Otro"), grado, materia, nombre, teléfono de WhatsApp y correo.
 2. **"Buscando materiales":** el sistema busca en la biblioteca la guía publicada para ese colegio, grado y materia. No usa inteligencia artificial en ese momento: solo consulta la base. Si hay varias (distintos exámenes o periodos), muestra la lista con el nombre del examen y su fecha.
 3. **Vista previa de 3 slides** de la guía encontrada, en el mismo reproductor y con el mismo cartucho recortado.
-4. **Pago con Stripe**, mismo precio y mismo flujo que la guía personalizada.
+4. **Pago con Mercado Pago** (tarjeta, OXXO y SPEI; sección 3b), mismo precio y mismo flujo que la guía personalizada.
 5. **Entrega:** al confirmarse el pago se crea un acceso propio para esa familia (7 días, 2 dispositivos) y se manda el link por correo y por WhatsApp, con QR e instrucciones. Cada compra tiene su propio link y su propio progreso aunque la guía sea la misma.
 6. **Si no hay guía disponible:** aviso "Por el momento no tenemos la guía de [materia] de [grado] del [colegio]", **explicado con un dibujo, no con texto**: Sparky busca en la estantería vacía y señala el camino al Servicio 2, con una mini ilustración de los tres pasos (fotos de tus apuntes → Sparky las convierte → tu guía lista). Dos botones: **"Crea tu guía personalizada con el Servicio 2"** (lleva al otro camino con el formulario ya lleno) y **"Avísame cuando esté lista"**. Esa solicitud se guarda con colegio, grado, materia y contacto: es la lista de demanda que le dice a Daniel qué guía producir y a quién avisar cuando la publique.
 
@@ -86,6 +86,36 @@ Para la mamá que no quiere ni sabe subir materiales: llena un formulario y comp
 | 100 | 10,000 | ~7,400 | ~7,800 |
 | 500 | 50,000 | ~37,000 | ~39,000 |
 | 1,000 | 100,000 | ~74,000 | ~78,000 |
+
+## 3b. Cobro con Mercado Pago (construido el 7 nov 2026)
+- **Proveedor:** Mercado Pago, Checkout Pro de México. Formas de pago: **tarjeta** (crédito y débito, en una sola
+  exhibición), **OXXO** y **SPEI**. Fuera: pago en cajero, PayCash y crédito de Mercado Pago (el saldo de una cuenta de
+  Mercado Pago no se puede quitar). Aparece en el estado de cuenta como **SPARKED**. Stripe queda dormido: solo se usaría
+  si no estuviera Mercado Pago.
+- **Se enciende solo** con dos secretos de Supabase: `MP_ACCESS_TOKEN` (cobra) y `MP_WEBHOOK_SECRET` (valida los avisos
+  de pago). Sin ellos, el pago sigue siendo manual desde el panel, como antes.
+- **Cómo funciona:** "Pagar" crea la compra (pendiente) y un link de pago de Mercado Pago con el precio de Ajustes
+  (`sparked_precio`, 100 MXN). La familia paga en Mercado Pago y regresa a "¡Tu guía está lista!". Mercado Pago avisa al
+  servidor; el servidor revisa la firma del aviso, pregunta el estado real del pago a Mercado Pago con su propia llave
+  y, si está aprobado, crea el acceso de 7 días y 2 dispositivos y manda el correo. Lo hace **una sola vez** aunque el
+  aviso llegue repetido.
+- **OXXO y SPEI:** la ficha vale **3 días**. Mientras la familia paga, la compra sigue pendiente con su método anotado y
+  la página dice, en lenguaje simple, qué sigue ("Tu pago en OXXO puede tardar hasta 1 hora en reflejarse. En cuanto se
+  confirme, tu guía se activa sola y te llega al correo…"), con un botón para volver a ver la ficha. La vista previa de
+  una guía personalizada se guarda esos días para que haya guía que entregar.
+- **Pago rechazado:** "El pago no se completó. No se realizó ningún cargo." y el botón "Intentar de nuevo".
+- **Respaldo:** si el aviso tarda, la página de la familia y el botón "🔄 Revisar en Mercado Pago" del panel le preguntan
+  directo a Mercado Pago. Si Mercado Pago no responde al crear el pago, la compra queda apartada en modo manual.
+- **Pasos para Daniel** (detalle y prueba sin cobrar en `GUIA.md`, sección "Cobro con Mercado Pago"):
+  1. Mercado Pago Developers → Tus integraciones → **Crear aplicación** → Pagos en línea → **Checkout Pro**.
+  2. Credenciales de producción → copiar el **Access Token** (`APP_USR-…`).
+  3. Webhooks → Configurar notificaciones → Modo productivo → URL
+     `https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/sparked/pago/mercadopago`, evento **Pagos** → Guardar.
+  4. Copiar la **clave secreta** del webhook.
+  5. Supabase → Edge Functions → Secrets: `MP_ACCESS_TOKEN` = Access Token y `MP_WEBHOOK_SECRET` = clave secreta.
+  6. Panel de guías → Motores en verde; Ajustes → precio 100.
+  7. Para probar sin cobrar: cuenta de prueba comprador, Access Token de prueba (`TEST-…`) en `MP_ACCESS_TOKEN`, tarjeta
+     de prueba con titular APRO; al terminar, regresar el Access Token de producción.
 
 ## 4. Accesos
 - **Ilimitados hasta que venza la guía.** Sin tope de clics ni cierre a los minutos. Solo dos controles: vigencia de 7 días desde el pago y 2 dispositivos por familia. Las clases de Lumio de la fase 1 conservan sus límites, porque ahí no se controla el destino.
@@ -190,7 +220,7 @@ Referencia: la lección **Historia de México 2 · El encuentro de dos mundos** 
 - **El prompt maestro v35 está desactualizado en los prompts y criterios de la IA:** los vigentes son los del Documento 1 (prompts v8: Extractor, Compactador, Planificador, Generador) más C, D, E y G de `prompts-ia-sparked.md`. Del v35 vale el concepto, no sus prompts.
 - **Continuidad:** todo lo que se construya en la fase 2 debe poder migrar a la fase 3 sin rehacerse: mismo cartucho, mismo motor de IA, mismo reproductor y misma regla de verificación. La dinámica de SparkEd seguirá evolucionando; la IA se pule en la fase 2 y se actualiza en la fase 3.
 
-- **Proveedor de pago decidido: Stripe** (5 nov 2026), porque Daniel quizá venda también en Estados Unidos y porque la fase 3 necesita sus suscripciones. En la fase 2: Stripe Checkout o Payment Element con tarjeta, Apple Pay y Google Pay, y OXXO como pago en efectivo; el webhook de pago confirmado crea el acceso. Nunca guardar tarjetas en nuestra base. Cobro en MXN; en dólares para clientes de Estados Unidos cuando se habilite. Confirmar comisiones vigentes y SPEI directamente con Stripe antes de conectar. Un solo proveedor en la fase 2; Mercado Pago, si acaso, en la fase 3.
+- **Proveedor de pago decidido: Stripe** (5 nov 2026), porque Daniel quizá venda también en Estados Unidos y porque la fase 3 necesita sus suscripciones. En la fase 2: Stripe Checkout o Payment Element con tarjeta, Apple Pay y Google Pay, y OXXO como pago en efectivo; el webhook de pago confirmado crea el acceso. Nunca guardar tarjetas en nuestra base. Cobro en MXN; en dólares para clientes de Estados Unidos cuando se habilite. Confirmar comisiones vigentes y SPEI directamente con Stripe antes de conectar. Un solo proveedor en la fase 2; Mercado Pago, si acaso, en la fase 3. **Cambió el 7 nov 2026:** la fase 2 cobra con Mercado Pago (tarjeta, OXXO y SPEI; sección 3b) y Stripe queda dormido.
 
 ## 12c. Tope de páginas y medición real (decidido el 5 nov 2026)
 - **Tope: 15 páginas por guía**, "lo natural" para un examen. Las guías de examen largas quedan para después, con precio propio.
