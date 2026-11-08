@@ -420,7 +420,8 @@ body.reproductor::after { content: ""; position: fixed; left: 0; right: 0; botto
    estos tamaños son píxeles reales. Ninguna letra baja de 19 px (en iPad horizontal se ven de 18.7 px o más). */
 #escenario.fluido { border-radius: 14px; }
 .reporte { background: linear-gradient(180deg, #fff 0, var(--fondo) 260px); display: flex; flex-direction: column; font-size: 20px; color: var(--tinta); }
-.reporte .rep-cabeza { flex: none; padding: 22px 28px 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.reporte .rep-cabeza { flex: none; padding: 22px 28px 12px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 20px; position: relative; z-index: 6; }
+.rep-titulos { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; min-width: 0; }
 .reporte .rep-cabeza .pildora { font-size: 19px; color: #2A2340; padding: 6px 14px; }
 .reporte .rep-cabeza h1 { font-size: 34px; line-height: 1.1; }
 .reporte .rep-cuerpo { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(300px, 370px) 1fr; gap: 22px; padding: 0 24px 40px 28px; }
@@ -473,14 +474,48 @@ button.rep-ficha:hover { border-color: var(--c); background: #f6f7fb; }
 /* Pantalla angosta (teléfono parado): una sola columna que se desplaza completa. */
 #escenario.angosto .reporte .rep-cabeza { padding: 16px 16px 8px; }
 #escenario.angosto .reporte .rep-cabeza h1 { font-size: 28px; }
+#escenario.angosto .reporte .rep-cabeza { flex-direction: column; align-items: stretch; }
+#escenario.angosto .rep-compartir, #escenario.angosto .rep-comp-btn { width: 100%; }
+#escenario.angosto .rep-menu { left: 0; right: 0; min-width: 0; }
 #escenario.angosto .reporte .rep-cuerpo { display: block; overflow-y: auto; padding: 0 16px 44px; }
 #escenario.angosto .rep-resumen { overflow: visible; margin-bottom: 18px; }
 #escenario.angosto .rep-lista { overflow: visible; padding-right: 0; }
 #escenario.angosto .rep-bloques { grid-template-columns: 1fr; }
 /* Pantalla bajita (teléfono acostado): la cabeza va en una línea y Sparky se esconde para dejar sitio. */
 @media (max-height: 520px) {
-  #escenario.fluido .reporte .rep-cabeza { flex-direction: row; align-items: center; gap: 12px; padding: 10px 20px 8px; }
+  #escenario.fluido .reporte .rep-cabeza { align-items: center; gap: 12px; padding: 10px 20px 8px; }
+  #escenario.fluido .rep-titulos { flex-direction: row; align-items: center; gap: 12px; }
   #escenario.fluido .reporte .rep-cabeza h1 { font-size: 26px; }
   #escenario.fluido .reporte .rep-cuerpo { padding-bottom: 30px; }
   #escenario.fluido .rep-sparky { display: none; }
+}
+
+/* Compartir resultados (7 nov 2026): botón junto al título del reporte y menú con WhatsApp e imagen. */
+.rep-compartir { position: relative; flex: none; }
+.rep-comp-btn { font-size: 20px; white-space: nowrap; border: 3px solid #2A2340; box-shadow: 0 5px 0 #2A2340; background: #FFD400; color: #111; padding: 10px 20px; min-height: 54px; }
+.rep-comp-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #2A2340; }
+.rep-menu { position: absolute; right: 0; top: calc(100% + 10px); min-width: 310px; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: #fff; border: 3px solid #2A2340; border-radius: 18px; box-shadow: 0 8px 0 rgba(42, 35, 64, .18), 0 18px 40px rgba(10, 4, 40, .25); z-index: 30; }
+.rep-menu[hidden] { display: none; }
+.rep-menu button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 12px 16px; border-radius: 12px; font: 800 20px/1.2 var(--titulos); color: #111; text-align: left; }
+.rep-menu button:hover, .rep-menu button:focus-visible { background: #FFF6BF; outline: none; }
+.rep-menu .ic { font-size: 26px; width: 32px; text-align: center; flex: none; }
+
+/* Imprimir desde el navegador (para guardar en PDF): solo el reporte, completo y sin el marco del reproductor. */
+@media print {
+  @page { margin: 12mm; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  body.reproductor::before, body.reproductor::after, #barra, #miniaturas, #giro, .marca-pie, .rep-compartir, .toast, .rep-ir, .rep-pista { display: none !important; }
+  #vp { position: static !important; display: block !important; inset: auto !important; }
+  #escenario { width: auto !important; height: auto !important; transform: none !important; overflow: visible !important; box-shadow: none !important; border-radius: 0 !important; background: #fff !important; }
+  #escenario > .sl:not(.reporte) { display: none !important; }
+  .reporte { position: static !important; display: block !important; background: #fff !important; }
+  .reporte .era { display: none; }
+  .reporte .rep-cuerpo { display: block !important; overflow: visible !important; padding: 0 !important; }
+  .rep-resumen, .rep-lista { overflow: visible !important; box-shadow: none !important; }
+  .rep-resumen { margin-bottom: 16px; }
+  .rep-sparky { display: none; }
+  .rep-lista, .rep-bloques { display: block !important; }
+  .rep-lista h2, .rep-bloque { margin-bottom: 12px; }
+  .rep-bloque, .rep-papas, .rep-resumen { break-inside: avoid; box-shadow: none !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

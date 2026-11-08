@@ -1,6 +1,6 @@
 // Slides que no son juego: portada, tutorial, teoría (formato de la lección "Historia de México 2"),
 // resultados, candado de la vista previa, pantalla de carga y mensajes de acceso.
-import { esc, h, idea } from "./ui.js";
+import { esc, h, idea, toast } from "./ui.js";
 import { sparky, icono } from "./arte.js";
 import { formatoDePista } from "./cartucho.js";
 
@@ -178,6 +178,262 @@ export function resumenAvance(ctx) {
 
 const rellenar = (txt, v) => String(txt).replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
 
+// ---------- Compartir resultados (7 nov 2026) ----------
+// Para que mamá o papá reciban el reporte aunque no estén frente al dispositivo: un texto corto (WhatsApp) y una
+// imagen PNG de 1080 x 1350 dibujada con canvas. Sin el link de la guía (cada link es de una sola familia) y sin
+// datos personales. Usa los mismos números de resumenAvance: aquí no se calcula nada nuevo.
+const LIMITE_TEXTO = 900;
+const sinEmoji = (s) => String(s ?? "").replace(/^[^\p{L}\p{N}¿¡"“«(]+/u, "").replace(/\s+/g, " ").trim();
+const corta = (s, n) => (s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s);
+function sugerenciaPapas(r, T) {
+  const completo = r.faltan === 0 && r.total > 0;
+  return !completo ? T("papas_falta") : r.bloques.some((x) => x.nivel !== "dominado") ? T("papas_repasar") : T("papas_ok");
+}
+function fechaHoy(T) {
+  try { return new Date().toLocaleDateString(T("comp_locale"), { day: "numeric", month: "long", year: "numeric" }); }
+  catch { return new Date().toISOString().slice(0, 10); }
+}
+const NIVEL_TXT = (T) => ({ dominado: ["✅", T("dominado")], reforzar: ["💪", T("reforzar")], sin: ["⏳", T("sin_contestar")] });
+const masTemas = (T, n) => (n === 1 ? T("comp_mas1") : rellenar(T("comp_mas"), { n }));
+
+export function textoResultados(ctx, r = resumenAvance(ctx)) {
+  const T = ctx.t, N = NIVEL_TXT(T);
+  const titulo = corta(sinEmoji(ctx.c.plan?.identidad?.titulo ?? ctx.c.plan?.materia ?? "SparkEd"), 80);
+  const armar = (maxTemas, largoTema) => {
+    const l = [`📚 *${titulo}*`, `📅 ${fechaHoy(T)}`, "",
+      `${T("avance")}: ${r.contestadas} ${T("de")} ${r.total} ${T("actividades")}`, `*${T("calif_final")}: ${r.calif} %*`, ""];
+    r.bloques.forEach((x) => {
+      l.push(`${N[x.nivel][0]} ${T("bloque")} ${x.bi + 1} · ${corta(sinEmoji(x.b.titulo), 50)}: *${N[x.nivel][1]}*`);
+      if (!x.temas.length) return;
+      const temas = x.temas.slice(0, maxTemas).map((tm) => corta(sinEmoji(tm.titulo), largoTema));
+      const resto = x.temas.length - temas.length;
+      if (resto) temas.push(masTemas(T, resto));
+      l.push(`   ${T("comp_repasar")}: ${temas.join("; ")}`);
+    });
+    l.push("", sugerenciaPapas(r, T), "", "SparkEd · sparkeducation-mx.com");
+    return l.join("\n");
+  };
+  // Si no cabe en unas 900 letras, se resumen los temas: primero menos por bloque, luego más cortos.
+  for (const [n, largo] of [[3, 60], [3, 40], [2, 40], [1, 40], [1, 28], [0, 0]]) {
+    const txt = armar(n, largo);
+    if (txt.length <= LIMITE_TEXTO || n === 0) return txt.slice(0, LIMITE_TEXTO);
+  }
+}
+
+// --- Imagen 1080 x 1350 ---
+const FUENTE = (peso, px) => `${peso} ${px}px Poppins, Outfit, "Atkinson Hyperlegible", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, Roboto, Arial, sans-serif`;
+const CHIP = { dominado: ["#dcfce7", "#14532d", "#16a34a"], reforzar: ["#fff3c4", "#7c2d12", "#FFD400"], sin: ["#eef0f6", "#374151", "#9aa1b5"] };
+function colorDeBloque(bi) {
+  const css = getComputedStyle(document.documentElement).getPropertyValue(`--b${(bi % 5) + 1}`).trim();
+  return css || ["#1d4ed8", "#c2410c", "#b91c1c", "#4d7c0f", "#0f766e"][bi % 5];
+}
+function caja(g, x, y, w, h, r) {
+  g.beginPath();
+  if (g.roundRect) g.roundRect(x, y, w, h, r);
+  else { g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+}
+// Corta el texto en renglones que caben en el ancho; el último lleva "…" si sobra texto.
+function renglones(g, texto, ancho, max) {
+  const palabras = String(texto).split(/\s+/).filter(Boolean), out = [];
+  let linea = "";
+  for (let i = 0; i < palabras.length; i++) {
+    const prueba = linea ? linea + " " + palabras[i] : palabras[i];
+    if (g.measureText(prueba).width <= ancho || !linea) { linea = prueba; continue; }
+    out.push(linea); linea = palabras[i];
+    if (out.length === max) { linea = ""; out[max - 1] = recortar(g, out[max - 1] + " " + palabras.slice(i).join(" "), ancho); break; }
+  }
+  if (linea) out.push(linea);
+  return out.map((l) => recortar(g, l, ancho));
+}
+function recortar(g, s, ancho) {
+  if (g.measureText(s).width <= ancho) return s;
+  while (s.length > 1 && g.measureText(s + "…").width > ancho) s = s.slice(0, -1);
+  return s.trimEnd() + "…";
+}
+
+export async function imagenResultados(ctx, r = resumenAvance(ctx)) {
+  const T = ctx.t, N = NIVEL_TXT(T);
+  // Las fuentes de la página (si ya están cargadas) se usan; si no hay red, el sistema pone la suya.
+  try { await Promise.race([document.fonts?.ready, new Promise((ok) => setTimeout(ok, 800))]); } catch {}
+  const W = 1080, H = 1350, M = 56;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const g = cv.getContext("2d");
+  g.textBaseline = "alphabetic";
+  // Fondo claro y cabeza amarilla
+  g.fillStyle = "#F7F8FC"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#FFD400"; g.fillRect(0, 0, W, 196);
+  g.fillStyle = "#111"; g.font = FUENTE(800, 56); g.fillText("Spark", M, 92);
+  const wSpark = g.measureText("Spark").width;
+  caja(g, M + wSpark + 6, 42, g.measureText("Ed").width + 24, 66, 14); g.fill();
+  g.fillStyle = "#FFD400"; g.fillText("Ed", M + wSpark + 18, 92);
+  g.font = FUENTE(800, 30);
+  const pil = T("resultados"), wPil = g.measureText(pil).width + 40;
+  g.fillStyle = "#111"; caja(g, W - M - wPil, 46, wPil, 56, 28); g.fill();
+  g.fillStyle = "#FFD400"; g.fillText(pil, W - M - wPil + 20, 84);
+  g.fillStyle = "#111"; g.font = FUENTE(600, 30); g.fillText(fechaHoy(T), M, 160);
+  // Título de la guía (hasta 2 renglones)
+  let y = 262;
+  g.font = FUENTE(800, 48); g.fillStyle = "#111";
+  renglones(g, sinEmoji(ctx.c.plan?.identidad?.titulo ?? "SparkEd"), W - 2 * M, 2).forEach((l) => { g.fillText(l, M, y); y += 58; });
+  // Tarjeta de calificación y avance
+  y += 4;
+  const yC = y, hC = 224;
+  g.fillStyle = "#fff"; caja(g, M, yC, W - 2 * M, hC, 28); g.fill();
+  g.lineWidth = 4; g.strokeStyle = "#111"; g.stroke();
+  g.fillStyle = "#3b3f52"; g.font = FUENTE(800, 30); g.fillText(T("calif_final"), M + 34, yC + 58);
+  g.fillStyle = "#111"; g.font = FUENTE(800, 128); g.fillText(`${r.calif} %`, M + 28, yC + 180);
+  const xA = M + 430, wA = W - M - 34 - xA;
+  g.fillStyle = "#111"; g.font = FUENTE(800, 32);
+  g.fillText(`${T("avance")}:`, xA, yC + 62);
+  g.font = FUENTE(600, 32);
+  g.fillText(recortar(g, `${r.contestadas} ${T("de")} ${r.total} ${T("actividades")}`, wA), xA, yC + 104);
+  g.fillStyle = "#e9ebf3"; caja(g, xA, yC + 128, wA, 38, 19); g.fill();
+  if (r.pctAvance > 0) { g.fillStyle = "#FFD400"; caja(g, xA, yC + 128, Math.max(38, wA * r.pctAvance / 100), 38, 19); g.fill(); }
+  g.lineWidth = 3; g.strokeStyle = "#111"; caja(g, xA, yC + 128, wA, 38, 19); g.stroke();
+  g.fillStyle = "#3b3f52"; g.font = FUENTE(600, 28);
+  const aciertos = `${r.bien} ${T("de")} ${r.total} ${T("correctas")}`, conIntento = `${aciertos} ${T("primer_intento")}`;
+  g.fillText(recortar(g, g.measureText(conIntento).width <= wA ? conIntento : aciertos, wA), xA, yC + 200);
+  y = yC + hC + 24;
+  // Bloques: cada uno con su color, su chip de estado y hasta 3 temas. Si no caben, primero menos temas por bloque y
+  // luego dos columnas (guías con muchos bloques). Nunca se omite un bloque.
+  const pie = 96, fin = H - pie - 24, GAP = 12, TEMA = 40;
+  const lineas = (x, m, junto) => !x.temas.length ? 1 : junto ? 1 : Math.min(m, x.temas.length) + (x.temas.length > m ? 1 : 0);
+  const MODOS = [[1, 3], [1, 2], [1, 1], [2, 3], [2, 2], [2, 1], [2, 1, true]];
+  // Una columna: cabeza de 74 px. Dos columnas: número y chip arriba, título debajo (cabeza de 106 px).
+  const altoDe = (x, cols, m, junto) => (cols === 1 ? 14 + 60 : 12 + 52 + 42) + lineas(x, m, junto) * TEMA + 12;
+  const altoTotal = ([cols, m, junto]) => {
+    let s = 0;
+    for (let i = 0; i < r.bloques.length; i += cols) s += Math.max(...r.bloques.slice(i, i + cols).map((x) => altoDe(x, cols, m, junto))) + GAP;
+    return s - GAP;
+  };
+  const modo = MODOS.find((md) => altoTotal(md) <= fin - y) ?? MODOS[MODOS.length - 1];
+  const [cols, maxT, junto] = modo;
+  const anchoC = cols === 1 ? W - 2 * M : (W - 2 * M - GAP) / 2;
+  const chipDe = (x, xDer, yChip, px) => {
+    const [fondo, tinta, borde] = CHIP[x.nivel] ?? CHIP.sin;
+    g.font = FUENTE(800, px);
+    const chip = N[x.nivel]?.[1] ?? "", wChip = g.measureText(chip).width + 36, xChip = xDer - wChip;
+    g.fillStyle = fondo; caja(g, xChip, yChip, wChip, 52, 26); g.fill();
+    g.lineWidth = 3; g.strokeStyle = borde; g.stroke();
+    g.fillStyle = tinta; g.fillText(chip, xChip + 18, yChip + 36);
+    return xChip;
+  };
+  for (let i = 0; i < r.bloques.length; i += cols) {
+    const fila = r.bloques.slice(i, i + cols);
+    const hF = Math.max(...fila.map((x) => altoDe(x, cols, maxT, junto)));
+    if (y + hF > fin) break;
+    fila.forEach((x, k) => {
+      const x0 = M + k * (anchoC + GAP), col = colorDeBloque(x.bi);
+      g.fillStyle = "#fff"; caja(g, x0, y, anchoC, hF, 22); g.fill();
+      g.lineWidth = 3; g.strokeStyle = "#111"; g.stroke();
+      g.save(); caja(g, x0, y, anchoC, hF, 22); g.clip(); g.fillStyle = col; g.fillRect(x0, y, 14, hF); g.restore();
+      // número, chip de estado y título
+      const yN = cols === 1 ? y + 14 + 28 : y + 12 + 26;
+      g.fillStyle = col; g.beginPath(); g.arc(x0 + 58, yN, 27, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#fff"; g.font = FUENTE(800, 32); g.textAlign = "center"; g.fillText(String(x.bi + 1), x0 + 58, yN + 11); g.textAlign = "left";
+      const xChip = chipDe(x, x0 + anchoC - 20, yN - 26, 28);
+      g.fillStyle = "#111";
+      let yt;
+      if (cols === 1) { g.font = FUENTE(800, 34); g.fillText(recortar(g, sinEmoji(x.b.titulo), xChip - 20 - (x0 + 100)), x0 + 100, yN + 12); yt = y + 14 + 60 + 28; }
+      else { g.font = FUENTE(800, 32); g.fillText(recortar(g, sinEmoji(x.b.titulo), anchoC - 56), x0 + 34, y + 12 + 52 + 34); yt = y + 12 + 52 + 42 + 28; }
+      // temas a repasar
+      const xT = x0 + 34, anchoT = anchoC - 34 - 24;
+      g.font = FUENTE(600, 28);
+      if (!x.temas.length) { g.fillStyle = "#14532d"; g.fillText(recortar(g, "✓ " + T("todo_bien"), anchoT), xT, yt); return; }
+      const vistos = x.temas.slice(0, maxT), resto = x.temas.length - vistos.length;
+      vistos.forEach((tm, j) => {
+        if (junto && j > 0) return;
+        g.fillStyle = tm.mal ? "#b91c1c" : "#6b7280"; g.fillText(tm.mal ? "✗" : "○", xT, yt);
+        const cola = junto && resto ? ` (+${resto})` : "";
+        g.font = FUENTE(600, 28);
+        const wCola = cola ? g.measureText(cola).width : 0;
+        const tema = recortar(g, sinEmoji(tm.titulo), anchoT - 36 - wCola);
+        g.fillStyle = "#1f2937"; g.fillText(tema + cola, xT + 36, yt);
+        yt += TEMA;
+      });
+      if (resto && !junto) { g.fillStyle = "#4b5563"; g.font = FUENTE(600, 28); g.fillText(recortar(g, masTemas(T, resto), anchoT - 36), xT + 36, yt); }
+    });
+    y += hF + GAP;
+  }
+  // Sugerencia para mamá o papá, si queda sitio
+  const sug = sugerenciaPapas(r, T);
+  g.font = FUENTE(600, 30);
+  const lsug = renglones(g, sug, W - 2 * M - 60, 3), hS = 34 + lsug.length * 40;
+  if (fin - y >= hS) {
+    g.fillStyle = "#eef6ff"; caja(g, M, y, W - 2 * M, hS, 22); g.fill();
+    g.setLineDash([12, 8]); g.lineWidth = 3; g.strokeStyle = "#0369a1"; g.stroke(); g.setLineDash([]);
+    g.fillStyle = "#0c4a6e"; lsug.forEach((l, i) => g.fillText(l, M + 30, y + 50 + i * 40));
+  }
+  // Pie
+  g.fillStyle = "#111"; g.fillRect(0, H - pie, W, pie);
+  g.fillStyle = "#FFD400"; g.font = FUENTE(800, 34); g.textAlign = "center";
+  g.fillText("SparkEd · sparkeducation-mx.com", W / 2, H - pie / 2 + 12); g.textAlign = "left";
+  return await new Promise((ok, mal) => cv.toBlob((b) => (b ? ok(b) : mal(new Error("png"))), "image/png"));
+}
+
+// iPad y teléfonos: hoja nativa de compartir con archivos. En computadoras se usa WhatsApp Web y la descarga.
+function puedeCompartirArchivos() {
+  try {
+    if (!navigator.share || !navigator.canShare || !matchMedia("(pointer: coarse)").matches) return false;
+    return navigator.canShare({ files: [new File(["x"], "x.png", { type: "image/png" })] });
+  } catch { return false; }
+}
+function nombreArchivo() { const d = new Date(), p = (n) => String(n).padStart(2, "0"); return `SparkEd-resultados-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.png`; }
+function descargar(blob) {
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = nombreArchivo(); document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+const abrirWhatsApp = (texto) => window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank", "noopener");
+
+function botonCompartir(ctx, r, sl) {
+  const T = ctx.t;
+  const el = h(`<div class="rep-compartir">
+    <button type="button" class="boton rep-comp-btn" aria-haspopup="menu" aria-expanded="false">📤 ${esc(T("compartir"))}</button>
+    <div class="rep-menu" role="menu" hidden>
+      <button type="button" role="menuitem" data-op="wa"><span class="ic">💬</span>${esc(T("comp_whatsapp"))}</button>
+      <button type="button" role="menuitem" data-op="img"><span class="ic">🖼️</span>${esc(T("comp_imagen"))}</button>
+    </div></div>`);
+  const btn = el.querySelector(".rep-comp-btn"), menu = el.querySelector(".rep-menu");
+  let png = null;
+  const imagen = () => (png ??= imagenResultados(ctx, r).catch((e) => { png = null; throw e; }));
+  const fuera = (e) => { if (!el.isConnected || !el.contains(e.target)) cerrar(); };
+  const tecla = (e) => { if (e.key === "Escape") { cerrar(); btn.focus(); } };
+  function cerrar() { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); document.removeEventListener("pointerdown", fuera, true); document.removeEventListener("keydown", tecla, true); }
+  function abrir() {
+    menu.hidden = false; btn.setAttribute("aria-expanded", "true");
+    document.addEventListener("pointerdown", fuera, true); document.addEventListener("keydown", tecla, true);
+    // La imagen se prepara al abrir el menú: así la hoja de compartir sale enseguida al tocar una opción.
+    imagen().catch(() => {});
+  }
+  btn.onclick = () => (menu.hidden ? abrir() : cerrar());
+  el.querySelector('[data-op="wa"]').onclick = async () => {
+    cerrar();
+    const texto = textoResultados(ctx, r);
+    if (!puedeCompartirArchivos()) return abrirWhatsApp(texto);
+    try {
+      const file = new File([await imagen()], nombreArchivo(), { type: "image/png" });
+      await navigator.share({ text: texto, files: [file] });
+    } catch (e) {
+      if (e?.name === "AbortError") return;
+      try { await navigator.share({ text: texto }); } catch (e2) { if (e2?.name !== "AbortError") abrirWhatsApp(texto); }
+    }
+  };
+  el.querySelector('[data-op="img"]').onclick = async () => {
+    cerrar();
+    try {
+      const blob = await imagen();
+      if (puedeCompartirArchivos()) {
+        try { await navigator.share({ files: [new File([blob], nombreArchivo(), { type: "image/png" })] }); return; }
+        catch (e) { if (e?.name === "AbortError") return; }
+      }
+      descargar(blob);
+      toast(sl, true, T("comp_guardada"));
+    } catch { toast(sl, false, T("comp_error")); }
+  };
+  return el;
+}
+
 export function resultados(s, ctx) {
   const T = ctx.t, r = resumenAvance(ctx);
   const completo = r.faltan === 0 && r.total > 0;
@@ -221,7 +477,7 @@ export function resultados(s, ctx) {
   ].filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join("");
 
   const el = h(`<div class="sl reporte"><div class="era">${barra}</div>
-    <div class="rep-cabeza"><span class="pildora" style="background:var(--oro)">${esc(T("resultados"))}</span><h1>${esc(T("como_te_fue"))}</h1></div>
+    <div class="rep-cabeza"><div class="rep-titulos"><span class="pildora" style="background:var(--oro)">${esc(T("resultados"))}</span><h1>${esc(T("como_te_fue"))}</h1></div></div>
     <div class="rep-cuerpo">
       <section class="rep-resumen">
         <div class="rep-sparky sk-anima">${sparky(pose, 4)}</div>
@@ -238,6 +494,8 @@ export function resultados(s, ctx) {
       </section>
     </div></div>`);
   el.querySelectorAll("[data-ir]").forEach((a) => a.onclick = () => ctx.go(Number(a.dataset.ir)));
+  // Compartir resultados: arriba, junto al título, para que se vea sin desplazarse.
+  el.querySelector(".rep-cabeza").appendChild(botonCompartir(ctx, r, el));
   return el;
 }
 

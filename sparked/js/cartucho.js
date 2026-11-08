@@ -55,7 +55,11 @@ export const TEXTOS = {
     para_papas: "Para mamá o papá", papas_avance: "Avance: {x} de {y} actividades ({p} %). Calificación sobre toda la guía: {z} %.",
     papas_domina: "Domina: {lista}.", papas_reforzar: "Conviene reforzar: {lista}.", papas_sin: "Falta contestar: {lista}.",
     papas_falta: "Sugerencia: que termine las actividades que faltan; la calificación se actualiza sola.", papas_repasar: "Sugerencia: repasen juntos las pistas marcadas y vuelvan a jugar esos juegos.", papas_ok: "Sugerencia: un repaso rápido de las pistas antes del examen es suficiente.",
-    examenes: "Mini-exámenes y reto" },
+    examenes: "Mini-exámenes y reto",
+    // Compartir resultados (7 nov 2026): texto para WhatsApp e imagen PNG para mamá o papá.
+    compartir: "Compartir resultados", comp_whatsapp: "Enviar por WhatsApp", comp_imagen: "Guardar como imagen", comp_cerrar: "Cerrar",
+    comp_repasar: "Repasar", comp_mas: "y {n} temas más", comp_mas1: "y 1 tema más", comp_error: "No se pudo compartir. Intenta de nuevo.", comp_guardada: "Imagen guardada en tus descargas.",
+    comp_generando: "Preparando la imagen…", comp_locale: "es-MX" },
   en: { portada_tag: "Study guide", aprender: "What will you learn today?", bloque: "Block", pista: "Clue", antes: "Before you start", como_usar: "How to use this lesson",
     mover: "Move forward and back", abajo: "Down arrow = next slide", arriba: "Up arrow = previous slide", barrita: "Use the toolbar", cuadritos: "Squares = see all slides",
     lupa: "Drag with your finger or mouse", juega: "Play!", start: "Press START, then drag or tap", reintenta: "Play again to beat your score", importante: "Important:", termina: "finish each game before you move to the next slide.",
@@ -87,7 +91,10 @@ export const TEXTOS = {
     para_papas: "For mom or dad", papas_avance: "Progress: {x} of {y} activities ({p} %). Grade for the whole guide: {z} %.",
     papas_domina: "Mastered: {lista}.", papas_reforzar: "Needs review: {lista}.", papas_sin: "Not answered yet: {lista}.",
     papas_falta: "Tip: have them finish the missing activities; the grade updates by itself.", papas_repasar: "Tip: go over the marked clues together and play those games again.", papas_ok: "Tip: a quick review of the clues before the test is enough.",
-    examenes: "Mini-exams and challenge" },
+    examenes: "Mini-exams and challenge",
+    compartir: "Share results", comp_whatsapp: "Send by WhatsApp", comp_imagen: "Save as image", comp_cerrar: "Close",
+    comp_repasar: "Review", comp_mas: "and {n} more topics", comp_mas1: "and 1 more topic", comp_error: "Could not share. Please try again.", comp_guardada: "Image saved to your downloads.",
+    comp_generando: "Preparing the image…", comp_locale: "en-US" },
   fr: { portada_tag: "Guide d'étude", aprender: "Qu'est-ce que tu vas apprendre ?", bloque: "Bloc", pista: "Indice", antes: "Avant de commencer", como_usar: "Comment utiliser ce guide",
     mover: "Avance et recule", abajo: "Flèche en bas = slide suivante", arriba: "Flèche en haut = slide précédente", barrita: "Utilise la barre", cuadritos: "Carrés = voir toutes les slides",
     lupa: "Glisse avec le doigt ou la souris", juega: "Joue !", start: "Appuie sur START, puis glisse ou touche", reintenta: "Rejoue pour battre ton score", importante: "Important :", termina: "termine chaque jeu avant de passer à la slide suivante.",
@@ -119,7 +126,10 @@ export const TEXTOS = {
     para_papas: "Pour maman ou papa", papas_avance: "Progression : {x} sur {y} activités ({p} %). Note sur tout le guide : {z} %.",
     papas_domina: "Maîtrisé : {lista}.", papas_reforzar: "À revoir : {lista}.", papas_sin: "Sans réponse : {lista}.",
     papas_falta: "Conseil : qu'il ou elle termine les activités qui manquent ; la note se met à jour toute seule.", papas_repasar: "Conseil : revoyez ensemble les indices marqués et rejouez ces jeux.", papas_ok: "Conseil : une révision rapide des indices avant l'examen suffit.",
-    examenes: "Mini-examens et défi" },
+    examenes: "Mini-examens et défi",
+    compartir: "Partager les résultats", comp_whatsapp: "Envoyer par WhatsApp", comp_imagen: "Enregistrer en image", comp_cerrar: "Fermer",
+    comp_repasar: "À revoir", comp_mas: "et {n} autres thèmes", comp_mas1: "et 1 autre thème", comp_error: "Impossible de partager. Réessaie.", comp_guardada: "Image enregistrée dans tes téléchargements.",
+    comp_generando: "Préparation de l'image…", comp_locale: "fr-FR" },
 };
 export const t = (idioma, clave) => (TEXTOS[idioma] ?? TEXTOS.es)[clave] ?? TEXTOS.es[clave] ?? clave;
 
