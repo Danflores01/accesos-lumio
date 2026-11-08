@@ -17,7 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, type Trabajo } from "./pipeline.ts";
 
-const VERSION = "2026-11-07.7";
+const VERSION = "2026-11-07.8";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -68,6 +68,7 @@ const CONFIG_DEF: Record<string, string> = {
   sparked_whatsapp: "",            // WhatsApp de SparkEd (10 dígitos) para confirmar pagos manuales
   sparked_correo_aviso: "",        // correo de Daniel para avisos de ventas
   sparked_correo_remitente: "SparkEd <onboarding@resend.dev>",
+  sparked_correo_respuestas: "",   // buzón real al que llegan las respuestas de las familias (reply-to); vacío = sin reply-to
   // "si" = mientras se termina una guía pagada (unos 4 minutos), el reproductor deja jugar los bloques de la vista previa.
   sparked_jugar_durante_generacion: "no",
   // Modelo (haiku | sonnet | opus) y esfuerzo (low | medium | high) de cada paso de la IA. El defecto es el de siempre.
@@ -640,11 +641,26 @@ async function lanzarResto(guiaId: string, borradorId: string) {
 
 const escHtml = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 const folioDe = (id: unknown) => String(id ?? "").slice(0, 8).toUpperCase();
-async function mandarCorreo(para: string, asunto: string, html: string) {
+// Versión en texto plano de un correo HTML sencillo (Gmail y otros clasifican mejor los correos que traen las dos versiones).
+const SALTO = String.fromCharCode(10);
+function htmlATexto(h: string): string {
+  const t = h
+    .replace(/<br[^>]*>/gi, SALTO)
+    .replace(/<[/](p|div|li|h[1-6]|ul|ol)>/gi, SALTO)
+    .replace(/<li[^>]*>/gi, "- ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  return t.split(SALTO).map((l) => l.trim()).join(SALTO).replace(new RegExp(SALTO + "{3,}", "g"), SALTO + SALTO).trim();
+}
+// Manda un correo por Resend con las dos versiones (HTML y texto) y, si Daniel puso un buzón de respuestas en Ajustes, con
+// reply-to: así las respuestas de las familias llegan a una persona y el correo se parece menos a una notificación automática.
+async function mandarCorreo(para: string, asunto: string, html: string, texto?: string) {
   const key = Deno.env.get("RESEND_API_KEY");
   if (!key || !esCorreo(para)) return;
   const cfg = await config();
-  const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ from: cfg.sparked_correo_remitente, to: [para], subject: asunto, html }) });
+  const cuerpo: Record<string, unknown> = { from: cfg.sparked_correo_remitente, to: [para], subject: asunto, html, text: texto ?? htmlATexto(html) };
+  if (esCorreo(cfg.sparked_correo_respuestas)) cuerpo.reply_to = cfg.sparked_correo_respuestas;
+  const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify(cuerpo) });
   if (!r.ok) console.warn("Resend", r.status, (await r.text()).slice(0, 200));
 }
 // Aviso a Daniel (correo de Ajustes → "Correo donde quieres recibir aviso de cada venta"), si lo puso.
@@ -661,20 +677,26 @@ async function enviarCorreo(compra: any, titulo: string, link: string, expira: s
   const esc = escHtml;
   const fecha = new Date(expira).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short", timeZone: "America/Mexico_City" });
   const conCodigo = compra.metodo_pago === "codigo";
-  const encabezado = segundo ? "¡Tu guía completa está lista! 🎉" : lista ? "¡Tu guía está lista! 🎉" : conCodigo ? "Tu código se aplicó ✅" : "Tu pago se confirmó ✅";
-  const aviso = lista ? "" : `<p style="margin:0 0 10px">Tu guía completa se está terminando: tarda unos 4 minutos. Te avisamos por correo en cuanto esté lista.</p>
-      <p style="margin:0 0 10px;color:#555">Este es el link de tu guía; guárdalo. ${cfg.sparked_jugar_durante_generacion === "si" ? "Mientras se termina, ya puedes abrirla y jugar los primeros bloques." : "Se abre en cuanto la guía esté completa."}</p>`;
-  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#1b1b1f">
-    <div style="background:#1b1b1f;color:#FFD400;padding:14px 18px;border-radius:12px 12px 0 0;font-weight:800;font-size:20px">⚡ SparkEd</div>
-    <div style="border:1px solid #e5e7eb;border-top:0;padding:18px;border-radius:0 0 12px 12px">
-      <h2 style="margin:0 0 6px">${encabezado}</h2><p style="margin:0 0 14px;color:#555">${esc(titulo)}</p>${aviso}
-      <p><a href="${esc(link)}" style="display:inline-block;background:#FFD400;color:#1b1b1f;padding:12px 18px;border-radius:10px;font-weight:800;text-decoration:none">▶ Abrir la guía</a></p>
-      <p style="font-size:13px;color:#555;word-break:break-all">Si el botón no abre, copia este link: ${esc(link)}</p>
-      <div style="background:#fff8d6;border-left:4px solid #FFD400;padding:10px 12px;border-radius:8px;font-size:14px">
-        <b>Cómo funciona tu acceso</b><ul style="margin:6px 0 0;padding-left:18px"><li>Vale <b>${DIAS_ACCESO} días de acceso ilimitado a tu guía</b>: hasta el ${esc(fecha)}.</li><li>Acepta <b>${APARATOS} dispositivos</b> (por ejemplo tu celular y el iPad del alumno). El tercer dispositivo ve el aviso "Acceso en uso en otros dispositivos".</li><li>Es de tu familia: no lo compartas en otros chats.</li></ul></div>
-      <p style="font-size:12px;color:#888">Folio ${esc(folioDe(compra.id))} · ${conCodigo ? `Acceso con código${compra.codigo ? " " + esc(compra.codigo) : ""}` : `$${esc(compra.monto_mxn)} MXN IVA incluido`}</p>
-    </div></div>`;
-  const asunto = segundo ? `Tu guía completa está lista: ${titulo}` : lista ? `Tu guía SparkEd: ${titulo}` : `Tu guía SparkEd se está terminando: ${titulo}`;
+  // El correo se escribe como lo escribiría una persona (saludo con nombre, párrafos cortos, el link como texto y sin
+  // banners ni botones grandes): así Gmail lo deja en la bandeja principal y no en "Notificaciones" o "Promociones".
+  const nombre = String(compra.nombre ?? "").trim().split(/[ ]+/)[0] || "Hola";
+  const saludo = nombre === "Hola" ? "Hola:" : `Hola, ${esc(nombre)}:`;
+  const primera = segundo
+    ? `Tu guía completa <b>${esc(titulo)}</b> ya está lista. Es el mismo link de siempre:`
+    : lista
+      ? `${conCodigo ? "Tu código se aplicó" : "Tu pago se confirmó"} y tu guía <b>${esc(titulo)}</b> ya está lista. Ábrela con este link:`
+      : `${conCodigo ? "Tu código se aplicó" : "Tu pago se confirmó"}. Tu guía <b>${esc(titulo)}</b> se está terminando: tarda unos 4 minutos y te vuelvo a escribir en cuanto esté completa. Este es tu link; guárdalo:`;
+  const nota = lista ? "" : `<p>${cfg.sparked_jugar_durante_generacion === "si" ? "Mientras se termina, ya puedes abrirla y jugar los primeros bloques." : "Se abre en cuanto la guía esté completa."}</p>`;
+  const pago = conCodigo ? `Acceso con código${compra.codigo ? " " + esc(compra.codigo) : ""}` : `$${esc(compra.monto_mxn)} MXN, IVA incluido`;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#1b1b1f;max-width:560px;margin:auto">
+    <p>${saludo}</p>
+    <p>${primera}</p>
+    <p><a href="${esc(link)}" style="color:#1d4ed8">${esc(link)}</a></p>${nota}
+    <p>Cómo funciona tu acceso: vale <b>${DIAS_ACCESO} días de acceso ilimitado a tu guía</b>, hasta el ${esc(fecha)}, y acepta <b>${APARATOS} dispositivos</b>, por ejemplo tu celular y el iPad del alumno. El tercer dispositivo ve el aviso "Acceso en uso en otros dispositivos". Cada link es de una sola familia: no lo compartas en otros chats.</p>
+    <p>Si tienes cualquier duda, responde a este correo y te ayudo.</p>
+    <p>Daniel, de SparkEd<br><span style="color:#777;font-size:13px">sparkeducation-mx.com · Folio ${esc(folioDe(compra.id))} · ${pago}</span></p>
+  </div>`;
+  const asunto = segundo ? `${nombre === "Hola" ? "Tu" : nombre + ", tu"} guía completa ya está lista: ${titulo}` : lista ? `${nombre === "Hola" ? "Tu" : nombre + ", tu"} guía de SparkEd ya está lista: ${titulo}` : `${nombre === "Hola" ? "Tu" : nombre + ", tu"} guía de SparkEd se está terminando: ${titulo}`;
   await mandarCorreo(compra.correo, asunto, html);
   if (segundo) return;
   // Aviso a Daniel: una venta, o un acceso con código gratis (que no es venta).
