@@ -20,3 +20,16 @@ estilos en `sparked/css/juegos-nuevos.css` (enlazada en `sparked/guia.html`) y t
 - **Nombre interno:** las slides nuevas son `k: "enemigos"` (ícono 👾 en la rejilla). `k: "puertas"` se conserva como
   alias (en `reproductor.js` y `juegos.js`) para que las guías ya publicadas abran el juego de enemigos; las plantillas
   viejas (torre, mansión, bodega) se dibujan como bosque, cueva y desierto.
+
+## 2. Elige tu personaje
+
+- **Dónde:** duelo, enemigos, castillo (defensa de la torre) y montaña. Antes de empezar, la tarjeta "¿Cómo se juega?"
+  pregunta "¿Quién quieres ser?": **Sparky** o la **princesa guerrera**. La escena de fondo cambia en cuanto se elige.
+- **Memoria:** la elección se guarda en `localStorage` (`sparked_personaje`) y se usa en la siguiente partida; se puede
+  cambiar cada vez. Las carreras siguen con su selector de coche, caballo o dragón (no tienen protagonista a pie).
+- **Princesa guerrera (`cuerpoPrincesa` en arte.js):** misma escala y mismos puntos de apoyo que Sparky (16 × 20):
+  diadema dorada con gema, trenza, capa, peto de plata, túnica turquesa, botas y la misma espada de Sparky (`+espada`).
+  Poses: decidido, golpe, festejo, triste (caída) y quieto.
+- **Funciones:** `heroe(quien, pose, escala)`, `capaHeroe`, `capaEscaladorDe` (montaña) y `capaArqueroDe` (torre, con
+  arco) en arte.js; `personaje()`, `selectorPersonaje(ctx)` y `conectarSelector(tarjeta, alCambiar)` en ui.js.
+- **Duelo:** la barra de vida dice SPARKY o PRINCESA y la instrucción dice "tu personaje ataca con su espada".

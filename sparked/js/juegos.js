@@ -257,12 +257,14 @@ export function montana(s, ctx) {
   const fondo = escenaMontana(W, H, N, ctx.c.semilla + ctx.cur, TEMAS[s.plantilla] ?? {});
   el.appendChild(h(`<div class="juego"><div class="escena-caja" id="caja"></div>${panel(ctx, `<div class="pill" id="st"></div>`)}</div>`));
   const enPunto = (k) => ({ x: fondo.puntos[k].x - 4, y: fondo.puntos[k].y - 16 });
-  fondoPrevio(el, escenaSvg(fondo.svg, W, H, `<g transform="translate(${enPunto(0).x} ${enPunto(0).y})">${capaEscalador(0, 0)}</g>`));
+  const previa = (p) => fondoPrevio(el, escenaSvg(fondo.svg, W, H, `<g transform="translate(${enPunto(0).x} ${enPunto(0).y})">${capaEscaladorDe(p, 0, 0)}</g>`));
+  previa(personaje());
   const jugar = () => {
+    const quien = personaje();
     let pos = 0, i = 0, aciertos = 0, timer = null, puntos = 0;
     const caja = el.querySelector("#caja");
     const bandera = `<g>${capaIcono("bandera", fondo.puntos[N].x + 4, fondo.puntos[N].y - 16)}</g>`;
-    caja.innerHTML = escenaSvg(fondo.svg + bandera, W, H, `<g id="estrellas"></g><g id="heroe">${capaEscalador(0, 0)}</g>`) + `<div style="position:absolute;left:12px;top:10px;display:flex;gap:8px">${hudPill("", "hudst")}${hudPill("", "hudpt")}</div>`;
+    caja.innerHTML = escenaSvg(fondo.svg + bandera, W, H, `<g id="estrellas"></g><g id="heroe">${capaEscaladorDe(quien, 0, 0)}</g>`) + `<div style="position:absolute;left:12px;top:10px;display:flex;gap:8px">${hudPill("", "hudst")}${hudPill("", "hudpt")}</div>`;
     const svg = caja.querySelector("svg"); const heroe = svg.querySelector("#heroe");
     const hero = { ...enPunto(0), sx: 1, sy: 1 }; let anim = null;
     bucle(el, ctx, (dt, t, fuera) => {
@@ -292,7 +294,7 @@ export function montana(s, ctx) {
     };
     textos(); preguntar();
   };
-  arranque(el, T, "montana", jugar);
+  conectarSelector(arranque(el, T, "montana", jugar, selectorPersonaje(ctx)), previa);
   return el;
 }
 
@@ -302,12 +304,14 @@ export function castillo(s, ctx) {
   const el = marco(s, ctx); const T = ctx.t; const TL = 15;
   const fondo = escenaCastillo(W, H, ctx.c.semilla + ctx.cur, TEMAS[s.plantilla] ?? {});
   el.appendChild(h(`<div class="juego"><div class="escena-caja" id="caja"></div>${panel(ctx, `<div class="pill" id="st"></div>`)}</div>`));
-  fondoPrevio(el, escenaSvg(fondo.svg, W, H, `<g>${capaArquero(fondo.torreX - 20, fondo.torreTop - 14)}</g>`));
+  const previa = (p) => fondoPrevio(el, escenaSvg(fondo.svg, W, H, `<g>${capaArqueroDe(p, fondo.torreX - 20, fondo.torreTop - 14)}</g>`));
+  previa(personaje());
   const jugar = (ids) => {
+    const quien = personaje();
     let i = 0, aciertos = 0, vidas = 3, timer = null;
     const N = ids.length;
     const caja = el.querySelector("#caja");
-    caja.innerHTML = escenaSvg(fondo.svg, W, H, `<g id="torre-g"><g>${capaArquero(fondo.torreX - 20, fondo.torreTop - 14)}</g></g><g id="soldados"></g><g id="flecha" style="opacity:0">${capaIcono("flecha", 0, 0)}</g><g id="impactos"></g>`) + `<div style="position:absolute;left:12px;top:10px;display:flex;gap:8px;align-items:center">${hudPill("", "hudsc")}<span class="vidas" id="vidas"></span></div>`;
+    caja.innerHTML = escenaSvg(fondo.svg, W, H, `<g id="torre-g"><g>${capaArqueroDe(quien, fondo.torreX - 20, fondo.torreTop - 14)}</g></g><g id="soldados"></g><g id="flecha" style="opacity:0">${capaIcono("flecha", 0, 0)}</g><g id="impactos"></g>`) + `<div style="position:absolute;left:12px;top:10px;display:flex;gap:8px;align-items:center">${hudPill("", "hudsc")}<span class="vidas" id="vidas"></span></div>`;
     const svg = caja.querySelector("svg");
     let escuadra = []; let flecha = null; let temblor = 0;
     const pintarVidas = () => { el.querySelector("#vidas").innerHTML = [0, 1, 2].map((k) => icono(k < vidas ? "corazon" : "corazon_vacio", 3)).join(""); el.querySelector("#hudsc").textContent = `${aciertos * 100} pts`; el.querySelector("#st").textContent = `${T("vidas")}: ${vidas} · ${aciertos} ✓`; };
@@ -351,7 +355,7 @@ export function castillo(s, ctx) {
     };
     pintarVidas(); preguntar();
   };
-  arranque(el, T, "castillo", () => jugar(s.ids.slice()));
+  conectarSelector(arranque(el, T, "castillo", () => jugar(s.ids.slice()), selectorPersonaje(ctx)), previa);
   return el;
 }
 
@@ -529,9 +533,9 @@ export function quiz(s, ctx) {
 // las preguntas (gana quien conserve más vida). Derrota = pantalla de revancha que invita a repasar la pista.
 // Textos propios en español, inglés y francés (el cartucho todavía no los trae).
 const TEXTOS_DUELO = {
-  es: { titulo: "Duelo", instr: "Duelo contra el dragón: contesta cada pregunta antes de que se acabe el tiempo. Si aciertas, Sparky ataca con su espada y el dragón pierde vida; si fallas, el dragón te lanza fuego y pierdes vida. Gana quien deje al otro sin vida.", sparky: "SPARKY", dragon: "DRAGÓN", round: "ROUND", pelea: "¡A pelear!", ko: "K.O.", ganaste: "¡Venciste al dragón!", gano_tiempo: "¡Ganaste el duelo!", revancha: "¡Revancha!", animo: "El dragón ganó este round. Repasa la pista y vuelve a intentarlo: cada pregunta que repasas te hace más fuerte.", repasar: "📖 Repasar la pista", combo: "COMBO", golpe: "¡GOLPE!", vida: "Vida", preguntas_fin: "Se acabaron las preguntas" },
-  en: { titulo: "Duel", instr: "Duel against the dragon: answer each question before time runs out. If you are right, Sparky strikes with his sword and the dragon loses health; if you are wrong, the dragon breathes fire and you lose health. Whoever runs out of health first loses.", sparky: "SPARKY", dragon: "DRAGON", round: "ROUND", pelea: "Fight!", ko: "K.O.", ganaste: "You defeated the dragon!", gano_tiempo: "You won the duel!", revancha: "Rematch!", animo: "The dragon won this round. Review the clue and try again: every question you review makes you stronger.", repasar: "📖 Review the clue", combo: "COMBO", golpe: "HIT!", vida: "Health", preguntas_fin: "No more questions" },
-  fr: { titulo: "Duel", instr: "Duel contre le dragon : réponds à chaque question avant la fin du temps. Si tu as raison, Sparky frappe avec son épée et le dragon perd de la vie ; si tu te trompes, le dragon crache du feu et tu perds de la vie. Celui qui n'a plus de vie perd.", sparky: "SPARKY", dragon: "DRAGON", round: "ROUND", pelea: "Au combat !", ko: "K.O.", ganaste: "Tu as vaincu le dragon !", gano_tiempo: "Tu as gagné le duel !", revancha: "Revanche !", animo: "Le dragon a gagné cette manche. Revois l'indice et réessaie : chaque question revue te rend plus fort.", repasar: "📖 Revoir l'indice", combo: "COMBO", golpe: "TOUCHÉ !", vida: "Vie", preguntas_fin: "Plus de questions" },
+  es: { titulo: "Duelo", instr: "Duelo contra el dragón: contesta cada pregunta antes de que se acabe el tiempo. Si aciertas, tu personaje ataca con su espada y el dragón pierde vida; si fallas, el dragón te lanza fuego y pierdes vida. Gana quien deje al otro sin vida.", sparky: "SPARKY", princesa: "PRINCESA", dragon: "DRAGÓN", round: "ROUND", pelea: "¡A pelear!", ko: "K.O.", ganaste: "¡Venciste al dragón!", gano_tiempo: "¡Ganaste el duelo!", revancha: "¡Revancha!", animo: "El dragón ganó este round. Repasa la pista y vuelve a intentarlo: cada pregunta que repasas te hace más fuerte.", repasar: "📖 Repasar la pista", combo: "COMBO", golpe: "¡GOLPE!", vida: "Vida", preguntas_fin: "Se acabaron las preguntas" },
+  en: { titulo: "Duel", instr: "Duel against the dragon: answer each question before time runs out. If you are right, your character strikes with the sword and the dragon loses health; if you are wrong, the dragon breathes fire and you lose health. Whoever runs out of health first loses.", sparky: "SPARKY", princesa: "PRINCESS", dragon: "DRAGON", round: "ROUND", pelea: "Fight!", ko: "K.O.", ganaste: "You defeated the dragon!", gano_tiempo: "You won the duel!", revancha: "Rematch!", animo: "The dragon won this round. Review the clue and try again: every question you review makes you stronger.", repasar: "📖 Review the clue", combo: "COMBO", golpe: "HIT!", vida: "Health", preguntas_fin: "No more questions" },
+  fr: { titulo: "Duel", instr: "Duel contre le dragon : réponds à chaque question avant la fin du temps. Si tu as raison, ton personnage frappe avec son épée et le dragon perd de la vie ; si tu te trompes, le dragon crache du feu et tu perds de la vie. Celui qui n'a plus de vie perd.", sparky: "SPARKY", princesa: "PRINCESSE", dragon: "DRAGON", round: "ROUND", pelea: "Au combat !", ko: "K.O.", ganaste: "Tu as vaincu le dragon !", gano_tiempo: "Tu as gagné le duel !", revancha: "Revanche !", animo: "Le dragon a gagné cette manche. Revois l'indice et réessaie : chaque question revue te rend plus fort.", repasar: "📖 Revoir l'indice", combo: "COMBO", golpe: "TOUCHÉ !", vida: "Vie", preguntas_fin: "Plus de questions" },
 };
 const td = (ctx, k) => (TEXTOS_DUELO[ctx.c?.plan?.idioma_guia] ?? TEXTOS_DUELO.es)[k] ?? TEXTOS_DUELO.es[k];
 // ¿Esta slide de preguntas se juega como duelo? Sí si el estante la marcó así (k: "duelo") o si el bloque lo pide con
@@ -548,7 +552,9 @@ export function duelo(s, ctx) {
   const arena = escenaDuelo(AW, AH, ctx.c.semilla + ctx.cur);
   const SP = { x: 20, esc: 2.5 }, DR = { x: 82, esc: 1.05 };
   const spY = arena.suelo - 19.35 * SP.esc, drY = arena.suelo - 68 * DR.esc;
-  const capaSp = (pose) => `<g class="sp-flota">${capaSparky(pose + "+yelmo+espada", 0, 0)}</g>`;
+  let quien = personaje();
+  const capaSp = (pose) => `<g class="sp-flota">${capaHeroe(quien, pose + "+espada", 0, 0)}</g>`;
+  const nombreSp = () => td(ctx, quien === "princesa" ? "princesa" : "sparky");
   const escena = () => escenaSvg(arena.svg, AW, AH,
     `<g id="dr" transform="translate(${DR.x} ${drY}) scale(${DR.esc})"><g class="dr-golpe">${capaDragonDuelo(paleta, 0, 0)}</g></g>
      <g id="sp" transform="translate(${SP.x} ${spY}) scale(${SP.esc})"><g class="sp-golpe">${capaSp("decidido")}</g></g>
@@ -557,6 +563,7 @@ export function duelo(s, ctx) {
   fondoPrevio(el, escena());
 
   const jugar = (ids, ronda) => {
+    quien = personaje();
     let i = 0, aciertos = 0, racha = 0, timer = null, terminado = false, anim = null;
     const golpesDragon = Math.max(1, Math.ceil(ids.length * .6)), golpesSparky = Math.max(1, ids.length - golpesDragon + 1);
     let vidaDr = golpesDragon, vidaSp = golpesSparky;
@@ -564,7 +571,7 @@ export function duelo(s, ctx) {
     const caja = el.querySelector("#caja");
     caja.classList.remove("parado");
     caja.innerHTML = escena() + `<div class="duelo-hud">
-        <div class="duelo-lado sp"><span class="duelo-nombre">${esc(td(ctx, "sparky"))}</span><div class="duelo-vida" role="meter" aria-label="${esc(td(ctx, "vida"))} ${esc(td(ctx, "sparky"))}"><i class="rastro"></i><i class="vida"></i></div></div>
+        <div class="duelo-lado sp"><span class="duelo-nombre">${esc(nombreSp())}</span><div class="duelo-vida" role="meter" aria-label="${esc(td(ctx, "vida"))} ${esc(nombreSp())}"><i class="rastro"></i><i class="vida"></i></div></div>
         <div class="duelo-ronda">${esc(td(ctx, "round"))} ${ronda}</div>
         <div class="duelo-lado dr"><span class="duelo-nombre">${esc(td(ctx, "dragon"))}</span><div class="duelo-vida" role="meter" aria-label="${esc(td(ctx, "vida"))} ${esc(td(ctx, "dragon"))}"><i class="rastro"></i><i class="vida"></i></div></div>
       </div><div class="duelo-cartel" id="cartel"></div><div class="duelo-combo" id="combo"></div>`;
@@ -652,6 +659,7 @@ export function duelo(s, ctx) {
     if (!ids.length) { terminar(true, false); return; }
     ctx.luego(preguntar, 1300);
   };
-  inicio(el, td(ctx, "instr"), () => jugar(s.ids.slice(), 1), "", { titulo: T("como_jugar"), boton: T("iniciar") });
+  const ov = inicio(el, td(ctx, "instr"), () => jugar(s.ids.slice(), 1), selectorPersonaje(ctx), { titulo: T("como_jugar"), boton: T("iniciar") });
+  conectarSelector(ov, (p) => { quien = p; fondoPrevio(el, escena()); });
   return el;
 }
