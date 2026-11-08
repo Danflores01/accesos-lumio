@@ -394,3 +394,12 @@ completa, el letrero ofrece abrirla.
 **Topes de compras.** Por seguridad hay un tope de 80 compras al día en todo el sitio y de 6 al día por familia
 (mismo teléfono o correo). Si necesitas probar más, súbelos en Ajustes → "Tope de compras por día (todo el sitio)" y
 "Tope de compras por día por familia", guarda, y al terminar regrésalos a 80 y 6.
+
+### Para probar el cobro de Mercado Pago sin confundirte (8 nov 2026)
+
+Mercado Pago no permite que una cuenta se pague a sí misma. Si en la compra de prueba pones el **mismo correo de la
+cuenta de Mercado Pago de SparkEd**, el botón "Pagar" (OXXO) o "Continuar" (SPEI) sale en gris y no avanza; no es una
+falla del sitio. Para probar como cliente usa **otro correo** (y, si quieres probar sin dinero, un código de descuento
+gratuito creado en el panel). Verificado el 8 de noviembre de 2026: con otro correo, OXXO genera su ficha ("¡Listo! Solo
+te falta pagar $100 en la tienda OXXO más cercana") y el sitio muestra "Tu pago en OXXO está en camino" con el botón
+"Ver mi ficha de pago"; SPEI habilita "Continuar" y da las instrucciones de transferencia.
