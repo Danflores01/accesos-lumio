@@ -9,85 +9,92 @@
 <link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/sitio.css">
-<title>SparkEd · Bienvenido</title>
+<script>/* Idioma: si el visitante eligió inglés, se oculta la página un instante mientras idioma.js traduce (evita ver el español). */try{var l=new URLSearchParams(location.search).get("lang")||localStorage.getItem("sparked_idioma");if(l==="en"){document.documentElement.lang="en";document.documentElement.classList.add("i18n-cargando");setTimeout(function(){document.documentElement.classList.remove("i18n-cargando")},2500)}}catch(e){}</script>
+<title data-i18n="titulo.inicio">SparkEd · Bienvenido</title>
 </head>
 <body class="sitio">
 <header class="cab"><div class="contenedor">
   <a class="marca" href="index.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span></a>
-  <nav><a href="crear.html">Crear mi guía</a><a class="solo-ancho" href="guia.html?demo=historia1" target="_blank" rel="noopener">Ver una guía</a></nav>
+  <nav><a href="crear.html" data-i18n="nav.crear">Crear mi guía</a><a class="solo-ancho" href="guia.html?demo=historia1" target="_blank" rel="noopener" data-i18n="nav.ver">Ver una guía</a><span class="idioma" role="group" aria-label="Idioma" data-i18n-attr="aria-label:nav.idioma"><button type="button" data-idioma="es" lang="es" aria-pressed="true">ES</button><span aria-hidden="true">|</span><button type="button" data-idioma="en" lang="en" aria-pressed="false">EN</button></span></nav>
 </div></header>
 
 <section class="hero"><div class="contenedor">
   <div class="hero-texto">
-    <span class="pildora-sello">Hecha con tus apuntes</span>
-    <h1 style="margin-top:14px">Convierte tu temario en una <em>guía de estudio interactiva</em></h1>
-    <p>Sube fotos de tu temario, de tu libro de texto o de tus apuntes, y Sparky arma tu guía: teoría a todo color y juegos que se califican solos. Estudia jugando en cualquier dispositivo que tengas.</p>
-    <div class="acciones al-bloque"><a class="boton" href="crear.html">Crear mi guía</a><a class="boton vidrio" href="#demo">▶ Mira una guía real</a></div>
-    <div class="chips"><span>Una guía: $100 MXN, IVA incluido</span><span>7 días de acceso ilimitado a tu guía</span><span>Hasta 2 dispositivos por familia</span></div>
+    <span class="pildora-sello" data-i18n="hero.sello">Hecha con tus apuntes</span>
+    <h1 style="margin-top:14px" data-i18n="hero.titulo">Convierte tu temario en una <em>guía de estudio interactiva</em></h1>
+    <p data-i18n="hero.texto">Sube fotos de tu temario, de tu libro de texto o de tus apuntes, y Sparky arma tu guía: teoría a todo color y juegos que se califican solos. Estudia jugando en cualquier dispositivo que tengas.</p>
+    <div class="acciones al-bloque"><a class="boton" href="crear.html" data-i18n="nav.crear">Crear mi guía</a><a class="boton vidrio" href="#demo" data-i18n="hero.demo">▶ Mira una guía real</a></div>
+    <div class="chips"><span data-i18n="chip.precio">Una guía: $100 MXN, IVA incluido</span><span data-i18n="chip.acceso">7 días de acceso ilimitado a tu guía</span><span data-i18n="chip.dispositivos">Hasta 2 dispositivos por familia</span></div>
   </div>
   <div class="sparky-hero"><div class="tarjeta-sparky">
-    <div class="tile"><div class="sparky-sitio" id="sparky-inicio"><span data-sprite="sparky:quieto" data-escala="9"></span></div><div class="burbuja"><b>Consejo de Sparky:</b> <span id="burbuja-dato">Sube tu temario y con eso ya puedo armar tu guía. Si además me compartes dos o tres fotos de tus apuntes, la hago todavía más específica.</span></div></div>
-    <div class="fila"><b>Guía de ejemplo: De las primeras aldeas al mundo global</b><span>HISTORIA 1°</span></div>
+    <div class="tile"><div class="sparky-sitio" id="sparky-inicio"><span data-sprite="sparky:quieto" data-escala="9"></span></div><div class="burbuja"><b data-i18n="sparky.consejo">Consejo de Sparky:</b> <span id="burbuja-dato" data-i18n="sparky.primer_consejo">Sube tu temario y con eso ya puedo armar tu guía. Si además me compartes dos o tres fotos de tus apuntes, la hago todavía más específica.</span></div></div>
+    <div class="fila"><b data-i18n="ejemplo.titulo">Guía de ejemplo: De las primeras aldeas al mundo global</b><span data-i18n="ejemplo.etiqueta">HISTORIA 1°</span></div>
     <div class="barra"><i style="width:100%"></i></div>
-    <small>3 bloques · 25 slides · teoría con imágenes reales, juegos, mini quizzes y reto final</small>
+    <small data-i18n="ejemplo.detalle">3 bloques · 25 slides · teoría con imágenes reales, juegos, mini quizzes y reto final</small>
   </div></div>
 </div></section>
 
 <section id="como-funciona" class="contenedor servicios unico">
   <article class="servicio" style="--c:#FF6B9D;--c2:#FFB347;--fondo-paso:#fff3f0">
-    <h2>Así se hace tu guía</h2>
+    <h2 data-i18n="como.titulo">Así se hace tu guía</h2>
     <div class="pasos3">
-      <div class="paso"><div class="dib"><span data-sprite="camara" data-escala="5"></span></div><div>1. Tomas fotos de tu temario<small>o de tu libro de texto o de tus apuntes, hasta 25 páginas</small></div></div>
-      <div class="paso"><div class="dib sk-anima"><span data-sprite="sparky:construyendo" data-escala="4"></span></div><div>2. Sparky las convierte en una guía<small>en unos minutos</small></div></div>
-      <div class="paso"><div class="dib"><span data-sprite="check" data-escala="6"></span></div><div>3. Juegas y estudias<small>con tus propios temas</small></div></div>
+      <div class="paso"><div class="dib"><span data-sprite="camara" data-escala="5"></span></div><div data-i18n="como.paso1">1. Tomas fotos de tu temario<small>o de tu libro de texto o de tus apuntes, hasta 25 páginas</small></div></div>
+      <div class="paso"><div class="dib sk-anima"><span data-sprite="sparky:construyendo" data-escala="4"></span></div><div data-i18n="como.paso2">2. Sparky las convierte en una guía<small>en unos minutos</small></div></div>
+      <div class="paso"><div class="dib"><span data-sprite="check" data-escala="6"></span></div><div data-i18n="como.paso3">3. Juegas y estudias<small>con tus propios temas</small></div></div>
     </div>
-    <div class="para"><b>Una guía: $100 MXN, IVA incluido.</b> 7 días de acceso ilimitado a tu guía, hasta 2 dispositivos. Cada link es de una sola familia. La guía sale de lo que tú subas, con cada dato verificado, y primero ves una vista previa gratis.</div>
-    <div class="acciones"><a class="boton" href="crear.html">Crear mi guía</a></div>
+    <div class="para" data-i18n="como.para"><b>Una guía: $100 MXN, IVA incluido.</b> 7 días de acceso ilimitado a tu guía, hasta 2 dispositivos. Cada link es de una sola familia. La guía sale de lo que tú subas, con cada dato verificado, y primero ves una vista previa gratis.</div>
+    <div class="acciones"><a class="boton" href="crear.html" data-i18n="nav.crear">Crear mi guía</a></div>
   </article>
 </section>
 
 <section id="demo" class="vista"><div class="contenedor"><div class="caja-vista">
-  <h2>Así se ve una guía de verdad</h2>
-  <p>Historia Universal de 1° de secundaria: teoría con fotografías reales, juegos, mini quizzes, líneas del tiempo y palabras clave.</p>
-  <div class="marco-demo" id="marco-demo"><div class="tapa"><button class="boton" id="abrir-demo">▶ Probar la guía de ejemplo</button></div></div>
+  <h2 data-i18n="demo.titulo">Así se ve una guía de verdad</h2>
+  <p data-i18n="demo.texto">Historia Universal de 1° de secundaria: teoría con fotografías reales, juegos, mini quizzes, líneas del tiempo y palabras clave.</p>
+  <div class="marco-demo" id="marco-demo"><div class="tapa"><button class="boton" id="abrir-demo" data-i18n="demo.probar">▶ Probar la guía de ejemplo</button></div></div>
 </div></div></section>
 
 <section class="contenedor precio-caja">
   <div class="precio">
-    <div class="pildora">Una guía</div>
-    <div class="monto" style="margin-top:10px">$100<small>MXN · IVA incluido</small></div>
-    <ul><li>7 días de acceso ilimitado a tu guía</li><li>Hasta 2 dispositivos por familia: por ejemplo, el celular de mamá y el iPad del alumno</li><li>Teoría visual, juegos, mini-exámenes y reto final</li><li>Vista previa gratis antes de pagar</li><li>Te la mandamos por correo y por WhatsApp</li></ul>
+    <div class="pildora" data-i18n="precio.pildora">Una guía</div>
+    <div class="monto" style="margin-top:10px">$100<small data-i18n="precio.iva">MXN · IVA incluido</small></div>
+    <ul><li data-i18n="chip.acceso">7 días de acceso ilimitado a tu guía</li><li data-i18n="precio.l2">Hasta 2 dispositivos por familia: por ejemplo, el celular de mamá y el iPad del alumno</li><li data-i18n="precio.l3">Teoría visual, juegos, mini-exámenes y reto final</li><li data-i18n="precio.l4">Vista previa gratis antes de pagar</li><li data-i18n="precio.l5">Te la mandamos por correo y por WhatsApp</li></ul>
   </div>
   <div class="faq">
-    <h2 style="font-size:24px;margin-bottom:10px">Preguntas rápidas</h2>
-    <details><summary>¿Cómo recibo la guía?</summary><p>Al pagar, el link de tu guía aparece en pantalla. Además, te la mandamos por correo y por WhatsApp; el correo trae un código QR. El alumno la abre en su iPad, en la computadora o en el celular.</p></details>
-    <details><summary>¿Qué pasa si la abro en más de 2 dispositivos?</summary><p>El tercer dispositivo ve el aviso «Acceso en uso en otros dispositivos». Cada link es de una sola familia.</p></details>
-    <details><summary>¿La información es correcta?</summary><p>Cada dato sale de los apuntes o del temario y se verifica contra fuentes confiables. Si tus apuntes traen un error, la guía lo señala con la corrección.</p></details>
+    <h2 style="font-size:24px;margin-bottom:10px" data-i18n="faq.titulo">Preguntas rápidas</h2>
+    <details><summary data-i18n="faq.p1">¿Cómo recibo la guía?</summary><p data-i18n="faq.r1">Al pagar, el link de tu guía aparece en pantalla. Además, te la mandamos por correo y por WhatsApp; el correo trae un código QR. El alumno la abre en su iPad, en la computadora o en el celular.</p></details>
+    <details><summary data-i18n="faq.p2">¿Qué pasa si la abro en más de 2 dispositivos?</summary><p data-i18n="faq.r2">El tercer dispositivo ve el aviso «Acceso en uso en otros dispositivos». Cada link es de una sola familia.</p></details>
+    <details><summary data-i18n="faq.p3">¿La información es correcta?</summary><p data-i18n="faq.r3">Cada dato sale de los apuntes o del temario y se verifica contra fuentes confiables. Si tus apuntes traen un error, la guía lo señala con la corrección.</p></details>
   </div>
 </section>
 
-<footer class="pie"><div class="contenedor">SparkEd · Guías de estudio interactivas</div></footer>
+<footer class="pie"><div class="contenedor" data-i18n="pie">SparkEd · Guías de estudio interactivas</div></footer>
 
 <script type="module">
 import { pintarSprites } from "./js/sitio.js";
 import { sparkyVivo } from "./js/ui.js";
+import { t, idioma, alCambiarIdioma } from "./js/idioma.js";
 pintarSprites();
 // Sparky vivo: flota y parpadea; cada 8–15 s saluda, camina por su recuadro o escribe en la burbuja otro consejo
 // para subir las fotos, en primera persona (banco local datos/consejos.json, sin inteligencia artificial).
 // La pantalla de espera de crear.html sigue usando los datos curiosos. Si lo tocan festeja; si le pasan el mouse, saluda.
-let datos = [], i = 0;
+// En inglés, cada consejo usa su texto_en.
+let datos = [], i = 0, ultimo = null;
 const burbuja = document.getElementById("burbuja-dato");
-sparkyVivo(document.getElementById("sparky-inicio"), { escala: 9, burbuja, saludoInicial: true, siguienteDato: () => datos.length ? datos[i++ % datos.length].texto : null });
+const texto = (c) => (idioma() === "en" ? c.texto_en || c.texto : c.texto);
+const siguiente = () => { if (!datos.length) return null; ultimo = datos[i++ % datos.length]; return texto(ultimo); };
+sparkyVivo(document.getElementById("sparky-inicio"), { escala: 9, burbuja, saludoInicial: true, siguienteDato: siguiente });
 fetch("datos/consejos.json").then((r) => r.json()).then((d) => {
   if (!d.length) return;
   datos = d.slice().sort(() => Math.random() - .5);
-  burbuja.textContent = datos[i++].texto;
+  burbuja.textContent = siguiente();
 }).catch(() => {});
+// Al cambiar de idioma, el consejo que se ve cambia al mismo consejo en el otro idioma.
+alCambiarIdioma(() => { if (ultimo) burbuja.textContent = texto(ultimo); });
 document.getElementById("abrir-demo").onclick = () => {
   // En pantallas angostas (teléfonos) la guía se abre en pantalla completa; dentro del marco quedaría diminuta.
   if (window.innerWidth < 700) { window.open("guia.html?demo=historia1", "_blank", "noopener"); return; }
   const m = document.getElementById("marco-demo");
-  m.innerHTML = '<iframe src="guia.html?demo=historia1" title="Guía de ejemplo" allow="autoplay"></iframe>';
+  m.innerHTML = `<iframe src="guia.html?demo=historia1" title="${t("demo.marco")}" data-i18n-attr="title:demo.marco" allow="autoplay"></iframe>`;
 };
 </script>
 </body>

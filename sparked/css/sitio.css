@@ -204,3 +204,14 @@ body.sitio.claro .pasos-barra div { background: var(--borde); }
   .tarjeta-sparky .tile { height: 210px; }
   .tarjeta-sparky .tile svg { width: 80px; height: auto; }
 }
+
+/* Selector de idioma «ES | EN» en el encabezado (idioma.js). Mismo tamaño y aire que los links del menú. */
+header.cab nav .idioma { display: inline-flex; align-items: center; gap: 0; }
+header.cab nav .idioma button { background: none; border: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: 15px; color: #fff; opacity: .65; padding: 8px 6px; border-radius: 10px; }
+header.cab nav .idioma button:hover { opacity: 1; background: rgba(255,255,255,.14); }
+header.cab nav .idioma button[aria-pressed="true"] { opacity: 1; color: var(--amarillo); }
+header.cab nav .idioma > span { color: #fff; opacity: .45; font-weight: 700; }
+body.sitio.claro header.cab nav .idioma button, body.sitio.claro header.cab nav .idioma > span { color: var(--tinta); }
+@media (max-width: 559px) { header.cab nav .idioma button { font-size: 13px; padding: 6px 5px; } }
+/* Mientras idioma.js traduce la página al inglés, no se muestra (evita ver el español un instante). */
+html.i18n-cargando body { visibility: hidden; }

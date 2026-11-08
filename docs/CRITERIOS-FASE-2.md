@@ -573,3 +573,18 @@ vez y la actividad con el dato equivocado se quita.
 
 **Fotografías.** Las imágenes de Wikimedia se guardan en `upload.wikimedia.org` a 960 px (o la original si mide 960 px o
 menos); cada URL se comprueba antes de guardarla y, si no responde 200, no se pone.
+
+## 24. Sitio en inglés: selector «ES | EN» (8 nov 2026)
+
+- **Qué hace.** El sitio público (`index.html`, `crear.html`, `listo.html`) se lee en español (por defecto) o en inglés. El selector «ES | EN» está en el encabezado, junto a los links del menú, también en teléfono. El idioma elegido se guarda en `localStorage` (`sparked_idioma`) y pasa de una página a otra; también se puede abrir directo con `?lang=en` (o `?lang=es`). Al cambiar, se actualizan el `lang` del documento y todos los textos sin recargar.
+- **Inglés de Estados Unidos, igual de simple.** Precios en pesos: «$100 MXN, VAT included». «Dispositivos» = *devices*; «7 días de acceso ilimitado a tu guía» = *7 days of unlimited access to your guide*; «Cada link es de una sola familia» = *Each link belongs to one family only*. Los grados se muestran como «Grade 7 (1° Secundaria)», pero al servidor se sigue mandando el valor en español.
+- **El reproductor (`guia.html`) no usa este selector:** tiene sus propios textos según el idioma de cada guía.
+- **Dónde viven los textos:** `sparked/js/idioma.js`, objeto `TEXTOS` (clave → `[español, inglés]`). Los consejos de Sparky (`datos/consejos.json`) y los datos curiosos (`datos/curiosos.json`) traen su versión en `texto_en` (y `fuente_en` si la fuente cambia de nombre).
+- **Cómo añadir un texto nuevo:**
+  1. Agrega la clave en `TEXTOS` de `sparked/js/idioma.js`: `"seccion.nombre": ["Texto en español", "Text in English"],`. Variables entre llaves (`{n}`, `{correo}`); si el nombre de la variable empieza con `fecha`, se escribe como fecha en el idioma activo.
+  2. **En HTML fijo:** pon el texto en español y el atributo `data-i18n="seccion.nombre"` (el texto del HTML y el del diccionario deben ser idénticos). Para atributos: `data-i18n-attr="placeholder:clave"` (varios separados con `;`: `"title:clave1;aria-label:clave2"`).
+  3. **En JavaScript:** `t("clave", vars)` da el texto plano; `th(...)` lo da listo para HTML (variables escapadas); `marca("clave", vars, "p", 'class="ayuda"')` da el elemento con su `data-i18n`, que se traduce solo si el visitante cambia de idioma; `poner(elemento, "clave")` cambia la clave de un elemento ya pintado (por ejemplo «Copiar link» → «✓ Copiado»).
+  4. **Textos que manda el servidor** (avance de la guía, errores): se pasan por `textoServidor(texto)`; en inglés traduce los conocidos (lista `SERVIDOR_EN`) y cambia los desconocidos por un mensaje general en inglés. Si el servidor estrena un mensaje, agrégalo a `SERVIDOR_EN`.
+  5. Si algo se arma con JavaScript y no cabe en una marca (por ejemplo, el link de WhatsApp), suscríbete con `alCambiarIdioma(fn)` y rehazlo ahí.
+- **Antes de publicar:** abrir las tres páginas con `?lang=en` y revisar que no quede nada en español (y al revés).
+- **Pendiente del servidor:** los correos, los mensajes de WhatsApp que manda el servidor y la página de Mercado Pago siguen en español.

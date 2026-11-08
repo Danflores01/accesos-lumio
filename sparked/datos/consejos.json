@@ -1,12 +1,12 @@
 [
-  { "texto": "Sube tu temario y con eso ya puedo armar tu guía. Si además me compartes dos o tres fotos de tus apuntes, la hago todavía más específica.", "emoji": "📋" },
-  { "texto": "Leo mejor cuando las fotos se ven bien: con buena luz y sin sombras.", "emoji": "💡" },
-  { "texto": "Te recomiendo fotos de buen tamaño y tomadas de frente, para que pueda leer cada palabra.", "emoji": "📸" },
-  { "texto": "Si tus ideas están bien organizadas en tus apuntes, yo las convierto en pistas y juegos más claros.", "emoji": "🧩" },
-  { "texto": "Puedo leer hasta 25 páginas. Elige las más importantes para tu examen.", "emoji": "📚" },
-  { "texto": "Acepto fotos y PDF. Si me subes un PDF, yo separo las páginas.", "emoji": "📄" },
-  { "texto": "Antes de tomar la foto, revisa que se vea la página completa, sin dedos ni objetos encima.", "emoji": "✋" },
-  { "texto": "Si una página tiene letra muy pequeña, tómale una foto más de cerca. Así no se me escapa ningún dato.", "emoji": "🔍" },
-  { "texto": "Elige bien el grado y la materia: con eso ajusto las palabras y los juegos a tu nivel.", "emoji": "🎯" },
-  { "texto": "Primero te muestro una vista previa gratis de tu guía. Así ves cómo queda antes de pagar.", "emoji": "👀" }
+  { "texto": "Sube tu temario y con eso ya puedo armar tu guía. Si además me compartes dos o tres fotos de tus apuntes, la hago todavía más específica.", "texto_en": "Upload your syllabus and that is enough for me to build your guide. If you also share two or three photos of your notes, I make it even more specific.", "emoji": "📋" },
+  { "texto": "Leo mejor cuando las fotos se ven bien: con buena luz y sin sombras.", "texto_en": "I read best when the photos look good: with good light and no shadows.", "emoji": "💡" },
+  { "texto": "Te recomiendo fotos de buen tamaño y tomadas de frente, para que pueda leer cada palabra.", "texto_en": "I recommend good-sized photos taken straight on, so I can read every word.", "emoji": "📸" },
+  { "texto": "Si tus ideas están bien organizadas en tus apuntes, yo las convierto en pistas y juegos más claros.", "texto_en": "If the ideas in your notes are well organized, I turn them into clearer clues and games.", "emoji": "🧩" },
+  { "texto": "Puedo leer hasta 25 páginas. Elige las más importantes para tu examen.", "texto_en": "I can read up to 25 pages. Choose the most important ones for your exam.", "emoji": "📚" },
+  { "texto": "Acepto fotos y PDF. Si me subes un PDF, yo separo las páginas.", "texto_en": "I accept photos and PDFs. If you upload a PDF, I split it into pages.", "emoji": "📄" },
+  { "texto": "Antes de tomar la foto, revisa que se vea la página completa, sin dedos ni objetos encima.", "texto_en": "Before you take the photo, check that the whole page shows, with no fingers or objects on top.", "emoji": "✋" },
+  { "texto": "Si una página tiene letra muy pequeña, tómale una foto más de cerca. Así no se me escapa ningún dato.", "texto_en": "If a page has very small print, take a closer photo. That way I don't miss a single fact.", "emoji": "🔍" },
+  { "texto": "Elige bien el grado y la materia: con eso ajusto las palabras y los juegos a tu nivel.", "texto_en": "Choose the grade and the subject carefully: that is how I adjust the words and the games to your level.", "emoji": "🎯" },
+  { "texto": "Primero te muestro una vista previa gratis de tu guía. Así ves cómo queda antes de pagar.", "texto_en": "First I show you a free preview of your guide. That way you see how it looks before you pay.", "emoji": "👀" }
 ]
