@@ -453,3 +453,23 @@ lenguaje formal, pero muy simple y específico. Se vale repetir un poco para que
 - **Qué cambia en el dibujo:** sin contorno oscuro grueso; volumen con degradados y brillos; sombra suave en el piso; una sola dirección de luz; fondos con profundidad (capas lejanas más suaves); paleta saturada pero natural. Sparky conserva su identidad 2.1 (casco, cara LED, colores) con este mismo acabado.
 - **Cómo:** primero una hoja de muestras (3 o 4 estilos) para que Daniel elija; luego aplicar a todos los juegos y al reproductor. Vectores SVG con degradados y filtros ligeros, o sprites PNG/WebP prerenderizados si los filtros pesan en iPad. Nada retro, nada pixelado.
 - Imagen de referencia guardada fuera del repositorio: C:\Users\Daniel\Downloads\Claude outputs\SparkEd_referencia_arte_3D_moderno.jpg
+
+## 21. Calidad de las guías: criterios de Daniel tras la prueba de modelos (7 nov 2026)
+
+**Modelos de serie (activos en `config` desde el 7 nov):** Sonnet 5.5 con esfuerzo medio planea y repara; Haiku 5.5 lee las fotos, escribe los bloques y verifica. Fue la variante B de la prueba (`docs/PRUEBA-MODELOS-2026-11-07.md`): 23 de 30 puntos a ciegas, cero datos equivocados, unos 3 pesos más por guía. Se cambia por paso en Ajustes/`config` (`sparked_modelo_*`, `sparked_esfuerzo_*`), sin volver a programar.
+
+**Tamaño y ritmo.** No más de 25 slides por guía salvo que el tema lo exija de verdad; la guía se estudia en una hora como máximo. Resumida, corta y completa.
+
+**Nada se desborda.** Toda la información de una slide debe caber, ordenada y visual. Si no cabe, se hace otra slide bien organizada; nunca una slide saturada con datos cruciales cortados. El reproductor divide las pistas largas y ajusta la letra dentro de un rango; el generador escribe pistas que caben.
+
+**Orden de la guía.** Portada y tutorial siempre primero (eso no cambia). Después, el orden y la mezcla de actividades varían de una guía a otra (a veces un relacionar primero, a veces la carrera de caballos, a veces un quiz de calentamiento) para que no se sienta repetitivo.
+
+**Repertorio.** Se suma el **duelo**: Sparky con casco y espada contra un dragón, por rounds; acierto → Sparky quita vida al dragón; error → el dragón quita vida a Sparky. Mismo formato de contenido que la opción múltiple (ver `docs/JUEGO-DUELO.md`).
+
+**Sonido.** Los sonidos de las carreras y de cualquier juego se quedan dentro de su slide: al avanzar, retroceder, saltar o terminar, se detienen solos. Nunca debe hacer falta silenciar la presentación.
+
+**Calificación honesta.** La calificación final se calcula sobre todas las actividades de la guía, no solo las contestadas. Quien contesta 4 de 20 no ve 93 %: ve su avance real y qué le falta. Las actividades sin contestar aparecen en "qué te conviene repasar".
+
+**Reporte final.** Es un valor agregado central: letras legibles, atractivo e invitador para que el niño refuerce, y claro para que mamá o papá vean qué falta reforzar y qué no.
+
+**Arte en los juegos.** Los coches de la carrera son monoplazas de Fórmula 1, no taxis; caballos y dragones con colores reales (sección 20).
