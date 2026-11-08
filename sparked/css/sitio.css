@@ -65,6 +65,8 @@ body.sitio.claro header.cab nav a:hover { background: var(--gris-suave); color: 
 .paso small { display: block; font-weight: 400; color: var(--gris); font-size: 13px; }
 .servicio .boton { align-self: flex-start; }
 .servicio .boton.oscuro { box-shadow: none; }
+/* Un solo servicio (7 nov 2026): una tarjeta a todo lo ancho con los tres pasos en fila en pantallas anchas. */
+.servicios.unico { grid-template-columns: 1fr; }
 
 /* Demo: banda de cristal */
 .vista { padding: 30px 0 36px; }
@@ -122,6 +124,9 @@ body.sitio.claro .pasos-barra div { background: var(--borde); }
   .hero { padding: 56px 0 36px; }
   .hero .contenedor { grid-template-columns: 1.15fr .85fr; }
   .servicios { grid-template-columns: 1fr 1fr; }
+  .servicios.unico { grid-template-columns: 1fr; }
+  .servicios.unico .pasos3 { flex-direction: row; }
+  .servicios.unico .paso { flex: 1; }
   .precio-caja { grid-template-columns: 1fr 1fr; align-items: start; }
   .rejilla-campos { grid-template-columns: 1fr 1fr; }
   .aviso-vacio { grid-template-columns: 160px 1fr; }

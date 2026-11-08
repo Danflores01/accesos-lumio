@@ -481,3 +481,11 @@ lenguaje formal, pero muy simple y específico. Se vale repetir un poco para que
 **Reporte final.** Es un valor agregado central: letras legibles, atractivo e invitador para que el niño refuerce, y claro para que mamá o papá vean qué falta reforzar y qué no.
 
 **Arte en los juegos.** Los coches de la carrera son monoplazas de Fórmula 1, no taxis; caballos y dragones con colores reales (sección 20).
+
+## 22. Un solo servicio (7 nov 2026)
+
+- **Daniel decidió que SparkEd se queda solo con la guía personalizada:** la familia sube fotos de sus apuntes o de su temario y Sparky arma la guía. Ya no se habla de "Servicio 1" ni de "Servicio 2".
+- **El antiguo Servicio 1 se retiró del sitio público:** la biblioteca de guías de colegios participantes, la búsqueda por colegio, grado y materia y los "pedidos sin guía". `sparked/biblioteca.html` solo redirige a `crear.html` para que los links viejos no se rompan. En el panel, la pestaña "Biblioteca" se llama "Guías" (ahí siguen todas, incluidas las personalizadas y las de prueba) y "Pedidos sin guía" quedó oculta. Las rutas del servidor no cambiaron.
+- **Portada:** presenta directamente "Crea tu guía con tus fotos", con los tres pasos (1. Tomas fotos de tus apuntes · 2. Sparky las convierte en una guía · 3. Juegas y estudias), $100 MXN IVA incluido, 7 días de acceso ilimitado a tu guía, hasta 2 dispositivos y "Cada link es de una sola familia".
+- **Sparky en la portada da consejos para subir las fotos, en primera persona** (`sparked/datos/consejos.json`: buena luz, fotos de frente, hasta 15 páginas, fotos o PDF…). La pantalla "Generando tu guía…" sigue mostrando los datos curiosos (`datos/curiosos.json`).
+- **La fase 1 de accesos a clases de Lumio no cambia** (`/accesos/`, `entrar.html`, `panel.html` de la raíz y las funciones `ir` y `admin`).

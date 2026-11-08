@@ -65,10 +65,10 @@
   <div id="app" hidden>
     <div class="tabs" id="tabs">
       <button data-tab="resumen" class="on">Resumen</button>
-      <button data-tab="guias">Biblioteca <span class="n" id="nGuias" hidden></span></button>
+      <button data-tab="guias">Guías <span class="n" id="nGuias" hidden></span></button>
       <button data-tab="compras">Compras <span class="n" id="nCompras" hidden></span></button>
       <button data-tab="codigos">Códigos</button>
-      <button data-tab="solicitudes">Pedidos sin guía <span class="n" id="nSolicitudes" hidden></span></button>
+      <button data-tab="solicitudes" hidden>Pedidos sin guía <span class="n" id="nSolicitudes" hidden></span></button>
       <button data-tab="reportes">Reportes <span class="n" id="nReportes" hidden></span></button>
       <button data-tab="colegios">Colegios</button>
       <button data-tab="ajustes">Ajustes</button>
@@ -84,11 +84,11 @@
     <section data-panel="guias" hidden>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
         <button class="boton" id="btnNueva">＋ Nueva guía</button>
-        <select id="filtroGuias" class="campo" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="">Todas</option><option value="borrador">Borradores (por revisar)</option><option value="publicada">Publicadas</option><option value="personalizada">Personalizadas (Servicio 2)</option><option value="archivada">Archivadas</option></select>
+        <select id="filtroGuias" class="campo" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="">Todas</option><option value="borrador">Borradores (por revisar)</option><option value="publicada">Publicadas</option><option value="personalizada">Personalizadas</option><option value="archivada">Archivadas</option></select>
         <button class="boton linea chico" id="btnRefrescarGuias">⟳ Actualizar</button>
       </div>
       <section class="panel-paso" id="nueva" hidden>
-        <h2 style="margin-top:0">Nueva guía de la biblioteca</h2>
+        <h2 style="margin-top:0">Nueva guía</h2>
         <form id="formNueva" class="rejilla-campos">
           <div class="campo" style="grid-column:1/-1"><label>Título (si lo dejas vacío, lo pone la IA)</label><input name="titulo" placeholder="Ej. Historia de México 2 · El encuentro de dos mundos"></div>
           <div class="campo"><label>Colegio</label><select name="colegio_id"></select></div>
@@ -215,7 +215,7 @@ async function cargarResumen() {
   $("#numeros").innerHTML = [
     [r.guias.publicadas, "guías publicadas"], [r.guias.borradores, "borradores por revisar"], [r.guias.personalizadas, "guías personalizadas vivas"],
     [r.compras.pendientes, "compras pendientes de pago"], [r.compras.pagadas_hoy + " · " + dinero(r.compras.ingresos_hoy), "ventas de hoy"], [r.compras.pagadas_mes + " · " + dinero(r.compras.ingresos_mes), "ventas del mes"], [r.compras.con_codigo_mes ?? 0, "guías con código gratis este mes (no son ventas)"],
-    [r.solicitudes_sin_guia, "pedidos sin guía"], [r.reportes_nuevos, "reportes nuevos"], [r.ia.corriendo, "generaciones en curso"], ["US$" + r.ia.costo_usd_mes.toFixed(2), "gasto de IA este mes"],
+    [r.reportes_nuevos, "reportes nuevos"], [r.ia.corriendo, "generaciones en curso"], ["US$" + r.ia.costo_usd_mes.toFixed(2), "gasto de IA este mes"],
   ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
   // Guías pagadas que la IA no pudo terminar: la familia ve "Estamos revisando tu guía" hasta que se reintente.
   $("#alertas").innerHTML = (r.entregas_con_error ?? []).map((x) => `<div class="caja-clave" style="border-left-color:#dc2626;margin-bottom:12px"><b>⚠️ Guía pagada sin terminar: ${esc(x.titulo ?? "Guía")}</b><div class="ayuda" style="margin:4px 0 8px">La IA no pudo terminar los bloques que faltan (paso ${esc(x.paso ?? "")}, ${esc(fecha(x.desde))}). La familia ve "Estamos revisando tu guía; te avisamos por correo en cuanto esté lista". Abre la guía y toca ↻ Reintentar; al terminar, a la familia le llega sola el correo.</div><button class="boton chico" data-guia="${esc(x.guia_id)}">Abrir la guía</button></div>`).join("");
@@ -227,7 +227,7 @@ async function cargarResumen() {
 }
 function pintarMotores(p) {
   const m = p.motores ?? {};
-  const lista = [["ia", "Inteligencia artificial", "ANTHROPIC_API_KEY", "Escribe las guías del Servicio 2 y de la biblioteca"], ["mercadopago", "Cobro en línea (Mercado Pago)", "MP_ACCESS_TOKEN", m.mercadopago_prueba ? "MODO DE PRUEBA: no cobra de verdad. Al terminar las pruebas pon la llave de producción" : "Tarjeta, OXXO y SPEI. Apagado = las compras se confirman a mano aquí"], ["mercadopago_webhook", "Aviso de pago de Mercado Pago", "MP_WEBHOOK_SECRET", "Activa la guía sola en cuanto Mercado Pago confirma el pago"], ["correo", "Correos (Resend)", "RESEND_API_KEY", "Manda el link y el QR al correo del cliente"], ["stripe", "Stripe (dormido)", "STRIPE_SECRET_KEY", "No se usa: el cobro en línea es con Mercado Pago"], ["webhook", "Aviso de pago de Stripe", "STRIPE_WEBHOOK_SECRET", "Solo si algún día se usa Stripe"], ["helicone", "Medición de costos (Helicone)", "HELICONE_API_KEY", "Opcional: cuánto cuesta cada guía"]];
+  const lista = [["ia", "Inteligencia artificial", "ANTHROPIC_API_KEY", "Escribe las guías"], ["mercadopago", "Cobro en línea (Mercado Pago)", "MP_ACCESS_TOKEN", m.mercadopago_prueba ? "MODO DE PRUEBA: no cobra de verdad. Al terminar las pruebas pon la llave de producción" : "Tarjeta, OXXO y SPEI. Apagado = las compras se confirman a mano aquí"], ["mercadopago_webhook", "Aviso de pago de Mercado Pago", "MP_WEBHOOK_SECRET", "Activa la guía sola en cuanto Mercado Pago confirma el pago"], ["correo", "Correos (Resend)", "RESEND_API_KEY", "Manda el link y el QR al correo del cliente"], ["stripe", "Stripe (dormido)", "STRIPE_SECRET_KEY", "No se usa: el cobro en línea es con Mercado Pago"], ["webhook", "Aviso de pago de Stripe", "STRIPE_WEBHOOK_SECRET", "Solo si algún día se usa Stripe"], ["helicone", "Medición de costos (Helicone)", "HELICONE_API_KEY", "Opcional: cuánto cuesta cada guía"]];
   $("#motores").innerHTML = lista.map(([k, nombre, sec, desc]) => `<div class="motor ${m[k] ? "on" : ""}"><b>${m[k] ? (k === "mercadopago" && m.mercadopago_prueba ? "🟡" : "🟢") : "⚪"} ${esc(nombre)}</b><span class="ayuda">${esc(desc)}</span><div style="margin-top:6px"><code>${esc(sec)}</code> ${m[k] ? "configurada" : "sin configurar"}</div></div>`).join("");
 }
 
@@ -258,7 +258,6 @@ function filaGuia(g) {
   const meta = [g.colegio ?? "Todos los colegios", g.grado, g.materia, g.examen, g.fecha_examen ? "examen " + g.fecha_examen : ""].filter(Boolean).join(" · ");
   const acciones = [];
   if (g.completo) acciones.push(["ver", "👁 Ver como profesor", "linea"]);
-  if (g.estado === "publicada") acciones.push(["copiar-vp", "🔗 Copiar link de vista previa", "linea"]);
   if (g.origen === "biblioteca" && !corriendo) { acciones.push(["paginas", g.completo ? "📷 Cambiar páginas" : "📷 Subir páginas", "linea"]); acciones.push(["generar", g.completo ? "🤖 Regenerar con IA" : "🤖 Generar con IA", "linea"]); acciones.push(["cartucho", "📄 Subir cartucho", "linea"]); }
   if (g.completo && g.estado !== "publicada") acciones.push(["publicar", "✅ Publicar", ""]);
   if (g.estado === "publicada" && g.origen === "biblioteca") acciones.push(["archivar", "📦 Archivar", "linea"]);
@@ -273,9 +272,8 @@ function filaGuia(g) {
 async function accionGuia(act, id, btn) {
   try {
     if (act === "ver") { const { cartucho } = await api(`/guias/${id}/cartucho`); localStorage.setItem("sparked_cartucho_" + id, JSON.stringify(cartucho)); window.open(`guia.html?local=${id}`, "_blank"); }
-    if (act === "copiar-vp") { await navigator.clipboard.writeText(`${CONFIG.sitio}biblioteca.html`); aviso("Link del sitio copiado. La vista previa se abre buscando la guía en la biblioteca."); }
-    if (act === "publicar") { const r = await api(`/guias/${id}/publicar`, { method: "POST" }); aviso("Guía publicada"); if (r.avisar?.length) modal(`<h2>Avísales que ya está lista</h2><p class="ayuda">${r.avisar.length} familia(s) la pidieron antes:</p>${r.avisar.map((s) => `<div class="fila-g"><div class="info"><b>${esc(s.nombre ?? "Familia")}</b> <span class="ayuda">${esc(s.telefono ?? "")} ${esc(s.correo ?? "")}</span></div><div class="acciones">${s.telefono ? `<a class="boton chico" target="_blank" rel="noopener" href="${esc(waLink(s.telefono, `Hola ${s.nombre ?? ""} 👋 Ya está lista la guía que buscabas en SparkEd. Entra a ${CONFIG.sitio}biblioteca.html y búscala con tu colegio, grado y materia.`))}">💬 WhatsApp</a>` : ""}</div></div>`).join("")}`); cargarGuias(); }
-    if (act === "archivar") { if (!confirm("¿Archivar esta guía? Dejará de aparecer en la biblioteca; las familias que ya la compraron siguen entrando.")) return; await api(`/guias/${id}/archivar`, { method: "POST" }); cargarGuias(); }
+    if (act === "publicar") { await api(`/guias/${id}/publicar`, { method: "POST" }); aviso("Guía publicada"); cargarGuias(); }
+    if (act === "archivar") { if (!confirm("¿Archivar esta guía? Las familias que ya la compraron siguen entrando.")) return; await api(`/guias/${id}/archivar`, { method: "POST" }); cargarGuias(); }
     if (act === "borrar") { if (!confirm("¿Borrar esta guía y sus materiales? No se puede deshacer.")) return; await api(`/guias/${id}`, { method: "DELETE" }); aviso("Guía borrada"); cargarGuias(); cargarResumen(); }
     if (act === "generar") { if (!confirm("La IA leerá las páginas subidas y escribirá la guía completa (tarda unos minutos y tiene costo). ¿Continuar?")) return; await api(`/guias/${id}/generar`, { method: "POST" }); aviso("Generando… la lista se actualiza sola"); cargarGuias(); }
     if (act === "cartucho") { elegirArchivo(".json,application/json", false, async ([f]) => { const cartucho = JSON.parse(await f.text()); const r = await api(`/guias/${id}/cartucho`, { method: "POST", body: { cartucho } }); aviso(`Cartucho cargado: ${r.bloques} bloques`); cargarGuias(); }); }

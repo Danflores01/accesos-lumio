@@ -1,133 +1,15 @@
 <!doctype html>
-<html lang="es" data-paleta="historia_azul">
+<html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#FFD400">
-<link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/sitio.css">
-<title>SparkEd · Biblioteca de guías</title>
+<meta name="robots" content="noindex">
+<meta http-equiv="refresh" content="0; url=crear.html">
+<link rel="canonical" href="crear.html">
+<title>SparkEd · Crea tu guía</title>
+<script>location.replace("crear.html");</script>
 </head>
-<body class="sitio">
-<header class="cab"><div class="contenedor">
-  <a class="marca" href="index.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span></a>
-  <nav><a href="crear.html">Crear mi guía</a></nav>
-</div></header>
-
-<main class="flujo"><div class="contenedor">
-  <div class="pasos-barra" id="pasos"><div class="on"></div><div></div><div></div><div></div></div>
-
-  <!-- Paso 1: formulario -->
-  <section class="panel-paso" id="p1">
-    <div class="num" style="color:#1d4ed8;font-weight:800;letter-spacing:1px;font-size:14px">SERVICIO 1 · BIBLIOTECA DE COLEGIOS</div>
-    <h1>¿De qué colegio, grado y materia es la guía?</h1>
-    <form id="form" class="rejilla-campos" autocomplete="on">
-      <div class="campo"><label>Colegio</label><select name="colegio" required></select></div>
-      <div class="campo" id="campo-otro" hidden><label>¿Cuál colegio?</label><input name="colegio_texto" placeholder="Nombre del colegio"></div>
-      <div class="campo"><label>Grado</label><select name="grado" required></select></div>
-      <div class="campo"><label>Materia</label><select name="materia" required></select></div>
-      <div class="campo"><label>Nombre de quien pide la guía</label><input name="nombre" placeholder="Mamá, papá o alumno" required></div>
-      <div class="campo"><label>WhatsApp (10 dígitos)</label><input name="telefono" inputmode="numeric" placeholder="55 1234 5678" required></div>
-      <div class="campo"><label>Correo</label><input name="correo" type="email" placeholder="tu@correo.com" required></div>
-      <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="boton" type="submit">🔎 Buscar la guía</button><span class="ayuda">Tus datos solo se usan para entregarte la guía.</span></div>
-      <div class="error" id="err1" style="grid-column:1/-1"></div>
-    </form>
-  </section>
-
-  <!-- Paso 2: buscando / resultados -->
-  <section class="panel-paso" id="p2" hidden></section>
-
-  <!-- Paso 3: vista previa -->
-  <section class="panel-paso" id="p3" hidden></section>
-
-  <!-- Paso 4: pago -->
-  <section class="panel-paso" id="p4" hidden></section>
-</div></main>
-
-<script type="module">
-import { api, esc, opciones, GRADOS, MATERIAS, cargarColegios, leerContacto, guardarContacto, contactoGuardado, marcoVistaPrevia, iniciarPago, pantallaEspera, CONFIG, pintarSprites, campoCodigo, leerCodigo } from "./js/flujo.js";
-import { sparky, icono } from "./js/arte.js";
-
-const $ = (s) => document.querySelector(s);
-const form = $("#form");
-const pasos = (n) => { [...$("#pasos").children].forEach((d, i) => d.classList.toggle("on", i < n)); ["p1", "p2", "p3", "p4"].forEach((id, i) => { $("#" + id).hidden = i !== n - 1; }); window.scrollTo({ top: 0, behavior: "smooth" }); };
-
-opciones(form.grado, GRADOS, "Elige el grado");
-opciones(form.materia, MATERIAS, "Elige la materia");
-cargarColegios(form.colegio);
-form.colegio.onchange = () => { $("#campo-otro").hidden = form.colegio.value !== "otro"; };
-const previo = contactoGuardado(); if (previo) { form.nombre.value = previo.nombre ?? ""; form.telefono.value = previo.telefono ?? ""; form.correo.value = previo.correo ?? ""; }
-
-// Si venimos de regreso de la vista previa con ?guia=ID&paso=pagar, saltamos al pago.
-const params = new URLSearchParams(location.search);
-let contacto = previo, busqueda = null, guiaElegida = null;
-
-form.onsubmit = async (e) => {
-  e.preventDefault();
-  const c = leerContacto(form);
-  if (!form.colegio.value || !form.grado.value || !form.materia.value) c.errores.unshift("Elige colegio, grado y materia.");
-  if (c.errores.length) { $("#err1").textContent = c.errores[0]; return; }
-  $("#err1").textContent = ""; contacto = c; guardarContacto(c);
-  busqueda = { colegio_id: form.colegio.value === "otro" ? null : form.colegio.value, colegio_texto: form.colegio.value === "otro" ? form.colegio_texto.value.trim() : form.colegio.selectedOptions[0]?.textContent, grado: form.grado.value, materia: form.materia.value };
-  pasos(2);
-  const esp = pantallaEspera($("#p2"), "Buscando materiales…");
-  esp.actualizar(30, "Revisando la biblioteca de " + (busqueda.colegio_texto || "tu colegio"));
-  try {
-    const [r] = await Promise.all([api.post("/buscar", busqueda), new Promise((ok) => setTimeout(ok, 1400))]);
-    esp.detener();
-    mostrarResultados(r.guias ?? []);
-  } catch (err) { esp.detener(); $("#p2").innerHTML = `<p class="error">${esc(err.message)}</p><button class="boton linea" onclick="location.reload()">Intentar de nuevo</button>`; }
-};
-
-function mostrarResultados(guias) {
-  const p2 = $("#p2");
-  if (!guias.length) {
-    p2.innerHTML = `<h1>Por el momento no tenemos la guía de ${esc(busqueda.materia)} de ${esc(busqueda.grado)} del ${esc(busqueda.colegio_texto || "colegio")}</h1>
-      <div class="aviso-vacio"><div class="dib">${sparky("triste", 7)}</div><div>
-        <p style="margin-top:0"><b>Pero hay otro camino:</b> con el <b>Servicio 2</b> subes fotos de los apuntes y Sparky arma la guía en minutos.</p>
-        <div class="pasos3" style="--c:#7c3aed;--fondo-paso:#fff"><div class="paso"><div class="dib">${icono("camara", 4)}</div>1. Tomas fotos de tus apuntes</div><div class="paso"><div class="dib sk-anima">${sparky("construyendo", 3)}</div>2. Sparky las convierte en una guía</div><div class="paso"><div class="dib">${icono("check", 5)}</div>3. Juegas y estudias</div></div>
-      </div></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="boton" id="ir-s2">✨ Crea tu guía personalizada con el Servicio 2</a><button class="boton linea" id="avisame">🔔 Avísame cuando esté lista</button></div><div id="aviso-ok" class="ayuda"></div>`;
-    const q = new URLSearchParams({ grado: busqueda.grado, materia: busqueda.materia, colegio: busqueda.colegio_texto ?? "" });
-    p2.querySelector("#ir-s2").href = "crear.html?" + q.toString();
-    p2.querySelector("#avisame").onclick = async (ev) => { ev.target.disabled = true; try { await api.post("/solicitud", { ...busqueda, ...contacto }); p2.querySelector("#aviso-ok").textContent = "¡Listo! Te avisamos por WhatsApp o correo en cuanto publiquemos esa guía."; } catch (e) { p2.querySelector("#aviso-ok").textContent = e.message; ev.target.disabled = false; } };
-    pintarSprites(p2);
-    return;
-  }
-  p2.innerHTML = `<h1>${guias.length === 1 ? "¡Sí tenemos tu guía!" : "Encontramos estas guías"}</h1><div style="display:flex;flex-direction:column;gap:10px">${guias.map((g) => `<button class="resultado-guia" data-id="${esc(g.id)}" style="text-align:left;cursor:pointer"><div class="em">📘</div><div><b style="font-size:18px">${esc(g.titulo)}</b><div class="ayuda">${esc([g.materia, g.grado, g.examen, g.fecha_examen ? "examen " + g.fecha_examen : ""].filter(Boolean).join(" · "))}</div></div><div style="margin-left:auto;font-weight:800;color:var(--p)">Ver →</div></button>`).join("")}</div>`;
-  p2.querySelectorAll("[data-id]").forEach((b) => b.onclick = () => elegir(guias.find((g) => g.id === b.dataset.id)));
-}
-
-function elegir(g) {
-  guiaElegida = g; pasos(3);
-  const volver = location.pathname + "?guia=" + encodeURIComponent(g.id) + "&paso=pagar";
-  marcoVistaPrevia($("#p3"), `guia.html?vp=${encodeURIComponent(g.id)}&volver=${encodeURIComponent(volver)}`, g.titulo);
-  $("#p3").insertAdjacentHTML("beforeend", `<form id="fPago" class="rejilla-campos" style="margin-top:14px">${campoCodigo()}<div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="boton" type="submit" id="pagar">🔓 Desbloquear la guía entera por $${CONFIG.precio}</button><span class="ayuda">7 días de acceso ilimitado a tu guía · 2 dispositivos por familia · IVA incluido</span></div><div class="error" id="errPago" style="grid-column:1/-1"></div></form>`);
-  $("#fPago").onsubmit = (e) => { e.preventDefault(); pagar(g, leerCodigo($("#fPago")), (msg) => { pasos(3); $("#errPago").textContent = msg; $("#fPago [name=codigo]")?.focus(); }); };
-}
-
-// Pago. Si el código no sirve, se regresa al formulario con el mensaje para corregirlo o borrarlo.
-async function pagar(g, codigo = "", alFallarCodigo = null) {
-  pasos(4);
-  $("#p4").innerHTML = `<h1>Pago</h1><div id="pago"></div>`;
-  await iniciarPago($("#pago"), { guia_id: g.id, ...contacto, codigo }).catch((e) => { if (e.datos?.campo === "codigo" && alFallarCodigo) alFallarCodigo(e.message); });
-}
-
-// Formulario de pago al volver de la vista previa en pantalla completa (con el campo del código).
-function formularioPago(g, codigo = "", mensajeError = "") {
-  pasos(4);
-  $("#p4").innerHTML = `<h1>Pago</h1><div class="resultado-guia"><div class="em">📘</div><div><b style="font-size:18px">${esc(g.titulo)}</b><div class="ayuda">$${CONFIG.precio} MXN · IVA incluido · 7 días de acceso ilimitado a tu guía · 2 dispositivos por familia</div></div></div>
-    <form id="fPago4" class="rejilla-campos" style="margin-top:14px">${campoCodigo()}<div style="grid-column:1/-1"><button class="boton" type="submit">🔓 Desbloquear la guía entera</button></div><div class="error" id="errPago4" style="grid-column:1/-1">${esc(mensajeError)}</div></form>`;
-  const f = $("#fPago4"); f.codigo.value = codigo;
-  f.onsubmit = (e) => { e.preventDefault(); const c = leerCodigo(f); pagar(g, c, (msg) => formularioPago(g, c, msg)); };
-}
-
-// Regreso desde la vista previa en pantalla completa
-if (params.get("guia") && params.get("paso") === "pagar") {
-  const id = params.get("guia");
-  api.get(`/vista-previa/${encodeURIComponent(id)}`).then((d) => { contacto = contactoGuardado(); if (!contacto) { pasos(1); return; } formularioPago({ id, titulo: d.guia?.titulo ?? "Tu guía" }); }).catch(() => pasos(1));
-}
-</script>
+<body>
+<p>Esta página ya no existe. <a href="crear.html">Crea tu guía con tus fotos aquí</a>.</p>
 </body>
 </html>
