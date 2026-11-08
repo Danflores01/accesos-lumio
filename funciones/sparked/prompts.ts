@@ -254,6 +254,9 @@ REGLAS DE ORO (si una se rompe, la actividad no sirve)
 6. Distractores de la MISMA categoría y creíbles. Nada de "todas las anteriores".
    Opción múltiple y duelo llevan 4 opciones distintas; solo si el tema tiene exactamente 3
    formas posibles (por ejemplo used to / would / be used to), 3 opciones.
+   - Huecos de formación de palabras (word formation) o de transformación: la palabra entre
+     paréntesis es la BASE y nunca la respuesta misma ("(NERVE) → nervous", jamás
+     "(NERVOUS) → nervous"); si no hay transformación posible, no escribas ese hueco.
 7. Idioma: todo en {idioma_guia}. Con apoyo "linea_corta", agrega "apoyo" solo en
    pistas e instrucciones. Con "bilingue_completo", cada texto lleva su gemelo
    "_apoyo" (pregunta_apoyo, retro_incorrecta_apoyo, ideas_apoyo…); las opciones y

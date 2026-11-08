@@ -1118,7 +1118,7 @@ export function textosDeGuia(D: any): Record<string, Lugar> {
         (Array.isArray(p.esquema.elementos) ? p.esquema.elementos : []).forEach((e: any, i: number) => { poner(`${p.id}.esquema.${i}.nombre`, e, "nombre"); poner(`${p.id}.esquema.${i}.detalle`, e, "detalle"); });
       }
     }
-    for (const a of [...(b.actividades ?? []), ...(b.mini_examen ?? [])]) {
+    for (const a of [...(b.actividades ?? []), ...(b.mini_examen ?? []), ...(b.duelo ?? [])]) {
       if (!a?.id) continue;
       for (const k of ["pregunta", "afirmacion", "enunciado", "instruccion", "texto", "retro_correcta", "retro_incorrecta", "por_que"]) poner(`${a.id}.${k}`, a, k);
       (Array.isArray(a.pasos) ? a.pasos : []).forEach((x: any, i: number) => poner(`${a.id}.pasos.${i}`, x, "texto"));
@@ -1131,12 +1131,13 @@ export function textosDeGuia(D: any): Record<string, Lugar> {
   }
   return reg;
 }
-// Correcciones que no dependen de la IA: "exámen" (singular) siempre es "examen".
+// Correcciones que no dependen de la IA: "exámen" (singular) siempre es "examen", y ningún espacio suelto antes de "." o ","
+// (el francés sí lleva espacio antes de ; : ! ?, así que esos no se tocan).
 export function corregirFijas(reg: Record<string, Lugar>): number {
   let n = 0;
   for (const l of Object.values(reg)) {
     const v = leerRuta(l);
-    const w = v.replace(/(^|[^\p{L}])([Ee])x[áá]men(?![\p{L}])/gu, (_m, a, e) => `${a}${e}xamen`).replace(/(^|[^\p{L}])EXÁMEN(?![\p{L}])/gu, "$1EXAMEN");
+    const w = v.replace(/(^|[^\p{L}])([Ee])x[áá]men(?![\p{L}])/gu, (_m, a, e) => `${a}${e}xamen`).replace(/(^|[^\p{L}])EXÁMEN(?![\p{L}])/gu, "$1EXAMEN").replace(/ +([.,])(?![0-9])/g, "$1");
     if (w !== v) { l[0][l[1]] = w; n++; }
   }
   return n;

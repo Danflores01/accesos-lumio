@@ -574,6 +574,13 @@ vez y la actividad con el dato equivocado se quita.
 **Fotografías.** Las imágenes de Wikimedia se guardan en `upload.wikimedia.org` a 960 px (o la original si mide 960 px o
 menos); cada URL se comprueba antes de guardarla y, si no responde 200, no se pone.
 
+Añadido el 8 de noviembre por la tarde, tras la guía de prueba E (Inglés, 5.43 MXN, 23 slides, todos los mínimos
+cumplidos): el código quita los espacios sueltos antes de «.» y «,» (el corrector de la IA no los veía), y en los huecos
+de formación de palabras la palabra base entre paréntesis nunca puede ser la respuesta misma («(NERVE) → nervous», no
+«(NERVOUS) → nervous»). En el reproductor, el calentamiento corre siempre en el circuito de Fórmula 1 de día (plantilla
+`formula1`), porque la carrera de F1 es la vitrina de SparkEd, y la instrucción de la carrera ya no dice «coche» cuando
+corren naves, caballos o dragones.
+
 ## 25. Sitio en inglés: selector «ES | EN» (8 nov 2026)
 
 - **Qué hace.** El sitio público (`index.html`, `crear.html`, `listo.html`) se lee en español (por defecto) o en inglés. El selector «ES | EN» está en el encabezado, junto a los links del menú, también en teléfono. El idioma elegido se guarda en `localStorage` (`sparked_idioma`) y pasa de una página a otra; también se puede abrir directo con `?lang=en` (o `?lang=es`). Al cambiar, se actualizan el `lang` del documento y todos los textos sin recargar.
