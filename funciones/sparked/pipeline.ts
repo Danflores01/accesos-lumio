@@ -337,7 +337,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       // pensamiento de la IA cuenta dentro de max_tokens. Segundo intento: tope mayor si se cortó, o se le muestra su
       // respuesta si no fue JSON.
       const cortado = n === 1 && D.intento_ia?.motivo === "max_tokens";
-      const res = await llamar(supabase, t, fuente, "plan", "planear", { sistema: PLANIFICADOR, contenido: contenidoPlan(D, fuente, sugerenciaVariedad(semillaDe(t.borrador_id ?? t.id))), esquema: ESQUEMA_PLAN, maxTokens: cortado ? 24000 : 16000, previo: n === 1 && !cortado ? D.intento_ia?.previo : undefined });
+      const res = await llamar(supabase, t, fuente, "plan", "planear", { sistema: PLANIFICADOR, contenido: contenidoPlan(D, fuente, [sugerenciaVariedad(semillaDe(t.borrador_id ?? t.id)), notaIdioma(idiomaForzado(fuente))].filter(Boolean).join("\n")), esquema: ESQUEMA_PLAN, maxTokens: cortado ? 24000 : 16000, previo: n === 1 && !cortado ? D.intento_ia?.previo : undefined });
       if (res === REPETIR) return "planear";
       const r = res;
       plan = r.parada !== "max_tokens" || n === 1 ? planDe(r.json) : null;
@@ -358,6 +358,12 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     // Tope de slides, orden variado de los juegos y primera actividad (ver ajustarPlan).
     const slidesIa = plan.slides_estimados ?? null;
     const recortesPlan = ajustarPlan(plan);
+    const forzado = idiomaForzado(fuente);
+    if (forzado) {
+      plan.idioma_guia = forzado; plan.idioma_forzado = true;
+      // El apoyo en el idioma del alumno sobra si la guía ya está en ese idioma.
+      if (plan.apoyo?.idioma === forzado) plan.apoyo = null;
+    }
     D.plan = plan;
     D.plan.grado = fuente.grado;
     D.slides = { plan_ia: slidesIa, plan: plan.slides_estimados, tope: plan.presupuesto_slides, recortes_plan: recortesPlan, sugerencia: sugerenciaVariedad(semillaDe(t.borrador_id ?? t.id)) };
@@ -378,7 +384,8 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     // Si la respuesta anterior se cortó por largo, se pide la mitad de los juegos (respuesta más corta).
     const pbPedido = cortado ? { ...pb, juegos: mitad(pb.juegos), mini_examen: Math.min(4, Number(pb.mini_examen) || 6) } : pb;
     const sistema = GENERADOR.replaceAll("{idioma_guia}", plan.idioma_guia ?? "es").replaceAll("{perfil_edad}", plan.perfil_edad ?? "juvenil");
-    const contenido = [{ type: "text", text: `Datos: nivel ${nivel} · perfil ${plan.perfil_edad} · idioma de la guía ${plan.idioma_guia} · apoyo ${JSON.stringify(plan.apoyo)}\nPlan del bloque: ${JSON.stringify(pbPedido)}\nInventario del bloque: ${JSON.stringify(invBloque)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
+    const nota = notaIdioma(idiomaForzado(fuente) ?? (plan.idioma_forzado ? plan.idioma_guia : null));
+    const contenido = [{ type: "text", text: `${nota ? nota + "\n" : ""}Datos: nivel ${nivel} · perfil ${plan.perfil_edad} · idioma de la guía ${plan.idioma_guia} · apoyo ${JSON.stringify(plan.apoyo)}\nPlan del bloque: ${JSON.stringify(pbPedido)}\nInventario del bloque: ${JSON.stringify(invBloque)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
     // Esfuerzo bajo por defecto y tope de 20 000 tokens (~80 s a la velocidad medida de Haiku): el pensamiento de la IA
     // cuenta dentro de max_tokens, y un bloque de inglés con apoyo en español pasó de 16 000 aun con esfuerzo bajo.
     let r: Respuesta;
@@ -461,7 +468,8 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const largas = (D.pistas_largas ?? []) as { bloque: string; id: string; motivo: string }[];
     const pistaPorId = (id: string) => (D.bloques as any[]).flatMap((b) => b.pistas).find((p: any) => p.id === id);
     const textoLargas = largas.length ? `\nPistas demasiado largas (divídelas en dos):\n${largas.map((l) => `- ${l.id} (${l.motivo}): ${JSON.stringify(pistaPorId(l.id))}`).join("\n")}` : "";
-    const contenido = [{ type: "text", text: `Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n") || "(ninguno)"}${textoLargas}\nPistas de cada bloque (cada actividad nueva lleva en "pista" una de las del bloque de su hueco): ${JSON.stringify(Object.fromEntries((D.bloques as any[]).map((b) => [b.id, b.pistas.map((p: any) => p.id)])))}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => b.actividades.map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
+    const notaR = notaIdioma(idiomaForzado(fuente) ?? (plan.idioma_forzado ? plan.idioma_guia : null));
+    const contenido = [{ type: "text", text: `${notaR ? notaR + "\n" : ""}Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n") || "(ninguno)"}${textoLargas}\nPistas de cada bloque (cada actividad nueva lleva en "pista" una de las del bloque de su hueco): ${JSON.stringify(Object.fromEntries((D.bloques as any[]).map((b) => [b.id, b.pistas.map((p: any) => p.id)])))}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => b.actividades.map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
     let divididas: any[] = [];
     if ((D.huecos ?? []).length || largas.length) try {
       const res = await llamar(supabase, t, fuente, "reparar", "reparar", { sistema, contenido, maxTokens: 16000 });
@@ -596,6 +604,19 @@ export function aplanar(obj: any): any[] {
   const out: any[] = [];
   for (const [tipo, lista] of Object.entries(obj)) for (const a of (lista as any[]) ?? []) if (a && typeof a === "object") out.push({ ...a, tipo: a.tipo ?? tipo });
   return out;
+}
+
+// ---------- Idioma forzado (pruebas y guías del administrador) ----------
+// datos.opciones.idioma_guia = "es" | "en" | "fr" obliga a escribir toda la guía en ese idioma aunque los apuntes estén
+// en otro. Las citas de la fuente ("De tus notas") se copian tal cual, en el idioma original.
+const NOMBRE_IDIOMA: Record<string, string> = { es: "español", en: "inglés", fr: "francés" };
+export function idiomaForzado(fuente: { opciones?: Record<string, unknown> }): string | null {
+  const v = String(fuente.opciones?.idioma_guia ?? "").trim().toLowerCase();
+  return NOMBRE_IDIOMA[v] ? v : null;
+}
+export function notaIdioma(idioma: string | null): string {
+  if (!idioma) return "";
+  return `IDIOMA OBLIGATORIO DE LA GUÍA: ${idioma} (${NOMBRE_IDIOMA[idioma]}). Escribe TODO lo que redactas (títulos, objetivos, pistas, preguntas, opciones, retroalimentación, instrucciones) en ${NOMBRE_IDIOMA[idioma]}, aunque los apuntes estén en otro idioma: traduce con fidelidad, sin agregar datos. Los nombres propios se quedan como son. La "cita" de cada "fuente" se copia TAL CUAL del inventario, en su idioma original.`;
 }
 
 // ---------- Tamaño, pistas y variedad (criterios de Daniel, 7 nov 2026) ----------

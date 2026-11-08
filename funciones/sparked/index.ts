@@ -17,7 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, type Trabajo } from "./pipeline.ts";
 
-const VERSION = "2026-11-07.5";
+const VERSION = "2026-11-07.6";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -50,6 +50,8 @@ const ipDe = (req: Request) => (req.headers.get("x-forwarded-for") ?? "").split(
 const ahora = () => new Date().toISOString();
 const enDias = (d: number) => new Date(Date.now() + d * 86400 * 1000).toISOString();
 async function leerJson(req: Request): Promise<Record<string, any>> { try { return (await req.json()) ?? {}; } catch { return {}; } }
+// Idioma forzado de la guía (solo pruebas y guías del administrador): "es", "en" o "fr"; cualquier otro valor se ignora.
+const idiomaValido = (x: unknown): string | null => { const v = String(x ?? "").trim().toLowerCase(); return ["es", "en", "fr"].includes(v) ? v : null; };
 function enSegundoPlano(p: Promise<unknown>) {
   const ER = (globalThis as any).EdgeRuntime;
   const seguro = p.catch((e) => console.error("segundo plano:", (e as Error).message));
@@ -802,7 +804,12 @@ Deno.serve(async (req: Request) => {
       const subidos = await archivosSubidos(`borradores/${b.id}`);
       const archivos = (b.archivos as any[]).filter((a) => subidos.has(a.ruta));
       if (!archivos.length) return error("No llegaron las páginas. Intenta subirlas de nuevo.");
-      const { data: t, error: e } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: b.id, alcance: "vista_previa", paso: "inicio", estado: "pendiente", progreso: { pct: 1, mensaje: "Preparando tus páginas 📖", paso: "inicio" } }).select("id").single();
+      // Campo opcional "idioma" (es | en | fr): fuerza el idioma de la guía. Solo se acepta con la clave de administrador.
+      const cuerpo = await leerJson(req);
+      const idioma = idiomaValido(cuerpo.idioma);
+      if (cuerpo.idioma !== undefined && !(idioma && await autorizado(req))) return error("El campo idioma solo lo puede usar el administrador", 403);
+      const datosT = idioma ? { opciones: { idioma_guia: idioma } } : {};
+      const { data: t, error: e } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: b.id, alcance: "vista_previa", paso: "inicio", estado: "pendiente", datos: datosT, progreso: { pct: 1, mensaje: "Preparando tus páginas 📖", paso: "inicio" } }).select("id").single();
       if (e) throw e;
       await supabase.from("borradores").update({ estado: "generando", trabajo_id: t.id, archivos, paginas: archivos.length }).eq("id", b.id);
       disparar(t.id);
@@ -1156,7 +1163,8 @@ Deno.serve(async (req: Request) => {
         if (!archivos.length) return error("No hay páginas subidas todavía");
         const { data: enCurso } = await supabase.from("trabajos").select("id").eq("guia_id", id).in("estado", ["pendiente", "corriendo"]).limit(1);
         if (enCurso?.length) return error("Ya hay una generación en curso para esta guía");
-        const { data: t, error: e } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: bo.id, guia_id: id, alcance: "completa", paso: "inicio", estado: "pendiente", progreso: { pct: 1, mensaje: "Preparando las páginas 📖", paso: "inicio" } }).select("id").single();
+        const idiomaG = idiomaValido((await leerJson(req)).idioma);
+        const { data: t, error: e } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: bo.id, guia_id: id, alcance: "completa", paso: "inicio", estado: "pendiente", datos: idiomaG ? { opciones: { idioma_guia: idiomaG } } : {}, progreso: { pct: 1, mensaje: "Preparando las páginas 📖", paso: "inicio" } }).select("id").single();
         if (e) throw e;
         await supabase.from("borradores").update({ estado: "generando", trabajo_id: t.id, archivos, paginas: archivos.length }).eq("id", bo.id);
         disparar(t.id);
@@ -1324,7 +1332,9 @@ Deno.serve(async (req: Request) => {
         const { data: bo } = await supabase.from("borradores").select("*").eq("id", t0.borrador_id).maybeSingle();
         if (!bo) return error("No existe el borrador de ese trabajo", 404);
         const etiqueta = texto(b.etiqueta, 40) || "prueba";
-        const opciones = Object.fromEntries(Object.entries(b.opciones ?? {}).filter(([k, v]) => /^(modelo|esfuerzo)_(extraer|plan|escribir|reparar|verificar)$/.test(k) && typeof v === "string").map(([k, v]) => [k, texto(v, 10)]));
+        const opciones: Record<string, unknown> = Object.fromEntries(Object.entries(b.opciones ?? {}).filter(([k, v]) => /^(modelo|esfuerzo)_(extraer|plan|escribir|reparar|verificar)$/.test(k) && typeof v === "string").map(([k, v]) => [k, texto(v, 10)]));
+        const idiomaP = idiomaValido(b.opciones?.idioma_guia ?? b.idioma);
+        if (idiomaP) opciones.idioma_guia = idiomaP;
         const bid = crypto.randomUUID(); const clave = nuevoToken(24);
         const { error: eb } = await supabase.from("borradores").insert({ id: bid, clave, servicio: 2, colegio_id: bo.colegio_id, colegio_texto: bo.colegio_texto, grado: bo.grado, materia: bo.materia, paginas: bo.paginas, archivos: bo.archivos, estado: "generando", expira_en: enDias(7) });
         if (eb) throw eb;
