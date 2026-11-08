@@ -65,3 +65,26 @@ estilos en `sparked/css/juegos-nuevos.css` (enlazada en `sparked/guia.html`) y t
 - **Contenido:** las afirmaciones `verdadero_falso` del bloque, todas en un solo juego. No se inventan afirmaciones: si
   el bloque trae menos de 5, se juegan las que haya (el generador ya pide mínimo 5).
 - **Slide:** `k: "perro"` (ícono 🐶). Sonidos nuevos: `nam` y `ladrido`. Arte: `capaPerro`, `capaPlato`, `escenaPerro`.
+
+## 5. Reparto de plantillas sin repeticiones seguidas (`repartir` en cartucho.js)
+
+`armarSlides` arma las slides como siempre (respetando `b.orden` y `primera_actividad`) pero deja sin decidir el juego
+de preguntas de cada bloque y el tipo de verdadero o falso; al final, `repartir()` los elige con estas reglas de Daniel:
+
+1. **Aleatorio pero fijo por guía:** se usa `c.semilla`, así la misma guía sale igual en todos los dispositivos.
+2. **Nunca dos actividades del mismo tipo seguidas**, aunque haya teoría en medio o se cruce de un bloque al siguiente
+   (dos carreras, dos verdadero o falso del mismo tipo, dos Mix & match…). Si el plan pone juntas dos actividades fijas
+   del mismo tipo, se intercambia la segunda con otra actividad posterior del mismo bloque.
+3. **Plantillas de juego de preguntas:** carrera de coches, de caballos, de dragones y de naves, enemigos, montaña,
+   castillo, duelo y clavados de pingüino. Ninguna se repite en la guía si hay otras disponibles; si no queda remedio, va
+   separada por al menos 15 slides. Sin otra preferencia, se prefiere una mecánica que todavía no haya salido.
+4. **El primer juego de preguntas del bloque 1 nunca es una carrera:** el calentamiento ya es una carrera y la vista
+   previa debe mostrar dos formatos distintos.
+5. **`bloques[i].mecanica_quiz`** ("carrera", "montana", "castillo", "enemigos", "duelo" o "pinguino") se respeta salvo
+   que rompa las reglas anteriores. La lista `duelo` del generador y `"juego": "duelo"` cuentan como un pedido de duelo:
+   el primero se juega como duelo; si la guía trae otro duelo cerca, ese bloque recibe otra plantilla con las mismas
+   preguntas (siguen contando en la calificación).
+6. **Verdadero o falso:** se reparte entre el contra reloj (swipe) y el perro, el que se haya usado menos, sin repetir
+   seguido.
+
+Las plantillas ya ocupadas por el calentamiento (o por otras slides fijas) cuentan desde el principio.

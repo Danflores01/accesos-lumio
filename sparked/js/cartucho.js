@@ -262,7 +262,6 @@ export function armarSlides(c) {
   const calent = c.calentamiento.length ? { k: "carrera", t: `🔥 ${t(idioma, "calentamiento")}`, ids: c.calentamiento, tag: t(idioma, "calentamiento"), blk: 0, plantilla: elegir("carrera"), calentamiento: true } : null;
   const calentDespues = !!calent && !!c.primera_actividad && c.primera_actividad !== "calentamiento";
   if (calent && !calentDespues) S.push(calent);
-  const quizJuegos = ["carrera", "enemigos", "montana", "castillo", "pinguino"];
   c.bloques.forEach((b, bi) => {
     const nb = bi + 1;
     // teoría: 2 o 3 pistas por slide; la última slide de teoría del bloque lleva "Ojo" y "Palabras clave".
@@ -296,16 +295,18 @@ export function armarSlides(c) {
     const por = {};
     const add = (tipo, s) => (por[tipo] ??= []).push(s);
     const mc = acts.filter((a) => a.tipo === "opcion_multiple" || a.tipo === "completar").map((a) => a.id);
-    if (mc.length) { const juego = b.juego === "duelo" ? "duelo" : quizJuegos[bi % quizJuegos.length]; add("opcion_multiple", { k: juego, t: `${{ carrera: "🏎️", enemigos: "👾", puertas: "👾", montana: "🧗", castillo: "🏰", pinguino: "🐧", duelo: "⚔️" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
+    // El juego de preguntas del bloque (y el tipo de verdadero o falso) se decide al final, en repartir(), con las reglas
+    // de Daniel. "juego": "duelo" (formato de la demo) y la lista "duelo" del generador piden duelo, como mecanica_quiz.
+    if (mc.length) add("opcion_multiple", { k: "carrera", pregunta: true, pedida: b.juego === "duelo" ? "duelo" : b.mecanica_quiz, bt: b.titulo, t: `🎮 ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi });
     const vf = acts.filter((a) => a.tipo === "verdadero_falso");
-    if (vf.length) add("verdadero_falso", bi % 2 ? { k: "perro", t: `🐶 ${t(idioma, "perro")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi } : { k: "swipe", t: `⏱ ${t(idioma, "vf_express")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("swipe") });
+    if (vf.length) add("verdadero_falso", { k: "swipe", vf: true, t: `⏱ ${t(idioma, "vf_express")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi });
     acts.filter((a) => a.tipo === "super_dato").forEach((a) => add("super_dato", { k: "superdato", t: "⭐ Súper dato", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("superdato") }));
     acts.filter((a) => a.tipo === "conceptos").forEach((a) => add("conceptos", { k: "match", t: "🧩 Mix & match", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match") }));
     acts.filter((a) => a.tipo === "quien_es_quien").forEach((a) => add("quien_es_quien", { k: "match", t: "🖼️ ¿Quién es quién?", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match"), retratos: true }));
     acts.filter((a) => a.tipo === "ordenar").forEach((a) => add("ordenar", { k: "rank", t: "🔢 Rank order", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("rank") }));
     acts.filter((a) => a.tipo === "clasificar").forEach((a) => add("clasificar", { k: "sort", t: "🗂️ Super sort", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("sort") }));
     // Duelo del bloque (lista "duelo" del generador) y mini-examen: por defecto cierran el bloque, en ese orden.
-    if (b.duelo.length) add("duelo", { k: "duelo", t: `⚔️ ${b.titulo}`, ids: b.duelo.map((x) => x.id), tag: `${t(idioma, "bloque")} ${nb}`, blk: bi });
+    if (b.duelo.length) add("duelo", { k: "carrera", pregunta: true, pedida: "duelo", bt: b.titulo, t: `⚔️ ${b.titulo}`, ids: b.duelo.map((x) => x.id), tag: `${t(idioma, "bloque")} ${nb}`, blk: bi });
     if (b.mini_examen.length) add("mini_examen", { k: "quiz", t: `✅ ${t(idioma, "mini")} ${nb} · ${b.titulo}`, ids: b.mini_examen.map((x) => x.id), tag: `${t(idioma, "mini")} ${nb}`, blk: bi, plantilla: elegir("quiz") });
     // Orden variado (Daniel, 7 nov 2026): el plan trae en b.orden los tipos en el orden en que se juegan; lo que no
     // mencione va después, en el orden de siempre. "completar" se juega junto con la opción múltiple.
@@ -317,8 +318,96 @@ export function armarSlides(c) {
   if (c.reto_final.length) S.push({ k: "ruleta", t: `🏆 ${t(idioma, "reto")}`, ids: c.reto_final, tag: t(idioma, "reto"), blk: -1, plantilla: elegir("ruleta") });
   S.push({ k: "resultados", t: t(idioma, "resultados"), blk: -1 });
   retitular(S, idioma);
-  return recortar(S, c);
+  return repartir(recortar(S, c), c, idioma, elegir);
 }
+
+// ---------- Reparto de plantillas sin repeticiones seguidas (Daniel, 8 nov 2026) ----------
+// Reglas: la selección es aleatoria pero fija para cada guía (c.semilla); nunca dos actividades del mismo tipo seguidas
+// (aunque haya teoría en medio o se cruce de un bloque al siguiente); la misma plantilla de juego de preguntas no se repite
+// en la guía si hay otras disponibles y, si no queda más remedio, va separada por al menos 15 slides; el primer juego de
+// preguntas del bloque 1 nunca es una carrera (el calentamiento ya es una carrera y la vista previa debe mostrar dos
+// formatos distintos). Si el bloque trae "mecanica_quiz" (carrera, montana, castillo, enemigos, duelo o pinguino) se
+// respeta salvo que rompa estas reglas. El verdadero o falso se reparte entre el contra reloj (swipe) y el perro.
+export const JUEGOS_PREGUNTA = [
+  { k: "carrera", plantilla: "ciudad_neon" }, { k: "carrera", plantilla: "hipodromo" }, { k: "carrera", plantilla: "dragones" }, { k: "carrera", plantilla: "espacio" },
+  { k: "enemigos" }, { k: "montana" }, { k: "castillo" }, { k: "duelo" }, { k: "pinguino" },
+];
+const ICONO_JUEGO = { carrera: "🏎️", enemigos: "👾", puertas: "👾", montana: "🧗", castillo: "🏰", duelo: "⚔️", pinguino: "🐧" };
+const NO_ACTIVIDAD = new Set(["portada", "tutorial", "teoria", "resultados", "candado", "terminando"]);
+const SEPARACION = 15;
+const claveJuego = (j) => j.k + (j.k === "carrera" ? ":" + (j.plantilla ?? "") : "");
+function repartir(S, c, idioma, elegir) {
+  let s0 = (c.semilla ^ 0x9E3779B9) >>> 0 || 1;
+  const azar = () => (s0 = (s0 * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const esAct = (s) => !NO_ACTIVIDAD.has(s.k);
+  const flexible = (s) => s.pregunta || s.vf;
+  // Usos de cada plantilla de preguntas (índices de slide). Las fijas (calentamiento, duelos del generador) cuentan desde
+  // el principio para que una plantilla elegida antes no las repita.
+  const usos = {};
+  const usar = (clave, i) => (usos[clave] ??= []).push(i);
+  S.forEach((s, i) => { if (!flexible(s) && JUEGOS_PREGUNTA.some((j) => j.k === s.k)) usar(claveJuego(s), i); });
+  const anterior = (i) => { for (let j = i - 1; j >= 0; j--) if (esAct(S[j])) return S[j]; return null; };
+  const siguienteFija = (i) => { for (let j = i + 1; j < S.length; j++) if (esAct(S[j])) return flexible(S[j]) ? null : S[j]; return null; };
+  const lejos = (clave, i) => (usos[clave] ?? []).every((u) => Math.abs(u - i) >= SEPARACION);
+  const primeraB1 = S.find((s) => s.pregunta && s.blk === 0);
+  const tomar = (lista) => lista[Math.floor(azar() * lista.length)];
+  S.forEach((s, i) => {
+    if (!flexible(s)) return;
+    const prev = anterior(i)?.k, next = siguienteFija(i)?.k;
+    if (s.pregunta) {
+      let cand = JUEGOS_PREGUNTA.filter((j) => j.k !== prev && j.k !== next && !(s === primeraB1 && j.k === "carrera"));
+      if (!cand.length) cand = JUEGOS_PREGUNTA.filter((j) => j.k !== "carrera");
+      const libres = cand.filter((j) => !usos[claveJuego(j)]);
+      const separadas = cand.filter((j) => lejos(claveJuego(j), i));
+      let pool = libres.length ? libres : separadas.length ? separadas : cand;
+      if (!libres.length && !separadas.length) {
+        // Sin remedio: la que se usó más lejos de aquí.
+        const dist = (j) => Math.min(...(usos[claveJuego(j)] ?? [Infinity]).map((u) => Math.abs(u - i)));
+        const mejor = Math.max(...pool.map(dist)); pool = pool.filter((j) => dist(j) === mejor);
+      }
+      const pedida = s.pedida === "puertas" ? "enemigos" : s.pedida;
+      const deseadas = pool.filter((j) => j.k === pedida);
+      // Sin pedido, se prefiere una mecánica que todavía no salga en la guía (variedad: no tres carreras con otro animal).
+      const nuevas = pool.filter((j) => !Object.keys(usos).some((u) => u.split(":")[0] === j.k));
+      const j = tomar(deseadas.length ? deseadas : nuevas.length ? nuevas : pool);
+      s.k = j.k; s.plantilla = j.k === "carrera" ? j.plantilla : j.k === "duelo" ? undefined : elegir(j.k);
+      s.t = `${ICONO_JUEGO[j.k]} ${s.bt}`;
+      usar(claveJuego(j), i);
+    } else {
+      const usados = (k) => S.filter((x) => x.k === k && !x.vf).length;
+      let cand = ["swipe", "perro"].filter((k) => k !== prev && k !== next);
+      if (!cand.length) cand = ["swipe", "perro"].filter((k) => k !== prev);
+      if (!cand.length) cand = ["perro"];
+      const menos = Math.min(...cand.map(usados));
+      const k = tomar(cand.filter((x) => usados(x) === menos));
+      s.k = k; delete s.vf;
+      if (k === "perro") { s.t = `🐶 ${t(idioma, "perro")}`; delete s.plantilla; } else { s.t = `⏱ ${t(idioma, "vf_express")}`; s.plantilla = elegir("swipe"); }
+    }
+    delete s.pregunta; delete s.pedida; delete s.bt;
+  });
+  // Actividades fijas del mismo tipo seguidas (por ejemplo, dos Mix & match del mismo bloque): se intercambia la segunda
+  // con otra actividad posterior del mismo bloque si así ya no queda nada repetido junto.
+  const acts = () => S.map((x, i) => [x, i]).filter(([x]) => esAct(x));
+  const pares = () => { const A = acts(); let n = 0; for (let a = 0; a + 1 < A.length; a++) if (A[a][0].k === A[a + 1][0].k) n++; return n; };
+  for (let vuelta = 0; vuelta < 6; vuelta++) {
+    const antes = pares(); if (!antes) break;
+    const A = acts(); let mejoro = false;
+    for (let a = 0; a + 1 < A.length && !mejoro; a++) {
+      if (A[a][0].k !== A[a + 1][0].k) continue;
+      const [x, ix] = A[a + 1];
+      for (let b = a + 2; b < A.length; b++) {
+        const [y, iy] = A[b];
+        if (y.blk !== x.blk || x.calentamiento || y.calentamiento) continue;
+        S[ix] = y; S[iy] = x;
+        if (pares() < antes) { mejoro = true; break; }
+        S[ix] = x; S[iy] = y;
+      }
+    }
+    if (!mejoro) break;
+  }
+  return S;
+}
+
 
 // ---------- Nada se desborda (Daniel, 7 nov 2026) ----------
 // Peso aproximado de una pista (caracteres que ocupa en la slide). Sirve para repartir antes de medir; el reproductor
