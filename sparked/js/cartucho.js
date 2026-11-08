@@ -209,7 +209,11 @@ export function armarSlides(c) {
   const S = [];
   S.push({ k: "portada", t: c.plan.identidad.titulo, blk: -1 });
   S.push({ k: "tutorial", t: t(idioma, "como_usar"), blk: -1 });
-  if (c.calentamiento.length) S.push({ k: "carrera", t: `🔥 ${t(idioma, "calentamiento")}`, ids: c.calentamiento, tag: t(idioma, "calentamiento"), blk: 0, plantilla: elegir("carrera"), calentamiento: true });
+  // Calentamiento: va justo después del tutorial, salvo que el plan pida otra "primera_actividad" (un juego del bloque 1);
+  // entonces el calentamiento se juega al terminar el bloque 1, para que lo primero sea lo que decidió el plan.
+  const calent = c.calentamiento.length ? { k: "carrera", t: `🔥 ${t(idioma, "calentamiento")}`, ids: c.calentamiento, tag: t(idioma, "calentamiento"), blk: 0, plantilla: elegir("carrera"), calentamiento: true } : null;
+  const calentDespues = !!calent && !!c.primera_actividad && c.primera_actividad !== "calentamiento";
+  if (calent && !calentDespues) S.push(calent);
   const quizJuegos = ["carrera", "puertas", "montana", "castillo"];
   c.bloques.forEach((b, bi) => {
     const nb = bi + 1;
@@ -240,18 +244,27 @@ export function armarSlides(c) {
       paginas.forEach((pg) => S.push({ k: "teoria", base, b, bi, pistas: pg, serie, numero: gi + 1, tag: `${t(idioma, "pista")} · ${t(idioma, "bloque")} ${nb}`, blk: bi }));
     });
     const acts = b.actividades;
+    // Juegos del bloque, agrupados por tipo; después se colocan en el orden que pide el plan (b.orden).
+    const por = {};
+    const add = (tipo, s) => (por[tipo] ??= []).push(s);
     const mc = acts.filter((a) => a.tipo === "opcion_multiple" || a.tipo === "completar").map((a) => a.id);
-    if (mc.length) { const juego = b.juego === "duelo" ? "duelo" : quizJuegos[bi % quizJuegos.length]; S.push({ k: juego, t: `${{ carrera: "🏎️", puertas: "🚪", montana: "🧗", castillo: "🏰", duelo: "⚔️" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
+    if (mc.length) { const juego = b.juego === "duelo" ? "duelo" : quizJuegos[bi % quizJuegos.length]; add("opcion_multiple", { k: juego, t: `${{ carrera: "🏎️", puertas: "🚪", montana: "🧗", castillo: "🏰", duelo: "⚔️" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
     const vf = acts.filter((a) => a.tipo === "verdadero_falso");
-    if (vf.length) S.push({ k: "swipe", t: `⏱ ${t(idioma, "vf_express")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("swipe") });
-    acts.filter((a) => a.tipo === "super_dato").forEach((a) => S.push({ k: "superdato", t: "⭐ Súper dato", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("superdato") }));
-    acts.filter((a) => a.tipo === "conceptos").forEach((a) => S.push({ k: "match", t: "🧩 Mix & match", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match") }));
-    acts.filter((a) => a.tipo === "quien_es_quien").forEach((a) => S.push({ k: "match", t: "🖼️ ¿Quién es quién?", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match"), retratos: true }));
-    acts.filter((a) => a.tipo === "ordenar").forEach((a) => S.push({ k: "rank", t: "🔢 Rank order", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("rank") }));
-    acts.filter((a) => a.tipo === "clasificar").forEach((a) => S.push({ k: "sort", t: "🗂️ Super sort", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("sort") }));
-    // Duelo del bloque (lista "duelo" del generador): cierra el bloque antes del mini-examen, si lo hay.
-    if (b.duelo.length) S.push({ k: "duelo", t: `⚔️ ${b.titulo}`, ids: b.duelo.map((x) => x.id), tag: `${t(idioma, "bloque")} ${nb}`, blk: bi });
-    if (b.mini_examen.length) S.push({ k: "quiz", t: `✅ ${t(idioma, "mini")} ${nb} · ${b.titulo}`, ids: b.mini_examen.map((x) => x.id), tag: `${t(idioma, "mini")} ${nb}`, blk: bi, plantilla: elegir("quiz") });
+    if (vf.length) add("verdadero_falso", { k: "swipe", t: `⏱ ${t(idioma, "vf_express")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("swipe") });
+    acts.filter((a) => a.tipo === "super_dato").forEach((a) => add("super_dato", { k: "superdato", t: "⭐ Súper dato", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("superdato") }));
+    acts.filter((a) => a.tipo === "conceptos").forEach((a) => add("conceptos", { k: "match", t: "🧩 Mix & match", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match") }));
+    acts.filter((a) => a.tipo === "quien_es_quien").forEach((a) => add("quien_es_quien", { k: "match", t: "🖼️ ¿Quién es quién?", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match"), retratos: true }));
+    acts.filter((a) => a.tipo === "ordenar").forEach((a) => add("ordenar", { k: "rank", t: "🔢 Rank order", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("rank") }));
+    acts.filter((a) => a.tipo === "clasificar").forEach((a) => add("clasificar", { k: "sort", t: "🗂️ Super sort", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("sort") }));
+    // Duelo del bloque (lista "duelo" del generador) y mini-examen: por defecto cierran el bloque, en ese orden.
+    if (b.duelo.length) add("duelo", { k: "duelo", t: `⚔️ ${b.titulo}`, ids: b.duelo.map((x) => x.id), tag: `${t(idioma, "bloque")} ${nb}`, blk: bi });
+    if (b.mini_examen.length) add("mini_examen", { k: "quiz", t: `✅ ${t(idioma, "mini")} ${nb} · ${b.titulo}`, ids: b.mini_examen.map((x) => x.id), tag: `${t(idioma, "mini")} ${nb}`, blk: bi, plantilla: elegir("quiz") });
+    // Orden variado (Daniel, 7 nov 2026): el plan trae en b.orden los tipos en el orden en que se juegan; lo que no
+    // mencione va después, en el orden de siempre. "completar" se juega junto con la opción múltiple.
+    const ORDEN_BASE = ["opcion_multiple", "verdadero_falso", "super_dato", "conceptos", "quien_es_quien", "ordenar", "clasificar", "duelo", "mini_examen"];
+    const pedido = Array.isArray(b.orden) ? b.orden.map((x) => (x === "completar" ? "opcion_multiple" : String(x))) : [];
+    [...new Set([...pedido, ...ORDEN_BASE])].forEach((tipo) => (por[tipo] ?? []).forEach((s) => S.push(s)));
+    if (calentDespues && bi === 0) S.push(calent);
   });
   if (c.reto_final.length) S.push({ k: "ruleta", t: `🏆 ${t(idioma, "reto")}`, ids: c.reto_final, tag: t(idioma, "reto"), blk: -1, plantilla: elegir("ruleta") });
   S.push({ k: "resultados", t: t(idioma, "resultados"), blk: -1 });
