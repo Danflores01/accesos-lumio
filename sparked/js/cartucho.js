@@ -156,7 +156,12 @@ export function normalizar(entrada) {
   c.calentamiento ??= []; c.reto_final ??= [];
   // índice por id y datos derivados
   c.porId = {};
-  c.bloques.forEach((b) => [...b.actividades, ...b.mini_examen].forEach((a) => { if (a?.id) c.porId[a.id] = a; }));
+  // El duelo (Sparky contra el dragón) puede venir como lista propia del bloque, "duelo": [...], con preguntas en el
+  // formato de la opción múltiple (así lo escribe el generador), o como "juego": "duelo" sobre las actividades del bloque.
+  c.bloques.forEach((b) => {
+    b.duelo = Array.isArray(b.duelo) ? b.duelo.filter(Boolean).map((a) => ({ tipo: "opcion_multiple", ...a })) : [];
+    [...b.actividades, ...b.mini_examen, ...b.duelo].forEach((a) => { if (a?.id) c.porId[a.id] = a; });
+  });
   c.bloqueDePunto = {};
   c.bloques.forEach((b) => b.actividades.forEach((a) => { if (a.punto_dificil) c.bloqueDePunto[a.punto_dificil] = b.id; }));
   // calentamiento y reto final: si no vienen, se arman con lo que hay
@@ -236,7 +241,7 @@ export function armarSlides(c) {
     });
     const acts = b.actividades;
     const mc = acts.filter((a) => a.tipo === "opcion_multiple" || a.tipo === "completar").map((a) => a.id);
-    if (mc.length) { const juego = quizJuegos[bi % quizJuegos.length]; S.push({ k: juego, t: `${{ carrera: "🏎️", puertas: "🚪", montana: "🧗", castillo: "🏰" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
+    if (mc.length) { const juego = b.juego === "duelo" ? "duelo" : quizJuegos[bi % quizJuegos.length]; S.push({ k: juego, t: `${{ carrera: "🏎️", puertas: "🚪", montana: "🧗", castillo: "🏰", duelo: "⚔️" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
     const vf = acts.filter((a) => a.tipo === "verdadero_falso");
     if (vf.length) S.push({ k: "swipe", t: `⏱ ${t(idioma, "vf_express")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("swipe") });
     acts.filter((a) => a.tipo === "super_dato").forEach((a) => S.push({ k: "superdato", t: "⭐ Súper dato", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("superdato") }));
@@ -244,6 +249,8 @@ export function armarSlides(c) {
     acts.filter((a) => a.tipo === "quien_es_quien").forEach((a) => S.push({ k: "match", t: "🖼️ ¿Quién es quién?", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match"), retratos: true }));
     acts.filter((a) => a.tipo === "ordenar").forEach((a) => S.push({ k: "rank", t: "🔢 Rank order", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("rank") }));
     acts.filter((a) => a.tipo === "clasificar").forEach((a) => S.push({ k: "sort", t: "🗂️ Super sort", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("sort") }));
+    // Duelo del bloque (lista "duelo" del generador): cierra el bloque antes del mini-examen, si lo hay.
+    if (b.duelo.length) S.push({ k: "duelo", t: `⚔️ ${b.titulo}`, ids: b.duelo.map((x) => x.id), tag: `${t(idioma, "bloque")} ${nb}`, blk: bi });
     if (b.mini_examen.length) S.push({ k: "quiz", t: `✅ ${t(idioma, "mini")} ${nb} · ${b.titulo}`, ids: b.mini_examen.map((x) => x.id), tag: `${t(idioma, "mini")} ${nb}`, blk: bi, plantilla: elegir("quiz") });
   });
   if (c.reto_final.length) S.push({ k: "ruleta", t: `🏆 ${t(idioma, "reto")}`, ids: c.reto_final, tag: t(idioma, "reto"), blk: -1, plantilla: elegir("ruleta") });

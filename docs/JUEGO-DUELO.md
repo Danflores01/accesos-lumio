@@ -50,3 +50,10 @@ Hoy el duelo entra porque `carrera`, `puertas`, `montana` y `castillo` lo detect
 Para que sea un juego más del estante: en `cartucho.js` (armarSlides) emitir `k: "duelo"` cuando `b.juego === "duelo"`
 (con título `⚔️ …`) y, si se quiere, sumarlo a la rotación `quizJuegos`; en `reproductor.js` añadir `duelo: J.duelo` al
 mapa `R`. Los textos pueden pasar a `TEXTOS` del cartucho (`instr_duelo`).
+
+## Integración nativa (hecha el 7 nov 2026, tarde)
+
+Ya no hace falta el atajo: `cartucho.js` crea una slide `k: "duelo"` (título `⚔️ …`) cuando el bloque trae la lista
+`"duelo": [...]` que escribe el generador (preguntas con el formato de la opción múltiple; se indexan en `porId` y
+cuentan en la calificación y en el reporte) o cuando el bloque trae `"juego": "duelo"` (formato de la guía demo). En
+`reproductor.js` el mapa `R` incluye `duelo: J.duelo`. La rejilla de slides muestra ⚔️ desde el principio.

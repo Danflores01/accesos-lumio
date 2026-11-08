@@ -141,7 +141,7 @@ const idsDeSlide = (s) => s.ids ?? (s.items ? s.items.map((a) => a?.id) : s.a?.i
 export function resumenAvance(ctx) {
   const c = ctx.c, S = ctx.S, R = ctx.resultados ?? {};
   const bloqueDe = {};
-  c.bloques.forEach((b, bi) => [...b.actividades, ...b.mini_examen].forEach((a) => { if (a?.id) bloqueDe[a.id] = bi; }));
+  c.bloques.forEach((b, bi) => [...b.actividades, ...b.mini_examen, ...(b.duelo ?? [])].forEach((a) => { if (a?.id) bloqueDe[a.id] = bi; }));
   const primeraSlide = {}, todas = [];
   S.forEach((s, i) => { if (NO_JUEGO.has(s.k)) return; idsDeSlide(s).forEach((id) => { if (!id || !c.porId[id] || id in primeraSlide) return; primeraSlide[id] = i; todas.push(id); }); });
   const estado = (id) => !(id in R) ? "sin" : R[id] ? "bien" : "mal";
