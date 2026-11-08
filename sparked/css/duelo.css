@@ -1,0 +1,78 @@
+/* Juego "Duelo" (7 nov 2026): Sparky con casco y espada contra un dragón, al estilo de los juegos de pelea.
+   La lógica está en js/juegos.js (función duelo) y el arte en js/arte.js (escenaDuelo, capaDragonDuelo, "+espada"). */
+.sl.pl-duelo { background: linear-gradient(180deg, var(--fondo), #F6E7C8); }
+.duelo-arena { background: #7FA7C4; }
+.duelo-arena svg.escena { transition: none; }
+
+/* Barras de vida tipo juego de pelea */
+.duelo-hud { position: absolute; left: 14px; right: 14px; top: 12px; display: flex; align-items: flex-start; gap: 10px; z-index: 3; pointer-events: none; }
+.duelo-lado { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.duelo-lado.dr { align-items: flex-end; }
+.duelo-nombre { font: 800 15px var(--titulos); letter-spacing: 1px; color: #fff; text-shadow: 0 2px 0 rgba(42, 35, 64, .7); }
+.duelo-vida { position: relative; width: 100%; height: 22px; border-radius: 8px; background: rgba(27, 19, 64, .78); border: 3px solid #FFE7A3; box-shadow: 0 4px 0 rgba(42, 35, 64, .35), inset 0 2px 6px rgba(0, 0, 0, .5); overflow: hidden; transform: skewX(-12deg); }
+.duelo-lado.dr .duelo-vida { transform: skewX(12deg); }
+.duelo-vida i { position: absolute; top: 0; bottom: 0; left: 0; width: 100%; border-radius: 4px; }
+.duelo-lado.dr .duelo-vida i { left: auto; right: 0; }
+.duelo-vida i.rastro { background: #FFFFFF; opacity: .75; transition: width .7s ease-in .45s; }
+.duelo-vida i.vida { background: linear-gradient(180deg, #FFF3A6 0%, #FFD23F 45%, #F29A12 100%); transition: width .25s ease-out; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .15); }
+.duelo-lado.peligro i.vida { background: linear-gradient(180deg, #FFC9A6 0%, #FF7A3D 50%, #D9480F 100%); animation: duelo-latido .7s ease-in-out infinite alternate; }
+.duelo-ronda { flex: none; margin-top: 16px; background: #2A2340; color: #FFE7A3; border: 3px solid #FFE7A3; border-radius: 12px; padding: 4px 12px; font: 800 15px var(--titulos); letter-spacing: 1px; }
+
+/* Carteles: ROUND, ¡A pelear!, K.O. */
+.duelo-cartel { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.4); opacity: 0; z-index: 4; pointer-events: none; font: 800 64px var(--titulos); color: #FFF; letter-spacing: 2px; white-space: nowrap; text-shadow: 0 5px 0 #C9461A, 0 10px 24px rgba(0, 0, 0, .45); -webkit-text-stroke: 2px #2A2340; }
+.duelo-cartel.on { animation: duelo-cartel 1s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+.duelo-cartel.pelea { color: #FFE45C; }
+.duelo-cartel.ko { font-size: 96px; color: #FFE45C; }
+.duelo-cartel.ko.on { animation: duelo-cartel-ko 1.5s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+.duelo-combo { position: absolute; right: 22%; top: 24%; z-index: 4; pointer-events: none; opacity: 0; font: 800 30px var(--titulos); color: #FFE45C; -webkit-text-stroke: 1.5px #2A2340; text-shadow: 0 4px 0 #C9461A; }
+.duelo-combo.on { animation: duelo-combo .9s ease-out forwards; }
+
+/* Peleadores */
+.duelo-arena .sk-giro, .duelo-arena .sk-centro, .duelo-arena .sp-flota, .duelo-arena .dr-cuerpo, .duelo-arena .dr-ala, .duelo-arena .dr-ala-lejos, .duelo-arena .dr-cola, .duelo-arena .dr-cabeza, .duelo-arena .dr-fuego, .duelo-arena .dr-golpe, .duelo-arena .sp-golpe { transform-box: fill-box; }
+.duelo-arena .sk-giro { transform-origin: center; }
+.duelo-arena .sp-flota { transform-origin: 50% 100%; animation: duelo-flota 1.6s ease-in-out infinite; }
+.duelo-arena .dr-cuerpo { transform-origin: 50% 100%; animation: duelo-respira 3.2s ease-in-out infinite; }
+.duelo-arena .dr-ala { transform-origin: 0% 100%; animation: duelo-aleteo 2.6s ease-in-out infinite; }
+.duelo-arena .dr-ala-lejos { transform-origin: 0% 100%; animation: duelo-aleteo 2.6s ease-in-out infinite .15s; }
+.duelo-arena .dr-cola { transform-origin: 0% 30%; animation: duelo-cola 3s ease-in-out infinite; }
+.duelo-arena .dr-cabeza { transform-origin: 90% 80%; }
+.duelo-arena .dr-fuego { opacity: 0; transform-origin: 100% 50%; }
+.duelo-arena .tajo .sk-espada { animation: duelo-tajo .55s ease-in-out; }
+.duelo-arena .sopla .dr-fuego { animation: duelo-fuego .95s ease-out; }
+.duelo-arena .sopla .dr-cabeza { animation: duelo-rugido .95s ease-out; }
+.duelo-arena .golpeado { animation: duelo-golpeado .5s steps(2, jump-none) 1; }
+.duelo-arena svg.temblor { animation: duelo-temblor .35s linear; }
+.duelo-arena .duelo-tajo { stroke-dasharray: 90; stroke-dashoffset: 90; animation: duelo-tajo-trazo .45s ease-out forwards; }
+.duelo-arena .duelo-chispa { transform-box: fill-box; transform-origin: center; animation: duelo-chispa .45s ease-out forwards; }
+.duelo-arena #dr.vencido .dr-golpe { transform-origin: 60% 100%; animation: duelo-cae-dragon .9s ease-in forwards; }
+.duelo-arena #sp.vencido .sp-golpe { transform-origin: 50% 100%; animation: duelo-cae-sparky .7s ease-in forwards; }
+/* Al terminar el round todo se queda quieto */
+.duelo-arena.parado *, .duelo-arena.parado { animation-play-state: paused !important; }
+.duelo-arena.parado .duelo-hud .duelo-lado.peligro i.vida { animation: none; }
+
+/* Pantalla de revancha */
+.duelo-animo { max-width: 560px; margin: 4px auto 0; font: 700 18px/1.4 var(--texto); color: #3b3f52; }
+.duelo-repasar { margin-top: 4px; }
+
+@keyframes duelo-flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.2px); } }
+@keyframes duelo-respira { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.012, 1.03); } }
+@keyframes duelo-aleteo { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-9deg); } }
+@keyframes duelo-cola { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(6deg); } }
+@keyframes duelo-tajo { 0% { transform: rotate(0deg); } 35% { transform: rotate(-95deg); } 62% { transform: rotate(38deg); } 100% { transform: rotate(0deg); } }
+@keyframes duelo-fuego { 0% { opacity: 0; transform: scaleX(.15); } 25% { opacity: 1; transform: scaleX(1); } 75% { opacity: 1; transform: scaleX(1.04); } 100% { opacity: 0; transform: scaleX(1); } }
+@keyframes duelo-rugido { 0% { transform: rotate(0deg); } 20% { transform: rotate(8deg); } 40%, 80% { transform: rotate(-6deg); } 100% { transform: rotate(0deg); } }
+@keyframes duelo-golpeado { 0%, 100% { opacity: 1; } 25%, 75% { opacity: .35; } 50% { opacity: 1; } }
+@keyframes duelo-temblor { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(-6px, 3px); } 40% { transform: translate(5px, -3px); } 60% { transform: translate(-4px, 2px); } 80% { transform: translate(3px, -1px); } }
+@keyframes duelo-tajo-trazo { 0% { stroke-dashoffset: 90; opacity: 1; } 70% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes duelo-chispa { 0% { transform: scale(.2); opacity: 1; } 100% { transform: scale(2.4); opacity: 0; } }
+@keyframes duelo-cae-dragon { 0% { transform: none; opacity: 1; } 100% { transform: translateY(6px) rotate(14deg); opacity: .25; } }
+@keyframes duelo-cae-sparky { 0% { transform: none; } 100% { transform: rotate(-16deg) translateY(1px); } }
+@keyframes duelo-cartel { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); } 25% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); } 70% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15); } }
+@keyframes duelo-cartel-ko { 0% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); } 30% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 85% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
+@keyframes duelo-combo { 0% { opacity: 0; transform: translateY(10px) scale(.6); } 25% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-24px) scale(1); } }
+@keyframes duelo-latido { from { filter: brightness(1); } to { filter: brightness(1.35); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .duelo-arena .sp-flota, .duelo-arena .dr-cuerpo, .duelo-arena .dr-ala, .duelo-arena .dr-ala-lejos, .duelo-arena .dr-cola, .duelo-lado.peligro i.vida { animation: none; }
+  .duelo-arena svg.temblor { animation: none; }
+}

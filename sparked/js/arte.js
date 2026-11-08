@@ -60,6 +60,8 @@ function caraLed(pose) {
   if (pose === "riendo") return `${bocaLed("M5.8 5.1 l1.3 .75 l-1.3 .75", S.led, .55)}${bocaLed("M10.2 5.1 l-1.3 .75 l1.3 .75", S.led, .55)}<path d="M6.6 7 h2.8 a1.4 1.3 0 0 1 -2.8 0 z" fill="${S.led}"/>`;
   // Enamorado: ojos de corazón (cuando lo tocan con cariño).
   if (pose === "enamorado") return `${corazonLed(6.65, 5.9, .95, S.rosa)}${corazonLed(9.35, 5.9, .95, S.rosa)}${bocaLed("M7.1 7.65 q.9 .8 1.8 0", S.led)}`;
+  // Decidido (duelo): ojos firmes con cejas inclinadas hacia dentro y media sonrisa valiente.
+  if (pose === "decidido") return `${ojoLed(6, 5.15, 1.5, 1.6, S.led)}${ojoLed(8.6, 5.15, 1.5, 1.6, S.led)}${bocaLed("M5.7 4.35 l1.7 .55", S.led, .42)}${bocaLed("M10.3 4.35 l-1.7 .55", S.led, .42)}${bocaLed("M7.1 7.55 q1 .5 1.9 -.2", S.led)}`;
   return `${ojoLed(5.9, 4.9, 1.5, 2, S.led)}${ojoLed(8.6, 4.9, 1.5, 2, S.led)}${bocaLed("M7.1 7.5 q.9 .85 1.8 0", S.led)}`;
 }
 // Brazo articulado: hombro-brazo con franja naranja, articulación gris con rayita, antebrazo (con reloj si se pide) y
@@ -162,8 +164,29 @@ const manoConLapiz = () => `${guante(8.93, 14.17)}<g transform="translate(8.93 1
 // Corazoncitos que suben cuando está enamorado.
 const corazoncitos = () => [[13.3, 2.6, .62, 1], [2.75, 3.3, .5, 2]].map(([x, y, s, i]) => `<g class="sk-centro sk-corazoncito sk-corazoncito-${i}"><path d="${pathCorazon(x, y, s)}" fill="${S.rosa}" ${o(.25)}/></g>`).join("");
 
+// Accesorios del duelo (7 nov 2026): "+espada" (espada de caballero en la mano derecha) y "+yelmo" (penacho naranja y
+// cresta de acero sobre el casco). Acabado 3.0: hoja de acero con degradado, guarda dorada y brillo en la punta.
+const DEFS_CABALLERO = `<defs><linearGradient id="sk-acero" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#D5DBE6"/><stop offset="1" stop-color="#7D8698"/></linearGradient>
+  <linearGradient id="sk-oro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE7A3"/><stop offset=".5" stop-color="#FFC247"/><stop offset="1" stop-color="#C98A12"/></linearGradient>
+  <linearGradient id="sk-penacho" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB27A"/><stop offset=".55" stop-color="#FF7A3D"/><stop offset="1" stop-color="#C9461A"/></linearGradient></defs>`;
+// La espada se dibuja a lo largo de +x desde el guante (12.75, 16) del brazo colgando; "rl" la gira para que, ya con el
+// brazo girado, la hoja apunte hacia donde se quiere (arriba = -90° en el mundo).
+const espada = (rl) => `<g transform="translate(12.75 16) rotate(${rl})">
+  <circle cx="-1.35" cy="0" r=".45" fill="url(#sk-oro)"/>
+  <rect x="-1.1" y="-.34" width="2.2" height=".68" rx=".3" fill="#6B3F22"/><path d="M-.7 -.34 l.3 .68 M-.1 -.34 l.3 .68 M.5 -.34 l.3 .68" stroke="#3E2414" stroke-width=".14"/>
+  <path d="M1.8 -.66 L9.6 -.5 L11 0 L9.6 .5 L1.8 .66 Z" fill="url(#sk-acero)"/>
+  <path d="M2.3 0 L9.2 0" stroke="#8E97A8" stroke-width=".2" stroke-linecap="round"/>
+  <path d="M2.2 -.5 L9.4 -.38" stroke="#fff" stroke-width=".16" stroke-linecap="round" opacity=".85"/>
+  <ellipse cx="9.6" cy="-.22" rx=".9" ry=".14" fill="#fff" opacity=".9"/>
+  <path d="M1.05 -1.75 Q1.5 -1.9 1.85 -1.6 L1.85 1.6 Q1.5 1.9 1.05 1.75 Z" fill="url(#sk-oro)"/><circle cx="1.45" cy="0" r=".32" fill="#C93F6E"/>
+</g>`;
+const penacho = () => `<path d="M7.9 1.7 C6 -.1 3.1 0 1.4 2.3 C3.1 1.7 4.5 1.9 5.5 2.6 C4.1 2.5 2.9 3.1 2.3 4.4 C4.3 3.1 6.3 2.9 7.9 2.8 Z" fill="url(#sk-penacho)"/><path d="M7.4 2 C5.8 1 4 1.1 2.6 2" fill="none" stroke="#FFD9B8" stroke-width=".22" stroke-linecap="round" opacity=".8"/>`;
+const cresta = () => `<path d="M4.6 2.9 Q8 .25 11.4 2.9" fill="none" stroke="url(#sk-acero)" stroke-width=".75" stroke-linecap="round"/><path d="M5.6 2.35 Q8 .9 10.4 2.35" fill="none" stroke="#fff" stroke-width=".18" stroke-linecap="round" opacity=".8"/>`;
+// Brazo derecho con la espada: en guardia (-60°, hoja vertical), en festejo arriba (-165°) y triste hacia abajo (-10°).
+const brazoEspada = (pose) => { const rot = pose === "festejo" ? -165 : pose === "triste" ? -10 : -60; const rl = pose === "triste" ? 20 : -90 - rot; return giro(12.75, 11.1, "sk-espada", `<g transform="rotate(${rot} 12.75 11.1)">${espada(rl)}${brazo(11.6, 10.9, 0, false)}</g>`, 16); };
+
 function cuerpoSparky(frame) {
-  const { pose, casco, taller, jetpack: conJetpack, vuelo } = typeof frame === "string" ? leerPose(frame) : frame;
+  const { pose, casco, taller, jetpack: conJetpack, vuelo, espada: conEspada, yelmo } = typeof frame === "string" ? leerPose(frame) : frame;
   let brazosAtras = `${brazo(2.1, 10.9, 0, true)}${brazo(11.6, 10.9, 0, false)}`;
   let piernas = `${pierna(4.6)}${pierna(8.6)}`, frente = "", encima = "", extras = "";
   if (pose === "festejo") {
@@ -199,10 +222,15 @@ function cuerpoSparky(frame) {
   } else if (pose === "enamorado") {
     extras = corazoncitos();
   }
+  // Con espada, el brazo derecho la sostiene (el izquierdo se queda como en la pose, o colgando).
+  if (conEspada && !["escribiendo", "construyendo", "arreglando", "pensando"].includes(pose)) {
+    const izq = pose === "festejo" ? giro(3.25, 11.1, "sk-fiesta-a", brazo(2.1, 10.9, 160, false)) : pose === "volando" ? giro(3.25, 11.1, "sk-ala-a", brazo(2.1, 10.9, 155, true)) : brazo(2.1, 10.9, 0, true);
+    brazosAtras = izq + brazoEspada(pose);
+  }
   const inclinacion = pose === "triste" ? `transform="rotate(8 8 7)"` : "";
   const antena = casco ? "" : `<line x1="8" y1="1.9" x2="8" y2="1.3" ${o(.5)}/>${chispa(8, .95, .85, .3, S.amarillo)}`;
   // En el aire no se dibuja la sombra del piso (la pone sparkyVivo abajo, en su lugar).
-  return `${RAYAS}
+  return `${RAYAS}${conEspada || yelmo ? DEFS_CABALLERO : ""}
     ${vuelo ? "" : `<ellipse class="sk-sombra" cx="8" cy="19.35" rx="5.4" ry=".62" fill="${C.sombra}"/>`}
     ${taller ? tallerBloques() : ""}
     <g class="sk-cuerpo"><rect x="-5" y="-2" width="26" height="21.3" fill="none"/>
@@ -231,6 +259,7 @@ function cuerpoSparky(frame) {
       <rect x="2.7" y="5" width="1.4" height="2.7" rx=".6" fill="${S.gris}" ${o(.45)}/><rect x="11.9" y="5" width="1.4" height="2.7" rx=".6" fill="${S.gris}" ${o(.45)}/>
       <circle cx="3.4" cy="5.85" r=".3" fill="${S.naranja}"/><circle cx="12.6" cy="5.85" r=".3" fill="${S.naranja}"/>
       <line x1="3" y1="6.65" x2="3.8" y2="6.65" stroke="${S.grisOscuro}" stroke-width=".2"/><line x1="3" y1="7.05" x2="3.8" y2="7.05" stroke="${S.grisOscuro}" stroke-width=".2"/><line x1="12.2" y1="6.65" x2="13" y2="6.65" stroke="${S.grisOscuro}" stroke-width=".2"/><line x1="12.2" y1="7.05" x2="13" y2="7.05" stroke="${S.grisOscuro}" stroke-width=".2"/>
+      ${yelmo ? penacho() : ""}
       <circle cx="8" cy="6.1" r="4.7" fill="${S.sombra}" ${o(.6)}/><circle cx="8" cy="6.1" r="4.7" fill="url(#sk-rayas)"/>
       <circle cx="7.7" cy="5.7" r="4.1" fill="${S.luz}"/>
       <rect x="4.7" y="3.4" width="6.6" height="5.3" rx="2.4" fill="${S.visor}" ${o(.45)}/><rect x="4.7" y="3.4" width="6.6" height="5.3" rx="2.4" fill="url(#sk-scan)"/>
@@ -238,45 +267,84 @@ function cuerpoSparky(frame) {
       <g class="sk-cara">${caraLed(pose)}</g>
       <rect x="4.4" y="2.75" width="7.2" height=".85" rx=".4" fill="${S.gris}" ${o(.35)}/>
       <ellipse cx="5.7" cy="4.35" rx=".65" ry=".34" fill="#fff" opacity=".5" transform="rotate(-25 5.7 4.35)"/>
+      ${yelmo && !casco ? cresta() : ""}
       ${casco ? cascoObra() : ""}
     </g>
     ${encima}</g>
     ${extras}${taller ? chispasGolpe() : ""}`;
 }
-const POSES = ["quieto", "saludo", "festejo", "triste", "pensando", "construyendo", "caminando", "escribiendo", "volando", "arreglando", "sorprendido", "riendo", "enamorado"];
+const POSES = ["decidido", "quieto", "saludo", "festejo", "triste", "pensando", "construyendo", "caminando", "escribiendo", "volando", "arreglando", "sorprendido", "riendo", "enamorado"];
 const EN_EL_AIRE = ["volando", "arreglando"];
 // "festejo+casco+taller" → pose festejo con casco de obra y los bloques del taller. "construyendo" ya trae los dos y
 // las poses en el aire ya traen el jetpack encendido.
 function leerPose(frame) {
   const [p, ...acc] = String(frame ?? "quieto").split("+");
   const pose = POSES.includes(p) ? p : "quieto", vuelo = EN_EL_AIRE.includes(pose);
-  return { pose, vuelo, casco: pose === "construyendo" || acc.includes("casco"), taller: pose === "construyendo" || acc.includes("taller"), jetpack: vuelo || acc.includes("jetpack") };
+  return { pose, vuelo, espada: acc.includes("espada"), yelmo: acc.includes("yelmo"), casco: pose === "construyendo" || acc.includes("casco"), taller: pose === "construyendo" || acc.includes("taller"), jetpack: vuelo || acc.includes("jetpack") };
 }
 // Marco del dibujo: 16 × 20 de siempre; con casco crece hacia arriba (la antena) y con taller hacia la derecha (bloques).
-const marcoSparky = ({ casco, taller }) => [0, casco ? -1.4 : 0, taller ? 21.8 : 16, casco ? 21.4 : 20];
+const marcoSparky = ({ casco, taller, espada, yelmo }) => { const y0 = espada || yelmo ? -2.6 : casco ? -1.4 : 0; const w = taller ? 21.8 : espada ? 19.6 : 16; return [0, y0, w, 20 - y0]; };
 export const sparky = (frame = "quieto", escala = 4, extra = "") => {
   const f = leerPose(frame), [x, y, w, h] = marcoSparky(f);
   return `<svg class="vec sparky pose-${f.pose}" viewBox="${x} ${y} ${w} ${h}" width="${r2(w * escala)}" height="${r2(h * escala)}" xmlns="http://www.w3.org/2000/svg" ${extra}>${cuerpoSparky(f)}</svg>`;
 };
 export const capaSparky = (frame, dx, dy) => grupo(dx, dy, cuerpoSparky(leerPose(frame)));
 
-// ---------- Coches (24 × 10): perfil con techo en sombra y cara superior clara ----------
+// ---------- Coches (24 × 10): monoplazas de Fórmula 1 vistos de lado (dirección de arte 3.0, 7 nov 2026) ----------
+// Trompa larga, alerón delantero y trasero, ruedas descubiertas, halo y casco del piloto. Pinturas de escudería
+// realistas y genéricas (sin marcas); el color del bloque solo va de acento (franja, rines y casco).
+// Los nombres de color se conservan (rojo, azul, amarillo, verde, morado) para no romper a quien los usa.
 const COLORES_COCHE = { rojo: [C.rojo, C.rojoOscuro], azul: [C.azul, C.azulOscuro], amarillo: [C.amarillo, C.amarilloOscuro], verde: [C.verde, C.verdeOscuro], morado: [C.morado, C.moradoOscuro] };
 export const COLORES_DE_COCHE = Object.keys(COLORES_COCHE);
+// Pintura de cada coche: claro, base, oscuro (volumen), segundo color de la escudería y acento (color de bloque).
+const LIBREAS = {
+  rojo: { claro: "#E2453E", base: "#B0161E", oscuro: "#5E080D", segundo: "#F4F4F2", acento: C.rojo },
+  azul: { claro: "#3A5799", base: "#15244F", oscuro: "#080F24", segundo: "#D7DCE5", acento: C.azul },
+  amarillo: { claro: "#4A4C55", base: "#1B1C20", oscuro: "#08090B", segundo: "#D9A520", acento: C.amarillo },
+  verde: { claro: "#3B8A5C", base: "#0F4A2C", oscuro: "#05241A", segundo: "#ECE8DA", acento: C.verde },
+  morado: { claro: "#F4F6F9", base: "#B9BFC9", oscuro: "#5F6672", segundo: "#1B1C20", acento: C.morado },
+};
+// Rueda descubierta: llanta de hule con volumen, costado con brillo, rin oscuro con aro de acento y tuerca.
+const ruedaF1 = (cx, cy, r, acento, id) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${id}l)"/>
+  <circle cx="${cx}" cy="${cy}" r="${r2(r * .86)}" fill="none" stroke="#5B6069" stroke-width=".16" opacity=".8"/>
+  <circle cx="${cx}" cy="${cy}" r="${r2(r * .55)}" fill="url(#${id}r)"/>
+  <circle cx="${cx}" cy="${cy}" r="${r2(r * .5)}" fill="none" stroke="${acento}" stroke-width=".22"/>
+  <circle cx="${cx}" cy="${cy}" r="${r2(r * .16)}" fill="#C9CED8"/>
+  <path d="M${r2(cx - r * .7)} ${r2(cy - r * .45)} A${r} ${r} 0 0 1 ${r2(cx + r * .2)} ${r2(cy - r * .82)}" fill="none" stroke="#fff" stroke-width=".28" stroke-linecap="round" opacity=".28"/>`;
 function cuerpoCoche(color) {
-  const [c1, c2] = COLORES_COCHE[color] ?? COLORES_COCHE.rojo;
-  return `
-    <ellipse cx="12" cy="9.4" rx="10.5" ry=".7" fill="${C.sombra}"/>
-    <path d="M6.2 5.6 L8 2.5 Q8.5 1.8 9.3 1.8 L15.4 1.8 Q16.2 1.8 16.7 2.5 L18.8 5.6 Z" fill="${c2}" ${o(.5)}/>
-    <path d="M8.7 5.1 L9.9 2.8 L12 2.8 L12 5.1 Z" fill="#BFE3FF" ${o(.35)}/>
-    <path d="M12.8 2.8 L15 2.8 L16.5 5.1 L12.8 5.1 Z" fill="#BFE3FF" ${o(.35)}/>
-    <rect x=".8" y="5.2" width="22.4" height="3.5" rx="1.6" fill="${c1}" ${o(.5)}/>
-    <rect x="1.7" y="5.7" width="20.6" height=".9" rx=".45" fill="${C.blanco}" opacity=".4"/>
-    <rect x="1.4" y="7.6" width="21.2" height=".8" rx=".4" fill="${c2}" opacity=".55"/>
-    <rect x="21.9" y="6.1" width="1.4" height="1.4" rx=".4" fill="${C.amarillo}" ${o(.3)}/>
-    <rect x=".7" y="6.1" width="1.1" height="1.4" rx=".4" fill="${C.rojoOscuro}" ${o(.3)}/>
-    <circle cx="6" cy="8.5" r="1.9" fill="${C.linea}"/><circle cx="6" cy="8.5" r="1.05" fill="${C.gris}"/><circle cx="6" cy="8.5" r=".4" fill="${C.linea}"/>
-    <circle cx="18" cy="8.5" r="1.9" fill="${C.linea}"/><circle cx="18" cy="8.5" r="1.05" fill="${C.gris}"/><circle cx="18" cy="8.5" r=".4" fill="${C.linea}"/>`;
+  const L = LIBREAS[color] ?? LIBREAS.rojo, id = "f1" + (LIBREAS[color] ? color : "rojo");
+  return `<defs>
+    <linearGradient id="${id}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${L.claro}"/><stop offset=".45" stop-color="${L.base}"/><stop offset="1" stop-color="${L.oscuro}"/></linearGradient>
+    <linearGradient id="${id}k" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A4E57"/><stop offset="1" stop-color="#121317"/></linearGradient>
+    <radialGradient id="${id}l" cx=".42" cy=".38" r=".62"><stop offset="0" stop-color="#3F434B"/><stop offset=".7" stop-color="#1A1B1F"/><stop offset="1" stop-color="#0B0B0D"/></radialGradient>
+    <radialGradient id="${id}r" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#5C616B"/><stop offset="1" stop-color="#1E2026"/></radialGradient>
+    <linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".5" stop-color="${L.acento}"/><stop offset="1" stop-color="${L.oscuro}"/></linearGradient>
+    <radialGradient id="${id}s" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000" stop-opacity=".38"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+  </defs>
+  <ellipse cx="12" cy="9.75" rx="12" ry=".85" fill="url(#${id}s)"/>
+  <path d="M.6 1.3 L2.9 1.3 L3.2 6.2 L1.1 6.2 Z" fill="url(#${id}c)"/>
+  <path d="M.95 2.4 L1.25 5.9" stroke="${L.acento}" stroke-width=".35"/>
+  <rect x="0" y=".85" width="3.6" height=".95" rx=".3" fill="url(#${id}k)"/><rect x=".2" y="1.85" width="3" height=".45" rx=".2" fill="#1A1B1F"/>
+  <rect x=".15" y=".9" width="3.3" height=".2" rx=".1" fill="#fff" opacity=".35"/>
+  <rect x="2.35" y="5.95" width=".55" height=".5" rx=".1" fill="#FF3B30"/>
+  <path d="M2.6 7.35 L2.6 5.5 Q5 4.7 7.5 3.75 L9.4 2.8 Q10 2.35 10.55 2.8 L11 4.3 L13.7 4.3 Q15.7 4.55 17.6 5.35 L23.5 6.3 Q24 6.65 23.55 7 L17.6 7.3 L3.2 7.5 Z" fill="url(#${id}c)"/>
+  <path d="M4 6.15 Q9 5.1 13.6 5.35 Q17.6 5.6 23.3 6.55 L23.35 6.85 Q17.6 6.2 13.6 6.05 Q9 5.9 4.1 6.75 Z" fill="${L.segundo}" opacity=".95"/>
+  <path d="M5 6.9 Q11 6.35 17.5 6.65" fill="none" stroke="${L.acento}" stroke-width=".28" stroke-linecap="round"/>
+  <path d="M3.6 5.25 Q6 4.5 8.4 3.45 L9.7 2.75" fill="none" stroke="#fff" stroke-width=".3" stroke-linecap="round" opacity=".55"/>
+  <path d="M14.2 4.6 Q17 5 23.1 6.25" fill="none" stroke="#fff" stroke-width=".22" stroke-linecap="round" opacity=".5"/>
+  <path d="M9.2 3.3 L10.1 3.3 L10.3 4.1 L9.2 4.1 Z" fill="#0E0F12"/>
+  <path d="M6.3 5.6 Q7.4 5.25 8.4 5.35 L8.3 6.05 Q7.3 5.95 6.4 6.2 Z" fill="#0E0F12" opacity=".75"/>
+  <rect x="3" y="7.3" width="18.8" height=".55" rx=".2" fill="#141518"/>
+  <circle cx="11.85" cy="3.55" r="1.08" fill="url(#${id}h)"/>
+  <path d="M12.25 3.05 Q12.95 3.15 12.95 3.75 L12.2 3.85 Z" fill="#101114"/><path d="M12.4 3.2 L12.75 3.25" stroke="#7DD3FC" stroke-width=".14" opacity=".8"/>
+  <ellipse cx="11.5" cy="3.05" rx=".42" ry=".22" fill="#fff" opacity=".7"/>
+  <path d="M10.85 4.3 Q11.4 2.55 13.25 2.85 Q14.05 3.05 14.25 4.3" fill="none" stroke="#1A1B1F" stroke-width=".42" stroke-linecap="round"/>
+  <path d="M11.1 3.85 Q11.6 2.85 13 3.05" fill="none" stroke="#6B717C" stroke-width=".12" stroke-linecap="round"/>
+  ${ruedaF1(4.6, 7.55, 2.25, L.acento, id)}
+  ${ruedaF1(19.35, 7.85, 1.95, L.acento, id)}
+  <path d="M20.6 8.75 L23.9 8.55 L24 9.15 L20.7 9.3 Z" fill="url(#${id}k)"/>
+  <path d="M21.4 8.05 L22.9 7.85 L23 8.6 L21.5 8.75 Z" fill="#1A1B1F"/>
+  <path d="M23.15 7.55 L24 7.5 L24.05 9.3 L23.2 9.3 Z" fill="url(#${id}c)"/><path d="M23.4 7.8 L23.45 9" stroke="${L.acento}" stroke-width=".22"/>`;
 }
 export const coche = (color = "rojo", escala = 3, flip = false) => envoltura(24, 10, escala, "coche", flip ? `<g transform="translate(24 0) scale(-1 1)">${cuerpoCoche(color)}</g>` : cuerpoCoche(color));
 export const capaCoche = (color, dx, dy) => grupo(dx, dy, cuerpoCoche(color));
@@ -297,42 +365,90 @@ function cuerpoNave(color) {
     <circle cx="20.6" cy="5.2" r=".9" fill="#FFD400" ${o(.3)}/>
     <rect x="9" y="6" width="7" height="1" rx=".5" fill="${c2}" opacity=".6"/>`;
 }
+// Caballos de carreras (24 × 10) con pelajes reales: alazán, negro, bayo, tordo y blanco (nunca morado, rojo ni azul).
+// Proporciones de caballo de verdad (patas tan largas como el cuerpo es alto, cuello largo, cabeza alargada) al galope.
+// El color del bloque solo va en la mantilla y en la chaquetilla del jinete, como en un hipódromo real.
+const PELAJES = {
+  rojo: { claro: "#D08447", base: "#9A4E22", oscuro: "#552710", crin: "#6E3215", patas: "#7A3A18", hocico: "#4A2A1A" }, // alazán
+  azul: { claro: "#5E5650", base: "#2B2622", oscuro: "#0F0D0C", crin: "#0B0A09", patas: "#1A1715", hocico: "#3A3330" }, // negro
+  amarillo: { claro: "#EBCB92", base: "#C9A063", oscuro: "#86612F", crin: "#241F1C", patas: "#2B2622", hocico: "#3A2E26" }, // bayo
+  verde: { claro: "#DCE0E3", base: "#9EA3A8", oscuro: "#5A5F64", crin: "#45494D", patas: "#5E6368", hocico: "#45494D", motas: true }, // tordo (gris)
+  morado: { claro: "#FFFFFF", base: "#ECE7DD", oscuro: "#ADA595", crin: "#DED6C8", patas: "#D3CBBC", hocico: "#B9A39A" }, // blanco
+};
+export const PELAJES_CABALLO = { rojo: "alazan", azul: "negro", amarillo: "bayo", verde: "tordo", morado: "blanco" };
+// Pata en dos tramos (muslo grueso y caña delgada) con casco oscuro al final.
+const pata = (p, color, grueso = 1.05, arriba = color) => `<path d="M${p[0]} ${p[1]} L${p[2]} ${p[3]}" stroke="${arriba}" stroke-width="${grueso}" stroke-linecap="round"/><path d="M${p[2]} ${p[3]} L${p[4]} ${p[5]} L${p[6]} ${p[7]}" fill="none" stroke="${color}" stroke-width=".5" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="${p[6]}" cy="${p[7]}" rx=".36" ry=".24" fill="#1A1614"/>`;
 function cuerpoCaballo(color) {
-  const [c1, c2] = COLORES_COCHE[color] ?? COLORES_COCHE.rojo;
-  return `
-    <ellipse cx="12" cy="9.5" rx="9" ry=".6" fill="${C.sombra}"/>
-    <path d="M6 5.6 Q2.4 4.2 1 6.8 Q2.8 5.8 4.4 7.6 Q4.6 6.4 6.4 6.6 Z" fill="${c2}" ${o(.4)}/>
-    <rect x="6.2" y="6.4" width="1.8" height="3.2" rx=".8" fill="${c1}" ${o(.4)} transform="rotate(18 7.1 6.4)"/>
-    <rect x="8.2" y="6.4" width="1.8" height="3.2" rx=".8" fill="${c2}" ${o(.4)} transform="rotate(-12 9.1 6.4)"/>
-    <rect x="15.4" y="6.4" width="1.8" height="3.2" rx=".8" fill="${c2}" ${o(.4)} transform="rotate(14 16.3 6.4)"/>
-    <rect x="17.2" y="6.4" width="1.8" height="3.2" rx=".8" fill="${c1}" ${o(.4)} transform="rotate(-22 18.1 6.4)"/>
-    <ellipse cx="12" cy="5.4" rx="6.6" ry="2.6" fill="${c1}" ${o(.5)}/>
-    <ellipse cx="12" cy="6.4" rx="5.4" ry="1.3" fill="#fff" opacity=".2"/>
-    <path d="M16.2 3.6 L19.6 .9 L21.8 2.4 L18.6 5.6 Z" fill="${c1}" ${o(.5)}/>
-    <path d="M17.2 3 Q18.8 1.6 20.4 1.2 L20.2 2.2 Q18.8 2.6 17.6 3.6 Z" fill="${c2}" ${o(.3)}/>
-    <ellipse cx="21.6" cy="2.4" rx="2.6" ry="1.35" fill="${c1}" ${o(.5)} transform="rotate(-24 21.6 2.4)"/>
-    <circle cx="23.2" cy="1.9" r=".55" fill="${c2}"/>
-    <path d="M20.2 1.4 L19.8 -.2 L21.2 1 Z" fill="${c1}" ${o(.3)}/>
-    <circle cx="21.4" cy="1.8" r=".35" fill="${C.linea}"/>
-    <rect x="9.6" y="3" width="4.2" height="2" rx=".9" fill="#FFD400" ${o(.4)}/>
-    <rect x="11.2" y="2.4" width="1" height="3.4" rx=".5" fill="${C.linea}" opacity=".5"/>`;
+  const P = PELAJES[color] ?? PELAJES.rojo, k = PELAJES[color] ? color : "rojo", id = "cb" + k;
+  const acento = (COLORES_COCHE[k] ?? COLORES_COCHE.rojo)[0], acentoOsc = (COLORES_COCHE[k] ?? COLORES_COCHE.rojo)[1];
+  return `<defs>
+    <linearGradient id="${id}c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${P.claro}"/><stop offset=".5" stop-color="${P.base}"/><stop offset="1" stop-color="${P.oscuro}"/></linearGradient>
+    <radialGradient id="${id}b" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="${id}s" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+  </defs>
+  <ellipse cx="11.5" cy="9.7" rx="9" ry=".7" fill="url(#${id}s)"/>
+  ${pata([13.3, 6.3, 12.9, 7.7, 13.3, 8.6, 14.1, 9.2], P.oscuro)}
+  ${pata([9.7, 6.2, 10.4, 7.6, 10.2, 8.8, 11, 9.45], P.oscuro)}
+  <path d="M7.4 4 C5.6 3.5 3.9 4.3 2.5 5.9 C3.4 5.6 4.1 5.6 4.6 5.8 C3.9 6.2 3.4 6.8 3.1 7.5 C4.6 6.4 6 5.6 7.2 5.2 Z" fill="${P.crin}"/>
+  <path d="M7.1 4.4 C5.6 4.3 4.4 4.9 3.4 5.8" fill="none" stroke="#fff" stroke-width=".14" opacity=".25"/>
+  <path d="M7.2 4.6 C7.4 3.2 9.4 3 10.6 3.4 C11.8 3.6 13.4 3.2 14.6 3.9 C15.7 4.6 15.7 6.4 14.4 6.9 C12.8 7.4 9.6 7.4 8.4 7 C7.1 6.6 6.9 5.4 7.2 4.6 Z" fill="url(#${id}c)"/>
+  <path d="M13.6 4.1 C14.6 2.8 16 1.6 17.4 1 L18.6 1.9 C17.6 3 16.6 4.4 15.6 5.6 Z" fill="url(#${id}c)"/>
+  <path d="M17.2 1 C18 .3 19 .5 19.8 1.3 L21.6 2.7 C21.9 3.1 21.6 3.6 21.1 3.6 L19.9 3.5 C19 3.3 18.2 2.6 17.6 2.1 Z" fill="url(#${id}c)"/>
+  <path d="M20.6 2.6 L21.6 2.7 C21.9 3.1 21.6 3.6 21.1 3.6 L20.4 3.55 Z" fill="${P.hocico}" opacity=".85"/>
+  <path d="M17.5 .75 L17.35 -.35 L18.1 .55 Z" fill="${P.base}"/><path d="M17.95 .7 L18 -.25 L18.5 .75 Z" fill="${P.oscuro}"/>
+  <path d="M17.4 .8 C16.2 1.4 15.2 2.4 14.2 3.6 L13.5 4.2 C14.2 3 15 1.6 16.6 .7 Z" fill="${P.crin}"/>
+  <circle cx="18.65" cy="1.35" r=".26" fill="#120E0C"/><circle cx="18.58" cy="1.28" r=".08" fill="#fff"/>
+  <ellipse cx="21.15" cy="3.05" rx=".16" ry=".11" fill="#120E0C"/>
+  <path d="M18.4 1.05 L20.9 3.05 M18.3 2.25 L19.9 2.2" stroke="#2A1C14" stroke-width=".13" fill="none"/>
+  ${P.motas ? [[9.6, 4.6], [11.2, 5.4], [12.6, 4.4], [10.2, 6.1], [13.4, 5.9], [8.4, 5.3]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r=".42" fill="#fff" opacity=".28"/>`).join("") : ""}
+  <ellipse cx="8.7" cy="4.5" rx="1.6" ry="1" fill="url(#${id}b)"/><ellipse cx="14" cy="4.6" rx="1.3" ry=".9" fill="url(#${id}b)"/><ellipse cx="18.6" cy=".9" rx="1" ry=".35" fill="url(#${id}b)"/>
+  <path d="M10.3 3.35 L12.9 3.3 L13.1 5.2 L10.4 5.3 Z" fill="${acento}"/><path d="M10.4 5.1 L13.1 5" stroke="#fff" stroke-width=".22"/><path d="M10.3 3.35 L12.9 3.3 L13 4" fill="none" stroke="${acentoOsc}" stroke-width=".18" opacity=".6"/>
+  <path d="M10.8 3.25 Q11.9 2.85 12.8 3.25 L12.6 3.6 L10.9 3.6 Z" fill="#3B2416"/>
+  ${pata([14, 6, 15.5, 7.4, 17, 7.9, 17.6, 8.5], P.patas, 1.15, P.base)}
+  ${pata([8.5, 5.6, 8.6, 7.2, 7.2, 8.1, 5.9, 9.4], P.patas, 1.5, P.base)}
+  <path d="M11.4 3.1 Q11.7 1.9 13 1.7 L14.2 1.9 Q14 2.7 13 3 Q12.2 3.2 11.4 3.1 Z" fill="${acento}"/>
+  <path d="M11.9 2.2 Q12.9 1.9 13.9 2.1" stroke="#fff" stroke-width=".16" opacity=".5"/>
+  <path d="M11.5 3 L11.9 4 L12.6 4.1" fill="none" stroke="#F4F1EA" stroke-width=".5" stroke-linecap="round"/>
+  <path d="M12.6 4.1 L12.9 4.5" stroke="#111" stroke-width=".42" stroke-linecap="round"/>
+  <path d="M13.6 2.2 L15.4 2.6 L16.3 2.4" fill="none" stroke="${acentoOsc}" stroke-width=".32" stroke-linecap="round"/>
+  <path d="M16.3 2.4 L20.9 3.05" stroke="#2A1C14" stroke-width=".1"/>
+  <circle cx="14.55" cy="1.35" r=".62" fill="${acento}"/><path d="M14 1.2 Q14.5 .55 15.15 1.1 L15.25 1.45 Z" fill="#fff" opacity=".9"/><ellipse cx="14.35" cy="1" rx=".2" ry=".1" fill="#fff" opacity=".8"/>`;
 }
+
+// Dragones de la carrera (24 × 10), volando hacia la derecha. Colores creíbles: verde bosque, gris pizarra, arena,
+// musgo y carbón (nunca morado, rojo ni azul). El color del bloque solo va en el arnés.
+const ESCAMAS = {
+  rojo: { claro: "#7FAE5A", base: "#3F6B34", oscuro: "#1E3619", vientre: "#E3D3A0" }, // verde bosque
+  azul: { claro: "#A3AAB0", base: "#5E666E", oscuro: "#2C3136", vientre: "#D6CFBE" }, // gris pizarra
+  amarillo: { claro: "#D7B47A", base: "#A9864E", oscuro: "#5E4526", vientre: "#F0DFB4" }, // arena
+  verde: { claro: "#A2B566", base: "#6B7F3A", oscuro: "#36421C", vientre: "#E2D9A8" }, // musgo
+  morado: { claro: "#6A6560", base: "#3A3633", oscuro: "#161413", vientre: "#A79C8C" }, // carbón
+};
+export const ESCAMAS_DRAGON = { rojo: "bosque", azul: "pizarra", amarillo: "arena", verde: "musgo", morado: "carbon" };
 function cuerpoDragon(color) {
-  const [c1, c2] = COLORES_COCHE[color] ?? COLORES_COCHE.rojo;
-  return `
-    <ellipse cx="12" cy="9.5" rx="9" ry=".6" fill="${C.sombra}"/>
-    <path d="M10.5 4 Q7.5 -.5 3.2 .4 Q8 .2 10.8 4.6 Z" fill="${c2}" ${o(.4)}/>
-    <path d="M6.4 5.6 Q2.6 4.4 .6 6.6 Q2.4 5.8 3.6 7.2 Q4.4 6.2 6.6 6.8 Z" fill="${c1}" ${o(.4)}/>
-    <path d="M1.2 6.4 L-.2 5.6 L.2 7.6 Z" fill="${c2}" ${o(.3)}/>
-    <ellipse cx="12" cy="5.8" rx="6.2" ry="2.5" fill="${c1}" ${o(.5)}/>
-    <ellipse cx="12" cy="6.9" rx="5" ry="1.1" fill="#FFE9A8" opacity=".55"/>
-    <rect x="9" y="7.4" width="1.8" height="2.2" rx=".8" fill="${c1}" ${o(.35)}/><rect x="13.4" y="7.4" width="1.8" height="2.2" rx=".8" fill="${c1}" ${o(.35)}/>
-    <path d="M16.4 4.6 L19.6 2.2 L23 2.6 L23.6 4.1 L21 5 L17.8 5.9 Z" fill="${c1}" ${o(.5)}/>
-    <path d="M19.8 2.2 L19.4 .6 L21 2.2 Z" fill="${c2}" ${o(.3)}/><path d="M21.4 2.4 L21.6 .9 L22.6 2.5 Z" fill="${c2}" ${o(.3)}/>
-    <circle cx="21.6" cy="3.3" r=".6" fill="#fff"/><circle cx="21.8" cy="3.3" r=".3" fill="${C.linea}"/>
-    <path d="M23.6 3.6 L25 3.1 L25.2 3.9 L24.2 4.3 Z" fill="#FF8A3D"/><path d="M23.8 3.7 L24.8 3.4 L24.6 4 Z" fill="#FFE066"/>
-    <path d="M11.2 4.2 Q9.8 -.6 5.6 -.4 Q10 .6 12.6 4.4 Z" fill="${c2}" ${o(.45)}/>
-    <path d="M7 3.4 L8.4 2.4 L9 3.8 L10.4 2.8 L11 4.2" fill="none" stroke="${c2}" stroke-width=".5"/>`;
+  const E = ESCAMAS[color] ?? ESCAMAS.rojo, k = ESCAMAS[color] ? color : "rojo", id = "dg" + k;
+  const acento = (COLORES_COCHE[k] ?? COLORES_COCHE.rojo)[0];
+  return `<defs>
+    <linearGradient id="${id}c" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="${E.claro}"/><stop offset=".55" stop-color="${E.base}"/><stop offset="1" stop-color="${E.oscuro}"/></linearGradient>
+    <linearGradient id="${id}a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${E.base}"/><stop offset="1" stop-color="${E.oscuro}"/></linearGradient>
+    <radialGradient id="${id}s" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000" stop-opacity=".3"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+  </defs>
+  <ellipse cx="12" cy="9.6" rx="8.5" ry=".6" fill="url(#${id}s)"/>
+  <path d="M10.6 4.3 Q8.6 .2 4.4 -.2 Q6.2 1.2 6.6 2.4 Q8.4 2.6 10 4.8 Z" fill="url(#${id}a)" opacity=".85"/>
+  <path d="M7.2 5.4 Q3.6 4.6 .4 6.6 Q2.6 6.3 3.8 7.1 Q5.4 6.3 7.3 6.7 Z" fill="url(#${id}c)"/>
+  <path d="M.4 6.6 L-.4 5.7 L1 6.1 Z M.4 6.6 L-.2 7.6 L1.1 7 Z" fill="${E.oscuro}"/>
+  <path d="M6.4 5.6 C7 4 10 3.6 12.6 3.9 C15 4.1 17.2 4.4 17.6 5.6 C17.8 6.9 15.2 7.6 12.4 7.6 C9.2 7.6 6.2 7.1 6.4 5.6 Z" fill="url(#${id}c)"/>
+  <path d="M8 6.9 C10.4 7.5 14.4 7.5 16.6 6.6 C15.2 7.3 10.8 7.7 8 6.9 Z" fill="${E.vientre}" opacity=".9"/>
+  <path d="M9.2 7.2 L9 8.9 L10 9 L10.4 7.4 Z M13.2 7.4 L13.4 9 L14.4 8.9 L14.2 7.3 Z" fill="${E.oscuro}"/>
+  <path d="M16.8 4.9 C17.6 3.8 18.8 2.8 20.2 2.5 L22.6 2.6 C23.6 2.8 24 3.5 23.6 4.1 L21.6 4.6 C20.4 4.8 19 5.4 17.8 6 Z" fill="url(#${id}c)"/>
+  <path d="M21.4 4.2 L23.6 4.1 L23.2 4.6 L21.4 4.7 Z" fill="${E.oscuro}"/>
+  <path d="M20 2.6 L19.2 1 L20.6 2.3 Z M21 2.5 L21 .8 L21.8 2.5 Z" fill="#E8DCC2"/>
+  <ellipse cx="21.5" cy="3.25" rx=".42" ry=".3" fill="#FFC94A"/><ellipse cx="21.55" cy="3.25" rx=".1" ry=".26" fill="#1A1410"/>
+  <path d="M8.6 4.2 L9.2 3.3 L9.8 4 L10.6 3.2 L11.2 3.9 L12.2 3.2 L12.6 3.9" fill="${E.oscuro}"/>
+  <path d="M15.6 5.1 L16.6 6.5" stroke="${acento}" stroke-width=".5" stroke-linecap="round"/><path d="M13.5 4.1 Q15.2 3.9 16.6 4.6" fill="none" stroke="${acento}" stroke-width=".35"/>
+  <path d="M11.8 4.4 Q10.2 -.4 5.6 -.6 Q7.8 .8 8.4 2.4 Q10.4 2.6 12.8 4.6 Z" fill="url(#${id}a)"/>
+  <path d="M11.8 4.4 L5.6 -.6 M10.6 3.6 L7.6 .6" stroke="${E.oscuro}" stroke-width=".22" fill="none"/>
+  <ellipse cx="11" cy="4.8" rx="3" ry=".55" fill="#fff" opacity=".22"/><ellipse cx="21.2" cy="2.8" rx="1" ry=".25" fill="#fff" opacity=".3"/>`;
 }
 const CUERPOS = { coche: cuerpoCoche, nave: cuerpoNave, caballo: cuerpoCaballo, dragon: cuerpoDragon };
 export const vehiculo = (tipo = "coche", color = "rojo", escala = 3, flip = false) => { const f = CUERPOS[tipo] ?? cuerpoCoche; return envoltura(24, 10, escala, "vehiculo " + tipo, flip ? `<g transform="translate(24 0) scale(-1 1)">${f(color)}</g>` : f(color)); };
@@ -516,6 +632,103 @@ export function escenaPlaneta(w = 172, h = 140, semilla = 11, tema = {}) {
   s += `<path d="M0 ${suelo + 10} Q${w / 2} ${suelo - 14} ${w} ${suelo + 10} V${suelo + 14} Q${w / 2} ${suelo - 8} 0 ${suelo + 14} Z" fill="${T.borde}" opacity=".55"/>`;
   for (let i = 0; i < 9; i++) { const cx = 6 + r() * (w - 12), cy = suelo + 8 + r() * (h - suelo - 14); s += `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${(2 + r() * 3).toFixed(1)}" ry="1.1" fill="${T.sueloOscuro}" opacity=".8"/>`; }
   return { svg: s, suelo: suelo - 2 };
+}
+
+// ---------- Duelo (7 nov 2026): dragón grande y arena, con acabado tipo render 3D ----------
+// Sin contorno grueso: el volumen sale de degradados con una sola luz (arriba a la izquierda), brillos suaves y una
+// sombra difusa en el piso. Colores reales de dragón: verde, café/tierra o gris (nunca morado, rojo ni azul).
+export const PALETAS_DRAGON = {
+  verde: { claro: "#9CC46A", base: "#4F7F3A", oscuro: "#1F3A1A", vientre1: "#F0E1AE", vientre2: "#B4955A", ala1: "#79A055", ala2: "#2C4724", hueso: "#2A3B20", espina: "#D8C9A4" },
+  tierra: { claro: "#C99A63", base: "#7A5534", oscuro: "#33220F", vientre1: "#F1DFB6", vientre2: "#B89662", ala1: "#A57B4D", ala2: "#4A321E", hueso: "#3A2716", espina: "#E4D3AE" },
+  gris: { claro: "#B7BDC0", base: "#6A7176", oscuro: "#2A2E31", vientre1: "#E2DBCA", vientre2: "#A39A86", ala1: "#8C9397", ala2: "#3A4044", hueso: "#2E3236", espina: "#DCD3BF" },
+};
+// Dragón de pie mirando a la izquierda, en un cuadro de 84 × 70 con las patas en y = 68. Las piezas que se mueven van en
+// grupos con clase (dr-cola, dr-ala, dr-ala-lejos, dr-cabeza, dr-fuego) para animarlas con CSS (duelo.css).
+function cuerpoDragonDuelo(paleta = "verde") {
+  const P = PALETAS_DRAGON[paleta] ?? PALETAS_DRAGON.verde, id = "drd" + (PALETAS_DRAGON[paleta] ? paleta : "verde");
+  const espinas = [[31, 10.5], [35, 15], [39, 19.5], [43.5, 24], [49, 27.5], [55, 29.5], [60, 33.5], [63, 39]].map(([x, y], i) => `<path d="M${x - 1.6} ${y + 1.2} L${x + 1.2 - i * .1} ${y - 2.6 + i * .1} L${x + 1.8} ${y + 1.5} Z" fill="url(#${id}e)"/>`).join("");
+  const dientes = [9, 11, 13, 15].map((x) => `<path d="M${x} 17.9 L${x + .6} 19.3 L${x + 1.2} 17.95 Z" fill="#FBF6E8"/>`).join("");
+  const garras = (pts) => pts.map(([x, y, a]) => `<path d="M${x} ${y} q${a} 1.2 ${a * 1.8} .2 l-.2 -.9 z" fill="#EFE6CF"/>`).join("");
+  return `<defs>
+    <linearGradient id="${id}c" x1="0" y1="0" x2=".55" y2="1"><stop offset="0" stop-color="${P.claro}"/><stop offset=".5" stop-color="${P.base}"/><stop offset="1" stop-color="${P.oscuro}"/></linearGradient>
+    <linearGradient id="${id}o" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="${P.base}"/><stop offset="1" stop-color="${P.oscuro}"/></linearGradient>
+    <linearGradient id="${id}v" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${P.vientre1}"/><stop offset="1" stop-color="${P.vientre2}"/></linearGradient>
+    <linearGradient id="${id}a" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="${P.ala1}"/><stop offset="1" stop-color="${P.ala2}"/></linearGradient>
+    <linearGradient id="${id}e" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF8E6"/><stop offset="1" stop-color="${P.espina}"/></linearGradient>
+    <linearGradient id="${id}h" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#B9A684"/><stop offset=".6" stop-color="#EDE2C8"/><stop offset="1" stop-color="#FFFBF0"/></linearGradient>
+    <radialGradient id="${id}j" cx=".4" cy=".4" r=".6"><stop offset="0" stop-color="#FFF2B0"/><stop offset=".55" stop-color="#FFB627"/><stop offset="1" stop-color="#B35F00"/></radialGradient>
+    <radialGradient id="${id}b" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="${id}s" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000" stop-opacity=".42"/><stop offset=".6" stop-color="#000" stop-opacity=".18"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+    <linearGradient id="${id}f" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#FFFBE0"/><stop offset=".18" stop-color="#FFD54A"/><stop offset=".55" stop-color="#FF8A1F" stop-opacity=".9"/><stop offset="1" stop-color="#E2531A" stop-opacity="0"/></linearGradient>
+  </defs>
+  <ellipse cx="48" cy="68" rx="34" ry="4.2" fill="url(#${id}s)"/>
+  <g class="dr-cuerpo">
+  <g class="dr-cola"><path d="M57 46 C66 47 71 55 78 56.5 C80.5 57 82 55.5 83 53 L85.5 58.5 L81 60.5 C73 63 64 58.5 56 56.5 Z" fill="url(#${id}o)"/><path d="M83 53 L87 50.5 L85.5 58.5 Z" fill="${P.oscuro}"/><path d="M60 49 C66 50.5 71 56 77 57.5" fill="none" stroke="#fff" stroke-width=".7" stroke-linecap="round" opacity=".18"/></g>
+  <g class="dr-ala-lejos"><path d="M47 29 L57 6 L60 13 L67 8 L68 18 L75 17 L67 33 Z" fill="${P.ala2}" opacity=".95"/><path d="M47 29 L57 6 M57 6 L67 8 M57 6 L75 17" stroke="${P.hueso}" stroke-width="1" stroke-linecap="round" fill="none" opacity=".8"/></g>
+  <path d="M58 53 C60 59 59 63 57 67 L63.5 67.5 C64 63 64.5 57 62.5 51 Z" fill="${P.oscuro}"/>${garras([[57.5, 66.6, -1], [60, 66.8, -1], [62.5, 66.8, -1]])}
+  <path d="M37 44 C33 48 31 50 28.5 50.3 L28 53 C32 53 36 51 40 48 Z" fill="${P.oscuro}"/>
+  <path d="M34 36 C36 28 46 26 54 30 C62 34 64.5 46 60.5 54 C56.5 60.5 44 62 38 56 C34 52 32 44 34 36 Z" fill="url(#${id}c)"/>
+  <path d="M22 22 C28 26 33 32 35 40 C36 48 40 56 46 60 C42 60.5 38 58.5 35 54.5 C31 48.5 30 40.5 27 33.5 C25 29.5 22 26.5 19 25 Z" fill="url(#${id}v)"/>
+  ${[[24.5, 26], [28, 30.5], [30.5, 36], [32, 42], [34, 48], [37.5, 53.5]].map(([x, y]) => `<path d="M${x - 3} ${y + 1} Q${x} ${y - .2} ${x + 2.6} ${y - 1.4}" fill="none" stroke="${P.vientre2}" stroke-width=".55" opacity=".7"/>`).join("")}
+  <path d="M46 29 C42 22 36 14 30 9 L24 15.5 C28 20 32 28 35 36 Z" fill="url(#${id}c)"/>
+  ${espinas}
+  <g class="dr-cabeza">
+    <path d="M27 8 C30.5 3 35.5 1 40 -1.2 C37 3 33 6.5 29.8 10.5 Z" fill="url(#${id}h)"/>
+    <path d="M24.2 7.4 C26 3.6 28 1.6 31 .4 C29.4 3.2 27.6 5.4 26.3 8.4 Z" fill="url(#${id}h)" opacity=".92"/>
+    <path d="M17 18.2 L7 18.6 C5.8 19.6 6.8 21.2 9 21.3 L18 21.7 C22 21.7 25 20.2 26 18.2 Z" fill="url(#${id}o)"/>
+    ${dientes}
+    <path d="M30.5 8 C27 4.8 21 5 17 8 L8 12 C5 13 4 16 6 17.5 L16.5 18.3 C19.5 19 24 19 28 17 C31 15 32.5 11 30.5 8 Z" fill="url(#${id}c)"/>
+    <path d="M27.5 17.2 L33 19.5 L28.8 14.6 Z M29.6 13.6 L34.6 14.4 L30.6 11 Z" fill="${P.oscuro}"/>
+    <path d="M15.5 10.2 C18 8.6 21.5 8.6 23.8 10" fill="none" stroke="${P.oscuro}" stroke-width="1.1" stroke-linecap="round"/>
+    <path d="M17 12 C18.4 10.6 20.8 10.5 22.4 11.6 C21 13 18.6 13.3 17 12 Z" fill="url(#${id}j)"/>
+    <ellipse cx="19.8" cy="11.9" rx=".55" ry="1.15" fill="#1A1208"/><circle cx="18.7" cy="11.4" r=".45" fill="#fff" opacity=".9"/>
+    <ellipse cx="7.6" cy="13.8" rx="1" ry=".6" fill="${P.oscuro}" transform="rotate(-20 7.6 13.8)"/>
+    <ellipse cx="20" cy="7.6" rx="6" ry="1.5" fill="url(#${id}b)"/><ellipse cx="11" cy="11.6" rx="3.4" ry=".9" fill="url(#${id}b)" opacity=".8"/>
+  </g>
+  <ellipse cx="45" cy="33.5" rx="7" ry="3.4" fill="url(#${id}b)"/>
+  <path d="M51 46 C52 40 58 39 62 43.5 C65 48 63.5 55 58.5 57.5 C55.5 59 52 57 51 54 Z" fill="url(#${id}c)"/>
+  <path d="M52.5 55 C50.5 61 50.5 63.5 48.5 67 L56.5 67.5 C56.5 64 58 60.5 59 55.5 Z" fill="url(#${id}o)"/>${garras([[48.5, 66.8, -1.1], [51.3, 67, -1.1], [54.1, 67.1, -1.1]])}
+  <ellipse cx="56" cy="45.6" rx="3.6" ry="2.4" fill="url(#${id}b)"/>
+  <path d="M40.5 42 C36.5 46 32.5 49 27.5 48 C25.5 47.6 24.5 49.6 26 50.6 C30.5 52 36.5 52 42.5 48 Z" fill="url(#${id}c)"/>${garras([[25.6, 47.4, -1], [25, 49.4, -1], [25.6, 51.2, -.9]])}
+  <g class="dr-ala"><path d="M46 31 L53 7 L49 -1.5 C56 3 60 4 64.5 1.5 C66 8 70 10 76.5 10.5 C76.5 17 78.5 21 81.5 25 C74 25 66 28 60 34.5 Z" fill="url(#${id}a)"/>
+    <path d="M53 7 L49 -1.5 M53 7 L64.5 1.5 M53 7 L76.5 10.5 M53 7 L81.5 25" stroke="${P.hueso}" stroke-width=".9" stroke-linecap="round" fill="none"/>
+    <path d="M46 31 L53 7" stroke="${P.base}" stroke-width="2.4" stroke-linecap="round"/><path d="M46.6 29 L52.6 8.4" stroke="#fff" stroke-width=".5" stroke-linecap="round" opacity=".3"/>
+    <path d="M53 7 L52 4.5 L54.8 6.2 Z" fill="url(#${id}e)"/>
+    <path d="M55 9 C60 7 66 8 72 12" fill="none" stroke="#fff" stroke-width=".8" stroke-linecap="round" opacity=".16"/></g>
+  </g>
+  <g class="dr-fuego"><path d="M7 16.5 C-6 11 -32 8 -58 12.5 C-38 15.5 -40 21.5 -58 25 C-32 27 -8 25 7 21.5 Z" fill="url(#${id}f)"/><path d="M7 17.6 C-4 15.2 -20 14.6 -36 16.8 C-22 18.6 -20 20.4 -34 22.6 C-18 23 -4 22.4 7 20.6 Z" fill="#FFF6C8" opacity=".8"/></g>`;
+}
+export const dragonDuelo = (paleta = "verde", escala = 3) => envoltura(84, 70, escala, "dragon-duelo", cuerpoDragonDuelo(paleta));
+export const capaDragonDuelo = (paleta, dx, dy) => grupo(dx, dy, cuerpoDragonDuelo(paleta));
+
+// Arena del duelo (172 × 140): cielo de atardecer, montañas lejanas con bruma, castillo en ruinas, colinas y una
+// plataforma de piedra con volumen. Devuelve el fondo y la línea del piso donde se paran los dos peleadores.
+export function escenaDuelo(w = 172, h = 140, semilla = 21) {
+  const r = azar(semilla), id = "ad" + (semilla % 997), suelo = 118;
+  let s = `<defs>${degradado(id + "k", "#7FA7C4", "#E9D2A2", "#F3B47C")}
+    <radialGradient id="${id}sol" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF6D6" stop-opacity=".95"/><stop offset=".35" stop-color="#FFE3A0" stop-opacity=".55"/><stop offset="1" stop-color="#FFE3A0" stop-opacity="0"/></radialGradient>
+    <linearGradient id="${id}m1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9AAAB5"/><stop offset="1" stop-color="#C9C4B4"/></linearGradient>
+    <linearGradient id="${id}m2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6F8A63"/><stop offset="1" stop-color="#4C6444"/></linearGradient>
+    <linearGradient id="${id}p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D9C7A0"/><stop offset=".5" stop-color="#B49B72"/><stop offset="1" stop-color="#7C6649"/></linearGradient>
+    <linearGradient id="${id}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8A7354"/><stop offset="1" stop-color="#4D3E2B"/></linearGradient>
+    <linearGradient id="${id}t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E7F45"/><stop offset="1" stop-color="#2F4524"/></linearGradient>
+    <linearGradient id="${id}bruma" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3E3C0" stop-opacity="0"/><stop offset="1" stop-color="#F3E3C0" stop-opacity=".7"/></linearGradient>
+  </defs><rect width="${w}" height="${h}" fill="url(#${id}k)"/>
+  <circle cx="34" cy="34" r="30" fill="url(#${id}sol)"/>`;
+  for (let k = 0; k < 4; k++) { const cx = 20 + k * 44 + r() * 16, cy = 14 + r() * 18; s += `<g opacity=".75"><ellipse cx="${r2(cx)}" cy="${r2(cy)}" rx="12" ry="2.6" fill="#FFF4E0"/><ellipse cx="${r2(cx - 4)}" cy="${r2(cy - 1.6)}" rx="6" ry="2.4" fill="#FFF9EE"/></g>`; }
+  s += `<path d="M0 82 L14 64 L26 72 L44 52 L60 68 L74 58 L92 72 L110 54 L126 66 L142 56 L160 70 L172 62 L172 92 L0 92 Z" fill="url(#${id}m1)" opacity=".85"/>
+    <path d="M44 52 L50 59 L46 58 L40 60 Z M110 54 L116 61 L111 60 L105 62 Z" fill="#F4F1EA" opacity=".8"/>
+    <rect x="0" y="70" width="${w}" height="24" fill="url(#${id}bruma)"/>
+    <g opacity=".9"><path d="M118 86 L118 66 L121 66 L121 63 L124 63 L124 66 L127 66 L127 70 L133 70 L133 60 L136 60 L136 57 L139 57 L139 60 L142 60 L142 86 Z" fill="#6E6A66"/><path d="M118 86 L118 66 L121 66 L121 86 Z M133 86 L133 70 L136 70 L136 86 Z" fill="#8C8781"/><rect x="137" y="64" width="2" height="3" rx="1" fill="#3F3B38"/><rect x="123" y="73" width="2" height="3" rx="1" fill="#3F3B38"/></g>
+    <path d="M0 96 C20 84 44 88 64 92 C86 96 104 84 130 86 C150 88 162 92 172 90 L172 112 L0 112 Z" fill="url(#${id}m2)"/>
+    <path d="M0 96 C20 84 44 88 64 92 C86 96 104 84 130 86 C150 88 162 92 172 90" fill="none" stroke="#9FBF7A" stroke-width="1" opacity=".6"/>`;
+  for (let k = 0; k < 7; k++) { const x = r() * w, y = 93 + r() * 8, R = 3 + r() * 3; s += `<ellipse cx="${r2(x)}" cy="${r2(y + R * .9)}" rx="${r2(R * .9)}" ry=".8" fill="#000" opacity=".12"/><circle cx="${r2(x)}" cy="${r2(y)}" r="${r2(R)}" fill="#3F5E36"/><circle cx="${r2(x - R * .3)}" cy="${r2(y - R * .35)}" r="${r2(R * .55)}" fill="#6E9150" opacity=".85"/>`; }
+  s += `<rect x="0" y="108" width="${w}" height="${h - 108}" fill="url(#${id}t)"/>
+    <ellipse cx="${w / 2}" cy="127" rx="88" ry="12" fill="url(#${id}b)"/>
+    <ellipse cx="${w / 2}" cy="${suelo + 1}" rx="86" ry="11" fill="url(#${id}p)"/>`;
+  for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2, x = w / 2 + Math.cos(a) * 60 * (.4 + r() * .55), y = suelo + 1 + Math.sin(a) * 7 * (.4 + r() * .5); s += `<ellipse cx="${r2(x)}" cy="${r2(y)}" rx="${r2(4 + r() * 4)}" ry="${r2(1 + r() * .8)}" fill="#fff" opacity=".1"/>`; }
+  s += `<path d="M${w / 2 - 80} ${suelo - 1} Q${w / 2} ${suelo - 13} ${w / 2 + 80} ${suelo - 1}" fill="none" stroke="#fff" stroke-width=".8" opacity=".35"/>`;
+  return { svg: s, suelo };
 }
 
 // Marco SVG listo para insertar: toma el fondo y agrega capas (personajes) encima.

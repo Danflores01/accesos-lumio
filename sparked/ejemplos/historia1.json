@@ -110,6 +110,11 @@
      13,
      14
     ]
+   },
+   {
+    "id": "b6",
+    "titulo": "El encuentro de dos mundos",
+    "fotos": []
    }
   ],
   "reto_final": 16,
@@ -2818,6 +2823,137 @@
      "retro_incorrecta": "No exactamente: la respuesta es «poseía los medios de producción». En la industrialización, la burguesía poseía los medios de producción."
     }
    ]
+  },
+  {
+   "id": "b6",
+   "titulo": "El encuentro de dos mundos",
+   "juego": "duelo",
+   "pistas": [
+    {
+     "id": "b6p1",
+     "titulo_pagina": "El encuentro de dos mundos",
+     "titulo": "De la Ruta de la Seda al mar (1453–1492)",
+     "emoji": "⛵",
+     "ideas": [
+      "En 1453 el Imperio otomano cerró las rutas de la Seda: Europa necesitaba otro camino hacia Asia.",
+      "Portugueses y españoles buscaron rutas por mar.",
+      "Cristóbal Colón, al servicio de los Reyes Católicos, llegó a América el 12 de octubre de 1492."
+     ]
+    },
+    {
+     "id": "b6p2",
+     "titulo": "La llegada a México (1519)",
+     "emoji": "🛶",
+     "ideas": [
+      "En 1519 Hernán Cortés llegó a las costas del Golfo de México y fundó la Villa Rica de la Vera Cruz.",
+      "Moctezuma II (Moctezuma Xocoyotzin) gobernaba a los mexicas desde México-Tenochtitlan, fundada hacia 1325 en un islote del lago de Texcoco.",
+      "Malintzin (la Malinche), mujer nahua, fue intérprete de Cortés: hablaba náhuatl y maya."
+     ]
+    },
+    {
+     "id": "b6p3",
+     "titulo": "La caída de México-Tenochtitlan (1521)",
+     "emoji": "🏯",
+     "ideas": [
+      "Cortés se alió con pueblos enemigos de los mexicas, como los tlaxcaltecas.",
+      "Tras un largo sitio, México-Tenochtitlan cayó el 13 de agosto de 1521.",
+      "Cuauhtémoc, el último tlatoani mexica, fue capturado."
+     ]
+    }
+   ],
+   "actividades": [
+    {
+     "id": "b6om1",
+     "tipo": "opcion_multiple",
+     "pregunta": "¿Por qué los europeos buscaron nuevas rutas por mar hacia Asia en el siglo XV?",
+     "opciones": [
+      "Porque el Imperio otomano cerró las rutas de la Seda en 1453",
+      "Porque la Peste Negra cerró todos los puertos de Europa",
+      "Porque Roma prohibió el comercio con Oriente",
+      "Porque en China se terminó la seda"
+     ],
+     "correcta": 0,
+     "pista": "b6p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "🐫",
+     "retro_correcta": "¡Sí! En 1453 el Imperio otomano cerró las rutas de la Seda y Europa buscó otro camino hacia Asia: el mar.",
+     "retro_incorrecta": "No exactamente: la respuesta es «Porque el Imperio otomano cerró las rutas de la Seda en 1453». En 1453 el Imperio otomano cerró las rutas de la Seda y Europa buscó otro camino hacia Asia: el mar."
+    },
+    {
+     "id": "b6om2",
+     "tipo": "opcion_multiple",
+     "pregunta": "¿En qué año llegó Cristóbal Colón a América?",
+     "opciones": [
+      "1453",
+      "1492",
+      "1519",
+      "1521"
+     ],
+     "correcta": 1,
+     "pista": "b6p1",
+     "punto_dificil": null,
+     "dificultad": "facil",
+     "emoji": "⛵",
+     "retro_correcta": "¡Sí! Colón llegó a América el 12 de octubre de 1492, al servicio de los Reyes Católicos.",
+     "retro_incorrecta": "No exactamente: la respuesta es «1492». Colón llegó a América el 12 de octubre de 1492, al servicio de los Reyes Católicos."
+    },
+    {
+     "id": "b6om3",
+     "tipo": "opcion_multiple",
+     "pregunta": "¿Quién gobernaba a los mexicas cuando llegó Hernán Cortés en 1519?",
+     "opciones": [
+      "Cuauhtémoc",
+      "Moctezuma II (Moctezuma Xocoyotzin)",
+      "Rómulo",
+      "Mehmed II"
+     ],
+     "correcta": 1,
+     "pista": "b6p2",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "👑",
+     "retro_correcta": "¡Sí! Moctezuma II gobernaba desde México-Tenochtitlan; Cuauhtémoc fue el último tlatoani, después.",
+     "retro_incorrecta": "No exactamente: la respuesta es «Moctezuma II (Moctezuma Xocoyotzin)». Moctezuma II gobernaba desde México-Tenochtitlan; Cuauhtémoc fue el último tlatoani, después."
+    },
+    {
+     "id": "b6om4",
+     "tipo": "opcion_multiple",
+     "pregunta": "¿Quién fue la intérprete de Hernán Cortés y hablaba náhuatl y maya?",
+     "opciones": [
+      "Malintzin (la Malinche)",
+      "Isabel la Católica",
+      "Leona Vicario",
+      "Sor Juana Inés de la Cruz"
+     ],
+     "correcta": 0,
+     "pista": "b6p2",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🗣️",
+     "retro_correcta": "¡Sí! Malintzin, mujer nahua, hablaba náhuatl y maya y fue intérprete de Cortés.",
+     "retro_incorrecta": "No exactamente: la respuesta es «Malintzin (la Malinche)». Malintzin, mujer nahua, hablaba náhuatl y maya y fue intérprete de Cortés."
+    },
+    {
+     "id": "b6om5",
+     "tipo": "opcion_multiple",
+     "pregunta": "¿Cuándo cayó México-Tenochtitlan?",
+     "opciones": [
+      "12 de octubre de 1492",
+      "13 de agosto de 1521",
+      "16 de septiembre de 1810",
+      "4 de septiembre de 476"
+     ],
+     "correcta": 1,
+     "pista": "b6p3",
+     "punto_dificil": null,
+     "dificultad": "media",
+     "emoji": "🏯",
+     "retro_correcta": "¡Sí! México-Tenochtitlan cayó el 13 de agosto de 1521, tras un largo sitio.",
+     "retro_incorrecta": "No exactamente: la respuesta es «13 de agosto de 1521». México-Tenochtitlan cayó el 13 de agosto de 1521, tras un largo sitio."
+    }
+   ],
+   "mini_examen": []
   }
  ],
  "calentamiento": [

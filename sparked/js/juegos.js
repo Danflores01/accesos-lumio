@@ -1,12 +1,12 @@
 // Los juegos del estante (Documento 2 + mecánicas que pidió Daniel): carrera, puertas, montaña, castillo, verdadero o
-// falso express, súper dato, mix & match, super sort, rank order, ruleta y mini-examen. Todos se califican solos y dan
+// falso express, súper dato, mix & match, super sort, rank order, ruleta, mini-examen y duelo. Todos se califican solos y dan
 // retroalimentación al instante. Versión "videojuego actual" (6 nov 2026): movimiento continuo, motor que acelera,
 // saltos, flechas en arco, parejas que se juntan con animación y todo se puede jugar tocando o arrastrando.
 // Cada actividad tiene plantillas distintas (vehículos, escenarios, colores) para que ninguna guía repita la misma.
 import { esc, h, mezclar, toast, inicio, fin, gameOver, arrastrable, panelPregunta, temporizador } from "./ui.js";
 import { marco } from "./teoria.js";
 import { sonido } from "./sonido.js";
-import { escenaCiudad, escenaMontana, escenaCastillo, escenaPlaneta, escenaSvg, capaVehiculo, vehiculo, capaEscalador, capaSoldado, capaArquero, capaIcono, capaSparky, icono, COLORES_DE_COCHE } from "./arte.js";
+import { escenaCiudad, escenaMontana, escenaCastillo, escenaPlaneta, escenaSvg, capaVehiculo, vehiculo, capaEscalador, capaSoldado, capaArquero, capaIcono, capaSparky, icono, COLORES_DE_COCHE, escenaDuelo, capaDragonDuelo } from "./arte.js";
 
 const W = 172, H = 140;
 const TEMAS = {
@@ -26,6 +26,13 @@ const TEMAS_PUERTAS = {
   bodega: { pared1: "#0B2545", pared2: "#13315C", piedra: "#5F7A8A", piedra2: "#8DA7B8", madera: "#C98B4D", puerta: "#3F5E80", marco: "#1E3A5F", luz: "#7DD3FC", cielo: "#061A2E" },
 };
 
+// Nombre de cada corredor en el selector (arte 3.0): pintura de escudería, pelaje real o color de escamas.
+const NOMBRES_CORREDOR = {
+  es: { coche: { rojo: "Rojo carreras", azul: "Azul noche", amarillo: "Negro y oro", verde: "Verde inglés", morado: "Plata" }, caballo: { rojo: "Alazán", azul: "Negro", amarillo: "Bayo", verde: "Tordo", morado: "Blanco" }, dragon: { rojo: "Verde bosque", azul: "Gris pizarra", amarillo: "Arena", verde: "Musgo", morado: "Carbón" } },
+  en: { coche: { rojo: "Racing red", azul: "Midnight", amarillo: "Black and gold", verde: "British green", morado: "Silver" }, caballo: { rojo: "Chestnut", azul: "Black", amarillo: "Buckskin", verde: "Grey", morado: "White" }, dragon: { rojo: "Forest green", azul: "Slate grey", amarillo: "Sand", verde: "Moss", morado: "Charcoal" } },
+  fr: { coche: { rojo: "Rouge course", azul: "Bleu nuit", amarillo: "Noir et or", verde: "Vert anglais", morado: "Argent" }, caballo: { rojo: "Alezan", azul: "Noir", amarillo: "Isabelle", verde: "Gris", morado: "Blanc" }, dragon: { rojo: "Vert forêt", azul: "Gris ardoise", amarillo: "Sable", verde: "Mousse", morado: "Charbon" } },
+};
+const nombreCorredor = (ctx, tipo, c) => (NOMBRES_CORREDOR[ctx.c?.plan?.idioma_guia] ?? NOMBRES_CORREDOR.es)[tipo]?.[c] ?? c.toUpperCase();
 const hudPill = (txt, id = "", px = false) => `<span class="hud-pill ${px ? "px" : ""}" ${id ? `id="${id}"` : ""}>${txt}</span>`;
 // Un <g> de SVG de verdad (crearlo con innerHTML en un div lo volvería un elemento HTML que no se dibuja).
 function gSvg(inner, style = "") { const g = document.createElementNS("http://www.w3.org/2000/svg", "g"); if (style) g.setAttribute("style", style); g.innerHTML = inner; return g; }
@@ -59,6 +66,7 @@ const juntar = (c, zona) => { zona.appendChild(c); c.classList.add("locked", "po
 // ---------- CARRERA: los corredores avanzan todo el tiempo; acierto = acelerón y rebase, error = te rebasan ----------
 // Plantillas: ciudad de neón con coches, espacio con naves, hipódromo con caballos, cielo con dragones.
 export function carrera(s, ctx) {
+  if (esDuelo(s, ctx)) return duelo(s, ctx);
   const el = marco(s, ctx); const ids = s.ids; const T = ctx.t; const N = ids.length;
   const tipo = VEHICULOS[s.plantilla] ?? "coche";
   const tema = { ...(TEMAS[s.plantilla] ?? {}), carriles: 5 };
@@ -115,7 +123,7 @@ export function carrera(s, ctx) {
 
   // Elegir personaje antes de empezar: "para sentir que tiene su personaje".
   const elegidoAntes = ctx.coche();
-  const selector = `<div class="ayuda" style="font-weight:800;color:#2A2340">${esc(T("elige_" + tipo))}</div><div class="elige">${colores.map((c) => `<button data-c="${c}" class="${c === elegidoAntes ? "sel" : ""}">${vehiculo(tipo, c, 3)}<span>${c.toUpperCase()}</span></button>`).join("")}</div>`;
+  const selector = `<div class="ayuda" style="font-weight:800;color:#2A2340">${esc(T("elige_" + tipo))}</div><div class="elige">${colores.map((c) => `<button data-c="${c}" class="${c === elegidoAntes ? "sel" : ""}">${vehiculo(tipo, c, 3)}<span>${esc(nombreCorredor(ctx, tipo, c))}</span></button>`).join("")}</div>`;
   const ov = arranque(el, T, "carrera", () => correr(ctx.coche() ?? colores[0]), selector);
   ov.querySelectorAll(".elige button").forEach((b) => b.onclick = () => { ov.querySelectorAll(".elige button").forEach((x) => x.classList.remove("sel")); b.classList.add("sel"); ctx.setCoche(b.dataset.c); sonido.toque(); });
   return el;
@@ -123,6 +131,7 @@ export function carrera(s, ctx) {
 
 // ---------- PUERTAS: torre en zigzag (estilo Donkey Kong); flechas para moverse, cada puerta se abre contestando ----------
 export function puertas(s, ctx) {
+  if (esDuelo(s, ctx)) return duelo(s, ctx);
   const el = marco(s, ctx); const T = ctx.t; const N = s.ids.length; const TL = 15;
   const tema = TEMAS_PUERTAS[s.plantilla] ?? TEMAS_PUERTAS.torre;
   el.setAttribute("data-teclas", "1");
@@ -221,6 +230,7 @@ export function puertas(s, ctx) {
 
 // ---------- MONTAÑA: plataformas; cada acierto es un salto, cada error un resbalón ----------
 export function montana(s, ctx) {
+  if (esDuelo(s, ctx)) return duelo(s, ctx);
   const el = marco(s, ctx); const ids = s.ids; const T = ctx.t; const N = ids.length, TL = 25;
   const fondo = escenaMontana(W, H, N, ctx.c.semilla + ctx.cur, TEMAS[s.plantilla] ?? {});
   el.appendChild(h(`<div class="juego"><div class="escena-caja" id="caja"></div>${panel(ctx, `<div class="pill" id="st"></div>`)}</div>`));
@@ -266,6 +276,7 @@ export function montana(s, ctx) {
 
 // ---------- CASTILLO: una escuadra avanza hacia la torre; la flecha vuela en arco; tres vidas ----------
 export function castillo(s, ctx) {
+  if (esDuelo(s, ctx)) return duelo(s, ctx);
   const el = marco(s, ctx); const T = ctx.t; const TL = 15;
   const fondo = escenaCastillo(W, H, ctx.c.semilla + ctx.cur, TEMAS[s.plantilla] ?? {});
   el.appendChild(h(`<div class="juego"><div class="escena-caja" id="caja"></div>${panel(ctx, `<div class="pill" id="st"></div>`)}</div>`));
@@ -487,4 +498,138 @@ export function quiz(s, ctx) {
       card.appendChild(h(`<div class="retro ${ok ? "ok" : "mal"}">${esc(txt)}</div>`)); const nb = h(`<button class="btn" style="align-self:flex-end">${i + 1 < ids.length ? esc(T("siguiente")).replace("↓", "→") : esc(T("calificacion"))}</button>`); nb.onclick = () => { i++; mostrar(); }; card.appendChild(nb); });
     qb.appendChild(card); };
   mostrar(); arranque(el, T, "quiz", () => {}); return el;
+}
+
+// ---------- DUELO (7 nov 2026): pelea por rounds, Sparky con casco y espada contra un dragón ----------
+// Mismo contenido que opción múltiple (s.ids → actividades opcion_multiple o completar del cartucho) y mismo registro:
+// panelPregunta llama a ctx.registrar(id, ok) una vez por pregunta. Acierto = Sparky ataca y el dragón pierde vida;
+// error o tiempo agotado = el dragón echa fuego y Sparky pierde vida. El round termina con un K.O. o cuando se acaban
+// las preguntas (gana quien conserve más vida). Derrota = pantalla de revancha que invita a repasar la pista.
+// Textos propios en español, inglés y francés (el cartucho todavía no los trae).
+const TEXTOS_DUELO = {
+  es: { titulo: "Duelo", instr: "Duelo contra el dragón: contesta cada pregunta antes de que se acabe el tiempo. Si aciertas, Sparky ataca con su espada y el dragón pierde vida; si fallas, el dragón te lanza fuego y pierdes vida. Gana quien deje al otro sin vida.", sparky: "SPARKY", dragon: "DRAGÓN", round: "ROUND", pelea: "¡A pelear!", ko: "K.O.", ganaste: "¡Venciste al dragón!", gano_tiempo: "¡Ganaste el duelo!", revancha: "¡Revancha!", animo: "El dragón ganó este round. Repasa la pista y vuelve a intentarlo: cada pregunta que repasas te hace más fuerte.", repasar: "📖 Repasar la pista", combo: "COMBO", golpe: "¡GOLPE!", vida: "Vida", preguntas_fin: "Se acabaron las preguntas" },
+  en: { titulo: "Duel", instr: "Duel against the dragon: answer each question before time runs out. If you are right, Sparky strikes with his sword and the dragon loses health; if you are wrong, the dragon breathes fire and you lose health. Whoever runs out of health first loses.", sparky: "SPARKY", dragon: "DRAGON", round: "ROUND", pelea: "Fight!", ko: "K.O.", ganaste: "You defeated the dragon!", gano_tiempo: "You won the duel!", revancha: "Rematch!", animo: "The dragon won this round. Review the clue and try again: every question you review makes you stronger.", repasar: "📖 Review the clue", combo: "COMBO", golpe: "HIT!", vida: "Health", preguntas_fin: "No more questions" },
+  fr: { titulo: "Duel", instr: "Duel contre le dragon : réponds à chaque question avant la fin du temps. Si tu as raison, Sparky frappe avec son épée et le dragon perd de la vie ; si tu te trompes, le dragon crache du feu et tu perds de la vie. Celui qui n'a plus de vie perd.", sparky: "SPARKY", dragon: "DRAGON", round: "ROUND", pelea: "Au combat !", ko: "K.O.", ganaste: "Tu as vaincu le dragon !", gano_tiempo: "Tu as gagné le duel !", revancha: "Revanche !", animo: "Le dragon a gagné cette manche. Revois l'indice et réessaie : chaque question revue te rend plus fort.", repasar: "📖 Revoir l'indice", combo: "COMBO", golpe: "TOUCHÉ !", vida: "Vie", preguntas_fin: "Plus de questions" },
+};
+const td = (ctx, k) => (TEXTOS_DUELO[ctx.c?.plan?.idioma_guia] ?? TEXTOS_DUELO.es)[k] ?? TEXTOS_DUELO.es[k];
+// ¿Esta slide de preguntas se juega como duelo? Sí si el estante la marcó así (k: "duelo") o si el bloque lo pide con
+// "juego": "duelo" (el planificador decide qué juego recibe las preguntas de cada bloque). El calentamiento nunca.
+const esDuelo = (s, ctx) => s.k === "duelo" || (!s.calentamiento && s.blk >= 0 && ctx.c?.bloques?.[s.blk]?.juego === "duelo");
+
+export function duelo(s, ctx) {
+  const T = ctx.t;
+  // Título con espadas (en la rejilla de slides también, porque se cambia en la misma slide del estante).
+  if (!String(s.t).startsWith("⚔️")) s.t = `⚔️ ${String(s.t).replace(/^\S+\s+/, "") || td(ctx, "titulo")}`;
+  const el = marco(s, ctx); el.classList.add("pl-duelo");
+  const N = s.ids.length, TL = 20, AW = 172, AH = 140;
+  const paleta = ["verde", "tierra", "gris"][(ctx.c.semilla + ctx.cur) % 3];
+  const arena = escenaDuelo(AW, AH, ctx.c.semilla + ctx.cur);
+  const SP = { x: 20, esc: 2.5 }, DR = { x: 82, esc: 1.05 };
+  const spY = arena.suelo - 19.35 * SP.esc, drY = arena.suelo - 68 * DR.esc;
+  const capaSp = (pose) => `<g class="sp-flota">${capaSparky(pose + "+yelmo+espada", 0, 0)}</g>`;
+  const escena = () => escenaSvg(arena.svg, AW, AH,
+    `<g id="dr" transform="translate(${DR.x} ${drY}) scale(${DR.esc})"><g class="dr-golpe">${capaDragonDuelo(paleta, 0, 0)}</g></g>
+     <g id="sp" transform="translate(${SP.x} ${spY}) scale(${SP.esc})"><g class="sp-golpe">${capaSp("decidido")}</g></g>
+     <g id="fx"></g>`);
+  el.appendChild(h(`<div class="juego duelo-juego"><div class="escena-caja duelo-arena" id="caja"></div>${panel(ctx, `<div class="pill" id="st"></div>`)}</div>`));
+  fondoPrevio(el, escena());
+
+  const jugar = (ids, ronda) => {
+    let i = 0, aciertos = 0, racha = 0, timer = null, terminado = false, anim = null;
+    const golpesDragon = Math.max(1, Math.ceil(ids.length * .6)), golpesSparky = Math.max(1, ids.length - golpesDragon + 1);
+    let vidaDr = golpesDragon, vidaSp = golpesSparky;
+    const malas = [];
+    const caja = el.querySelector("#caja");
+    caja.classList.remove("parado");
+    caja.innerHTML = escena() + `<div class="duelo-hud">
+        <div class="duelo-lado sp"><span class="duelo-nombre">${esc(td(ctx, "sparky"))}</span><div class="duelo-vida" role="meter" aria-label="${esc(td(ctx, "vida"))} ${esc(td(ctx, "sparky"))}"><i class="rastro"></i><i class="vida"></i></div></div>
+        <div class="duelo-ronda">${esc(td(ctx, "round"))} ${ronda}</div>
+        <div class="duelo-lado dr"><span class="duelo-nombre">${esc(td(ctx, "dragon"))}</span><div class="duelo-vida" role="meter" aria-label="${esc(td(ctx, "vida"))} ${esc(td(ctx, "dragon"))}"><i class="rastro"></i><i class="vida"></i></div></div>
+      </div><div class="duelo-cartel" id="cartel"></div><div class="duelo-combo" id="combo"></div>`;
+    const svg = caja.querySelector("svg"), gSp = svg.querySelector("#sp"), gDr = svg.querySelector("#dr"), fx = svg.querySelector("#fx");
+    const cartel = (txt, ms = 1100, clase = "") => { const c = caja.querySelector("#cartel"); c.className = "duelo-cartel " + clase; c.textContent = txt; void c.offsetWidth; c.classList.add("on"); ctx.luego(() => c.classList.remove("on"), ms); };
+    const hud = () => {
+      const pSp = 100 * vidaSp / golpesSparky, pDr = 100 * vidaDr / golpesDragon;
+      caja.querySelectorAll(".duelo-lado.sp i").forEach((b) => b.style.width = pSp + "%");
+      caja.querySelectorAll(".duelo-lado.dr i").forEach((b) => b.style.width = pDr + "%");
+      caja.querySelector(".duelo-lado.sp").classList.toggle("peligro", pSp <= 34);
+      caja.querySelector(".duelo-lado.dr").classList.toggle("peligro", pDr <= 34);
+      el.querySelector("#st").textContent = `${aciertos} ✓ · ${td(ctx, "round")} ${ronda}`;
+    };
+    const destello = (g) => { g.classList.remove("golpeado"); void g.getBoundingClientRect(); g.classList.add("golpeado"); };
+    const ponerPose = (pose) => { gSp.querySelector(".sp-golpe").innerHTML = capaSp(pose); };
+    // Animaciones de ataque: el bucle mueve a los peleadores; CSS se encarga del tajo, el fuego y los destellos.
+    const ataqueSparky = (alImpacto) => {
+      sonido.whoosh();
+      gSp.classList.remove("tajo"); void gSp.getBoundingClientRect(); gSp.classList.add("tajo");
+      anim = { quien: "sp", t0: performance.now(), dur: 820, golpe: 300 }; ctx.luego(() => impacto("sp", alImpacto), 300);
+    };
+    const ataqueDragon = (alImpacto) => {
+      gDr.classList.remove("sopla"); void gDr.getBoundingClientRect(); gDr.classList.add("sopla");
+      sonido.whoosh();
+      anim = { quien: "dr", t0: performance.now(), dur: 1000, golpe: 460 }; ctx.luego(() => impacto("dr", alImpacto), 460);
+    };
+    // El golpe se aplica con un temporizador (no con el cuadro de animación): así la vida baja a tiempo aunque el
+    // navegador frene las animaciones, por ejemplo con la pestaña en segundo plano.
+    const impacto = (quien, alImpacto) => { if (terminado) return; sonido.golpe(); if (quien === "sp") { tajo(); destello(gDr.querySelector(".dr-golpe")); } else destello(gSp.querySelector(".sp-golpe")); svg.classList.remove("temblor"); void svg.getBoundingClientRect(); svg.classList.add("temblor"); alImpacto?.(); };
+    const tajo = () => { const g = gSvg(`<path class="duelo-tajo" d="M${DR.x + 6} ${arena.suelo - 58} Q${DR.x + 34} ${arena.suelo - 44} ${DR.x + 18} ${arena.suelo - 8}" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/><circle class="duelo-chispa" cx="${DR.x + 22}" cy="${arena.suelo - 36}" r="6" fill="#FFE9A8"/>`); fx.appendChild(g); ctx.luego(() => g.remove(), 600); };
+    bucle(el, ctx, (dt, t, fuera) => {
+      if (fuera || terminado) return false;
+      let dxSp = 0, dxDr = 0;
+      if (anim) {
+        const e = t - anim.t0, p = Math.min(1, e / anim.dur);
+        if (anim.quien === "sp") dxSp = 46 * Math.sin(Math.PI * Math.min(1, p * 1.15));
+        else { dxDr = p < .25 ? 6 * Math.sin(Math.PI * p / .5) : -14 * Math.sin(Math.PI * (p - .25) / .75); dxSp = e > anim.golpe ? -7 * Math.sin(Math.PI * Math.min(1, (e - anim.golpe) / 400)) : 0; }
+        if (p >= 1) { gSp.classList.remove("tajo"); gDr.classList.remove("sopla"); anim = null; }
+      }
+      gSp.setAttribute("transform", `translate(${(SP.x + dxSp).toFixed(2)} ${spY}) scale(${SP.esc})`);
+      gDr.setAttribute("transform", `translate(${(DR.x + dxDr).toFixed(2)} ${drY}) scale(${DR.esc})`);
+      return true;
+    });
+    // Fin del round: K.O. o se acabaron las preguntas. Se detienen el bucle y las animaciones de CSS.
+    const terminar = (gana, porKO) => {
+      if (terminado) return; terminado = true; timer?.detener();
+      el.querySelector("#qbox").innerHTML = "";
+      cartel(porKO ? td(ctx, "ko") : td(ctx, "preguntas_fin"), 1500, porKO ? "ko" : "");
+      if (gana) { gDr.classList.add("vencido"); ponerPose("festejo"); sonido.brillo(); } else { gSp.classList.add("vencido"); ponerPose("triste"); }
+      ctx.luego(() => {
+        caja.classList.add("parado");
+        let d = null;
+        const otraVez = () => { d?.remove(); jugar(mezclar(ids), ronda + 1); };
+        if (gana) d = fin(el, ctx, porKO ? td(ctx, "ganaste") : td(ctx, "gano_tiempo"), `${aciertos}/${ids.length}`, esc(T("correctas")), otraVez, true);
+        else {
+          const pista = malas.map((a) => a.pista).find((p) => p && ctx.slideDePista(p) >= 0);
+          d = fin(el, ctx, td(ctx, "revancha"), `${aciertos}/${ids.length}`, `${esc(T("correctas"))}<p class="duelo-animo">${esc(td(ctx, "animo"))}</p>${pista ? `<button class="btn alt duelo-repasar" type="button">${esc(td(ctx, "repasar"))}</button>` : ""}`, otraVez, false);
+          d.querySelector(".duelo-repasar")?.addEventListener("click", () => { sonido.toque(); ctx.go(ctx.slideDePista(pista)); });
+        }
+      }, 1700);
+    };
+    const preguntar = () => {
+      if (terminado) return;
+      const qb = el.querySelector("#qbox"); qb.innerHTML = "";
+      if (i >= ids.length) { terminar(vidaDr / golpesDragon <= vidaSp / golpesSparky, false); return; }
+      const a = ctx.c.porId[ids[i]];
+      if (!a) { i++; preguntar(); return; }
+      el.querySelector("#qn").textContent = `${T("pregunta")} ${i + 1} ${T("de")} ${ids.length}`;
+      const q = panelPregunta(a, ctx, (ok, txt) => {
+        timer?.detener(); i++;
+        if (ok) {
+          aciertos++; racha++;
+          ataqueSparky(() => { vidaDr = Math.max(0, vidaDr - 1); hud(); const c = caja.querySelector("#combo"); c.textContent = racha > 1 ? `${td(ctx, "combo")} ×${racha}` : td(ctx, "golpe"); c.classList.remove("on"); void c.offsetWidth; c.classList.add("on"); if (vidaDr <= 0) terminar(true, true); });
+        } else {
+          racha = 0; malas.push(a);
+          ataqueDragon(() => { vidaSp = Math.max(0, vidaSp - 1); hud(); if (vidaSp <= 0) terminar(false, true); });
+        }
+        toast(el, ok, txt, ok ? 1800 : 3200);
+        ctx.luego(preguntar, ok ? 1900 : 3300);
+      });
+      qb.appendChild(q);
+      timer = temporizador(el.querySelector("#tm"), TL, () => q.agotar(), ctx);
+    };
+    hud(); cartel(`${td(ctx, "round")} ${ronda}`, 900); ctx.luego(() => { if (!terminado) cartel(td(ctx, "pelea"), 800, "pelea"); }, 950);
+    if (!ids.length) { terminar(true, false); return; }
+    ctx.luego(preguntar, 1300);
+  };
+  inicio(el, td(ctx, "instr"), () => jugar(s.ids.slice(), 1), "", { titulo: T("como_jugar"), boton: T("iniciar") });
+  return el;
 }
