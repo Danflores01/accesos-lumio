@@ -492,3 +492,12 @@ lenguaje formal, pero muy simple y específico. Se vale repetir un poco para que
 - **Límite de páginas: 25** (antes 15; 8 nov 2026). `sparked/js/config.js` → `paginasMax: 25`; el servidor también debe aceptar 25.
 - **Sparky en la portada da consejos para subir las fotos, en primera persona** (`sparked/datos/consejos.json`: buena luz, fotos de frente, hasta 25 páginas, fotos o PDF…). La pantalla "Generando tu guía…" sigue mostrando los datos curiosos (`datos/curiosos.json`).
 - **La fase 1 de accesos a clases de Lumio no cambia** (`/accesos/`, `entrar.html`, `panel.html` de la raíz y las funciones `ir` y `admin`).
+
+## 23. Gramática del sitio (8 nov 2026)
+
+- **Gramática impecable.** Todo texto público (portada, `crear.html` con todas sus pantallas y mensajes de error, `listo.html` con todos sus estados, plantillas de `flujo.js`, consejos de Sparky y datos curiosos) se revisa antes de publicar: tildes (también en mayúsculas: «GUÍA», «Ábrela»), signos de apertura ¿ ¡, puntuación, mayúsculas, concordancia, sin espacios dobles.
+- **«Examen» no lleva tilde** (palabra llana terminada en n); **«exámenes» sí** (esdrújula). Lo mismo con «origen/orígenes», «imagen/imágenes».
+- **Comillas:** en los textos del sitio se usan las comillas latinas «…» para citar avisos o palabras (por ejemplo, el aviso «Acceso en uso en otros dispositivos»). Las comillas rectas "…" solo dentro del código.
+- **Concordancia con «guía»:** es femenino («la abro», «ábrela»); el link es masculino («no compartas el link»).
+- **Nombres genéricos en minúscula:** «el océano Pacífico», «el río Amazonas»; el nombre propio va con mayúscula.
+- **Mensajes cortos de estado** (por ejemplo «Preparando tus páginas», «Subiendo página 2 de 5») van sin punto final; las frases completas llevan punto.

@@ -106,7 +106,7 @@ zona.addEventListener("drop", (e) => agregar([...e.dataTransfer.files]));
 let clave = null, esp = null, contacto = contactoGuardado();
 form.onsubmit = async (e) => {
   e.preventDefault();
-  if (!form.grado.value || !form.materia.value) { $("#err1").textContent = "Elige grado y materia."; return; }
+  if (!form.grado.value || !form.materia.value) { $("#err1").textContent = "Elige el grado y la materia."; return; }
   if (!paginas.length) { $("#err1").textContent = "Sube al menos una página."; return; }
   pasos(2);
   esp = pantallaEspera($("#p2"), "Generando tu guía…", { paginas: paginas.length });
