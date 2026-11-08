@@ -215,7 +215,8 @@ REGLAS DE ORO (si una se rompe, la actividad no sirve)
    las respuestas NO se traducen.
 8. Largo de las preguntas: peques ≤10 palabras · primaria ≤18 · secundaria ≤25 ·
    prepa_uni ≤35.
-9. Reparte la posición de la respuesta correcta (0, 1, 2, 3) de forma pareja.
+9. "correcta" es el NÚMERO de la opción correcta (0, 1, 2 o 3), nunca su texto. Reparte esa
+   posición de forma pareja.
 10. Si el plan trae "formato_practica", las actividades PRACTICAN el contenido en ese
    formato.
 
@@ -292,7 +293,9 @@ Tu trabajo: crear SOLO las actividades que faltan, con las MISMAS reglas y el MI
 formato JSON del generador (fuente con cita del inventario, retroalimentación que enseña, distractores
 de la misma categoría, cero ambigüedad, nunca inventar).
 
-Usa ids nuevos con el prefijo "r" (ej. "r_om1"). Para llenar huecos prefiere opción
+Usa ids nuevos con el prefijo "r" y el bloque del hueco (ej. "r_b2om1"). Cada actividad nueva
+lleva en "pista" el id de una pista del bloque de su hueco (te damos la lista) y "correcta"
+como número (0 a 3). Para llenar huecos prefiere opción
 múltiple o completar: la guía ya tiene su número de slides y no debe crecer.
 
 PISTAS DEMASIADO LARGAS (si te mandamos alguna): cada slide debe caber completa. Divide

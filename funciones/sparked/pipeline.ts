@@ -426,14 +426,18 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
   if (t.paso === "revisar") {
     const huecos: string[] = [];
     const citas: string[] = D.citas ?? [];
+    const idioma = D.plan.idioma_guia ?? "es";
+    const descartes: Descarte[] = [];
     for (const b of D.bloques as any[]) {
       const antes = b.actividades.length;
-      b.actividades = b.actividades.filter((a: any) => revisarActividad(a, citas, nivel, huecos, b.id));
-      b.mini_examen = b.mini_examen.filter((a: any) => revisarActividad(a, citas, nivel, huecos, b.id));
+      b.actividades = b.actividades.filter((a: any) => revisarActividad(a, citas, nivel, huecos, b.id, descartes, idioma));
+      b.mini_examen = b.mini_examen.filter((a: any) => revisarActividad(a, citas, nivel, huecos, b.id, descartes, idioma));
       if (b.actividades.length < Math.max(6, antes * 0.5)) huecos.push(`Bloque ${b.id}: quedaron ${b.actividades.length} actividades válidas de ${antes}; faltan ${Math.max(0, 10 - b.actividades.length)} de opción múltiple o verdadero/falso`);
       for (const pd of D.plan.puntos_dificiles ?? []) { const n = b.actividades.filter((a: any) => a.punto_dificil === pd.id).length; if (n > 0 && n < 3) huecos.push(`Punto difícil ${pd.id} '${pd.descripcion}' tiene ${n} actividad(es) en el bloque ${b.id}: faltan ${3 - n}`); }
     }
     D.huecos = huecos.slice(0, 8);
+    // Cada actividad descartada queda anotada con su motivo (en datos.descartes, en datos.diagnostico y en el log).
+    anotarDescartes(D, "revisar", descartes);
     // Pistas que no caben en una slide y exceso de slides: los arregla el paso reparar.
     const perfil = D.plan.perfil_edad ?? "juvenil";
     D.pistas_largas = (D.bloques as any[]).flatMap((b) => b.pistas.map((p: any) => ({ bloque: b.id, id: p.id, motivo: problemaDePista(p, perfil) })).filter((x: any) => x.motivo));
@@ -453,7 +457,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const largas = (D.pistas_largas ?? []) as { bloque: string; id: string; motivo: string }[];
     const pistaPorId = (id: string) => (D.bloques as any[]).flatMap((b) => b.pistas).find((p: any) => p.id === id);
     const textoLargas = largas.length ? `\nPistas demasiado largas (divídelas en dos):\n${largas.map((l) => `- ${l.id} (${l.motivo}): ${JSON.stringify(pistaPorId(l.id))}`).join("\n")}` : "";
-    const contenido = [{ type: "text", text: `Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n") || "(ninguno)"}${textoLargas}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => b.actividades.map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
+    const contenido = [{ type: "text", text: `Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n") || "(ninguno)"}${textoLargas}\nPistas de cada bloque (cada actividad nueva lleva en "pista" una de las del bloque de su hueco): ${JSON.stringify(Object.fromEntries((D.bloques as any[]).map((b) => [b.id, b.pistas.map((p: any) => p.id)])))}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => b.actividades.map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
     let divididas: any[] = [];
     if ((D.huecos ?? []).length || largas.length) try {
       const res = await llamar(supabase, t, fuente, "reparar", "reparar", { sistema, contenido, maxTokens: 16000 });
@@ -463,9 +467,14 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       divididas = Array.isArray(r.json?.pistas_divididas) ? r.json.pistas_divididas : [];
       const nuevas = aplanar(r.json?.actividades_nuevas);
       const citas: string[] = D.citas ?? [];
-      const okNuevas = nuevas.filter((a: any) => revisarActividad(a, citas, nivel, [], "r"));
-      // se reparten en el bloque del punto difícil o en el primero
-      for (const a of okNuevas) { const b = (D.bloques as any[]).find((x) => x.actividades.some((y: any) => y.punto_dificil && y.punto_dificil === a.punto_dificil)) ?? D.bloques[0]; b.actividades.push(a); }
+      const descartesR: Descarte[] = [];
+      const okNuevas = nuevas.filter((a: any) => revisarActividad(a, citas, nivel, [], "reparar", descartesR, plan.idioma_guia ?? "es"));
+      anotarDescartes(D, "reparar", descartesR);
+      // Cada actividad nueva va al bloque de su hueco (por su pista o por el id del bloque en su id); si no se sabe, al
+      // bloque con huecos que tenga menos actividades. Nunca al primero por defecto.
+      const colocadas: string[] = [];
+      for (const a of okNuevas) { const b = bloqueDeNueva(D.bloques, a, D.huecos ?? []); b.actividades.push(a); colocadas.push(`${a.id}→${b.id}`); }
+      D.reparadas = colocadas;
     } catch (e) { if ((e as any)?.reintentar) throw e; console.warn("Reparación falló, sigue sin ella:", (e as Error).message); }
     // Pistas largas: se usan las pistas de continuación de la IA si ya caben; si no, se dividen por código.
     const notas: string[] = [];
@@ -791,6 +800,30 @@ export function pistaDeCorreccion(bloques: any[], id: string, res: any): { b: an
   return mejor ?? (b0 ? { b: b0, pista: b0.pistas[0], act: null } : null);
 }
 
+// Anota los descartes de un paso: datos.descartes (todos, últimos 200), datos.diagnostico.descartes (los de este paso)
+// y una línea por descarte en el log.
+function anotarDescartes(D: any, paso: string, lista: Descarte[]) {
+  for (const d of lista) console.warn("Actividad descartada", JSON.stringify({ paso, ...d }));
+  D.descartes = [...(Array.isArray(D.descartes) ? D.descartes : []), ...lista.map((d) => ({ paso, ...d }))].slice(-200);
+  D.diagnostico = { ...(D.diagnostico && typeof D.diagnostico === "object" ? D.diagnostico : {}), descartes: { paso, total: lista.length, lista: lista.slice(0, 60), en: new Date().toISOString() } };
+}
+// Bloque al que pertenece una actividad nueva de la reparación.
+export function bloqueDeNueva(bloques: any[], a: any, huecos: string[]): any {
+  const pista = String(a?.pista ?? "").trim();
+  const porPista = pista && bloques.find((b) => b.pistas?.some((p: any) => p.id === pista));
+  if (porPista) return porPista;
+  // Id del bloque dentro de la pista o del id de la actividad ("b2p1", "r_b2om1", "rb2_vf1").
+  for (const txt of [pista, String(a?.id ?? "")]) {
+    const m = txt.match(/b(\d+)/i);
+    const b = m && bloques.find((x) => x.id === `b${m[1]}`);
+    if (b) return b;
+  }
+  // Sin pista: el bloque con hueco (mencionado en los huecos) que tenga menos actividades; si ninguno, el más corto.
+  const conHueco = bloques.filter((b) => huecos.some((h) => new RegExp(`\\b${b.id}\\b`).test(h)));
+  const lista = conHueco.length ? conHueco : bloques;
+  return [...lista].sort((x, y) => x.actividades.length - y.actividades.length)[0];
+}
+
 // ---------- Respaldos para que siempre salga una guía ----------
 function rangos(desde: number, total: number): number[][] {
   const out: number[][] = [];
@@ -873,26 +906,110 @@ export function normalizarClasificar(a: any): void {
   a.elementos = elementos;
 }
 
-// Revisiones por código (Documento 1, sección 6). Devuelve true si la actividad sirve.
-function revisarActividad(a: any, citas: string[], nivel: string, huecos: string[], bloque: string): boolean {
-  if (!a || !a.tipo) return false;
+// Revisiones por código (Documento 1, sección 6). Devuelve true si la actividad sirve. Antes de descartar, arregla los
+// formatos que la IA usa a menudo (respuesta correcta como texto o letra, opciones como objetos, verdadero o falso como
+// texto, parejas con otros nombres, retroalimentación faltante). Cada descarte queda anotado en "motivos" con su causa.
+export type Descarte = { id: string; tipo: string; bloque: string; motivo: string };
+const RETRO: Record<string, [string, (x: string) => string]> = {
+  es: ["¡Correcto!", (x) => `La respuesta correcta es «${x}».`],
+  en: ["Correct!", (x) => `The correct answer is "${x}".`],
+  fr: ["Bravo !", (x) => `La bonne réponse est « ${x} ».`],
+};
+const textoOpcion = (o: any): string => typeof o === "string" ? o : typeof o === "number" ? String(o) : o && typeof o === "object" ? String(o.texto ?? o.text ?? o.opcion ?? o.valor ?? o.label ?? "") : "";
+// Índice de la respuesta correcta a partir de lo que mandó la IA: número, número en texto, letra (A–D) o el texto de la
+// opción. Devuelve -1 si no se puede saber.
+export function indiceCorrecta(valor: unknown, opciones: string[]): number {
+  if (typeof valor === "number" && Number.isInteger(valor)) return valor;
+  const v = String(valor ?? "").trim();
+  if (!v) return -1;
+  if (/^[0-9]+$/.test(v)) return Number(v);
+  // Primero el texto exacto de una opción (en inglés "a" puede ser una opción), luego la letra.
+  const n = normaliza(v);
+  const exacta = opciones.findIndex((o) => normaliza(o) === n);
+  if (exacta >= 0) return exacta;
+  const letra = v.match(/^\(?([a-dA-D])[).:]?$/);
+  if (letra) return letra[1].toLowerCase().charCodeAt(0) - 97;
+  // "B) texto" o "b. texto": letra seguida del texto de esa opción.
+  const conLetra = v.match(/^\(?([a-dA-D])[).:]\s+(.+)$/);
+  if (conLetra) { const i = conLetra[1].toLowerCase().charCodeAt(0) - 97; if (normaliza(opciones[i] ?? "") === normaliza(conLetra[2])) return i; }
+  return -1;
+}
+// Arregla en su lugar los formatos frecuentes de la IA. No inventa contenido: solo cambia la forma.
+export function normalizarActividad(a: any, idioma = "es"): void {
+  if (!a || typeof a !== "object") return;
+  const [bien, malTxt] = RETRO[idioma] ?? RETRO.es;
+  if (["opcion_multiple", "duelo"].includes(a.tipo)) {
+    if (!Array.isArray(a.opciones) && a.opciones && typeof a.opciones === "object") a.opciones = Object.values(a.opciones);
+    if (Array.isArray(a.opciones)) a.opciones = a.opciones.map(textoOpcion).map((o: string) => o.trim());
+    const ops: string[] = Array.isArray(a.opciones) ? a.opciones : [];
+    let c = indiceCorrecta(a.correcta ?? a.respuesta_correcta ?? a.respuesta, ops);
+    // Cinco o más opciones: se quedan la correcta y las tres primeras de las demás.
+    if (ops.length > 4 && c >= 0 && c < ops.length) {
+      const otras = ops.filter((_, i) => i !== c).slice(0, 3);
+      const pos = Math.min(c, 3);
+      a.opciones = [...otras.slice(0, pos), ops[c], ...otras.slice(pos)];
+      c = pos;
+    }
+    a.correcta = c;
+  }
+  if (a.tipo === "verdadero_falso" && typeof a.es_verdadera !== "boolean") {
+    const v = normaliza(String(a.es_verdadera ?? a.respuesta ?? a.correcta ?? ""));
+    if (["true", "verdadero", "verdadera", "v", "t", "vrai", "si", "yes"].includes(v)) a.es_verdadera = true;
+    else if (["false", "falso", "falsa", "f", "faux", "no"].includes(v)) a.es_verdadera = false;
+  }
+  if (a.tipo === "completar") {
+    if (!a.enunciado && a.pregunta) a.enunciado = a.pregunta;
+    const ops: string[] = Array.isArray(a.opciones) ? a.opciones.map(textoOpcion) : [];
+    if (!a.respuesta && ops.length) { const c = indiceCorrecta(a.correcta, ops); if (c >= 0 && c < ops.length) a.respuesta = ops[c]; }
+    if (typeof a.respuesta !== "string" && a.respuesta != null) a.respuesta = textoOpcion(a.respuesta);
+    if (typeof a.distractores === "string") a.distractores = a.distractores.split(/\s*[,;|]\s*/).filter(Boolean);
+    if ((!Array.isArray(a.distractores) || a.distractores.length < 2) && ops.length && a.respuesta) a.distractores = ops.filter((o) => normaliza(o) !== normaliza(a.respuesta));
+    if (Array.isArray(a.distractores)) a.distractores = a.distractores.map(textoOpcion).filter((d: string) => d && normaliza(d) !== normaliza(a.respuesta ?? ""));
+  }
+  if (["opcion_multiple", "duelo", "verdadero_falso", "completar"].includes(a.tipo)) {
+    // Sin retroalimentación: la escribe el código con la respuesta correcta (no inventa datos).
+    const correcta = a.tipo === "verdadero_falso" ? (typeof a.es_verdadera === "boolean" ? (a.es_verdadera ? { es: "Verdadero", en: "True", fr: "Vrai" } : { es: "Falso", en: "False", fr: "Faux" })[idioma as "es"] ?? "" : "") : a.tipo === "completar" ? String(a.respuesta ?? "") : String(a.opciones?.[a.correcta] ?? "");
+    if (!a.retro_correcta) a.retro_correcta = bien;
+    if (!a.retro_incorrecta && correcta) a.retro_incorrecta = malTxt(correcta);
+  }
+  if (a.tipo === "conceptos" || a.tipo === "quien_es_quien") {
+    if (!Array.isArray(a.pares) && a.pares && typeof a.pares === "object") a.pares = Object.entries(a.pares).map(([termino, definicion]) => ({ termino, definicion }));
+    if (Array.isArray(a.pares)) a.pares = a.pares.map((p: any) => Array.isArray(p) ? { termino: p[0], definicion: p[1] } : p && typeof p === "object" ? { ...p, termino: p.termino ?? p.concepto ?? p.palabra ?? p.term ?? p.nombre, definicion: p.definicion ?? p.significado ?? p.definition ?? p.descripcion } : p);
+  }
+  if (a.tipo === "ordenar" && !Array.isArray(a.pasos) && Array.isArray(a.elementos)) a.pasos = a.elementos;
+}
+// Preguntas sobre el examen o el libro (regla 3 del generador). "gap" y "huecos" solo cuentan cuando hablan del número
+// o la posición de un hueco del examen ("How many gaps…", "gap 3"); en inglés "fill the gap" es una instrucción normal.
+const SOBRE_EL_EXAMEN = [/\b(how many|cu[aá]ntos)\s+(gaps|huecos)\b/i, /\b(gap|hueco)\s+(n[uú]mero\s+)?\d+\b/i];
+function revisarActividad(a: any, citas: string[], nivel: string, huecos: string[], bloque: string, motivos: Descarte[] = [], idioma = "es"): boolean {
+  const fuera = (motivo: string) => { motivos.push({ id: String(a?.id ?? "?"), tipo: String(a?.tipo ?? "?"), bloque, motivo }); return false; };
+  if (!a || !a.tipo) return fuera("sin tipo");
+  normalizarActividad(a, idioma);
   const texto = String(a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.instruccion ?? a.texto ?? "");
   const tl = texto.toLowerCase();
-  if (PROHIBIDAS.some((p) => tl.includes(p)) && !/\bp[aá]gina web\b/.test(tl)) return false;
+  const prohibida = PROHIBIDAS.filter((p) => p !== "gap" && p !== "huecos").find((p) => tl.includes(p));
+  if (prohibida && !/\bp[aá]gina web\b/.test(tl)) return fuera(`pregunta sobre el examen o el libro ("${prohibida}")`);
+  if (SOBRE_EL_EXAMEN.some((re) => re.test(texto))) return fuera("pregunta sobre los huecos del examen");
   if (["opcion_multiple", "duelo", "verdadero_falso", "completar"].includes(a.tipo)) {
-    if (palabras(texto) > (topePalabras[nivel] ?? 25) + 5) return false;
-    if (!a.retro_incorrecta || !a.retro_correcta) { huecos.push(`Actividad ${a.id} sin retroalimentación`); return false; }
-    if (a.tipo === "opcion_multiple" || a.tipo === "duelo") { if (!Array.isArray(a.opciones) || a.opciones.length !== 4 || !(a.correcta >= 0 && a.correcta < 4)) return false; if (new Set(a.opciones.map((o: string) => normaliza(o))).size < 4) return false; }
-    if (a.tipo === "completar" && (!a.respuesta || !Array.isArray(a.distractores) || a.distractores.length < 2)) return false;
-    if (a.tipo === "verdadero_falso" && typeof a.es_verdadera !== "boolean") return false;
+    if (!texto.trim()) return fuera("sin pregunta");
+    const tope = (topePalabras[nivel] ?? 25) + 5;
+    if (palabras(texto) > tope) return fuera(`pregunta de ${palabras(texto)} palabras (máx. ${tope})`);
+    if (!a.retro_incorrecta || !a.retro_correcta) { huecos.push(`Actividad ${a.id} sin retroalimentación`); return fuera("sin retroalimentación"); }
+    if (a.tipo === "opcion_multiple" || a.tipo === "duelo") {
+      if (!Array.isArray(a.opciones) || a.opciones.length !== 4) return fuera(`${Array.isArray(a.opciones) ? a.opciones.length : 0} opciones (deben ser 4)`);
+      if (!(a.correcta >= 0 && a.correcta < 4)) return fuera(`respuesta correcta ilegible (${JSON.stringify(a.correcta)})`);
+      if (new Set(a.opciones.map((o: string) => normaliza(o))).size < 4) return fuera("opciones repetidas");
+    }
+    if (a.tipo === "completar" && (!a.respuesta || !Array.isArray(a.distractores) || a.distractores.length < 2)) return fuera(!a.respuesta ? "completar sin respuesta" : "completar con menos de 2 distractores");
+    if (a.tipo === "verdadero_falso" && typeof a.es_verdadera !== "boolean") return fuera(`verdadero o falso ilegible (${JSON.stringify(a.es_verdadera)})`);
   }
-  if (a.tipo === "super_dato") { const huecosSD = (String(a.texto ?? "").match(/\[\[(.+?)\]\]/g) ?? []).length; if (huecosSD < 3 || !Array.isArray(a.distractores)) return false; }
-  if (a.tipo === "conceptos" || a.tipo === "quien_es_quien") { if (!Array.isArray(a.pares) || a.pares.length < 3) return false; a.pares = a.pares.filter((p: any) => p?.termino && p?.definicion); if (a.pares.length < 3) return false; }
-  if (a.tipo === "ordenar") { if (!Array.isArray(a.pasos) || a.pasos.length < 3) return false; a.pasos = a.pasos.map((p: any) => typeof p === "string" ? { texto: p, emoji: "" } : p); }
-  if (a.tipo === "clasificar") { if (!Array.isArray(a.grupos) || a.grupos.length < 2 || !Array.isArray(a.elementos) || a.elementos.length < 4) return false; normalizarClasificar(a); a.elementos = a.elementos.filter((e: any) => e && (e.grupo === 0 || e.grupo === 1)); if (a.elementos.length < 4 || !a.elementos.some((e: any) => e.grupo === 0) || !a.elementos.some((e: any) => e.grupo === 1)) return false; }
+  if (a.tipo === "super_dato") { const huecosSD = (String(a.texto ?? "").match(/\[\[(.+?)\]\]/g) ?? []).length; if (huecosSD < 3) return fuera(`súper dato con ${huecosSD} huecos (mín. 3)`); if (!Array.isArray(a.distractores)) return fuera("súper dato sin distractores"); }
+  if (a.tipo === "conceptos" || a.tipo === "quien_es_quien") { if (!Array.isArray(a.pares)) return fuera("sin parejas"); a.pares = a.pares.filter((p: any) => p?.termino && p?.definicion); if (a.pares.length < 3) return fuera(`${a.pares.length} parejas completas (mín. 3)`); }
+  if (a.tipo === "ordenar") { if (!Array.isArray(a.pasos) || a.pasos.length < 3) return fuera(`${Array.isArray(a.pasos) ? a.pasos.length : 0} pasos (mín. 3)`); a.pasos = a.pasos.map((p: any) => typeof p === "string" ? { texto: p, emoji: "" } : p); }
+  if (a.tipo === "clasificar") { if (!Array.isArray(a.grupos) || a.grupos.length < 2 || !Array.isArray(a.elementos) || a.elementos.length < 4) return fuera("clasificar con menos de 2 grupos o 4 tarjetas"); normalizarClasificar(a); a.elementos = a.elementos.filter((e: any) => e && (e.grupo === 0 || e.grupo === 1)); if (a.elementos.length < 4 || !a.elementos.some((e: any) => e.grupo === 0) || !a.elementos.some((e: any) => e.grupo === 1)) return fuera("clasificar con un grupo vacío o menos de 4 tarjetas"); }
   // cita respaldada
   const cita = a.fuente?.cita;
-  if (cita && citas.length && !citaExiste(cita, citas) && a.fuente?.tipo !== "practica") { huecos.push(`Actividad ${a.id} del bloque ${bloque}: su cita no aparece en las fotos`); return false; }
+  if (cita && citas.length && !citaExiste(cita, citas) && a.fuente?.tipo !== "practica") { huecos.push(`Actividad ${a.id} del bloque ${bloque}: su cita no aparece en las fotos`); return fuera(`cita que no aparece en las fotos ("${String(cita).slice(0, 60)}")`); }
   return true;
 }
 
