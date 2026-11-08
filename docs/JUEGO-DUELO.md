@@ -57,3 +57,10 @@ Ya no hace falta el atajo: `cartucho.js` crea una slide `k: "duelo"` (título `�
 `"duelo": [...]` que escribe el generador (preguntas con el formato de la opción múltiple; se indexan en `porId` y
 cuentan en la calificación y en el reporte) o cuando el bloque trae `"juego": "duelo"` (formato de la guía demo). En
 `reproductor.js` el mapa `R` incluye `duelo: J.duelo`. La rejilla de slides muestra ⚔️ desde el principio.
+
+## Reparto (8 nov 2026)
+
+Desde el reparto sin repeticiones (`docs/JUEGOS.md`, sección 5), la lista `duelo`, `"juego": "duelo"` y las actividades
+con `"tipo": "duelo"` (que `normalizar` pasa a la lista `duelo`) cuentan como un pedido de duelo: el primero de la guía
+se juega como duelo; si hay otro cerca (a menos de 15 slides), ese bloque recibe otra plantilla de preguntas con las
+mismas preguntas. El personaje del duelo se elige antes de empezar (Sparky o la princesa guerrera).
