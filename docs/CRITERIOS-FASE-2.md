@@ -574,7 +574,7 @@ vez y la actividad con el dato equivocado se quita.
 **Fotografías.** Las imágenes de Wikimedia se guardan en `upload.wikimedia.org` a 960 px (o la original si mide 960 px o
 menos); cada URL se comprueba antes de guardarla y, si no responde 200, no se pone.
 
-## 24. Sitio en inglés: selector «ES | EN» (8 nov 2026)
+## 25. Sitio en inglés: selector «ES | EN» (8 nov 2026)
 
 - **Qué hace.** El sitio público (`index.html`, `crear.html`, `listo.html`) se lee en español (por defecto) o en inglés. El selector «ES | EN» está en el encabezado, junto a los links del menú, también en teléfono. El idioma elegido se guarda en `localStorage` (`sparked_idioma`) y pasa de una página a otra; también se puede abrir directo con `?lang=en` (o `?lang=es`). Al cambiar, se actualizan el `lang` del documento y todos los textos sin recargar.
 - **Inglés de Estados Unidos, igual de simple.** Precios en pesos: «$100 MXN, VAT included». «Dispositivos» = *devices*; «7 días de acceso ilimitado a tu guía» = *7 days of unlimited access to your guide*; «Cada link es de una sola familia» = *Each link belongs to one family only*. Los grados se muestran como «Grade 7 (1° Secundaria)», pero al servidor se sigue mandando el valor en español.

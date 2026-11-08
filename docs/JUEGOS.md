@@ -88,3 +88,7 @@ de preguntas de cada bloque y el tipo de verdadero o falso; al final, `repartir(
    seguido.
 
 Las plantillas ya ocupadas por el calentamiento (o por otras slides fijas) cuentan desde el principio.
+El calentamiento usa siempre la plantilla `formula1` (circuito de Fórmula 1 de día, colores reales): es el primer juego
+que ve la familia y la carrera de F1 es la vitrina de SparkEd. Las otras carreras (ciudad de neón, naves, caballos y
+dragones) quedan para los bloques, repartidas por las reglas de arriba. La instrucción de la carrera ya no dice "Elige tu
+coche": el selector dice coche, nave, caballo o dragón según la plantilla.

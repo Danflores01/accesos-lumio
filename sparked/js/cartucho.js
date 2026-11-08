@@ -32,7 +32,7 @@ export const TEXTOS = {
     ganaste: "¡Ganaste la carrera!", segundo: "¡Segundo lugar!", tercero: "Tercer lugar", sigue: "Sigue practicando", cima: "¡Llegaste a la cima!", buen_intento: "Buen intento", castillo_ok: "¡Defendiste el castillo!", castillo_mal: "Cayó el castillo…", game_over: "GAME OVER", suerte: "Better luck next time!", press_start: "PRESS START",
     gira: "Gira la ruleta con el dedo", o_toca: "O toca aquí para girar", vale: "Esta pregunta vale", ronda: "Ronda", cargando: "Generando tu guía…", sabias: "¿Sabías que…?", otro_dato: "¡Otro dato!", desbloquea: "Desbloquea tu guía entera", vista_previa: "Vista previa", slide: "slide",
     como_jugar: "¿Cómo se juega?", iniciar: "Iniciar",
-    instr_carrera: "Elige tu coche y a correr: contesta cada pregunta antes de que se acabe el tiempo. Si aciertas, aceleras y rebasas; si fallas, te rebasan.",
+    instr_carrera: "A correr: contesta cada pregunta antes de que se acabe el tiempo. Si aciertas, aceleras y rebasas; si fallas, te rebasan.",
     instr_montana: "Sube la montaña: cada respuesta correcta es un salto a la siguiente plataforma; cada error, un resbalón hacia abajo.",
     instr_castillo: "Defiende el castillo: contesta bien para lanzar la flecha antes de que los soldados lleguen a la torre. Tienes 3 vidas.",
     instr_swipe: "Lee la tarjeta y clasifícala con tu dedo: deslízala a la derecha si es verdadera y a la izquierda si es falsa (o usa los botones).",
@@ -79,7 +79,7 @@ export const TEXTOS = {
     ganaste: "You won the race!", segundo: "Second place!", tercero: "Third place", sigue: "Keep practicing", cima: "You reached the top!", buen_intento: "Good try", castillo_ok: "You defended the castle!", castillo_mal: "The castle fell…", game_over: "GAME OVER", suerte: "Better luck next time!", press_start: "PRESS START",
     gira: "Spin the wheel with your finger", o_toca: "Or tap here to spin", vale: "This question is worth", ronda: "Round", cargando: "Building your guide…", sabias: "Did you know…?", otro_dato: "Another one!", desbloquea: "Unlock your full guide", vista_previa: "Preview", slide: "slide",
     como_jugar: "How to play", iniciar: "Start",
-    instr_carrera: "Pick your car and race: answer each question before time runs out. Right answers speed you up and overtake; wrong ones let others pass you.",
+    instr_carrera: "Race time: answer each question before time runs out. Right answers speed you up and overtake; wrong ones let others pass you.",
     instr_montana: "Climb the mountain: every right answer is a jump to the next platform; every mistake, a slip down.",
     instr_castillo: "Defend the castle: answer right to shoot the arrow before the soldiers reach the tower. You have 3 lives.",
     instr_swipe: "Read the card and sort it with your finger: swipe right if it is true, left if it is false (or use the buttons).",
@@ -123,7 +123,7 @@ export const TEXTOS = {
     ganaste: "Tu as gagné la course !", segundo: "Deuxième place !", tercero: "Troisième place", sigue: "Continue à t'entraîner", cima: "Tu es au sommet !", buen_intento: "Bel essai", castillo_ok: "Tu as défendu le château !", castillo_mal: "Le château est tombé…", game_over: "GAME OVER", suerte: "Better luck next time!", press_start: "PRESS START",
     gira: "Fais tourner la roue avec le doigt", o_toca: "Ou touche ici pour tourner", vale: "Cette question vaut", ronda: "Manche", cargando: "Création de ton guide…", sabias: "Le savais-tu ?", otro_dato: "Un autre !", desbloquea: "Débloque ton guide complet", vista_previa: "Aperçu", slide: "slide",
     como_jugar: "Comment jouer ?", iniciar: "Commencer",
-    instr_carrera: "Choisis ta voiture et fonce : réponds à chaque question avant la fin du temps. Une bonne réponse accélère et dépasse ; une erreur, et on te dépasse.",
+    instr_carrera: "À toi de courir : réponds à chaque question avant la fin du temps. Une bonne réponse accélère et dépasse ; une erreur, et on te dépasse.",
     instr_montana: "Grimpe la montagne : chaque bonne réponse est un saut vers la plateforme suivante ; chaque erreur, une glissade.",
     instr_castillo: "Défends le château : réponds bien pour tirer la flèche avant que les soldats n'atteignent la tour. Tu as 3 vies.",
     instr_swipe: "Lis la carte et classe-la avec ton doigt : glisse à droite si c'est vrai, à gauche si c'est faux (ou utilise les boutons).",
@@ -259,7 +259,7 @@ export function armarSlides(c) {
   S.push({ k: "tutorial", t: t(idioma, "como_usar"), blk: -1 });
   // Calentamiento: va justo después del tutorial, salvo que el plan pida otra "primera_actividad" (un juego del bloque 1);
   // entonces el calentamiento se juega al terminar el bloque 1, para que lo primero sea lo que decidió el plan.
-  const calent = c.calentamiento.length ? { k: "carrera", t: `🔥 ${t(idioma, "calentamiento")}`, ids: c.calentamiento, tag: t(idioma, "calentamiento"), blk: 0, plantilla: elegir("carrera"), calentamiento: true } : null;
+  const calent = c.calentamiento.length ? { k: "carrera", t: `🔥 ${t(idioma, "calentamiento")}`, ids: c.calentamiento, tag: t(idioma, "calentamiento"), blk: 0, plantilla: "formula1", calentamiento: true } : null;
   const calentDespues = !!calent && !!c.primera_actividad && c.primera_actividad !== "calentamiento";
   if (calent && !calentDespues) S.push(calent);
   c.bloques.forEach((b, bi) => {
