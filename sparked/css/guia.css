@@ -394,3 +394,93 @@ body.reproductor::after { content: ""; position: fixed; left: 0; right: 0; botto
 /* Verdadero o falso express: reloj grande */
 .reloj { font: 800 22px var(--titulos); color: #2A2340; background: #fff; border: 3px solid #2A2340; border-radius: 999px; padding: 6px 16px; min-width: 120px; text-align: center; }
 .reloj.urgente { background: var(--mal); color: #fff; border-color: #7f1d1d; animation: latir .6s ease-in-out infinite; }
+
+/* ===== Nada se desborda (Daniel, 7 nov 2026) =====
+   La letra de la teoría sale de --letra: el reproductor mide cada slide y elige de 22 a 18 px la que cabe; si ni con
+   18 px cabe, divide la slide. Las cajas van 1 px abajo del texto principal. */
+.teoria-sl { --letra: 20px; }
+.teoria-sl .tcard ul, .teoria-sl .tcard p { font-size: var(--letra); }
+.teoria-sl .tcard .th { font-size: calc(var(--letra) + 5px); }
+.teoria-sl .tcard p.apoyo { font-size: calc(var(--letra) - 2px); color: var(--gris); font-style: italic; }
+.teoria-sl .caja-ej, .teoria-sl .caja-corregido, .teoria-sl .caja-clave, .teoria-sl .banda, .teoria-sl .ojo, .teoria-sl .categorias .cat,
+.teoria-sl .lista-iconos .fila, .teoria-sl .comparacion ul, .teoria-sl .dato-rapido { font-size: calc(var(--letra) - 1px); }
+.teoria-sl .linea-tiempo .hito small { font-size: calc(var(--letra) - 3px); }
+.teoria-sl .comparacion .col h3 { font-size: calc(var(--letra) + 4px); }
+.cuerpo.con-desplazamiento { overflow-y: auto; }
+/* Instrucciones de los juegos: la letra baja de 22 a 17 px para que la tarjeta quepa con 16 px de margen. */
+.inicio { padding: 16px; }
+.tarjeta-inicio { --letra: 20px; }
+.inicio .instruccion { font-size: var(--letra); }
+.tarjeta-inicio .titulo { font-size: calc(var(--letra) + 8px); }
+.tarjeta-inicio.con-desplazamiento { max-height: 100%; overflow-y: auto; }
+.fin .caja { max-height: calc(100% - 32px); overflow-y: auto; }
+
+/* ===== Reporte final "Qué te conviene repasar" (7 nov 2026) =====
+   El escenario del reporte es fluido (reproductor.js, ajustar): toma la forma de la pantalla y no se encoge, así que
+   estos tamaños son píxeles reales. Ninguna letra baja de 19 px (en iPad horizontal se ven de 18.7 px o más). */
+#escenario.fluido { border-radius: 14px; }
+.reporte { background: linear-gradient(180deg, #fff 0, var(--fondo) 260px); display: flex; flex-direction: column; font-size: 20px; color: var(--tinta); }
+.reporte .rep-cabeza { flex: none; padding: 22px 28px 12px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.reporte .rep-cabeza .pildora { font-size: 19px; color: #2A2340; padding: 6px 14px; }
+.reporte .rep-cabeza h1 { font-size: 34px; line-height: 1.1; }
+.reporte .rep-cuerpo { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(300px, 370px) 1fr; gap: 22px; padding: 0 24px 40px 28px; }
+.rep-resumen { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; background: #fff; border: 3px solid #2A2340; border-radius: 24px; padding: 18px; box-shadow: 0 8px 0 rgba(42, 35, 64, .14); }
+.rep-lista { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 0 8px 12px 0; overscroll-behavior: contain; }
+.rep-sparky { display: flex; justify-content: center; }
+.rep-calif { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; }
+.rep-calif small { font: 800 20px var(--titulos); color: #3b3f52; }
+.rep-calif b { font: 800 64px/1 var(--titulos); color: var(--p); }
+.rep-calif span { font-size: 19px; color: #3b3f52; }
+.rep-avance-txt { font-size: 20px; margin-bottom: 6px; }
+.rep-avance-barra { height: 18px; background: #e9ebf3; border: 2px solid #2A2340; border-radius: 999px; overflow: hidden; }
+.rep-avance-barra i { display: block; height: 100%; background: linear-gradient(90deg, #27C4B4, var(--p)); border-radius: 999px; }
+.rep-aviso { background: var(--oro-suave); border: 3px solid var(--oro); border-radius: 18px; padding: 12px 14px; font: 700 20px/1.35 var(--texto); color: #78350f; display: flex; flex-direction: column; gap: 10px; }
+.rep-aviso.listo { background: var(--ok-suave); border-color: var(--ok); color: #14532d; }
+.rep-aviso .rep-ir { font-size: 19px; width: 100%; white-space: normal; text-align: center; line-height: 1.25; padding: 12px 14px; border: 3px solid #2A2340; box-shadow: 0 5px 0 #2A2340; }
+.rep-nota { margin: 0; font-size: 19px; color: #4b4f63; }
+.rep-minis h3 { font-size: 20px; margin-bottom: 6px; }
+.rep-minis ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.rep-minis li { display: flex; justify-content: space-between; gap: 10px; background: var(--p-suave); border-radius: 10px; padding: 6px 12px; font-size: 19px; }
+.rep-lista h2 { font-size: 28px; color: #2A2340; }
+.rep-bloques { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+.rep-bloque { background: #fff; border: 3px solid #2A2340; border-top: 12px solid var(--c); border-radius: 20px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 6px 0 rgba(42, 35, 64, .12); }
+.rep-bloque header { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+.rep-num { width: 38px; height: 38px; flex: none; border-radius: 50%; background: var(--c); color: #fff; font: 800 21px var(--titulos); display: flex; align-items: center; justify-content: center; }
+.rep-bloque h3 { flex: 1 1 160px; font-size: 23px; line-height: 1.15; color: var(--c); }
+.rep-estado { font: 800 19px var(--titulos); padding: 4px 12px; border-radius: 999px; border: 2px solid; white-space: nowrap; }
+.rep-estado.dominado { background: var(--ok-suave); color: #14532d; border-color: var(--ok); }
+.rep-estado.reforzar { background: var(--oro-suave); color: #92400e; border-color: var(--oro); }
+.rep-estado.sin { background: #eef0f6; color: #374151; border-color: #9aa1b5; }
+.rep-barra { height: 12px; background: #e9ebf3; border-radius: 999px; overflow: hidden; display: flex; }
+.rep-barra .ok { background: var(--ok); } .rep-barra .mal { background: var(--mal); }
+.rep-conteo { display: flex; flex-wrap: wrap; gap: 4px 16px; font: 700 19px var(--texto); }
+.rep-conteo .ok { color: #15803d; } .rep-conteo .mal { color: #b91c1c; } .rep-conteo .sin { color: #4b5563; }
+.rep-temas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rep-temas li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; background: #f6f7fb; border-radius: 12px; padding: 8px 10px; font-size: 20px; line-height: 1.3; }
+.rep-tema { flex: 1 1 210px; font-weight: 700; }
+.rep-tag { font: 700 19px var(--texto); border-radius: 8px; padding: 1px 8px; }
+.rep-tag.mal { background: var(--mal-suave); color: #7f1d1d; }
+.rep-tag.sin { background: #e5e7eb; color: #374151; }
+.rep-pista { margin-left: auto; font: 800 19px var(--titulos); color: var(--p); text-decoration: underline; padding: 4px 6px; min-height: 36px; }
+.rep-faltan { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rep-ficha { font: 700 19px/1.25 var(--texto); background: #fff; color: var(--tinta); border: 2px solid #c9cedd; border-radius: 999px; padding: 5px 12px; text-align: left; }
+button.rep-ficha:hover { border-color: var(--c); background: #f6f7fb; }
+.rep-ok { margin: 0; font-size: 20px; font-weight: 700; color: #14532d; }
+.rep-animo { margin: 0; font-size: 20px; font-style: italic; color: #3b3f52; border-left: 5px solid var(--c); padding-left: 10px; }
+.rep-papas { background: #eef6ff; border: 3px dashed #0369a1; border-radius: 20px; padding: 14px 18px; }
+.rep-papas h3 { font-size: 23px; color: #0c4a6e; margin-bottom: 6px; }
+.rep-papas ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 20px; line-height: 1.4; }
+/* Pantalla angosta (teléfono parado): una sola columna que se desplaza completa. */
+#escenario.angosto .reporte .rep-cabeza { padding: 16px 16px 8px; }
+#escenario.angosto .reporte .rep-cabeza h1 { font-size: 28px; }
+#escenario.angosto .reporte .rep-cuerpo { display: block; overflow-y: auto; padding: 0 16px 44px; }
+#escenario.angosto .rep-resumen { overflow: visible; margin-bottom: 18px; }
+#escenario.angosto .rep-lista { overflow: visible; padding-right: 0; }
+#escenario.angosto .rep-bloques { grid-template-columns: 1fr; }
+/* Pantalla bajita (teléfono acostado): la cabeza va en una línea y Sparky se esconde para dejar sitio. */
+@media (max-height: 520px) {
+  #escenario.fluido .reporte .rep-cabeza { flex-direction: row; align-items: center; gap: 12px; padding: 10px 20px 8px; }
+  #escenario.fluido .reporte .rep-cabeza h1 { font-size: 26px; }
+  #escenario.fluido .reporte .rep-cuerpo { padding-bottom: 30px; }
+  #escenario.fluido .rep-sparky { display: none; }
+}

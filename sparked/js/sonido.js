@@ -2,7 +2,11 @@
 // tonos suaves con ataque y caída, ruido filtrado para golpes y ráfagas, y un motor que acelera de verdad.
 let ctx = null, ruidoBuf = null;
 let silencio = false;
+// Registro de lo que está sonando: los motores continuos (carreras) y los sonidos cortos ya programados (con su hora
+// de creación). detenerTodo() los apaga para que ningún sonido se salga de su slide (Daniel, 7 nov 2026).
 const motores = new Set();
+const sueltos = new Set();
+function registrarSuelto(nodo) { const r = { nodo, creado: performance.now() }; sueltos.add(r); nodo.onended = () => sueltos.delete(r); }
 try { silencio = localStorage.getItem("sparked_silencio") === "1"; } catch {}
 
 function audio() {
@@ -28,6 +32,7 @@ function tono({ f = 440, f2 = null, dur = .2, tipo = "sine", vol = .08, inicio =
   if (filtro) { const fl = c.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.value = filtro; fl.Q.value = q; o.connect(fl); salida = fl; }
   salida.connect(g).connect(c.destination);
   o.start(t0); o.stop(t0 + dur + .05);
+  registrarSuelto(o);
 }
 // Ráfaga de ruido filtrado (golpes, silbidos, tics).
 function rafaga({ dur = .12, vol = .06, inicio = 0, tipo = "bandpass", f = 1200, f2 = null, q = 1 }) {
@@ -39,11 +44,25 @@ function rafaga({ dur = .12, vol = .06, inicio = 0, tipo = "bandpass", f = 1200,
   const g = c.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + .01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   s.connect(fl).connect(g).connect(c.destination);
   s.start(t0); s.stop(t0 + dur + .05);
+  registrarSuelto(s);
 }
 
 export const sonido = {
   get silencio() { return silencio; },
-  alternar() { silencio = !silencio; try { localStorage.setItem("sparked_silencio", silencio ? "1" : "0"); } catch {} if (silencio) motores.forEach((m) => m.detener()); return silencio; },
+  // Apaga todos los motores continuos y los sonidos cortos que siguen sonando o esperando su turno. Respeta lo que se
+  // creó hace menos de 120 ms (el "toque" del mismo botón que cambió de slide). No cambia el botón de silencio.
+  detenerTodo() {
+    [...motores].forEach((m) => { try { m.detener(); } catch {} });
+    motores.clear();
+    const ahora = performance.now();
+    for (const r of [...sueltos]) {
+      if (ahora - r.creado < 120) continue;
+      try { r.nodo.stop(); } catch {}
+      sueltos.delete(r);
+    }
+  },
+  get activos() { return motores.size; },
+  alternar() { silencio = !silencio; try { localStorage.setItem("sparked_silencio", silencio ? "1" : "0"); } catch {} if (silencio) this.detenerTodo(); return silencio; },
   // interfaz
   toque() { tono({ f: 560, f2: 380, dur: .07, vol: .05 }); },
   tic() { rafaga({ dur: .03, vol: .04, f: 2400, q: 3 }); },
@@ -85,7 +104,7 @@ export const sonido = {
     const m = {
       acelerar(v = .5) { intervalo = 620 - v * 320; },
       impulso() { intervalo = 240; setTimeout(() => m.acelerar(.55), 750); },
-      frenar() { intervalo = 760; rafaga({ dur: .25, vol: .04, f: 700, f2: 250 }); setTimeout(() => m.acelerar(.4), 900); },
+      frenar() { if (!vivo) return; intervalo = 760; rafaga({ dur: .25, vol: .04, f: 700, f2: 250 }); setTimeout(() => m.acelerar(.4), 900); },
       detener() { if (!vivo) return; vivo = false; clearTimeout(timer); motores.delete(m); },
     };
     motores.add(m);
@@ -105,8 +124,8 @@ export const sonido = {
     aleteo();
     const m = {
       acelerar(v = .5) { fl.frequency.setTargetAtTime(350 + v * 900, c.currentTime, .3); intervalo = 1100 - v * 500; },
-      impulso() { g.gain.setTargetAtTime(0.06, c.currentTime, .05); intervalo = 380; setTimeout(() => { g.gain.setTargetAtTime(0.03, c.currentTime, .4); m.acelerar(.55); }, 750); },
-      frenar() { fl.frequency.setTargetAtTime(250, c.currentTime, .1); intervalo = 1300; setTimeout(() => m.acelerar(.4), 900); },
+      impulso() { if (!vivo) return; g.gain.setTargetAtTime(0.06, c.currentTime, .05); intervalo = 380; setTimeout(() => { if (!vivo) return; g.gain.setTargetAtTime(0.03, c.currentTime, .4); m.acelerar(.55); }, 750); },
+      frenar() { if (!vivo) return; fl.frequency.setTargetAtTime(250, c.currentTime, .1); intervalo = 1300; setTimeout(() => m.acelerar(.4), 900); },
       detener() { if (!vivo) return; vivo = false; clearTimeout(timer); motores.delete(m); g.gain.setTargetAtTime(0.0001, c.currentTime, .3); setTimeout(() => { try { s.stop(); } catch {} }, 900); },
     };
     motores.add(m);
@@ -127,7 +146,7 @@ export const sonido = {
     let vivo = true;
     const m = {
       acelerar(v = .5) { if (!vivo) return; const f = 60 + v * 120; osc.frequency.setTargetAtTime(f, c.currentTime, .18); osc2.frequency.setTargetAtTime(f / 2, c.currentTime, .18); fl.frequency.setTargetAtTime(320 + v * 1000, c.currentTime, .18); },
-      impulso() { if (!vivo) return; osc.frequency.setTargetAtTime(230, c.currentTime, .04); osc2.frequency.setTargetAtTime(115, c.currentTime, .04); fl.frequency.setTargetAtTime(1800, c.currentTime, .04); g.gain.setTargetAtTime(0.06, c.currentTime, .04); setTimeout(() => { m.acelerar(.55); g.gain.setTargetAtTime(0.04, c.currentTime, .3); }, 750); },
+      impulso() { if (!vivo) return; osc.frequency.setTargetAtTime(230, c.currentTime, .04); osc2.frequency.setTargetAtTime(115, c.currentTime, .04); fl.frequency.setTargetAtTime(1800, c.currentTime, .04); g.gain.setTargetAtTime(0.06, c.currentTime, .04); setTimeout(() => { if (!vivo) return; m.acelerar(.55); g.gain.setTargetAtTime(0.04, c.currentTime, .3); }, 750); },
       frenar() { if (!vivo) return; osc.frequency.setTargetAtTime(55, c.currentTime, .1); fl.frequency.setTargetAtTime(260, c.currentTime, .1); rafaga({ dur: .3, vol: .04, f: 900, f2: 300 }); setTimeout(() => m.acelerar(.4), 900); },
       detener() { if (!vivo) return; vivo = false; motores.delete(m); g.gain.setTargetAtTime(0.0001, c.currentTime, .25); setTimeout(() => { try { osc.stop(); osc2.stop(); } catch {} }, 900); },
     };

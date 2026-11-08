@@ -45,7 +45,17 @@ export const TEXTOS = {
     vf_express: "Verdadero o falso express", contrarreloj: "Contra reloj", instr_swipe: "Contra reloj: tienes 7 segundos por tarjeta y el reloj corre para todas. Lee rápido y clasifica con tu dedo: a la derecha si es verdadera, a la izquierda si es falsa (o usa los botones).",
     instr_puertas: "Muévete con las flechas del teclado o con las flechas de la pantalla: ◀ ▶ para caminar y ▲ ▼ en las escaleras. Cada puerta se abre contestando una pregunta: la respuesta correcta es la llave. Cuidado con los guardias; tienes 3 vidas. Llega a la salida de arriba.",
     puertas: "Puertas", puertas_ok: "¡Escapaste de la torre!", puertas_mal: "Te atraparon…", llega_puerta: "Camina hasta la puerta y contesta para abrirla", controles: "◀ ▶ caminar · ▲ ▼ escaleras · teclado o flechas de la pantalla", salida: "SALIDA",
-    elige_nave: "Elige tu nave", elige_caballo: "Elige tu caballo", elige_dragon: "Elige tu dragón" },
+    elige_nave: "Elige tu nave", elige_caballo: "Elige tu caballo", elige_dragon: "Elige tu dragón",
+    // Reporte final (7 nov 2026): calificación sobre toda la guía y "Qué te conviene repasar" por bloque.
+    como_te_fue: "¿Cómo te fue?", avance: "Avance", actividades: "actividades", calif_final: "Calificación",
+    te_faltan: "Te faltan {n} actividades. Tu calificación sube cuando las contestes.", te_falta_una: "Te falta 1 actividad. Tu calificación sube cuando la contestes.",
+    ir_pendiente: "Ir a la primera actividad sin contestar", completo: "¡Contestaste todas las actividades!", sobre_total: "La calificación cuenta todas las actividades de la guía.",
+    que_repasar: "Qué te conviene repasar", dominado: "Dominado", reforzar: "A reforzar", sin_contestar: "Sin contestar", bien: "bien", mal: "mal", ver_pista: "Ver pista", todo_bien: "Todo bien en este bloque.",
+    animo_dominado: "¡Lo dominas! Un repaso rápido antes del examen y listo.", animo_reforzar: "Vas por buen camino. Repasa estas pistas y vuelve a jugar: ¡tú puedes!", animo_sin: "Aún no empiezas este bloque. Juega sus actividades y descubre todo lo que ya sabes.", animo_pendiente: "¡Ya empezaste! Termina sus actividades para ver todo lo que dominas.",
+    para_papas: "Para mamá o papá", papas_avance: "Avance: {x} de {y} actividades ({p} %). Calificación sobre toda la guía: {z} %.",
+    papas_domina: "Domina: {lista}.", papas_reforzar: "Conviene reforzar: {lista}.", papas_sin: "Falta contestar: {lista}.",
+    papas_falta: "Sugerencia: que termine las actividades que faltan; la calificación se actualiza sola.", papas_repasar: "Sugerencia: repasen juntos las pistas marcadas y vuelvan a jugar esos juegos.", papas_ok: "Sugerencia: un repaso rápido de las pistas antes del examen es suficiente.",
+    examenes: "Mini-exámenes y reto" },
   en: { portada_tag: "Study guide", aprender: "What will you learn today?", bloque: "Block", pista: "Clue", antes: "Before you start", como_usar: "How to use this lesson",
     mover: "Move forward and back", abajo: "Down arrow = next slide", arriba: "Up arrow = previous slide", barrita: "Use the toolbar", cuadritos: "Squares = see all slides",
     lupa: "Drag with your finger or mouse", juega: "Play!", start: "Press START, then drag or tap", reintenta: "Play again to beat your score", importante: "Important:", termina: "finish each game before you move to the next slide.",
@@ -68,7 +78,16 @@ export const TEXTOS = {
     vf_express: "True or false express", contrarreloj: "Against the clock", instr_swipe: "Against the clock: you get 7 seconds per card and the timer runs for all of them. Read fast and sort with your finger: right if it is true, left if it is false (or use the buttons).",
     instr_puertas: "Move with the keyboard arrows or the on-screen arrows: ◀ ▶ to walk and ▲ ▼ on the ladders. Each door opens by answering a question: the right answer is the key. Watch out for the guards; you have 3 lives. Reach the exit at the top.",
     puertas: "Doors", puertas_ok: "You escaped the tower!", puertas_mal: "They caught you…", llega_puerta: "Walk to the door and answer to open it", controles: "◀ ▶ walk · ▲ ▼ ladders · keyboard or on-screen arrows", salida: "EXIT",
-    elige_nave: "Choose your ship", elige_caballo: "Choose your horse", elige_dragon: "Choose your dragon" },
+    elige_nave: "Choose your ship", elige_caballo: "Choose your horse", elige_dragon: "Choose your dragon",
+    como_te_fue: "How did you do?", avance: "Progress", actividades: "activities", calif_final: "Grade",
+    te_faltan: "You have {n} activities left. Your grade goes up when you answer them.", te_falta_una: "You have 1 activity left. Your grade goes up when you answer it.",
+    ir_pendiente: "Go to the first unanswered activity", completo: "You answered every activity!", sobre_total: "The grade counts every activity in the guide.",
+    que_repasar: "What you should review", dominado: "Mastered", reforzar: "Needs review", sin_contestar: "Not answered", bien: "right", mal: "wrong", ver_pista: "See clue", todo_bien: "All good in this block.",
+    animo_dominado: "You've got it! A quick review before the test and you're ready.", animo_reforzar: "You're on the right track. Review these clues and play again: you can do it!", animo_sin: "You haven't started this block yet. Play its activities and find out how much you already know.", animo_pendiente: "You've started! Finish its activities to see everything you know.",
+    para_papas: "For mom or dad", papas_avance: "Progress: {x} of {y} activities ({p} %). Grade for the whole guide: {z} %.",
+    papas_domina: "Mastered: {lista}.", papas_reforzar: "Needs review: {lista}.", papas_sin: "Not answered yet: {lista}.",
+    papas_falta: "Tip: have them finish the missing activities; the grade updates by itself.", papas_repasar: "Tip: go over the marked clues together and play those games again.", papas_ok: "Tip: a quick review of the clues before the test is enough.",
+    examenes: "Mini-exams and challenge" },
   fr: { portada_tag: "Guide d'étude", aprender: "Qu'est-ce que tu vas apprendre ?", bloque: "Bloc", pista: "Indice", antes: "Avant de commencer", como_usar: "Comment utiliser ce guide",
     mover: "Avance et recule", abajo: "Flèche en bas = slide suivante", arriba: "Flèche en haut = slide précédente", barrita: "Utilise la barre", cuadritos: "Carrés = voir toutes les slides",
     lupa: "Glisse avec le doigt ou la souris", juega: "Joue !", start: "Appuie sur START, puis glisse ou touche", reintenta: "Rejoue pour battre ton score", importante: "Important :", termina: "termine chaque jeu avant de passer à la slide suivante.",
@@ -91,7 +110,16 @@ export const TEXTOS = {
     vf_express: "Vrai ou faux express", contrarreloj: "Contre la montre", instr_swipe: "Contre la montre : tu as 7 secondes par carte et le chrono tourne pour toutes. Lis vite et classe avec ton doigt : à droite si c'est vrai, à gauche si c'est faux (ou utilise les boutons).",
     instr_puertas: "Déplace-toi avec les flèches du clavier ou celles de l'écran : ◀ ▶ pour marcher et ▲ ▼ sur les échelles. Chaque porte s'ouvre en répondant à une question : la bonne réponse est la clé. Attention aux gardes ; tu as 3 vies. Rejoins la sortie en haut.",
     puertas: "Portes", puertas_ok: "Tu t'es échappé de la tour !", puertas_mal: "Ils t'ont attrapé…", llega_puerta: "Marche jusqu'à la porte et réponds pour l'ouvrir", controles: "◀ ▶ marcher · ▲ ▼ échelles · clavier ou flèches de l'écran", salida: "SORTIE",
-    elige_nave: "Choisis ton vaisseau", elige_caballo: "Choisis ton cheval", elige_dragon: "Choisis ton dragon" },
+    elige_nave: "Choisis ton vaisseau", elige_caballo: "Choisis ton cheval", elige_dragon: "Choisis ton dragon",
+    como_te_fue: "Comment ça s'est passé ?", avance: "Progression", actividades: "activités", calif_final: "Note",
+    te_faltan: "Il te reste {n} activités. Ta note monte quand tu y réponds.", te_falta_una: "Il te reste 1 activité. Ta note monte quand tu y réponds.",
+    ir_pendiente: "Aller à la première activité sans réponse", completo: "Tu as répondu à toutes les activités !", sobre_total: "La note compte toutes les activités du guide.",
+    que_repasar: "Ce que tu dois revoir", dominado: "Maîtrisé", reforzar: "À revoir", sin_contestar: "Sans réponse", bien: "juste", mal: "faux", ver_pista: "Voir l'indice", todo_bien: "Tout va bien dans ce bloc.",
+    animo_dominado: "Tu maîtrises ! Une révision rapide avant l'examen et c'est bon.", animo_reforzar: "Tu es sur la bonne voie. Revois ces indices et rejoue : tu peux le faire !", animo_sin: "Tu n'as pas encore commencé ce bloc. Joue ses activités et découvre tout ce que tu sais déjà.", animo_pendiente: "Tu as commencé ! Termine ses activités pour voir tout ce que tu maîtrises.",
+    para_papas: "Pour maman ou papa", papas_avance: "Progression : {x} sur {y} activités ({p} %). Note sur tout le guide : {z} %.",
+    papas_domina: "Maîtrisé : {lista}.", papas_reforzar: "À revoir : {lista}.", papas_sin: "Sans réponse : {lista}.",
+    papas_falta: "Conseil : qu'il ou elle termine les activités qui manquent ; la note se met à jour toute seule.", papas_repasar: "Conseil : revoyez ensemble les indices marqués et rejouez ces jeux.", papas_ok: "Conseil : une révision rapide des indices avant l'examen suffit.",
+    examenes: "Mini-examens et défi" },
 };
 export const t = (idioma, clave) => (TEXTOS[idioma] ?? TEXTOS.es)[clave] ?? TEXTOS.es[clave] ?? clave;
 
@@ -180,7 +208,12 @@ export function armarSlides(c) {
   const quizJuegos = ["carrera", "puertas", "montana", "castillo"];
   c.bloques.forEach((b, bi) => {
     const nb = bi + 1;
-    // teoría: 2 o 3 pistas por slide; la última slide de teoría del bloque lleva "Ojo" y "Palabras clave"
+    // teoría: 2 o 3 pistas por slide; la última slide de teoría del bloque lleva "Ojo" y "Palabras clave".
+    // Nada se desborda (Daniel, 7 nov 2026): una pista muy larga se parte en slides de continuación (1/2), (2/2) por
+    // viñetas, y un grupo con mucho texto se reparte en más slides. El reproductor afina después midiendo de verdad.
+    // Los grupos son los de siempre (la inteligencia artificial escribe `titulo_pagina` pensando en ellos). Si una pista
+    // del grupo pesa demasiado, el grupo se vuelve una serie: lo de antes en una slide, cada parte de la pista sola, lo
+    // de después en otra; todas con el mismo título y (1/3), (2/3), (3/3).
     const pistas = b.pistas;
     const grupos = [];
     for (let i = 0; i < pistas.length; i += 3) {
@@ -189,7 +222,18 @@ export function armarSlides(c) {
     }
     if (!grupos.length) grupos.push([]);
     // Si la primera pista del grupo trae `titulo_pagina`, la slide se titula así (como las páginas "Clue" de Lumio).
-    grupos.forEach((g, gi) => S.push({ k: "teoria", t: g[0]?.titulo_pagina || `${t(idioma, "pista")} · ${b.titulo}${grupos.length > 1 ? ` (${gi + 1})` : ""}`, b, bi, pistas: g, parte: gi + 1, ultima: gi === grupos.length - 1, tag: `${t(idioma, "pista")} · ${t(idioma, "bloque")} ${nb}`, blk: bi }));
+    grupos.forEach((g, gi) => {
+      const base = g[0]?.titulo_pagina || null, serie = `${b.id}-${gi + 1}`;
+      const paginas = [];
+      let juntas = [];
+      g.forEach((p) => {
+        if (pesoPista(p) <= PESO_PISTA_MAX) { juntas.push(p); return; }
+        if (juntas.length) paginas.push(juntas); juntas = [];
+        partirPista(p, PESO_PARTE).forEach((q) => paginas.push([q]));
+      });
+      if (juntas.length || !paginas.length) paginas.push(juntas);
+      paginas.forEach((pg) => S.push({ k: "teoria", base, b, bi, pistas: pg, serie, numero: gi + 1, tag: `${t(idioma, "pista")} · ${t(idioma, "bloque")} ${nb}`, blk: bi }));
+    });
     const acts = b.actividades;
     const mc = acts.filter((a) => a.tipo === "opcion_multiple" || a.tipo === "completar").map((a) => a.id);
     if (mc.length) { const juego = quizJuegos[bi % quizJuegos.length]; S.push({ k: juego, t: `${{ carrera: "🏎️", puertas: "🚪", montana: "🧗", castillo: "🏰" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
@@ -204,7 +248,98 @@ export function armarSlides(c) {
   });
   if (c.reto_final.length) S.push({ k: "ruleta", t: `🏆 ${t(idioma, "reto")}`, ids: c.reto_final, tag: t(idioma, "reto"), blk: -1, plantilla: elegir("ruleta") });
   S.push({ k: "resultados", t: t(idioma, "resultados"), blk: -1 });
+  retitular(S, idioma);
   return recortar(S, c);
+}
+
+// ---------- Nada se desborda (Daniel, 7 nov 2026) ----------
+// Peso aproximado de una pista (caracteres que ocupa en la slide). Sirve para repartir antes de medir; el reproductor
+// mide de verdad cada slide y, si aún no cabe, baja la letra (de 22 a 18 px) y, si tampoco, la divide con dividirSlide().
+const largo = (x) => String(x ?? "").length;
+const PESO_PISTA_MAX = 1300, PESO_PARTE = 1000;
+export function pesoPista(p) {
+  let n = 70 + largo(p.titulo);
+  n += (p.ideas ?? []).reduce((a, x) => a + largo(x) + 45, 0);
+  n += (p.ideas_apoyo ?? []).reduce((a, x) => a + largo(x) + 10, 0);
+  if (p.ejemplo) n += largo(p.ejemplo) + 45;
+  n += (p.correcciones ?? []).reduce((a, cr) => a + largo(cr.dato_correcto ?? cr.mensaje) + largo(cr.dato_apuntes) + 60, 0);
+  if (p.clave) n += largo(p.clave) + 60;
+  if (p.conclusion) n += largo(p.conclusion) + 60;
+  if (p.dato_rapido) n += 90;
+  if ((p.imagenes ?? []).some((x) => x?.url)) n += 240;
+  if (p.esquema?.tipo) n += 140 + (p.esquema.elementos ?? []).reduce((a, e) => a + largo(e.nombre) + largo(e.detalle) + 35, 0);
+  return n;
+}
+// Separa un texto en frases completas (nunca a media frase).
+const frases = (x) => String(x ?? "").split(/(?<=[.!?;])\s+(?=\S)/).map((f) => f.trim()).filter(Boolean);
+// Lo que va al final de la pista (síntesis y cajas) y lo que va al principio (imágenes y dato rápido).
+const COLA = ["ejemplo", "correcciones", "clave", "conclusion", "esquema"];
+const CABEZA = ["imagenes", "dato_rapido", "ideas_apoyo"];
+const tieneCola = (p) => COLA.some((k) => p[k] && (!Array.isArray(p[k]) || p[k].length));
+function parteDe(p, ideas, cabeza, cola) {
+  const q = { ...p, ideas, partida: true };
+  if (!cabeza) CABEZA.forEach((k) => delete q[k]);
+  if (!cola) COLA.forEach((k) => delete q[k]);
+  return q;
+}
+// Parte una pista larga por viñetas en trozos de peso parecido. Si trae una sola viñeta enorme, la parte por frases.
+// Si son pocas viñetas pero mucho extra (esquema, ejemplo, clave…), el extra pasa a la parte siguiente.
+export function partirPista(p, limite = PESO_PARTE) {
+  let ideas = (p.ideas ?? []).map(String);
+  if (ideas.length < 2) ideas = ideas.flatMap(frases);
+  // trozos parejos: si hacen falta k partes, cada una lleva más o menos el total / k (se corta entre viñetas)
+  const total = ideas.reduce((n, x) => n + largo(x) + 45, 0);
+  const k = Math.max(1, Math.ceil(total / limite)), objetivo = total / k;
+  const trozos = [];
+  let actual = [], peso = 0;
+  ideas.forEach((x) => { const w = largo(x) + 45; if (actual.length && trozos.length < k - 1 && peso + w / 2 > objetivo) { trozos.push(actual); actual = []; peso = 0; } actual.push(x); peso += w; });
+  if (actual.length) trozos.push(actual);
+  if (trozos.length < 2) {
+    if (!tieneCola(p) || !ideas.length) return [p];
+    return [parteDe(p, ideas, true, false), parteDe(p, [], false, true)];
+  }
+  return trozos.map((g, i) => parteDe(p, g, i === 0, i === trozos.length - 1));
+}
+// Divide una slide de teoría que no cupo: si tiene varias pistas, las reparte en dos slides; si tiene una, la parte en
+// dos por viñetas (o por frases, o separa el esquema y las cajas). Devuelve las dos slides nuevas o null si ya no se puede.
+export function dividirSlide(s) {
+  const ps = s.pistas ?? [];
+  if (ps.length > 1) {
+    const mitad = Math.ceil(ps.length / 2);
+    return [{ ...s, pistas: ps.slice(0, mitad) }, { ...s, pistas: ps.slice(mitad) }];
+  }
+  const p = ps[0]; if (!p) return null;
+  let ideas = (p.ideas ?? []).map(String);
+  if (ideas.length < 2) ideas = ideas.flatMap(frases);
+  let a, b;
+  if (ideas.length >= 2) {
+    // mitad por peso, sin cortar viñetas
+    const total = ideas.reduce((n, x) => n + largo(x) + 45, 0);
+    let corte = 1, acum = largo(ideas[0]) + 45;
+    while (corte < ideas.length - 1 && acum + (largo(ideas[corte]) + 45) / 2 < total / 2) { acum += largo(ideas[corte]) + 45; corte++; }
+    a = parteDe(p, ideas.slice(0, corte), true, false); b = parteDe(p, ideas.slice(corte), false, true);
+  } else if (tieneCola(p) && ideas.length) {
+    a = parteDe(p, ideas, true, false); b = parteDe(p, [], false, true);
+  } else return null;
+  return [{ ...s, pistas: [a] }, { ...s, pistas: [b] }];
+}
+// Títulos, numeración y marcas de las slides de teoría después de repartir: las slides de una misma serie (una pista o
+// un grupo que no cupo en una) llevan (1/2), (2/2); "parte" da los colores y "ultima" pone "Ojo con esto" y "Palabras
+// clave" solo en la última slide de teoría del bloque.
+export function retitular(S, idioma) {
+  const porBloque = {};
+  S.forEach((s) => { if (s.k === "teoria") (porBloque[s.bi] ??= []).push(s); });
+  Object.values(porBloque).forEach((lista) => {
+    const numeros = new Set(lista.map((s) => s.numero));
+    lista.forEach((s, i) => {
+      const serie = lista.filter((x) => x.serie === s.serie);
+      const k = serie.length, j = serie.indexOf(s) + 1;
+      const base = s.base || `${t(idioma, "pista")} · ${s.b.titulo}${numeros.size > 1 ? ` (${s.numero})` : ""}`;
+      s.t = k > 1 ? `${base} (${j}/${k})` : base;
+      s.parte = i + 1; s.ultima = i === lista.length - 1;
+    });
+  });
+  return S;
 }
 
 // Presupuesto de slides (Documento 2): si sobran juegos, se recortan en este orden:
@@ -213,7 +348,9 @@ function recortar(S, c) {
   const tope = Math.min(40, Math.max(15, Number(c.plan.presupuesto_slides) || 40));
   const quitar = (filtro) => { const i = S.findLastIndex(filtro); if (i >= 0) S.splice(i, 1); };
   let guarda = 50;
-  while (S.length > tope && guarda-- > 0) {
+  // Las slides de continuación de una pista (1/2, 2/2) no cuentan: partir la teoría para que quepa no quita juegos.
+  const extras = () => S.filter((s) => s.k === "teoria").length - new Set(S.filter((s) => s.k === "teoria").map((s) => s.serie)).size;
+  while (S.length - extras() > tope && guarda-- > 0) {
     const vistos = {};
     let hecho = false;
     for (let i = S.length - 1; i >= 0; i--) { const s = S[i]; if (s.k === "rank" || s.k === "sort") { const k = s.blk + s.k; vistos[k] = (vistos[k] ?? 0) + 1; if (vistos[k] > 1) { S.splice(i, 1); hecho = true; break; } } }

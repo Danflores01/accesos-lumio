@@ -1,8 +1,8 @@
 // El reproductor: carga la guía (demo, vista previa o acceso con clave), arma el estante y navega como Lumio.
-import { normalizar, armarSlides, recortarVistaPrevia, t as tx } from "./cartucho.js";
+import { normalizar, armarSlides, recortarVistaPrevia, dividirSlide, retitular, t as tx } from "./cartucho.js";
 import { portada, tutorial, teoria, resultados, candado, terminando, pantallaCarga, mensaje } from "./teoria.js";
 import * as J from "./juegos.js";
-import { h, esc } from "./ui.js";
+import { h, esc, encajar, desborda, ajustarInicio } from "./ui.js";
 import { sonido } from "./sonido.js";
 import { CONFIG } from "./config.js";
 
@@ -22,6 +22,8 @@ const ctx = {
   go: (i) => { cur = Math.max(0, Math.min(S.length - 1, i)); render(); },
   luego: (f, ms) => { const id = setTimeout(f, ms); timers.push(id); return id; },
   raf: (id) => rafs.push(id),
+  // Apaga motores y sonidos que sigan sonando (lo llama fin() de ui.js al terminar un juego).
+  detenerSonidos: () => sonido.detenerTodo(),
   registrar: (id, ok) => { if (!(id in ctx.resultados)) { ctx.resultados[id] = ok; ctx.guardar(); } },
   guardar: () => guardar(),
   siguienteTitulo: () => { const n = S[cur + 1]; return n && !["teoria", "portada", "tutorial", "resultados", "candado"].includes(n.k) ? n.t : ""; },
@@ -34,8 +36,22 @@ const ctx = {
 const R = { portada, tutorial, teoria, resultados, candado, terminando, carrera: J.carrera, puertas: J.puertas, montana: J.montana, castillo: J.castillo, swipe: J.swipe, superdato: J.superdato, match: J.match, sort: J.sort, rank: J.rank, ruleta: J.ruleta, quiz: J.quiz };
 
 function limpiar() { timers.forEach(clearTimeout); timers = []; rafs.forEach(cancelAnimationFrame); rafs = []; }
-function ajustar() { const vp = document.getElementById("vp").getBoundingClientRect(); escala = Math.min(vp.width / 1280, vp.height / 720) * 0.985; escenario.style.transform = `scale(${escala})`; }
+// El escenario mide 1280 x 720 y se escala a la pantalla. El reporte final es "fluido": toma la forma de la pantalla
+// (vertical en teléfono) y nunca se dibuja más chico que su tamaño real, para que sus letras se lean en iPad y teléfono.
+function ajustar() {
+  const vp = document.getElementById("vp").getBoundingClientRect();
+  const fluido = S[cur]?.k === "resultados" && vp.width > 0 && vp.height > 0;
+  let w = 1280, h = 720;
+  if (fluido) { const k = Math.max(1, Math.min(vp.width / 1280, vp.height / 720)); w = Math.round(vp.width / k); h = Math.round(vp.height / k); }
+  escenario.style.width = w + "px"; escenario.style.height = h + "px";
+  escenario.classList.toggle("fluido", fluido);
+  escenario.classList.toggle("angosto", fluido && w < 760);
+  escala = Math.min(vp.width / w, vp.height / h) * 0.985;
+  escenario.style.transform = `scale(${escala})`;
+}
 addEventListener("resize", ajustar);
+// El sonido se queda dentro de su slide: si la pestaña se oculta (otra app, otra pestaña, pantalla apagada), se apaga.
+document.addEventListener("visibilitychange", () => { if (document.hidden) sonido.detenerTodo(); });
 // En teléfonos en vertical la guía queda chica: se sugiere girar el dispositivo (se puede seguir en vertical).
 function avisoGiro() {
   const angostoVertical = matchMedia("(orientation: portrait) and (max-width: 600px)").matches;
@@ -52,13 +68,68 @@ addEventListener("resize", avisoGiro);
 avisoGiro();
 
 function render() {
-  limpiar(); escenario.innerHTML = "";
+  // Cambiar de slide (siguiente, anterior, miniaturas, "Jugar de nuevo") apaga los sonidos de la slide anterior.
+  limpiar(); sonido.detenerTodo(); escenario.innerHTML = "";
   const s = S[cur]; if (!s) return;
   const el = (R[s.k] ?? portada)(s, ctx);
   el.appendChild(h(`<div class="marca-pie">Spark<b>Ed</b></div>`));
   escenario.appendChild(el);
+  // Nada se desborda: la teoría se mide ya en pantalla; si ni con la letra mínima cabe, se divide aquí mismo.
+  if (s.k === "teoria" && !encajarTeoria(el, s)) {
+    const partes = dividirSlide(s);
+    if (partes) { insertarPartes(cur, partes); return render(); }
+    el.querySelector(".cuerpo")?.classList.add("con-desplazamiento");
+  }
+  el.querySelectorAll(".inicio").forEach(ajustarInicio);
   document.getElementById("pg").textContent = `${cur + 1}/${S.length}`;
   ajustar(); guardar();
+}
+
+// ---------- Nada se desborda (Daniel, 7 nov 2026) ----------
+// Caja invisible de 1280 x 720 donde se miden las slides de teoría antes de mostrarlas.
+const medidor = document.createElement("div");
+medidor.id = "medidor"; medidor.setAttribute("aria-hidden", "true");
+medidor.style.cssText = "position:fixed;left:-40000px;top:0;width:1280px;height:720px;visibility:hidden;pointer-events:none;overflow:hidden";
+document.body.appendChild(medidor);
+// Elige la letra de una slide de teoría ya dibujada (de 22 a 18 px) y achica el título si se monta sobre el cuerpo.
+// Devuelve false si ni con 18 px cabe.
+function encajarTeoria(el, s) {
+  const cuerpo = el.querySelector(".cuerpo"), h1 = el.querySelector(".cabeza h1"), cabeza = el.querySelector(".cabeza");
+  if (!cuerpo) return true;
+  if (s.tituloPx) h1.style.fontSize = s.tituloPx + "px";
+  for (const px of [34, 30]) { if (cabeza.offsetTop + cabeza.offsetHeight <= cuerpo.offsetTop - 4) break; h1.style.fontSize = px + "px"; s.tituloPx = px; }
+  const letra = encajar(el, cuerpo, 22, 18);
+  s.letra = letra ?? 18; el.style.setProperty("--letra", s.letra + "px");
+  return letra != null || !desborda(cuerpo);
+}
+// Cambia la slide i por sus partes y recorre lo que depende del número de slide (calificaciones de los mini-exámenes).
+function insertarPartes(i, partes) {
+  const extra = partes.length - 1;
+  S.splice(i, 1, ...partes);
+  retitular(S, c.plan.idioma_guia);
+  if (extra > 0) {
+    const m = {};
+    Object.entries(ctx.minis ?? {}).forEach(([k, v]) => { m[Number(k) > i ? Number(k) + extra : k] = v; });
+    ctx.minis = m;
+  }
+}
+// Antes de mostrar la guía se mide cada slide de teoría: así la numeración, las miniaturas y el progreso ya salen con
+// las slides de continuación incluidas y no cambian a media sesión.
+async function prepararTeoria() {
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  try { await Promise.race([Promise.all(['400 20px "Atkinson Hyperlegible"', '700 20px "Atkinson Hyperlegible"', '800 24px "Outfit"'].map((x) => document.fonts.load(x))), espera(2500)]); } catch {}
+  const antes = cur;
+  for (let i = 0; i < S.length; i++) {
+    if (S[i].k !== "teoria") continue;
+    for (let intento = 0; intento < 8; intento++) {
+      cur = i; medidor.innerHTML = "";
+      const el = teoria(S[i], ctx); medidor.appendChild(el);
+      if (encajarTeoria(el, S[i])) break;
+      const partes = dividirSlide(S[i]); if (!partes) break;
+      insertarPartes(i, partes);
+    }
+  }
+  medidor.innerHTML = ""; cur = antes;
 }
 
 // ---------- Navegación ----------
@@ -107,13 +178,14 @@ function guardarSecreto(s) { try { if (s) localStorage.setItem(CLAVE_DISP, s); }
 
 // ---------- Arranque ----------
 function aplicarPaleta() { document.documentElement.dataset.paleta = c.plan.identidad.paleta; document.title = `${c.plan.identidad.titulo} · SparkEd`; }
-function montar(cartucho, modo, parcial = false) {
+async function montar(cartucho, modo, parcial = false) {
   ctx.modo = modo;
   c = normalizar(cartucho); aplicarPaleta();
   S = armarSlides(c);
   if (modo === "vista_previa") { S = S.filter((s) => s.k !== "resultados" && s.k !== "ruleta"); S.push({ k: "candado", t: ctx.t("desbloquea"), blk: -1 }); }
   // Guía pagada que todavía se está terminando: se juegan los bloques que ya existen y al final va un letrero.
   if (parcial) { S = S.filter((s) => s.k !== "resultados" && s.k !== "ruleta"); S.push({ k: "terminando", t: "Estamos terminando los demás bloques", blk: -1 }); }
+  await prepararTeoria();
   return S;
 }
 
@@ -166,28 +238,28 @@ async function arrancar() {
       }
       if (d.estado !== "ok" || !d.cartucho) { carga.detener(); escenario.innerHTML = ""; escenario.appendChild(mensaje(d.estado ?? "error")); return; }
       ctx.guiaId = d.guia_id ?? null;
-      montar(d.cartucho, "acceso", !!d.parcial); recuperar(d.progreso ?? null);
+      await montar(d.cartucho, "acceso", !!d.parcial); recuperar(d.progreso ?? null);
       if (d.parcial) avisoParcial(d);
     } else if (params.get("vp")) {
       const r = await fetch(`${CONFIG.api}/vista-previa/${encodeURIComponent(params.get("vp"))}`);
       const d = await r.json();
       if (!d.vista_previa) throw new Error("sin vista previa");
-      ctx.guiaId = params.get("vp"); montar(d.vista_previa, "vista_previa");
+      ctx.guiaId = params.get("vp"); await montar(d.vista_previa, "vista_previa");
     } else if (params.get("clave")) {
       const r = await fetch(`${CONFIG.api}/borrador/${encodeURIComponent(params.get("clave"))}`);
       const d = await r.json();
       if (!d.vista_previa) throw new Error("borrador sin vista previa");
-      montar(d.vista_previa, "vista_previa");
+      await montar(d.vista_previa, "vista_previa");
     } else if (params.get("local")) {
       // "Ver como profesor" desde el panel SparkEd: el cartucho viene guardado en este navegador.
       const guardado = localStorage.getItem("sparked_cartucho_" + params.get("local").replace(/[^a-z0-9_-]/gi, ""));
       if (!guardado) throw new Error("sin cartucho local");
-      montar(JSON.parse(guardado), "demo"); recuperar(null);
+      await montar(JSON.parse(guardado), "demo"); recuperar(null);
     } else {
       const demo = (params.get("demo") || "historia1").replace(/[^a-z0-9_-]/gi, "");
       const cartucho = await (await fetch(`ejemplos/${demo}.json`)).json();
       const vp = params.get("vista") === "previa";
-      montar(vp ? recortarVistaPrevia(normalizar(cartucho)) : cartucho, vp ? "vista_previa" : "demo");
+      await montar(vp ? recortarVistaPrevia(normalizar(cartucho)) : cartucho, vp ? "vista_previa" : "demo");
       if (!vp) recuperar(null);
     }
     carga.actualizar(100, "READY");

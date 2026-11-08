@@ -8,6 +8,24 @@ export const mezclar = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0;
 // "Palabra clave: explicación" → la palabra clave en negritas
 export const idea = (x) => { const m = String(x).match(/^([^:]{2,48}):(.*)$/); return m ? `<b>${esc(m[1])}:</b>${esc(m[2])}` : esc(x); };
 
+// ---------- Nada se desborda (Daniel, 7 nov 2026) ----------
+// ¿El contenido de "caja" es más alto o más ancho que la caja? (un píxel de tolerancia por redondeos)
+export const desborda = (caja) => !!caja && (caja.scrollHeight > caja.clientHeight + 1 || caja.scrollWidth > caja.clientWidth + 1);
+// Baja la variable --letra de "el" desde max hasta min px hasta que "caja" ya no se desborde. Devuelve el tamaño que
+// cupo, o null si ni con el mínimo cabe (entonces quien llama divide la slide o deja desplazarse el contenido).
+export function encajar(el, caja = el, max = 22, min = 18) {
+  for (let px = max; px >= min; px--) { el.style.setProperty("--letra", px + "px"); if (!desborda(caja)) return px; }
+  return null;
+}
+// Tarjeta de instrucciones de un juego: la letra se ajusta (22 a 17 px) para que quepa con 16 px de margen; si aun
+// así no cabe, la tarjeta se desplaza por dentro en vez de cortarse.
+export function ajustarInicio(o) {
+  if (!o?.isConnected) return;
+  const tarjeta = o.querySelector(".tarjeta-inicio"); if (!tarjeta) return;
+  tarjeta.classList.remove("con-desplazamiento");
+  if (encajar(tarjeta, o, 22, 17) == null) tarjeta.classList.add("con-desplazamiento");
+}
+
 export function toast(sl, ok, txt, ms = 2600) {
   let t = sl.querySelector(".toast");
   if (!t) { t = h('<div class="toast"></div>'); sl.appendChild(t); }
@@ -24,14 +42,19 @@ export function inicio(sl, instruccion, fn, extraHtml = "", op = {}) {
   const o = h(`<div class="inicio"><div class="tarjeta-inicio">${sparky("saludo", 3)}<div class="titulo">${esc(op.titulo ?? "¿Cómo se juega?")}</div><div class="instruccion">${esc(instruccion)}</div>${extraHtml}<button class="start">${esc(op.boton ?? "Iniciar")}</button></div></div>`);
   o.querySelector(".start").onclick = () => { sonido.toque(); o.remove(); fn(); };
   sl.appendChild(o);
+  // Si la slide ya está en pantalla, se ajusta enseguida; si no, el reproductor la ajusta al mostrarla.
+  if (o.isConnected) ajustarInicio(o); else requestAnimationFrame(() => ajustarInicio(o));
   return o;
 }
+// Al terminar un juego se apagan los sonidos continuos (motor, galope, viento) antes de la fanfarria.
+const apagarSonidos = (ctx) => { try { (ctx?.detenerSonidos ?? (() => sonido.detenerTodo()))(); } catch {} };
 
 export function fin(sl, ctx, titulo, grande, sub, otraVez, exito = true) {
   const d = h(`<div class="${exito ? "victoria" : "fin"}">${exito ? `<div class="confeti">${confeti()}</div>${icono("trofeo", 5)}` : ""}<div class="caja" style="${exito ? "background:#fff;color:var(--tinta)" : ""}"><h2 style="font-family:var(--titulos);font-size:30px;color:var(--tinta);text-shadow:none">${esc(titulo)}</h2><div class="grande" style="color:var(--p)">${grande}</div><div>${sub}</div><div class="botones"><button class="btn alt" id="ag">${esc(ctx.t("de_nuevo"))}</button><button class="btn" id="nx">${esc(ctx.t("siguiente"))}</button></div></div></div>`);
   d.querySelector("#ag").onclick = () => { sonido.toque(); otraVez(); };
   d.querySelector("#nx").onclick = () => { sonido.toque(); ctx.go(ctx.cur + 1); };
   sl.appendChild(d);
+  apagarSonidos(ctx);
   exito ? sonido.victoria() : sonido.nivel();
   return d;
 }
@@ -42,6 +65,7 @@ export function gameOver(sl, ctx, puntos, nivel, otraVez) {
     <h2>GAME <span>OVER</span></h2><div class="sub">${icono("calavera", 3)} ${esc(ctx.t("suerte"))}</div><button class="press">▶ ${esc(ctx.t("press_start"))}</button></div>`);
   g.querySelector(".press").onclick = () => { sonido.toque(); g.remove(); otraVez(); };
   sl.appendChild(g);
+  apagarSonidos(ctx);
   sonido.gameover();
   return g;
 }
