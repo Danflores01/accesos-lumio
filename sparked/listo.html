@@ -57,7 +57,7 @@ function pendiente(d) {
 function fallido(d, vencido) {
   const nuevo = pintar("fallido:" + vencido, `<div style="display:flex;gap:14px;align-items:center">${sparky("triste", 5)}<div><h1>${vencido ? "El plazo para pagar terminó" : "El pago no se completó"}</h1><div class="ayuda">${esc(d.titulo ?? "")}</div></div></div>
     <p>${vencido ? "Mercado Pago canceló este pago porque no se completó a tiempo." : "Mercado Pago no pudo completar tu pago."} No se realizó ningún cargo. Puedes intentarlo de nuevo con tarjeta, en OXXO o por SPEI.</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="boton" id="otraVez">🔁 Intentar de nuevo</button><a class="boton linea" href="index.html">Volver al inicio</a></div>
+    <div class="acciones"><button class="boton" id="otraVez">🔁 Intentar de nuevo</button><a class="boton linea" href="index.html">Volver al inicio</a></div>
     <p class="error" id="errOtraVez"></p>`);
   if (!nuevo) return;
   const boton = caja.querySelector("#otraVez");
@@ -93,7 +93,7 @@ function revisando(d) {
 }
 function cajaLink(d, nota) {
   return `<div class="caja-clave" style="margin-top:14px"><b>Tu link</b><div class="link-caja" style="margin-top:6px">${esc(d.link)}</div><p class="ayuda" style="margin:6px 0">${esc(nota)}</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">${d.jugar ? `<a class="boton linea" href="${esc(d.link)}">▶ Abrir la guía</a>` : ""}<button class="boton linea" data-copiar>📋 Copiar link</button><a class="boton linea" target="_blank" rel="noopener" href="${esc(waLink(d.telefono ?? "", mensajeWhatsApp(d.titulo ?? "Tu guía", d.link)))}">💬 Mandar por WhatsApp</a></div></div>`;
+    <div class="acciones">${d.jugar ? `<a class="boton linea" href="${esc(d.link)}">▶ Abrir la guía</a>` : ""}<button class="boton linea" data-copiar>📋 Copiar link</button><a class="boton linea" target="_blank" rel="noopener" href="${esc(waLink(d.telefono ?? "", mensajeWhatsApp(d.titulo ?? "Tu guía", d.link)))}">💬 Mandar por WhatsApp</a></div></div>`;
 }
 function conectarLink(d) { const b = caja.querySelector("[data-copiar]"); if (b) b.onclick = async () => { try { await navigator.clipboard.writeText(d.link); b.textContent = "✓ Copiado"; } catch {} }; }
 
@@ -102,14 +102,14 @@ function mostrar(d) {
   const link = d.link; const titulo = d.titulo ?? "Tu guía";
   const qr = qrcode(0, "M"); qr.addData(link); qr.make();
   caja.innerHTML = `<div style="display:flex;gap:14px;align-items:center">${sparky("festejo", 6)}<div><h1>¡Tu guía está lista! 🎉</h1><div class="ayuda">${esc(titulo)}</div></div></div>
-    <div style="display:grid;grid-template-columns:1fr;gap:16px" class="rejilla-campos">
-      <div><div class="qr">${qr.createSvgTag({ cellSize: 5, margin: 2 })}</div><div class="ayuda" style="margin-top:6px">El alumno puede escanear este código con su iPad.</div></div>
+    <div style="display:grid;grid-template-columns:1fr;gap:16px" class="rejilla-campos entrega">
+      <div class="entrega-qr"><div class="qr">${qr.createSvgTag({ cellSize: 5, margin: 2 })}</div><div class="ayuda" style="margin-top:6px">El alumno puede escanear este código con su iPad.</div></div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <div class="link-caja" id="link">${esc(link)}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="boton" href="${esc(link)}">▶ Abrir la guía</a><button class="boton linea" id="copiar">📋 Copiar link</button><a class="boton linea" id="wa" target="_blank" rel="noopener" href="${esc(waLink(d.telefono ?? "", mensajeWhatsApp(titulo, link)))}">💬 Mandar por WhatsApp</a></div>
+        <div class="acciones"><a class="boton" href="${esc(link)}">▶ Abrir la guía</a><button class="boton linea" id="copiar">📋 Copiar link</button><a class="boton linea" id="wa" target="_blank" rel="noopener" href="${esc(waLink(d.telefono ?? "", mensajeWhatsApp(titulo, link)))}">💬 Mandar por WhatsApp</a></div>
       </div></div>
     <div class="caja-clave"><b>Cómo funciona tu acceso</b><ul style="margin:8px 0 0;padding-left:20px"><li>Tienes <b>7 días de acceso ilimitado a tu guía</b>, desde hoy${d.expira_en ? ` hasta el <b>${esc(new Date(d.expira_en).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short" }))}</b>` : ""}.</li><li>Se abre en <b>2 dispositivos</b>: por ejemplo, tu celular y el iPad del alumno. Al tercer dispositivo le aparece el aviso "Acceso en uso en otros dispositivos".</li><li>No lo compartas en otros chats: es de tu familia.</li><li>Guarda este link. También te mandamos tu guía por correo (a <b>${esc(d.correo ?? "tu correo")}</b>) y por WhatsApp.</li></ul></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="boton linea" href="index.html">✨ Crea otra guía</a></div>`;
+    <div class="acciones"><a class="boton linea" href="index.html">✨ Crea otra guía</a></div>`;
   caja.querySelector("#copiar").onclick = async () => { try { await navigator.clipboard.writeText(link); caja.querySelector("#copiar").textContent = "✓ Copiado"; } catch {} };
 }
 revisar();

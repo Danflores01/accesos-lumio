@@ -35,7 +35,7 @@ export function marcoVistaPrevia(destino, src, titulo) {
   const angosto = window.matchMedia("(max-width: 699px)").matches;
   destino.innerHTML = `<div class="resultado-guia"><div class="em">📘</div><div><b style="font-size:18px">${esc(titulo)}</b><div class="ayuda">Vista previa gratis: portada, primera pista y un juego. Lo demás se abre al pagar.</div></div></div>
     ${angosto
-      ? `<a class="boton" style="margin-top:12px" href="${esc(src)}">▶ Ver la vista previa</a><div class="ayuda">Se abre en pantalla completa (mejor con el teléfono en horizontal). Al final hay un botón para volver aquí.</div>`
+      ? `<div class="acciones" style="margin-top:12px"><a class="boton" href="${esc(src)}">▶ Ver la vista previa</a><div class="ayuda">Se abre en pantalla completa (mejor con el teléfono en horizontal). Al final hay un botón para volver aquí.</div></div>`
       : `<div class="marco-demo" style="margin-top:12px"><iframe src="${esc(src)}" title="Vista previa de tu guía"></iframe></div><div class="ayuda" style="margin-top:6px"><a href="${esc(src)}">Ver en pantalla completa ↗</a></div>`}`;
 }
 
@@ -61,7 +61,7 @@ export async function iniciarPago(destino, datos) {
     destino.innerHTML = `<div class="panel-paso" style="box-shadow:none;padding:0"><h2>Tu guía está apartada 🎟️</h2>
       <p>${esc(r.mensaje ?? "El pago en línea se está configurando. Te contactamos por WhatsApp para completar tu compra y activar tu guía.")}</p>
       <div class="resultado-guia"><div class="em">🧾</div><div><b>Folio: ${esc(r.compra_id?.slice(0, 8).toUpperCase() ?? "")}</b><div class="ayuda">Guárdalo. En cuanto se confirme el pago, el link de tu guía aparece aquí y te la mandamos por correo y por WhatsApp.</div></div></div>
-      ${r.whatsapp ? `<a class="boton" target="_blank" rel="noopener" href="${esc(r.whatsapp)}">💬 Confirmar por WhatsApp</a>` : ""}
+      ${r.whatsapp ? `<div class="acciones"><a class="boton" target="_blank" rel="noopener" href="${esc(r.whatsapp)}">💬 Confirmar por WhatsApp</a></div>` : ""}
       <div id="espera" class="ayuda">Esperando confirmación…</div></div>`;
     esperarPago(destino.querySelector("#espera"), r.compra_id);
     try { localStorage.setItem("sparked_compra", r.compra_id); } catch {}
@@ -99,7 +99,7 @@ export function textoPagoPendiente(d, pista = "") {
   const metodo = d?.metodo || { ticket: "oxxo", bank_transfer: "spei", credit_card: "tarjeta", debit_card: "tarjeta", prepaid_card: "tarjeta" }[pista] || "";
   const correo = `<b>${esc(d?.correo || "tu correo")}</b>`;
   const vence = d?.vence_en ? new Date(d.vence_en).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short" }) : "";
-  const ficha = (texto) => (d?.ficha_url ? `<p><a class="boton linea" target="_blank" rel="noopener" href="${esc(d.ficha_url)}">${texto}</a></p>` : "");
+  const ficha = (texto) => (d?.ficha_url ? `<p class="acciones"><a class="boton linea" target="_blank" rel="noopener" href="${esc(d.ficha_url)}">${texto}</a></p>` : "");
   if (metodo === "oxxo") return { titulo: "Tu pago en OXXO está en camino 🧾", html: `<p>Tu pago en OXXO puede tardar hasta 1 hora en reflejarse. En cuanto se confirme, tu guía se activa sola y te llega al correo ${correo}.</p>${vence ? `<p class="ayuda">Si todavía no pagas, tienes hasta el <b>${esc(vence)}</b> para llevar tu ficha a cualquier tienda OXXO.</p>` : ""}${ficha("🧾 Ver mi ficha de pago")}` };
   if (metodo === "spei") return { titulo: "Tu transferencia SPEI está en camino 🏦", html: `<p>Tu transferencia por SPEI puede tardar hasta 1 hora en reflejarse. En cuanto se confirme, tu guía se activa sola y te llega al correo ${correo}.</p>${vence ? `<p class="ayuda">Si todavía no transfieres, tienes hasta el <b>${esc(vence)}</b> para hacer la transferencia con los datos de tu ficha.</p>` : ""}${ficha("🏦 Ver los datos para transferir")}` };
   if (metodo === "tarjeta") return { titulo: "Mercado Pago está revisando tu pago 💳", html: `<p>La revisión de un pago con tarjeta puede tardar unos minutos. En cuanto se apruebe, tu guía se activa sola y te llega al correo ${correo}.</p>` };

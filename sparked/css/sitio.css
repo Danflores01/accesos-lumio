@@ -45,7 +45,7 @@ body.sitio.claro header.cab nav a:hover { background: var(--gris-suave); color: 
 .tarjeta-sparky .burbuja b { color: #be185d; }
 .tarjeta-sparky .fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .tarjeta-sparky .fila b { font: 800 17px var(--titulos); }
-.tarjeta-sparky .fila span { font: 9px var(--pixel); color: #6d28d9; }
+.tarjeta-sparky .fila span { font: 9px/1.4 var(--pixel); color: #6d28d9; white-space: nowrap; flex: none; }
 .tarjeta-sparky .barra { height: 12px; border-radius: 999px; background: #efe9ff; overflow: hidden; }
 .tarjeta-sparky .barra i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #6d28d9, #FF6B9D, #FFB347); }
 .tarjeta-sparky small { font-size: 13px; color: var(--gris); }
@@ -63,10 +63,31 @@ body.sitio.claro header.cab nav a:hover { background: var(--gris-suave); color: 
 .paso .dib { width: 56px; height: 56px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #fff; box-shadow: 0 4px 12px rgba(10, 4, 40, .12); }
 .paso .dib svg { max-height: 40px; max-width: 40px; width: auto; height: auto; }
 .paso small { display: block; font-weight: 400; color: var(--gris); font-size: 13px; }
-.servicio .boton { align-self: flex-start; }
 .servicio .boton.oscuro { box-shadow: none; }
 /* Un solo servicio (7 nov 2026): una tarjeta a todo lo ancho con los tres pasos en fila en pantallas anchas. */
 .servicios.unico { grid-template-columns: 1fr; }
+
+/* ---------- Regla de alineación (7 nov 2026) ----------
+   · Un botón solo en su fila va centrado (en teléfono, a todo lo ancho).
+   · Los grupos de botones (.acciones) van centrados con la misma separación; en teléfono se apilan a todo lo ancho.
+   · La nota corta que acompaña a un botón (.ayuda) va centrada en su propio renglón, debajo.
+   · Excepción: en la entrada de la portada, en pantallas anchas, los botones y etiquetas siguen el borde izquierdo de
+     su columna (.al-bloque), igual que el título; en teléfono todo ese bloque se centra.
+   · Los textos corridos se quedan alineados a la izquierda. */
+.acciones { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 12px; margin: 0; }
+.acciones .ayuda { flex-basis: 100%; text-align: center; }
+.acciones.al-bloque { justify-content: flex-start; margin-top: 8px; }
+.panel-paso > .boton { align-self: center; }
+.panel-paso > #espera.ayuda { text-align: center; } /* "Esperando confirmación…" bajo el botón de la guía apartada */
+.caja-clave .acciones { margin-top: 4px; }
+/* Entrega (listo.html): el código QR y su nota, centrados sobre el link y los botones. */
+.entrega-qr { text-align: center; }
+.entrega-qr .qr { margin: 0 auto; }
+/* Títulos: renglones equilibrados, sin palabras sueltas, y un poco de aire entre palabras (Outfit las junta mucho). */
+h1, h2, h3, .boton { word-spacing: .06em; }
+h1, h2, h3 { text-wrap: balance; overflow-wrap: break-word; }
+.boton { text-wrap: balance; text-align: center; }
+.paso > div:last-child { text-wrap: balance; }
 
 /* Demo: banda de cristal */
 .vista { padding: 30px 0 36px; }
@@ -75,7 +96,7 @@ body.sitio.claro header.cab nav a:hover { background: var(--gris-suave); color: 
 .vista p { color: #ead9ff; margin: 0 0 18px; }
 .marco-demo { position: relative; width: 100%; aspect-ratio: 16 / 9.8; border-radius: 18px; overflow: hidden; background: #1B1340; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
 .marco-demo iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-.marco-demo .tapa { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, rgba(27, 19, 64, .55), rgba(184, 51, 106, .45)); }
+.marco-demo .tapa { position: absolute; inset: 0; padding: 16px; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, rgba(27, 19, 64, .55), rgba(184, 51, 106, .45)); }
 
 /* Precio y preguntas */
 .precio-caja { display: grid; grid-template-columns: 1fr; gap: 18px; padding: 10px 0 40px; }
@@ -139,15 +160,19 @@ body.sitio.claro .pasos-barra div { background: var(--borde); }
 
 /* Teléfonos en vertical (hasta 559 px): cabecera compacta y menos aire. */
 @media (max-width: 559px) {
-  .contenedor { width: calc(100% - 24px); }
+  .contenedor { width: calc(100% - 32px); }
   header.cab .contenedor { min-height: 54px; gap: 6px; }
   header.cab nav { gap: 2px; justify-content: flex-end; }
   header.cab nav a { font-size: 13px; padding: 6px 8px; }
   header.cab nav a.solo-ancho { display: none; }
   .hero { padding: 22px 0 16px; }
   .hero .contenedor { gap: 16px; }
-  .hero h1 { font-size: clamp(30px, 9vw, 40px); }
+  .hero h1 { font-size: clamp(32px, 9.4vw, 40px); line-height: 1.06; letter-spacing: -.4px; }
   .hero p { font-size: 17px; }
+  /* La entrada de la portada va centrada en teléfono (título, sello, botones y etiquetas). */
+  .hero-texto { text-align: center; }
+  .hero-texto p { margin-left: auto; margin-right: auto; }
+  .hero-texto .chips { justify-content: center; }
   .tarjeta-sparky { padding: 14px; border-radius: 22px; }
   .tarjeta-sparky .tile { height: 270px; }
   .tarjeta-sparky .tile svg { width: 104px; height: auto; }
@@ -166,6 +191,11 @@ body.sitio.claro .pasos-barra div { background: var(--borde); }
   .flujo { padding: 16px 0 40px; }
   .boton { width: 100%; }
   .boton.chico, header .boton { width: auto; }
+  /* Grupos de botones: apilados a todo lo ancho; su nota, centrada debajo. */
+  .acciones { flex-direction: column; align-items: stretch; gap: 10px; }
+  .acciones .ayuda { flex-basis: auto; text-align: center; }
+  .panel-paso > .boton { align-self: stretch; }
+  .tarjeta-sparky .fila span { font-size: 10px; }
 }
 /* Teléfonos en horizontal: la cabecera no se queda pegada (roba altura). */
 @media (max-height: 460px) and (orientation: landscape) {
