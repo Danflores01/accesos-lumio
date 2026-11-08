@@ -403,3 +403,27 @@ falla del sitio. Para probar como cliente usa **otro correo** (y, si quieres pro
 gratuito creado en el panel). Verificado el 8 de noviembre de 2026: con otro correo, OXXO genera su ficha ("¡Listo! Solo
 te falta pagar $100 en la tienda OXXO más cercana") y el sitio muestra "Tu pago en OXXO está en camino" con el botón
 "Ver mi ficha de pago"; SPEI habilita "Continuar" y da las instrucciones de transferencia.
+
+## Cómo se publica una versión nueva del servidor (función `sparked`, desde el 8 nov 2026)
+
+El servidor de SparkEd (la función `sparked` en Supabase) creció tanto (tres archivos, unos 260 KB) que ya no cabe en
+una sola llamada de la herramienta con la que Claude despliega. Desde el 8 de noviembre de 2026 en Supabase vive un
+**puente**: un `index.ts` de seis líneas (guardado en `funciones/puente-sparked/index.ts`) que importa el código real
+desde GitHub, de un **commit fijo**. Supabase arma el paquete al desplegar; cuando atiende a una familia no descarga
+nada de GitHub.
+
+Pasos (los hace Claude; quedan aquí por si alguien más da mantenimiento):
+1. Subir el código a GitHub (`git push` a `main`). El repositorio debe seguir siendo público.
+2. Comprobar que no hay guías generándose: `select count(*) from trabajos where estado not in ('listo','fallido')` debe
+   dar 0 (desplegar interrumpe las generaciones en curso).
+3. En `funciones/puente-sparked/index.ts`, cambiar el identificador del commit (los 40 caracteres) por el nuevo y
+   actualizar la línea "Versión del código".
+4. Desplegar **solo ese archivo** como `index.ts` de la función `sparked` (proyecto `wfqfqfsbkqbaejnkhidz`, sin
+   verificación de JWT).
+5. Comprobar la versión: `curl -H "x-admin-key: LA_CLAVE_DEL_PANEL" https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/sparked/admin/ping`
+   debe responder `"version":"..."` con la fecha nueva (la clave es la primera línea de `CLAVES.txt`; nunca la pegues en
+   un archivo del repositorio).
+6. Guardar el puente actualizado en el repositorio (commit).
+
+Para volver a una versión anterior basta apuntar el puente al commit anterior y desplegar de nuevo. Lo que Supabase
+muestra como "código de la función" es solo el puente; la verdad es el commit al que apunta.
