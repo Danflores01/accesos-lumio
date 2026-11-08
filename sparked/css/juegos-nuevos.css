@@ -36,7 +36,7 @@
 .perro-juego { position: absolute; left: 44px; right: 44px; top: 108px; bottom: 30px; border: 4px solid #2A2340; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 0 rgba(42, 35, 64, .18); background: #CFE9F5; touch-action: none; }
 .perro-juego > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .perro-cuenta { position: absolute; left: 14px; top: 12px; z-index: 3; display: flex; gap: 8px; }
-.perro-carta { position: absolute; left: 50%; top: 18px; width: 560px; margin-left: -280px; z-index: 5; background: #fff; border: 4px solid #2A2340; border-radius: 22px; padding: 16px 22px; box-shadow: 0 8px 0 rgba(42, 35, 64, .22); display: flex; gap: 14px; align-items: center; cursor: grab; transition: left .45s cubic-bezier(.3, .9, .4, 1), top .45s cubic-bezier(.3, .9, .4, 1), transform .45s, opacity .35s; touch-action: none; user-select: none; -webkit-user-select: none; }
+.perro-carta { position: absolute; left: 316px; top: 18px; width: 560px; z-index: 5; background: #fff; border: 4px solid #2A2340; border-radius: 22px; padding: 16px 22px; box-shadow: 0 8px 0 rgba(42, 35, 64, .22); display: flex; gap: 14px; align-items: center; cursor: grab; transition: left .45s cubic-bezier(.3, .9, .4, 1), top .45s cubic-bezier(.3, .9, .4, 1), transform .45s, opacity .35s; touch-action: none; user-select: none; -webkit-user-select: none; }
 .perro-carta.card-d { cursor: grab; }
 .perro-carta.dragging { transition: none; z-index: 9; box-shadow: 0 16px 30px rgba(42, 35, 64, .3); }
 .perro-carta.sel { border-color: var(--amarillo); box-shadow: 0 0 0 5px rgba(255, 212, 0, .45), 0 8px 0 rgba(42, 35, 64, .22); }
@@ -44,12 +44,12 @@
 .perro-carta .afirmacion { font: 800 22px/1.3 var(--titulos); color: #2A2340; }
 .perro-carta .apoyo { font: italic 16px var(--texto); color: var(--gris); margin-top: 4px; }
 .perro-carta.comida { opacity: 0; transform: scale(.15) rotate(-20deg); }
-.perro-plato { position: absolute; bottom: 14px; width: 300px; height: 230px; z-index: 4; border-radius: 30px; border: 4px dashed transparent; display: flex; align-items: flex-start; justify-content: center; padding-top: 10px; cursor: pointer; transition: border-color .2s, background .2s; }
+.perro-plato { position: absolute; bottom: 10px; width: 300px; height: 250px; z-index: 4; border-radius: 30px; border: 4px dashed transparent; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; cursor: pointer; transition: border-color .2s, background .2s; }
 .perro-plato.listo { border-color: rgba(42, 35, 64, .45); background: rgba(255, 255, 255, .25); }
 .perro-plato.mal { border-color: var(--mal); }
 .perro-plato .etiqueta { font: 800 22px var(--titulos); color: #fff; padding: 8px 22px; border-radius: 999px; border: 3px solid #2A2340; box-shadow: 0 5px 0 rgba(42, 35, 64, .3); pointer-events: none; }
-.perro-plato.v { left: 40px; } .perro-plato.v .etiqueta { background: var(--ok); }
-.perro-plato.f { right: 40px; } .perro-plato.f .etiqueta { background: var(--mal); }
+.perro-plato.v { left: 96px; } .perro-plato.v .etiqueta { background: var(--ok); }
+.perro-plato.f { right: 96px; } .perro-plato.f .etiqueta { background: var(--mal); }
 .perro-juego .perro-cola, .perro-juego .perro-cabeza, .perro-juego .perro-oreja-a, .perro-juego .perro-oreja-b, .perro-juego #perro-g, .perro-juego .corazon-pe { transform-box: fill-box; }
 .perro-juego .perro-cola { transform-origin: 0% 100%; animation: perro-cola 1.2s ease-in-out infinite; }
 .perro-juego .feliz .perro-cola { animation-duration: .22s; }
@@ -67,7 +67,7 @@
 @keyframes perro-cola { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(14deg); } }
 @keyframes perro-oreja { to { transform: rotate(-10deg); } }
 @keyframes perro-oreja-b { to { transform: rotate(10deg); } }
-@keyframes perro-come { from { transform: translateY(6px) rotate(0deg); } to { transform: translateY(10px) rotate(3deg); } }
+@keyframes perro-come { from { transform: translateY(7px) rotate(0deg); } to { transform: translateY(14px) rotate(4deg); } }
 @keyframes perro-boca { 0% { opacity: 1; } 100% { opacity: .2; } }
 @keyframes perro-no { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-12deg); } 45% { transform: rotate(12deg); } 70% { transform: rotate(-9deg); } 90% { transform: rotate(5deg); } }
 @keyframes perro-empuja { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(8px) scale(1.04); } 60% { transform: translateY(2px); } }

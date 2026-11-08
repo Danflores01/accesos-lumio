@@ -51,3 +51,17 @@ estilos en `sparked/css/juegos-nuevos.css` (enlazada en `sparked/guia.html`) y t
 - **Escenarios (`PLANTILLAS.pinguino`):** polo (día), aurora (noche) y atardecer (`escenaPinguino`).
 - **Slide:** `k: "pinguino"` (ícono 🐧). Sonidos nuevos en `sonido.js`: `chapuzon`, `plaf`.
 - La animación termina también por temporizador: si el navegador frena los cuadros (pestaña oculta), el juego sigue.
+
+## 4. El perro y su plato (verdadero o falso)
+
+- **Mecánica:** un border collie (blanco y negro, collar rojo) sentado entre dos platos: "✓ Verdadero" a la izquierda y
+  "✗ Falso" a la derecha. Arriba aparece la tarjeta de la afirmación. Se arrastra al plato con el dedo o el mouse, o se
+  toca la tarjeta y luego el plato (también basta tocar el plato). Funciona con toque en iPad y teléfono.
+  - **Correcto:** el perro va a su plato, se come la tarjeta, mueve la cola y salen corazones.
+  - **Incorrecto:** el perro la huele, dice que no con la cabeza y la regresa con la nariz a su lugar, con la
+    retroalimentación de la afirmación. La tarjeta se queda hasta que se lleve al plato correcto (así se aprende).
+- **Calificación:** cada afirmación se registra en `ctx.resultados` con su `id`; solo cuenta el primer intento. Al final:
+  "¡El perro quedó feliz!" con los aciertos al primer intento.
+- **Contenido:** las afirmaciones `verdadero_falso` del bloque, todas en un solo juego. No se inventan afirmaciones: si
+  el bloque trae menos de 5, se juegan las que haya (el generador ya pide mínimo 5).
+- **Slide:** `k: "perro"` (ícono 🐶). Sonidos nuevos: `nam` y `ladrido`. Arte: `capaPerro`, `capaPlato`, `escenaPerro`.

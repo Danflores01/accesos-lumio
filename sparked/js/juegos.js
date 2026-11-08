@@ -6,7 +6,7 @@
 import { esc, h, mezclar, toast, inicio, fin, gameOver, arrastrable, panelPregunta, temporizador, personaje, selectorPersonaje, conectarSelector } from "./ui.js";
 import { marco } from "./teoria.js";
 import { sonido } from "./sonido.js";
-import { escenaCiudad, escenaMontana, escenaCastillo, escenaPlaneta, escenaSvg, capaVehiculo, vehiculo, capaEscalador, capaSoldado, capaArquero, capaIcono, capaSparky, icono, COLORES_DE_COCHE, escenaDuelo, capaDragonDuelo, capaHeroe, capaEscaladorDe, capaArqueroDe, escenaEnemigos, capaEnemigo, ENEMIGOS, escenaPinguino, capaPinguino, capaJuez } from "./arte.js";
+import { escenaCiudad, escenaMontana, escenaCastillo, escenaPlaneta, escenaSvg, capaVehiculo, vehiculo, capaEscalador, capaSoldado, capaArquero, capaIcono, capaSparky, icono, COLORES_DE_COCHE, escenaDuelo, capaDragonDuelo, capaHeroe, capaEscaladorDe, capaArqueroDe, escenaEnemigos, capaEnemigo, ENEMIGOS, escenaPinguino, capaPinguino, capaJuez, escenaPerro, capaPerro, capaPlato } from "./arte.js";
 
 const W = 172, H = 140;
 const TEMAS = {
@@ -533,6 +533,84 @@ export function swipe(s, ctx) {
       return true;
     });
   });
+  return el;
+}
+
+// ---------- EL PERRO Y SU PLATO (8 nov 2026): verdadero o falso ----------
+// Un border collie entre dos platos ("Verdadero" y "Falso"). La tarjeta de la afirmación se arrastra al plato (o se toca
+// y luego se toca el plato). Correcto = el perro se la come feliz y mueve la cola. Incorrecto = el perro la huele, dice que
+// no y la regresa con la nariz, con la retroalimentación; la tarjeta se queda hasta que llegue al plato correcto. Solo
+// cuenta el primer intento (ctx.registrar). Usa las afirmaciones que trae el bloque: no se inventan.
+export function perro(s, ctx) {
+  const T = ctx.t;
+  if (!String(s.t).startsWith("🐶")) s.t = `🐶 ${T("perro")}`;
+  const el = marco(s, ctx); el.classList.add("pl-perro");
+  const items = (s.items ?? []).slice(), N = items.length;
+  const PE = 1.05, SUELO = 122, PX = 150, PLATOS = { v: 62, f: 238 };
+  const esc0 = escenaPerro(300, 146);
+  const platos = Object.entries(PLATOS).map(([k, x]) => `<g transform="translate(${x - 28} ${SUELO + 2 - 14 * 1.4}) scale(1.4)">${capaPlato(0, 0, k === "v" ? "#2BB673" : "#E5533D", "pl" + k)}</g>`).join("");
+  const cont = h(`<div class="perro-juego"><svg viewBox="0 0 300 146" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${esc0.svg}<g id="perro-mover" style="transition: transform .45s ease-in-out"><g id="perro-g" transform="translate(${PX - 40 * PE} ${SUELO - 68 * PE}) scale(${PE})">${capaPerro(0, 0)}</g></g>${platos}<g id="fx"></g></svg>
+    <div class="perro-cuenta">${hudPill("", "pecnt")}${hudPill("", "peok")}</div>
+    <div class="perro-plato v drop" data-v="1" role="button" tabindex="0" aria-label="${esc(T("verdadero"))}"><span class="etiqueta">✓ ${esc(T("verdadero"))}</span></div>
+    <div class="perro-plato f drop" data-v="0" role="button" tabindex="0" aria-label="${esc(T("falso"))}"><span class="etiqueta">✗ ${esc(T("falso"))}</span></div></div>`);
+  el.appendChild(cont);
+  const svg = cont.querySelector("svg"), mover = svg.querySelector("#perro-mover"), perroG = svg.querySelector("#perro-g"), fx = svg.querySelector("#fx");
+  const zonas = [...cont.querySelectorAll(".perro-plato")];
+  let i = 0, primeros = 0, ocupado = false, carta = null, elegida = false, terminado = false;
+  const intentos = new Set();
+  const hud = () => { cont.querySelector("#pecnt").textContent = `🦴 ${Math.min(i + 1, N)}/${N}`; cont.querySelector("#peok").textContent = `${primeros} ✓`; };
+  const clase = (c, on = true) => perroG.classList.toggle(c, on);
+  const casa = () => ({ left: (cont.clientWidth - carta.offsetWidth) / 2, top: 18 });
+  const ponerEn = (pos, anim = true, extra = "") => { carta.style.transition = anim ? "left .45s cubic-bezier(.3,.9,.4,1), top .45s cubic-bezier(.3,.9,.4,1), transform .45s, opacity .35s" : "none"; carta.style.left = pos.left + "px"; carta.style.top = pos.top + "px"; carta.style.transform = extra; };
+  const marcar = (on) => { elegida = on; carta?.classList.toggle("sel", on); zonas.forEach((z) => z.classList.toggle("listo", on)); };
+  const corazones = (x) => { const g = gSvg([[-6, 0], [0, -5], [7, -1]].map(([dx, dy]) => `<path class="corazon-pe" d="M${x + dx} ${44 + dy} c-1.2 -1.6 -3.6 -.6 -2.8 1.2 l2.8 2.6 l2.8 -2.6 c.8 -1.8 -1.6 -2.8 -2.8 -1.2 z" fill="#FF6B9D"/>`).join("")); fx.appendChild(g); ctx.luego(() => g.remove(), 1300); };
+  const nueva = () => {
+    carta?.remove(); carta = null; marcar(false);
+    if (i >= N) { terminado = true; fin(el, ctx, T("perro_listo"), `${primeros}/${N}`, `${esc(T("correctas"))} ${esc(T("primer_intento"))}`, () => ctx.go(ctx.cur), primeros >= N * .7); return; }
+    hud();
+    const a = items[i];
+    carta = h(`<div class="perro-carta"><div class="em">${esc(a.emoji ?? "🤔")}</div><div><div class="afirmacion">${esc(a.afirmacion ?? a.pregunta ?? "")}</div>${a.afirmacion_apoyo ? `<div class="apoyo">${esc(a.afirmacion_apoyo)}</div>` : ""}</div></div>`);
+    cont.appendChild(carta);
+    ponerEn(casa(), false, "scale(.6)"); carta.style.opacity = "0";
+    const esta = carta; ctx.luego(() => { if (carta !== esta) return; ponerEn(casa(), true, ""); carta.style.opacity = "1"; }, 40);
+    arrastrable(carta, ctx, (c, zona) => {
+      if (ocupado || !zona.classList.contains("perro-plato")) return false;
+      // La tarjeta se queda donde la soltaron (arrastrable quita su desplazamiento) y de ahí vuela al plato.
+      const m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(c.style.transform), p = casa();
+      ponerEn({ left: p.left + (m ? +m[1] : 0), top: p.top + (m ? +m[2] : 0) }, false);
+      ctx.luego(() => juzgar(zona.dataset.v === "1"), 30);
+      return true;
+    }, () => { if (!ocupado) { marcar(!elegida); sonido.toque(); } });
+  };
+  const juzgar = (v) => {
+    if (ocupado || !carta || terminado) return; ocupado = true; marcar(false);
+    const a = items[i], ok = v === !!a.es_verdadera, lado = v ? "v" : "f";
+    const primera = !intentos.has(a.id ?? i); intentos.add(a.id ?? i);
+    if (a.id) ctx.registrar(a.id, ok);
+    if (ok && primera) primeros++;
+    const x = PLATOS[lado] / 300 * cont.clientWidth, y = (SUELO - 12) / 146 * cont.clientHeight;
+    ponerEn({ left: x - carta.offsetWidth / 2, top: y - carta.offsetHeight / 2 }, true, "scale(.42)");
+    sonido.whoosh();
+    mover.style.transform = `translate(${(PLATOS[lado] - PX) * .9}px, 0px)`;
+    clase("atento");
+    if (ok) {
+      ctx.luego(() => { clase("atento", false); clase("comiendo"); sonido.nam(); }, 480);
+      ctx.luego(() => carta?.classList.add("comida"), 800);
+      ctx.luego(() => { sonido.nam(); }, 1000);
+      ctx.luego(() => { clase("comiendo", false); clase("feliz"); corazones(PLATOS[lado] * .9 + PX * .1); sonido.ladrido(); toast(el, true, a.retro_correcta ?? "✓", 2200); hud(); }, 1500);
+      ctx.luego(() => { mover.style.transform = ""; }, 2300);
+      ctx.luego(() => { clase("feliz", false); i++; ocupado = false; nueva(); }, 2800);
+    } else {
+      ctx.luego(() => { clase("atento", false); clase("no"); toast(el, false, a.retro_incorrecta ?? `${T("respuesta")}: ${a.es_verdadera ? T("verdadero") : T("falso")}`, 3800); }, 600);
+      ctx.luego(() => { clase("no", false); clase("empuja"); }, 1500);
+      ctx.luego(() => { if (carta) ponerEn(casa(), true, ""); sonido.whoosh(); }, 1750);
+      ctx.luego(() => { mover.style.transform = ""; }, 2200);
+      ctx.luego(() => { clase("empuja", false); ocupado = false; hud(); }, 2700);
+    }
+  };
+  zonas.forEach((z) => { const ir = () => { if (carta && !ocupado) juzgar(z.dataset.v === "1"); }; z.addEventListener("click", ir); z.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ir(); } }); });
+  ctx.luego(() => { if (cont.isConnected) nueva(); }, 0);
+  arranque(el, T, "perro", () => {});
   return el;
 }
 

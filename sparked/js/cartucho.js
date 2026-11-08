@@ -298,7 +298,7 @@ export function armarSlides(c) {
     const mc = acts.filter((a) => a.tipo === "opcion_multiple" || a.tipo === "completar").map((a) => a.id);
     if (mc.length) { const juego = b.juego === "duelo" ? "duelo" : quizJuegos[bi % quizJuegos.length]; add("opcion_multiple", { k: juego, t: `${{ carrera: "🏎️", enemigos: "👾", puertas: "👾", montana: "🧗", castillo: "🏰", pinguino: "🐧", duelo: "⚔️" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
     const vf = acts.filter((a) => a.tipo === "verdadero_falso");
-    if (vf.length) add("verdadero_falso", { k: "swipe", t: `⏱ ${t(idioma, "vf_express")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("swipe") });
+    if (vf.length) add("verdadero_falso", bi % 2 ? { k: "perro", t: `🐶 ${t(idioma, "perro")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi } : { k: "swipe", t: `⏱ ${t(idioma, "vf_express")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("swipe") });
     acts.filter((a) => a.tipo === "super_dato").forEach((a) => add("super_dato", { k: "superdato", t: "⭐ Súper dato", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("superdato") }));
     acts.filter((a) => a.tipo === "conceptos").forEach((a) => add("conceptos", { k: "match", t: "🧩 Mix & match", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match") }));
     acts.filter((a) => a.tipo === "quien_es_quien").forEach((a) => add("quien_es_quien", { k: "match", t: "🖼️ ¿Quién es quién?", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match"), retratos: true }));
