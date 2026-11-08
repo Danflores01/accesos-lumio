@@ -170,6 +170,14 @@ export function normalizar(entrada) {
   // formato de la opción múltiple (así lo escribe el generador), o como "juego": "duelo" sobre las actividades del bloque.
   c.bloques.forEach((b) => {
     b.duelo = Array.isArray(b.duelo) ? b.duelo.filter(Boolean).map((a) => ({ tipo: "opcion_multiple", ...a })) : [];
+    // A veces el generador escribe las preguntas del duelo dentro de las actividades con "tipo": "duelo": se pasan a
+    // la lista del duelo (con su id y en formato de opción múltiple) para que se jueguen y cuenten en la calificación.
+    const sueltas = b.actividades.filter((a) => a?.tipo === "duelo");
+    if (sueltas.length) {
+      b.actividades = b.actividades.filter((a) => a?.tipo !== "duelo");
+      const ya = new Set(b.duelo.map((a) => a.id));
+      sueltas.forEach((a) => { if (!a.id || !ya.has(a.id)) b.duelo.push({ ...a, tipo: Array.isArray(a.opciones) || a.respuesta == null ? "opcion_multiple" : "completar" }); });
+    }
     [...b.actividades, ...b.mini_examen, ...b.duelo].forEach((a) => { if (a?.id) c.porId[a.id] = a; });
   });
   c.bloqueDePunto = {};
