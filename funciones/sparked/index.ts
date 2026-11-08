@@ -17,13 +17,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, type Trabajo } from "./pipeline.ts";
 
-const VERSION = "2026-11-07.8";
+const VERSION = "2026-11-08.1";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const SELF = `${SUPABASE_URL}/functions/v1/sparked`;
 const BUCKET = "materiales";
-const PAGINAS_MAX = 15;
+const PAGINAS_MAX = 25; // 13 pasos de lectura de 2 páginas cada uno (cada paso, una llamada de menos de ~110 s)
 const DIAS_ACCESO = 7;
 const APARATOS = 2;
 
@@ -237,7 +237,7 @@ async function borrarCarpeta(carpeta: string) {
 }
 function validarPaginas(paginas: unknown): { nombre: string; tipo: string; tamano: number }[] | string {
   if (!Array.isArray(paginas) || !paginas.length) return "Sube al menos una página.";
-  if (paginas.length > PAGINAS_MAX) return `Máximo ${PAGINAS_MAX} páginas por guía.`;
+  if (paginas.length > PAGINAS_MAX) return `Puedes subir hasta ${PAGINAS_MAX} páginas por guía. Elige las más importantes para tu examen.`;
   const out = [];
   for (const p of paginas) {
     const tamano = Number((p as any)?.tamano ?? 0);

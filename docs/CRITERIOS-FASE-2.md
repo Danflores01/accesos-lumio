@@ -501,3 +501,75 @@ lenguaje formal, pero muy simple y específico. Se vale repetir un poco para que
 - **Concordancia con «guía»:** es femenino («la abro», «ábrela»); el link es masculino («no compartas el link»).
 - **Nombres genéricos en minúscula:** «el océano Pacífico», «el río Amazonas»; el nombre propio va con mayúscula.
 - **Mensajes cortos de estado** (por ejemplo «Preparando tus páginas», «Subiendo página 2 de 5») van sin punto final; las frases completas llevan punto.
+
+## 24. Gramática, variedad y tamaño de las actividades (8 nov 2026)
+
+Criterios de Daniel aplicados en el generador (función `sparked` versión `2026-11-08.1`). La sección 23 (gramática del
+sitio) ya existía; esta es su contraparte para los textos que escribe la inteligencia artificial.
+
+**Gramática impecable.** Todo texto que escribe la IA (títulos, objetivos, pistas, preguntas, opciones,
+retroalimentación, instrucciones y mensajes) va con ortografía, tildes, puntuación, mayúsculas y concordancia perfectas
+en el idioma de la guía.
+- La regla, con ejemplos, va en los prompts del planificador, del escritor, del reparador y del corrector
+  (`GRAMATICA` en `funciones/sparked/prompts.ts`). Errores frecuentes que se piden evitar: **«examen» no lleva tilde**
+  (palabra llana terminada en n) y **«exámenes» sí** (esdrújula), igual que «imagen/imágenes»; «más» (cantidad) contra
+  «mas» (= pero); «sí» (afirmación) contra «si» (condición); qué, cómo, cuándo, dónde, cuál, quién y cuánto con tilde
+  cuando preguntan; signos de apertura ¿ ¡; mayúscula inicial y punto en las opciones de respuesta solo cuando son
+  oraciones completas.
+- **Revisión ortográfica explícita:** después de reparar, el paso `ortografia` (segunda parte de la reparación, con el
+  modelo del paso reparar) manda todos los textos de la guía con su ruta y la IA devuelve solo las correcciones. El código
+  acepta una corrección solo si no cambia el contenido (sin tildes ni signos el texto queda casi igual; los huecos `___`
+  y las `[[palabras]]` del súper dato no se tocan) y nunca acepta «exámen»; además, «exámen» se corrige siempre por
+  código. En las guías de lengua (español, inglés, francés…) no se mandan opciones, respuestas, distractores, términos
+  ni tarjetas: ahí los errores de los distractores son a propósito. Lo aplicado y lo rechazado queda en
+  `datos.ortografia`.
+
+**Selección aleatoria y sin repeticiones seguidas.**
+- El orden de los juegos de cada bloque sale al azar con la semilla de la guía (el id del borrador: la misma guía siempre
+  sale igual). Reglas: nunca dos juegos del mismo tipo seguidos, ni dentro de un bloque ni de un bloque al siguiente (un
+  bloque no termina con conceptos si el siguiente empieza con conceptos); el mini-examen cierra su bloque; la primera
+  actividad elegida va primero en el bloque 1; y, si se puede, no van juntos juegos parecidos (opción múltiple, duelo y
+  mini-examen; conceptos y quién es quién). Al armar el cartucho se vuelve a revisar el paso de un bloque al siguiente.
+- Dos juegos del mismo tipo en un bloque se jugarían seguidos: los de parejas se juntan (hasta 8 parejas) y de súper
+  dato, ordenar o clasificar se queda el primero.
+- Repertorio: cuando la guía se pasa de slides, se quita primero el juego que más se repite en otros bloques, para que
+  a lo largo de la guía se use todo el repertorio.
+- **`mecanica_quiz` por bloque** (en el plan y en cada bloque del cartucho): la mecánica visual de las preguntas de
+  opción múltiple, una de «carrera», «montana», «castillo», «enemigos», «duelo» o «pinguino». La sugiere el
+  planificador; el código la corrige si no cumple: nunca «carrera» en el bloque 1 (el calentamiento ya es una carrera),
+  nunca la misma en dos bloques seguidos, nunca «duelo» si el bloque ya tiene juego de duelo; la de reemplazo sale al
+  azar, de preferencia una que la guía no haya usado. Las plantillas visuales (coches, caballos, dragones…) las reparte
+  el reproductor.
+- **El duelo va en la lista `duelo` del bloque**, nunca dentro de `actividades`. El escritor lo escribe así; si lo pone
+  dentro de `actividades`, se acepta y al armar el cartucho se pasa a `duelo`.
+
+**Vista previa con variedad.** Muestra el calentamiento y el bloque 1. El bloque 1 trae siempre sus preguntas de opción
+múltiple (al menos 5) y al menos otro formato: conceptos, clasificar, verdadero o falso u ordenar. Si el plan no lo trae,
+el código agrega uno según el inventario del bloque (vocabulario → conceptos, categorías → clasificar, secuencias →
+ordenar; si no, verdadero o falso) y ese juego no se recorta. La vista previa guardada lleva esas actividades, su
+`orden`, su `mecanica_quiz` (nunca «carrera») y un calentamiento de 5 o 6 preguntas.
+
+**Mínimo 5 preguntas.** Opción múltiple + completar del bloque (juntas) ≥ 5 · verdadero o falso ≥ 5 · duelo ≥ 5
+(ideal 5 a 7) · mini-examen 0 o ≥ 5 · calentamiento y reto final ≥ 5 · conceptos ≥ 4 parejas · clasificar ≥ 6
+tarjetas (con los dos grupos ocupados).
+- Va en los prompts y en el plan (el código sube los números que vengan por debajo).
+- `revisar` anota cada juego corto como hueco «MÍNIMO …» (van primero); `reparar` lo COMPLETA con preguntas nuevas del
+  mismo tipo y del mismo contenido de los apuntes (o con parejas y tarjetas nuevas en `ampliaciones`), nunca con tipos
+  que el bloque no tenía ni con datos que no estén en las notas.
+- Lo que siga corto después de reparar se descarta entero y se anota el motivo en `datos.descartes` («no hubo contenido
+  suficiente en los apuntes»). El armado del cartucho vuelve a revisar (también en la vista previa): nunca se publica un
+  juego con 1 o 2 preguntas. Si la respuesta del escritor se corta por largo, el segundo intento pide menos, pero sin
+  bajar de los mínimos.
+
+**Hasta 25 páginas.** `PAGINAS_MAX` = 25 (antes 15). La lectura sigue en pasos de 2 fotos por llamada (13 pasos para 25
+páginas, cada uno dentro de los 150 s); el mensaje de error dice «Puedes subir hasta 25 páginas por guía. Elige las más
+importantes para tu examen.». Pendiente en el sitio (no es del generador): `crear.html`, `index.html`, `panel.html` y
+`datos/consejos.json` todavía dicen «hasta 15 páginas».
+
+**Verificador: un id por corrección.** El prompt pide un solo id por entrada; si llegan varios («b2p2, b2vf3, b2c2»),
+cada uno se trata por separado. «no_confirmada» solo queda en el reporte: no quita actividades ni pistas. Solo lo
+marcado como incorrecto con su corrección («corregida» con dato correcto) se modifica: la pista muestra la corrección una
+vez y la actividad con el dato equivocado se quita.
+
+**Fotografías.** Las imágenes de Wikimedia se guardan en `upload.wikimedia.org` a 960 px (o la original si mide 960 px o
+menos); cada URL se comprueba antes de guardarla y, si no responde 200, no se pone.

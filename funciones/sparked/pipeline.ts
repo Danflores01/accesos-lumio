@@ -1,7 +1,7 @@
 // La cadena de generación por pasos (Documento 1): extraer → unir → planear → generar por bloque → revisar →
 // reparar → verificar → imágenes → armar. Cada ejecución hace UN paso y deja el siguiente listo.
 import { jsonrepair } from "npm:jsonrepair@3";
-import { EXTRACTOR, PLANIFICADOR, ESQUEMA_PLAN, GENERADOR, REPARADOR, VERIFICADOR, DOMINIOS_CONFIABLES, NIVEL_LECTURA, TIPOS_JUEGO } from "./prompts.ts";
+import { EXTRACTOR, PLANIFICADOR, ESQUEMA_PLAN, GENERADOR, REPARADOR, CORRECTOR, VERIFICADOR, DOMINIOS_CONFIABLES, NIVEL_LECTURA, TIPOS_JUEGO, MECANICAS_QUIZ, MIN_PREGUNTAS, MIN_PAREJAS, MIN_TARJETAS } from "./prompts.ts";
 
 export type Trabajo = { id: string; borrador_id: string | null; guia_id: string | null; alcance: string; paso: string; estado: string; progreso: Record<string, unknown>; datos: Record<string, unknown>; intentos: number; costo_usd: number; tokens_entrada: number; tokens_salida: number };
 type Supa = ReturnType<typeof import("npm:@supabase/supabase-js@2").createClient>;
@@ -357,7 +357,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     plan.bloques = plan.bloques.slice(0, 5).map((pb: any, i: number) => ({ ...pb, id: pb.id || `b${i + 1}`, juegos: pb.juegos ?? {}, ids_inventario: (Array.isArray(pb.ids_inventario) ? pb.ids_inventario : []).filter((x: unknown) => idsValidos.has(x)) }));
     // Tope de slides, orden variado de los juegos y primera actividad (ver ajustarPlan).
     const slidesIa = plan.slides_estimados ?? null;
-    const recortesPlan = ajustarPlan(plan);
+    const recortesPlan = ajustarPlan(plan, semillaDe(t.borrador_id ?? t.id));
     const forzado = idiomaForzado(fuente);
     if (forzado) {
       plan.idioma_guia = forzado; plan.idioma_forzado = true;
@@ -382,7 +382,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const n = D.intento_ia?.paso === t.paso ? Number(D.intento_ia.n) || 0 : 0;
     const cortado = n > 0 && D.intento_ia?.motivo === "max_tokens";
     // Si la respuesta anterior se cortó por largo, se pide la mitad de los juegos (respuesta más corta).
-    const pbPedido = cortado ? { ...pb, juegos: mitad(pb.juegos), mini_examen: Math.min(4, Number(pb.mini_examen) || 6) } : pb;
+    const pbPedido = cortado ? { ...pb, ...mitadConMinimos(pb) } : pb;
     const sistema = GENERADOR.replaceAll("{idioma_guia}", plan.idioma_guia ?? "es").replaceAll("{perfil_edad}", plan.perfil_edad ?? "juvenil");
     const nota = notaIdioma(idiomaForzado(fuente) ?? (plan.idioma_forzado ? plan.idioma_guia : null));
     const contenido = [{ type: "text", text: `${nota ? nota + "\n" : ""}Datos: nivel ${nivel} · perfil ${plan.perfil_edad} · idioma de la guía ${plan.idioma_guia} · apoyo ${JSON.stringify(plan.apoyo)}\nPlan del bloque: ${JSON.stringify(pbPedido)}\nInventario del bloque: ${JSON.stringify(invBloque)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
@@ -417,8 +417,11 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     }
     delete D.intento_ia;
     const b = r.json;
+    // El duelo va en la lista "duelo" del bloque; si la IA lo puso dentro de "actividades" también se acepta. Mientras
+    // se revisa, vive en "actividades" con tipo "duelo"; al armar el cartucho pasa a la lista "duelo" del bloque.
+    const duelo = (Array.isArray(b.duelo) ? b.duelo : []).filter((a: any) => a && typeof a === "object").map((a: any) => ({ ...a, tipo: "duelo" }));
     const tipoDe = (a: any) => a.tipo ?? (Array.isArray(a.opciones) ? "opcion_multiple" : a.afirmacion !== undefined ? "verdadero_falso" : "completar");
-    D.bloques[bi] = { id: pb.id ?? `b${bi + 1}`, titulo: pb.titulo, ...(cortado ? { reducido: true } : {}), ...(parcial ? { parcial: true } : {}), pistas: (b.pistas ?? []).map((p: any, k: number) => ({ ...p, id: p.id ?? `${pb.id ?? "b" + (bi + 1)}p${k + 1}` })), actividades: aplanar(b.actividades), mini_examen: (b.mini_examen ?? []).map((a: any, k: number) => ({ ...a, tipo: tipoDe(a), id: a.id ?? `${pb.id ?? "b" + (bi + 1)}me${k + 1}` })) };
+    D.bloques[bi] = { id: pb.id ?? `b${bi + 1}`, titulo: pb.titulo, ...(cortado ? { reducido: true } : {}), ...(parcial ? { parcial: true } : {}), pistas: (b.pistas ?? []).map((p: any, k: number) => ({ ...p, id: p.id ?? `${pb.id ?? "b" + (bi + 1)}p${k + 1}` })), actividades: [...aplanar(b.actividades), ...duelo], mini_examen: (b.mini_examen ?? []).map((a: any, k: number) => ({ ...a, tipo: tipoDe(a), id: a.id ?? `${pb.id ?? "b" + (bi + 1)}me${k + 1}` })) };
     // Los juegos de clasificar quedan con dos grupos desde que se escriben (también en la vista previa).
     for (const a of D.bloques[bi].actividades) normalizarClasificar(a);
     const ultimoVp = t.alcance === "vista_previa";
@@ -444,10 +447,14 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       // mínimo de 6 solo si el plan pidió 6 o más: un bloque planeado con ordenar y clasificar no tiene hueco.
       const pbPlan = (D.plan.bloques ?? []).find((x: any) => x.id === b.id);
       const esperado = pbPlan ? Object.entries(pbPlan.juegos ?? {}).reduce((n: number, [k, v]) => n + (POR_PIEZA.includes(k) ? Math.min(1, ent(v)) : ent(v)), 0) : antes;
-      if (b.actividades.length < Math.max(Math.min(6, esperado), esperado * 0.5)) huecos.push(`Bloque ${b.id}: quedaron ${b.actividades.length} actividades válidas de ${antes}; faltan ${Math.max(0, 10 - b.actividades.length)} de opción múltiple o verdadero/falso`);
-      for (const pd of D.plan.puntos_dificiles ?? []) { const n = b.actividades.filter((a: any) => a.punto_dificil === pd.id).length; if (n > 0 && n < 3) huecos.push(`Punto difícil ${pd.id} '${pd.descripcion}' tiene ${n} actividad(es) en el bloque ${b.id}: faltan ${3 - n}`); }
+      const tiposB = [...new Set(b.actividades.map((a: any) => juegoDe(a.tipo)))].join(", ") || "opcion_multiple";
+      // Mínimos de cada juego (Daniel, 8 nov 2026): lo que se quedó corto lo COMPLETA la reparación con el mismo tipo.
+      for (const fa of faltasDeBloque(b)) huecos.push(textoFalta(b, fa));
+      if (b.actividades.length < Math.max(Math.min(6, esperado), esperado * 0.5)) huecos.push(`Bloque ${b.id}: quedaron ${b.actividades.length} actividades válidas de ${antes}; agrega preguntas a los juegos que ya tiene el bloque (${tiposB})`);
+      for (const pd of D.plan.puntos_dificiles ?? []) { const n = b.actividades.filter((a: any) => a.punto_dificil === pd.id).length; if (n > 0 && n < 3) huecos.push(`Punto difícil ${pd.id} '${pd.descripcion}' tiene ${n} actividad(es) en el bloque ${b.id}: faltan ${3 - n}, de los tipos que ya tiene el bloque (${tiposB})`); }
     }
-    D.huecos = huecos.slice(0, 8);
+    // Primero los mínimos (no se pueden quedar fuera), luego lo demás.
+    D.huecos = [...huecos.filter((h) => h.startsWith("MÍNIMO")), ...huecos.filter((h) => !h.startsWith("MÍNIMO")).slice(0, 8)];
     // Cada actividad descartada queda anotada con su motivo (en datos.descartes, en datos.diagnostico y en el log).
     anotarDescartes(D, "revisar", descartes);
     // Pistas que no caben en una slide y exceso de slides: los arregla el paso reparar.
@@ -457,8 +464,8 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const estimado = estimarSlides(D.bloques) + D.pistas_largas.length;
     D.slides = { ...(D.slides ?? {}), tope, generado: estimarSlides(D.bloques), exceso: Math.max(0, estimado - tope) };
     const arreglar = huecos.length > 0 || D.pistas_largas.length > 0 || estimado > tope;
-    const sig = arreglar ? "reparar" : "verificar";
-    await guardar(supabase, t, { datos: D, paso: sig, progreso: { pct: 72, mensaje: arreglar ? "Arreglando detallitos 🔧" : "Verificando los datos 🔎", paso: sig } });
+    const sig = arreglar ? "reparar" : "ortografia";
+    await guardar(supabase, t, { datos: D, paso: sig, progreso: { pct: 72, mensaje: arreglar ? "Arreglando detallitos 🔧" : "Revisando la ortografía ✍️", paso: sig } });
     return sig;
   }
 
@@ -470,24 +477,20 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const pistaPorId = (id: string) => (D.bloques as any[]).flatMap((b) => b.pistas).find((p: any) => p.id === id);
     const textoLargas = largas.length ? `\nPistas demasiado largas (divídelas en dos):\n${largas.map((l) => `- ${l.id} (${l.motivo}): ${JSON.stringify(pistaPorId(l.id))}`).join("\n")}` : "";
     const notaR = notaIdioma(idiomaForzado(fuente) ?? (plan.idioma_forzado ? plan.idioma_guia : null));
-    const contenido = [{ type: "text", text: `${notaR ? notaR + "\n" : ""}Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n") || "(ninguno)"}${textoLargas}\nPistas de cada bloque (cada actividad nueva lleva en "pista" una de las del bloque de su hueco): ${JSON.stringify(Object.fromEntries((D.bloques as any[]).map((b) => [b.id, b.pistas.map((p: any) => p.id)])))}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => b.actividades.map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
+    // Lo que ya tiene cada bloque (tipos y textos), para completar con el mismo tipo y sin repetir preguntas.
+    const actuales = Object.fromEntries((D.bloques as any[]).map((b) => [b.id, { tipos: [...new Set(b.actividades.map((a: any) => a.tipo))], mini_examen: b.mini_examen.length, preguntas: [...b.actividades, ...b.mini_examen].map((a: any) => ({ id: a.id, tipo: a.tipo, texto: a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.instruccion, pares: a.pares?.map((p: any) => p.termino), tarjetas: a.elementos?.map((e: any) => `${e.texto} → ${a.grupos?.[e.grupo]}`) })) }]));
+    const contenido = [{ type: "text", text: `${notaR ? notaR + "\n" : ""}Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n") || "(ninguno)"}${textoLargas}\nPistas de cada bloque (cada actividad nueva lleva en "pista" una de las del bloque de su hueco): ${JSON.stringify(Object.fromEntries((D.bloques as any[]).map((b) => [b.id, b.pistas.map((p: any) => p.id)])))}\nJuegos que ya tiene cada bloque (no repitas sus preguntas): ${JSON.stringify(actuales)}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => [...b.actividades, ...b.mini_examen].map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
     let divididas: any[] = [];
     if ((D.huecos ?? []).length || largas.length) try {
       const res = await llamar(supabase, t, fuente, "reparar", "reparar", { sistema, contenido, maxTokens: 16000 });
       if (res === REPETIR) return "reparar";
       const r = res;
-      if (!r.json?.actividades_nuevas && !r.json?.pistas_divididas) await diagnosticar(supabase, t, "reparar", r);
+      if (!r.json?.actividades_nuevas && !r.json?.pistas_divididas && !r.json?.ampliaciones) await diagnosticar(supabase, t, "reparar", r);
       divididas = Array.isArray(r.json?.pistas_divididas) ? r.json.pistas_divididas : [];
-      const nuevas = aplanar(r.json?.actividades_nuevas);
-      const citas: string[] = D.citas ?? [];
-      const descartesR: Descarte[] = [];
-      const okNuevas = nuevas.filter((a: any) => revisarActividad(a, citas, nivel, [], "reparar", descartesR, plan.idioma_guia ?? "es"));
-      anotarDescartes(D, "reparar", descartesR);
-      // Cada actividad nueva va al bloque de su hueco (por su pista o por el id del bloque en su id); si no se sabe, al
-      // bloque con huecos que tenga menos actividades. Nunca al primero por defecto.
-      const colocadas: string[] = [];
-      for (const a of okNuevas) { const b = bloqueDeNueva(D.bloques, a, D.huecos ?? []); b.actividades.push(a); colocadas.push(`${a.id}→${b.id}`); }
-      D.reparadas = colocadas;
+      const reparado = aplicarReparacion(D.bloques, r.json ?? {}, D.citas ?? [], nivel, plan.idioma_guia ?? "es", D.huecos ?? []);
+      anotarDescartes(D, "reparar", reparado.descartes);
+      D.reparadas = reparado.colocadas;
+      D.sin_contenido = Array.isArray(r.json?.sin_contenido) ? r.json.sin_contenido.slice(0, 20) : [];
     } catch (e) { if ((e as any)?.reintentar) throw e; console.warn("Reparación falló, sigue sin ella:", (e as Error).message); }
     // Pistas largas: se usan las pistas de continuación de la IA si ya caben; si no, se dividen por código.
     const notas: string[] = [];
@@ -502,10 +505,38 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       const piezas = piezasIa ?? dividirPistaCodigo(p, perfil);
       if (piezas.length > 1) { b.pistas.splice(i, 1, ...piezas); notas.push(`${l.id} dividida en ${piezas.length} (${piezasIa ? "IA" : "código"})`); }
     }
+    // Lo que siga por debajo del mínimo después de completar se descarta entero, con su motivo (nunca se publica un
+    // juego de 1 o 2 preguntas).
+    const cortos: Descarte[] = [];
+    for (const b of D.bloques as any[]) descartarCortos(b, cortos, "no hubo contenido suficiente en los apuntes para completarlo");
+    if (cortos.length) anotarDescartes(D, "reparar · mínimos", cortos);
     // Tope de slides: si la guía se pasa, se fusiona y luego se recorta (ver recortarBloques).
     const recortes = recortarBloques(D.bloques, topeDe(plan), perfil, plan.primera_actividad ?? "");
     D.slides = { ...(D.slides ?? {}), pistas_divididas: notas, recortes, tras_reparar: estimarSlides(D.bloques) };
-    await guardar(supabase, t, { datos: D, paso: "verificar", progreso: { pct: 78, mensaje: "Verificando los datos 🔎", paso: "verificar" }, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
+    await guardar(supabase, t, { datos: D, paso: "ortografia", progreso: { pct: 76, mensaje: "Revisando la ortografía ✍️", paso: "ortografia" }, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
+    return "ortografia";
+  }
+
+  // Segunda parte de la reparación (Daniel, 8 nov 2026): revisión ortográfica de todos los textos, sin cambiar el
+  // contenido. Usa el modelo del paso reparar. El código solo acepta cambios pequeños (tildes, signos, mayúsculas,
+  // concordancia) y nunca toca opciones ni respuestas de las guías de lengua (ahí los distractores mal escritos son a
+  // propósito).
+  if (t.paso === "ortografia") {
+    const plan = D.plan;
+    const reg = textosDeGuia(D);
+    const fijas = corregirFijas(reg);
+    const textos = Object.fromEntries(Object.entries(reg).map(([k, v]) => [k, leerRuta(v)]));
+    let resultado = { aplicadas: [] as any[], rechazadas: [] as any[] };
+    if (Object.keys(textos).length) try {
+      const nota = notaIdioma(idiomaForzado(fuente) ?? (plan.idioma_forzado ? plan.idioma_guia : null));
+      const contenido = [{ type: "text", text: `${nota ? nota + "\n" : ""}Idioma de la guía: ${plan.idioma_guia}. Materia: ${plan.materia}. Nivel: ${nivel}.\nTEXTOS (ruta → texto):\n${JSON.stringify(textos)}` }];
+      const res = await llamar(supabase, t, fuente, "reparar", "reparar · ortografía", { sistema: CORRECTOR, contenido, maxTokens: 12000 });
+      if (res === REPETIR) return "ortografia";
+      if (!Array.isArray(res.json?.correcciones)) await diagnosticar(supabase, t, "ortografia", res);
+      resultado = aplicarOrtografia(reg, res.json?.correcciones ?? []);
+    } catch (e) { if ((e as any)?.reintentar) throw e; console.warn("Revisión ortográfica falló, sigue sin ella:", (e as Error).message); }
+    D.ortografia = { textos: Object.keys(textos).length, fijas, aplicadas: resultado.aplicadas.slice(0, 120), rechazadas: resultado.rechazadas.slice(0, 60) };
+    await guardar(supabase, t, { datos: D, paso: "verificar", progreso: { pct: 80, mensaje: "Verificando los datos 🔎", paso: "verificar" }, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
     return "verificar";
   }
 
@@ -522,23 +553,13 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       const r = res;
       if (!Array.isArray(r.json?.resultados)) await diagnosticar(supabase, t, "verificar", r);
       for (const res of r.json?.resultados ?? []) {
-        reporte.push(res);
-        // El id puede venir con texto después ("b1om3 (pregunta…)"): se toma solo el id.
-        const id = String(res.actividad ?? "").trim().split(/[\s,(]/)[0];
-        const quitar = (b: any) => { b.actividades = b.actividades.filter((a: any) => a.id !== id); b.mini_examen = b.mini_examen.filter((a: any) => a.id !== id); };
-        if (res.estado === "no_confirmada") for (const b of D.bloques as any[]) quitar(b);
-        if (res.estado === "corregida") {
-          // Antes se revisaba bloque por bloque y, si el id no era de ese bloque, la corrección caía en su primera
-          // pista: el alumno la veía una vez por bloque. Ahora va una sola vez, en el lugar que le corresponde.
-          const lugar = pistaDeCorreccion(D.bloques as any[], id, res);
-          if (lugar) {
-            const c = { dato_apuntes: res.decia_la_foto, dato_correcto: res.dato_correcto, mensaje: res.mensaje_para_alumno, fuentes: res.fuentes ?? [] };
-            lugar.pista.correcciones = lugar.pista.correcciones ?? [];
-            if (!lugar.pista.correcciones.some((x: any) => normaliza(x.dato_correcto) === normaliza(c.dato_correcto))) lugar.pista.correcciones.push(c);
-            // la actividad con el dato equivocado se quita: la pista ya enseña el dato correcto
-            if (lugar.act) quitar(lugar.b);
-          }
-        }
+        // Un id por entrada; si la IA juntó varios ("b2p2, b2vf3, b2c2"), cada uno se trata por separado.
+        const ids = idsDeVerificacion(D.bloques as any[], res.actividad);
+        reporte.push({ ...res, ids });
+        // "no_confirmada" solo queda en el reporte: no quita actividades ni pistas (decisión del 8 nov 2026). Solo lo
+        // que la IA marcó como incorrecto Y corrigió se modifica.
+        if (res.estado !== "corregida" || !String(res.dato_correcto ?? "").trim()) continue;
+        for (const id of ids) aplicarCorreccion(D.bloques as any[], id, res);
       }
     } catch (e) { if ((e as any)?.reintentar) throw e; console.warn("Verificación falló, se marca para revisión:", (e as Error).message); reporte.push({ estado: "error", detalle: (e as Error).message }); }
     D.verificacion = reporte;
@@ -565,29 +586,47 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
   }
 
   if (t.paso === "armar") {
-    const plan = D.plan; const bloques = D.bloques as any[];
-    const cartucho: any = { version_formato: "1.2", plan: { ...plan, identidad: { ...plan.identidad } }, bloques: bloques.filter(Boolean), calentamiento: [], reto_final: [] };
+    const plan = D.plan;
+    // Copia: el cartucho se arregla aquí sin tocar datos.bloques (el trabajo "resto" sigue desde ahí).
+    const bloques = JSON.parse(JSON.stringify((D.bloques as any[]).filter(Boolean)));
+    const cartucho: any = { version_formato: "1.3", plan: { ...plan, identidad: { ...plan.identidad } }, bloques, calentamiento: [], reto_final: [] };
     delete cartucho.plan.bloques; delete cartucho.plan.inventario_no_usado;
     cartucho.plan.bloques_plan = plan.bloques;
-    const faciles = (b: any) => b.actividades.filter((a: any) => a.tipo === "opcion_multiple" && a.dificultad !== "retadora");
-    cartucho.calentamiento = cartucho.bloques.slice(0, 2).flatMap((b: any) => faciles(b).slice(0, 3).map((a: any) => a.id)).slice(0, 6);
+    // Red de seguridad (también en la vista previa, que no pasa por revisar): ningún juego por debajo del mínimo y
+    // nunca dos juegos del mismo tipo seguidos dentro de un bloque.
+    const fuera: Descarte[] = [];
+    for (const b of bloques) { descartarCortos(b, fuera, "por debajo del mínimo al armar"); quitarRepetidos(b, fuera); }
+    if (fuera.length) anotarDescartes(D, "armar", fuera);
+    const om = (b: any) => b.actividades.filter((a: any) => a.tipo === "opcion_multiple");
+    // Calentamiento: 5 o 6 preguntas fáciles de los dos primeros bloques (si faltan fáciles, cualquiera).
+    let cal = bloques.slice(0, 2).flatMap((b: any) => om(b).filter((a: any) => a.dificultad !== "retadora").slice(0, 3).map((a: any) => a.id)).slice(0, 6);
+    if (cal.length < MIN_PREGUNTAS) cal = [...new Set([...cal, ...bloques.slice(0, 2).flatMap((b: any) => om(b).map((a: any) => a.id))])].slice(0, 6);
+    cartucho.calentamiento = cal.length >= MIN_PREGUNTAS ? cal : [];
     const pdIds = new Set((plan.puntos_dificiles ?? []).map((p: any) => p.id));
-    const candidatos = cartucho.bloques.flatMap((b: any) => b.actividades.filter((a: any) => ["opcion_multiple", "verdadero_falso", "completar"].includes(a.tipo)));
+    const candidatos = bloques.flatMap((b: any) => b.actividades.filter((a: any) => ["opcion_multiple", "verdadero_falso", "completar"].includes(a.tipo)));
     const conPeso = candidatos.sort((a: any, b: any) => Number(pdIds.has(b.punto_dificil)) - Number(pdIds.has(a.punto_dificil)));
-    cartucho.reto_final = conPeso.slice(0, Math.min(20, Math.max(8, plan.reto_final ?? 16))).map((a: any) => a.id);
-    // Orden variado de los juegos: cada bloque lleva "orden" (tipos en el orden en que se juegan, después de sus pistas)
-    // y sus actividades vienen ya en ese orden; "primera_actividad" dice qué va justo después del tutorial.
-    for (const b of cartucho.bloques) {
+    const reto = conPeso.slice(0, Math.min(20, Math.max(8, plan.reto_final ?? 16))).map((a: any) => a.id);
+    cartucho.reto_final = reto.length >= MIN_PREGUNTAS ? reto : [];
+    // Orden de los juegos: cada bloque lleva "orden" (tipos en el orden en que se juegan, después de sus pistas) y sus
+    // actividades vienen ya en ese orden; nunca el mismo tipo al final de un bloque y al principio del siguiente.
+    const primera = plan.primera_actividad ?? "calentamiento";
+    for (const b of bloques) {
       const pb = (plan.bloques ?? []).find((x: any) => x.id === b.id) ?? {};
       const hay = [...new Set(b.actividades.map((a: any) => juegoDe(a.tipo)))] as string[];
       if (b.mini_examen?.length) hay.push("mini_examen");
       b.orden = [...new Set([...(pb.orden_actividades ?? []).filter((x: string) => hay.includes(x)), ...hay])];
+      b.mecanica_quiz = pb.mecanica_quiz ?? null;
+    }
+    arreglarAdyacencias(bloques.map((b: any) => b.orden), primera === "calentamiento" ? null : juegoDe(primera));
+    for (const b of bloques) {
       const pos = (a: any) => b.orden.indexOf(juegoDe(a.tipo));
       b.actividades = b.actividades.map((a: any, i: number) => [a, i]).sort((x: any, y: any) => pos(x[0]) - pos(y[0]) || x[1] - y[1]).map((x: any) => x[0]);
+      // El duelo va en la lista "duelo" del bloque (así lo lee el reproductor), nunca dentro de "actividades".
+      b.duelo = b.actividades.filter((a: any) => a.tipo === "duelo").map(({ tipo: _t, ...a }: any) => a);
+      b.actividades = b.actividades.filter((a: any) => a.tipo !== "duelo");
     }
-    const primera = plan.primera_actividad ?? "calentamiento";
-    cartucho.primera_actividad = primera === "calentamiento" || cartucho.bloques[0]?.orden?.[0] === primera ? primera : "calentamiento";
-    cartucho.slides_estimados = estimarSlides(cartucho.bloques);
+    cartucho.primera_actividad = primera === "calentamiento" || bloques[0]?.orden?.[0] === primera ? primera : "calentamiento";
+    cartucho.slides_estimados = estimarSlides(bloques);
     cartucho.plan.presupuesto_slides = topeDe(plan);
     cartucho.verificacion = D.verificacion ?? [];
     cartucho.completo = t.alcance !== "vista_previa"; // la vista previa solo trae el bloque 1
@@ -646,7 +685,7 @@ export function estimarSlidesPlan(plan: any): number {
 function juegosDelBloque(b: any): number {
   const acts = (b?.actividades ?? []) as any[];
   const hay = (...t: string[]) => acts.some((a) => t.includes(a?.tipo));
-  return (hay("opcion_multiple", "completar") ? 1 : 0) + (hay("verdadero_falso") ? 1 : 0) + (hay("duelo") ? 1 : 0) + acts.filter((a) => POR_PIEZA.includes(a?.tipo)).length + ((b?.mini_examen?.length ?? 0) > 0 ? 1 : 0);
+  return (hay("opcion_multiple", "completar") ? 1 : 0) + (hay("verdadero_falso") ? 1 : 0) + (hay("duelo") || (b?.duelo?.length ?? 0) > 0 ? 1 : 0) + acts.filter((a) => POR_PIEZA.includes(a?.tipo)).length + ((b?.mini_examen?.length ?? 0) > 0 ? 1 : 0);
 }
 export const slidesDeBloque = (b: any) => (b?.pistas?.length ?? 0) + juegosDelBloque(b);
 export const estimarSlides = (bloques: any[]) => SLIDES_FIJAS + (bloques ?? []).filter(Boolean).reduce((n, b) => n + slidesDeBloque(b), 0);
@@ -662,12 +701,100 @@ export function semillaDe(s: string): number { let h = 2166136261; for (const ch
 export function sugerenciaVariedad(semilla: number): string {
   const a = PRIMERAS[semilla % PRIMERAS.length];
   let b = PRIMERAS[(semilla >>> 7) % PRIMERAS.length]; if (b === a) b = PRIMERAS[(semilla + 3) % PRIMERAS.length];
-  return `Semilla de variedad ${semilla % 1000}. Sugerencia de primera actividad: "${a}" (si el contenido no lo permite: "${b}").`;
+  const m = barajar(MECANICAS_QUIZ.filter((x) => x !== "carrera"), azar(semilla)).slice(0, 3);
+  return `Semilla de variedad ${semilla % 1000}. Sugerencia de primera actividad: "${a}" (si el contenido no lo permite: "${b}"). Sugerencia de mecanica_quiz para los primeros bloques: ${m.join(", ")}.`;
 }
 
-// El plan de la IA se ajusta por código: juegos de una pieza a 1 por bloque, orden de actividades completo y variado,
-// primera actividad válida y, si se pasa del tope, se recorta (primero juegos prescindibles, luego pistas de más).
-export function ajustarPlan(plan: any): string[] {
+/// ---------- Variedad y mínimos (criterios de Daniel, 8 nov 2026) ----------
+// Generador de números al azar con semilla (la misma guía siempre sale igual; dos guías distintas, distinto).
+export function azar(semilla: number): () => number {
+  let a = (semilla >>> 0) || 1;
+  return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function barajar<T>(lista: T[], rnd: () => number): T[] {
+  const a = [...lista];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+// Juegos que se sienten parecidos (preguntas de opción múltiple; parejas): se evita ponerlos juntos si se puede.
+const PARECIDOS = [["opcion_multiple", "duelo", "mini_examen"], ["conceptos", "quien_es_quien"]];
+const familia = (x: string) => PARECIDOS.find((g) => g.includes(x))?.[0] ?? x;
+// Formatos que la vista previa muestra junto a la opción múltiple del bloque 1.
+export const VARIEDAD_B1 = ["conceptos", "clasificar", "verdadero_falso", "ordenar"];
+
+// Orden al azar (con semilla) de los juegos de cada bloque: el mini-examen cierra el bloque, la primera actividad va
+// primero en el bloque 1, nunca el mismo tipo al final de un bloque y al principio del siguiente, y se evitan juegos
+// parecidos juntos. Devuelve un orden por bloque.
+export function ordenarJuegos(listas: string[][], semilla: number, primeraFija: string | null = null): string[][] {
+  const rnd = azar(semilla ^ 0x5bd1e995);
+  const out: string[][] = [];
+  listas.forEach((js, i) => {
+    const prev = i ? out[i - 1].at(-1) ?? null : null;
+    const fijo = i === 0 && primeraFija && js.includes(primeraFija) ? primeraFija : null;
+    const cierre = js.includes("mini_examen") && fijo !== "mini_examen" ? ["mini_examen"] : [];
+    const mov = js.filter((x) => x !== fijo && !cierre.includes(x));
+    const puntos = (sec: string[]) => {
+      let p = prev && prev === sec[0] ? 100 : 0;
+      if (prev && familia(prev) === familia(sec[0] ?? "")) p += 1;
+      for (let k = 1; k < sec.length; k++) if (familia(sec[k]) === familia(sec[k - 1])) p += 1;
+      return p;
+    };
+    let mejor: string[] | null = null, pm = Infinity;
+    for (let n = 0; n < 200 && pm > 0; n++) {
+      const sec = [...(fijo ? [fijo] : []), ...barajar(mov, rnd), ...cierre];
+      const p = puntos(sec);
+      if (p < pm) { pm = p; mejor = sec; }
+    }
+    out.push(mejor ?? [...js]);
+  });
+  return out;
+}
+// Arregla en su lugar los órdenes para que ningún bloque empiece con el mismo tipo con que terminó el anterior.
+export function arreglarAdyacencias(ordenes: string[][], primeraFija: string | null = null): void {
+  for (let i = 1; i < ordenes.length; i++) {
+    const prev = ordenes[i - 1], cur = ordenes[i];
+    if (!prev.length || !cur.length || prev.at(-1) !== cur[0]) continue;
+    // 1) Cambiar el primero del bloque por otro que no sea el mini-examen.
+    const k = cur.findIndex((x, j) => j > 0 && x !== "mini_examen" && x !== prev.at(-1));
+    if (k > 0) { [cur[0], cur[k]] = [cur[k], cur[0]]; continue; }
+    // 2) Cambiar el último del bloque anterior (sin mover su mini-examen ni la primera actividad fija del bloque 1).
+    const desde = i - 1 === 0 && primeraFija && prev[0] === primeraFija ? 1 : 0;
+    const m = prev.findIndex((x, j) => j >= desde && j < prev.length - 1 && x !== cur[0] && x !== "mini_examen" && (j + 1 >= prev.length - 1 || prev[j + 1] !== x));
+    if (m >= 0 && prev.at(-1) !== "mini_examen") { const u = prev.length - 1; [prev[m], prev[u]] = [prev[u], prev[m]]; }
+  }
+}
+// Juego que se agrega al bloque 1 cuando el plan no trae otro formato además de la opción múltiple: según lo que hay
+// en su inventario (vocabulario → conceptos, categorías → clasificar, secuencias → ordenar); si no, verdadero o falso.
+function juegoParaB1(pb: any, semilla: number): string {
+  const ids = (Array.isArray(pb.ids_inventario) ? pb.ids_inventario : []).map(String);
+  const posibles = [["voc", "conceptos"], ["cat", "clasificar"], ["sec", "ordenar"]].filter(([p]) => ids.some((x: string) => x.startsWith(p))).map(([, k]) => k);
+  return posibles.length ? posibles[semilla % posibles.length] : "verdadero_falso";
+}
+// Mecánica visual de las preguntas de cada bloque: la del planificador si cumple (no "carrera" en el bloque 1, no la
+// misma en dos bloques seguidos, no "duelo" si el bloque ya tiene juego de duelo); si no, una al azar, de preferencia
+// una que la guía no haya usado.
+export function ajustarMecanicas(bloques: any[], semilla: number): string[] {
+  const notas: string[] = [];
+  const lista = barajar(MECANICAS_QUIZ, azar(semilla ^ 0x27d4eb2f));
+  const usadas = new Set<string>();
+  bloques.forEach((pb, i) => {
+    const prev = i ? bloques[i - 1].mecanica_quiz : null;
+    const valida = (m: string) => MECANICAS_QUIZ.includes(m) && m !== prev && !(i === 0 && m === "carrera") && !(m === "duelo" && ent(pb.juegos?.duelo) > 0);
+    let m = normaliza(String(pb.mecanica_quiz ?? "")).replace(/\s/g, "_");
+    if (!valida(m)) {
+      const nueva = lista.find((x) => valida(x) && !usadas.has(x)) ?? lista.find(valida) ?? "montana";
+      if (m) notas.push(`${pb.id}: mecánica "${m}" → "${nueva}"`);
+      m = nueva;
+    }
+    pb.mecanica_quiz = m; usadas.add(m);
+  });
+  return notas;
+}
+
+// El plan de la IA se ajusta por código: mínimos de preguntas, bloque 1 con dos formatos, juegos de una pieza a 1 por
+// bloque, tope de slides (primero juegos prescindibles, luego pistas de más), orden al azar sin repeticiones seguidas,
+// primera actividad válida y mecánica de las preguntas de cada bloque.
+export function ajustarPlan(plan: any, semilla = 0): string[] {
   const notas: string[] = [];
   const tope = topeDe(plan);
   for (const pb of plan.bloques) {
@@ -676,7 +803,30 @@ export function ajustarPlan(plan: any): string[] {
     pb.juegos = Object.fromEntries(TIPOS_JUEGO.map((k) => [k, ent(pb.juegos?.[k])]));
     for (const k of POR_PIEZA) if (k !== "conceptos" && pb.juegos[k] > 1) pb.juegos[k] = 1;
     pb.mini_examen = ent(pb.mini_examen);
+    // Mínimos: 5 preguntas por juego de preguntas, 4 parejas en conceptos; el duelo, de 5 a 7.
+    const j = pb.juegos;
+    if (j.opcion_multiple + j.completar > 0 && j.opcion_multiple + j.completar < MIN_PREGUNTAS) j.opcion_multiple = MIN_PREGUNTAS - j.completar;
+    for (const k of ["verdadero_falso", "duelo"]) if (j[k] > 0 && j[k] < MIN_PREGUNTAS) j[k] = MIN_PREGUNTAS;
+    if (j.duelo > 7) j.duelo = 7;
+    if (j.conceptos > 0 && j.conceptos < MIN_PAREJAS) j.conceptos = MIN_PAREJAS;
+    if (pb.mini_examen > 0 && pb.mini_examen < MIN_PREGUNTAS) pb.mini_examen = MIN_PREGUNTAS;
   }
+  if (ent(plan.reto_final) < MIN_PREGUNTAS) plan.reto_final = 15;
+  // Bloque 1 (vista previa): opción múltiple y al menos otro formato.
+  const b1 = plan.bloques[0];
+  if (b1) {
+    if (b1.juegos.opcion_multiple + b1.juegos.completar === 0) { b1.juegos.opcion_multiple = 6; notas.push("b1: con opción múltiple (vista previa)"); }
+    if (!VARIEDAD_B1.some((k) => b1.juegos[k] > 0)) {
+      const k = juegoParaB1(b1, semilla);
+      b1.juegos[k] = k === "conceptos" ? 5 : k === "verdadero_falso" ? MIN_PREGUNTAS : 1;
+      notas.push(`b1: con ${k} para que la vista previa muestre dos formatos`);
+    }
+  }
+  const primera0 = juegoDe(String(plan.primera_actividad ?? ""));
+  const protegido = (pb: any, x: string) => pb === b1 && (x === primera0 || (VARIEDAD_B1.includes(x) && VARIEDAD_B1.filter((k) => b1.juegos[k] > 0).length <= 1));
+  // Cuántos bloques usan cada juego: al recortar se quita primero lo que se repite en otros bloques (así se usa todo el
+  // repertorio a lo largo de la guía).
+  const usos = (x: string) => plan.bloques.filter((pb: any) => juegosDelPlan(pb).includes(x)).length;
   const quitar = (pb: any, k: string) => { pb.juegos[k] = 0; if (k === "opcion_multiple") pb.juegos.completar = 0; if (k === "mini_examen") pb.mini_examen = 0; };
   let guarda = 60;
   while (estimarSlidesPlan(plan) > tope && guarda-- > 0) {
@@ -686,7 +836,8 @@ export function ajustarPlan(plan: any): string[] {
       if (pb.pistas.length > 3) { notas.push(`${pb.id}: sin la pista "${pb.pistas.pop()}"`); hecho = true; break; }
       const js = juegosDelPlan(pb);
       if (js.includes("duelo") && js.includes("mini_examen") && js.length > 2) { quitar(pb, "mini_examen"); notas.push(`${pb.id}: sin mini-examen (cierra con duelo)`); hecho = true; break; }
-      const k = js.length > 2 ? PRESCINDIBLES.find((x) => js.includes(x) && !(pb === plan.bloques[0] && x === juegoDe(String(plan.primera_actividad ?? "")))) : undefined;
+      const cand = js.length > 2 ? PRESCINDIBLES.filter((x) => js.includes(x) && !protegido(pb, x)) : [];
+      const k = cand.sort((x, y) => usos(y) - usos(x) || PRESCINDIBLES.indexOf(x) - PRESCINDIBLES.indexOf(y))[0];
       if (k) { quitar(pb, k); notas.push(`${pb.id}: sin ${k}`); hecho = true; break; }
       if (pb.pistas.length > 2) { notas.push(`${pb.id}: sin la pista "${pb.pistas.pop()}"`); hecho = true; break; }
     }
@@ -697,31 +848,83 @@ export function ajustarPlan(plan: any): string[] {
     }
     if (!hecho) break;
   }
-  // Orden de los juegos de cada bloque: solo los que lleva, sin repetir, y los que falten al final.
-  for (const pb of plan.bloques) {
-    const js = juegosDelPlan(pb);
-    const pedido = (Array.isArray(pb.orden_actividades) ? pb.orden_actividades : []).map((x: unknown) => juegoDe(String(x)));
-    pb.orden_actividades = [...new Set([...pedido.filter((x: string) => js.includes(x)), ...js])];
-  }
-  // Si todos los bloques traen la misma secuencia, se rota (el cierre con mini-examen o duelo se queda al final).
-  const firmas = new Set(plan.bloques.map((pb: any) => pb.orden_actividades.join(",")));
-  if (plan.bloques.length > 1 && firmas.size === 1) {
-    plan.bloques.forEach((pb: any, i: number) => {
-      const cierre = pb.orden_actividades.filter((x: string) => x === "mini_examen");
-      const resto = pb.orden_actividades.filter((x: string) => x !== "mini_examen");
-      const r = resto.length ? i % resto.length : 0;
-      pb.orden_actividades = [...resto.slice(r), ...resto.slice(0, r), ...cierre];
-    });
-    notas.push("secuencias de juegos rotadas para que no se repitan");
-  }
   // Primera actividad: "calentamiento" o un juego del bloque 1, que entonces va primero en ese bloque.
-  const b1 = plan.bloques[0];
   const primera = juegoDe(String(plan.primera_actividad ?? ""));
-  if (b1 && primera !== "calentamiento" && b1.orden_actividades.includes(primera)) b1.orden_actividades = [primera, ...b1.orden_actividades.filter((x: string) => x !== primera)];
-  else plan.primera_actividad = "calentamiento";
+  if (!(b1 && primera !== "calentamiento" && juegosDelPlan(b1).includes(primera))) plan.primera_actividad = "calentamiento";
+  // Orden al azar con la semilla de la guía (nunca dos juegos del mismo tipo seguidos, tampoco entre bloques).
+  const ordenes = ordenarJuegos(plan.bloques.map((pb: any) => juegosDelPlan(pb)), semilla, plan.primera_actividad === "calentamiento" ? null : primera);
+  plan.bloques.forEach((pb: any, i: number) => { pb.orden_actividades = ordenes[i]; });
+  notas.push(...ajustarMecanicas(plan.bloques, semilla));
   plan.presupuesto_slides = tope;
   plan.slides_estimados = estimarSlidesPlan(plan);
   return notas;
+}
+
+// Lo que le falta a cada juego de un bloque para llegar al mínimo (opción múltiple + completar, verdadero o falso,
+// duelo y mini-examen ≥ 5 preguntas; conceptos ≥ 4 parejas; quién es quién ≥ 3; clasificar ≥ 6 tarjetas, 2 grupos).
+export type Falta = { juego: string; id?: string; tiene: number; minimo: number; unidad: string };
+export function faltasDeBloque(b: any): Falta[] {
+  const acts = (b?.actividades ?? []) as any[];
+  const out: Falta[] = [];
+  const cuenta = (...t: string[]) => acts.filter((a) => t.includes(a?.tipo)).length;
+  const grupos: [string, number][] = [["opcion_multiple", cuenta("opcion_multiple", "completar")], ["verdadero_falso", cuenta("verdadero_falso")], ["duelo", cuenta("duelo")], ["mini_examen", (b?.mini_examen ?? []).length]];
+  for (const [juego, n] of grupos) if (n > 0 && n < MIN_PREGUNTAS) out.push({ juego, tiene: n, minimo: MIN_PREGUNTAS, unidad: "preguntas" });
+  for (const a of acts) {
+    if (a?.tipo === "conceptos" || a?.tipo === "quien_es_quien") {
+      const n = (a.pares ?? []).filter((p: any) => p?.termino && p?.definicion).length;
+      const min = a.tipo === "conceptos" ? MIN_PAREJAS : 3;
+      if (n < min) out.push({ juego: a.tipo, id: a.id, tiene: n, minimo: min, unidad: "parejas" });
+    }
+    if (a?.tipo === "clasificar") {
+      const el = (a.elementos ?? []).filter((e: any) => e && (e.grupo === 0 || e.grupo === 1));
+      const vacio = !el.some((e: any) => e.grupo === 0) || !el.some((e: any) => e.grupo === 1);
+      if (el.length < MIN_TARJETAS || vacio) out.push({ juego: "clasificar", id: a.id, tiene: el.length, minimo: MIN_TARJETAS, unidad: vacio ? "tarjetas (un grupo está vacío)" : "tarjetas" });
+    }
+  }
+  return out;
+}
+export function textoFalta(b: any, f: Falta): string {
+  if (f.id) return `MÍNIMO · Actividad ${f.id} (${f.juego}, bloque ${b.id}): tiene ${f.tiene} ${f.unidad}; agrega ${Math.max(1, f.minimo - f.tiene)} o más en "ampliaciones" (mín. ${f.minimo}).`;
+  return `MÍNIMO · Bloque ${b.id} · ${f.juego}: tiene ${f.tiene} preguntas; escribe ${f.minimo - f.tiene} o más NUEVAS de ${f.juego === "opcion_multiple" ? "opcion_multiple o completar" : f.juego} (mín. ${f.minimo}), con pista de ${b.id}.`;
+}
+// Quita los juegos que siguen por debajo del mínimo (enteros, nunca a medias) y anota el motivo.
+export function descartarCortos(b: any, motivos: Descarte[], porque: string): void {
+  for (const f of faltasDeBloque(b)) {
+    const motivo = `${f.juego} con ${f.tiene} ${f.unidad} (mín. ${f.minimo}): ${porque}`;
+    if (f.id) { b.actividades = b.actividades.filter((a: any) => a.id !== f.id); motivos.push({ id: f.id, tipo: f.juego, bloque: b.id, motivo }); continue; }
+    if (f.juego === "mini_examen") { motivos.push({ id: `${b.id}·mini_examen`, tipo: "mini_examen", bloque: b.id, motivo }); b.mini_examen = []; continue; }
+    const tipos = f.juego === "opcion_multiple" ? ["opcion_multiple", "completar"] : [f.juego];
+    motivos.push({ id: `${b.id}·${f.juego}`, tipo: f.juego, bloque: b.id, motivo });
+    b.actividades = b.actividades.filter((a: any) => !tipos.includes(a.tipo));
+  }
+}
+// Dos juegos del mismo tipo en un bloque se jugarían seguidos: los de parejas se juntan (hasta 8 parejas) y de los
+// demás se queda el primero.
+export function quitarRepetidos(b: any, motivos: Descarte[]): void {
+  for (const tipo of ["conceptos", "quien_es_quien"]) {
+    const g = b.actividades.filter((a: any) => a.tipo === tipo);
+    if (g.length < 2) continue;
+    const pares = g.flatMap((a: any) => a.pares ?? []);
+    g[0].pares = pares.filter((p: any, i: number) => pares.findIndex((q: any) => normaliza(q.termino) === normaliza(p.termino)) === i).slice(0, 8);
+    b.actividades = b.actividades.filter((a: any) => a === g[0] || !g.includes(a));
+  }
+  for (const tipo of ["super_dato", "ordenar", "clasificar"]) {
+    const g = b.actividades.filter((a: any) => a.tipo === tipo);
+    for (const a of g.slice(1)) motivos.push({ id: a.id, tipo, bloque: b.id, motivo: `segundo ${tipo} del bloque (se jugarían dos iguales seguidos)` });
+    if (g.length > 1) b.actividades = b.actividades.filter((a: any) => a === g[0] || !g.includes(a));
+  }
+}
+// Cuando la respuesta del escritor se cortó por largo, se pide menos, pero sin bajar de los mínimos.
+export function mitadConMinimos(pb: any): { juegos: Record<string, number>; mini_examen: number } {
+  const j = Object.fromEntries(TIPOS_JUEGO.map((k) => [k, ent(pb.juegos?.[k])])) as Record<string, number>;
+  const om = Math.ceil(j.opcion_multiple / 2), co = Math.ceil(j.completar / 2);
+  const out: Record<string, number> = { ...j, opcion_multiple: om, completar: co };
+  if (j.opcion_multiple + j.completar > 0 && om + co < MIN_PREGUNTAS) out.opcion_multiple = MIN_PREGUNTAS - co;
+  for (const k of ["verdadero_falso", "duelo"]) out[k] = j[k] > 0 ? MIN_PREGUNTAS : 0;
+  out.conceptos = j.conceptos > 0 ? MIN_PAREJAS : 0;
+  // Si el bloque cierra con duelo, el mini-examen se omite; si no, se piden solo 5 preguntas.
+  const mini = ent(pb.mini_examen) > 0 && !(j.duelo > 0) ? MIN_PREGUNTAS : 0;
+  return { juegos: out, mini_examen: mini };
 }
 
 // Una pista cabe en una slide: título corto, máx. 5 ideas (3 con esquema) de unas 12 palabras, unas 60 palabras en
@@ -770,7 +973,9 @@ export function dividirPistaCodigo(p: any, perfil = "juvenil"): any[] {
 // y luego se recortan juegos prescindibles; nunca se deja un bloque con menos de 2 juegos ni con menos de 2 pistas.
 export function recortarBloques(bloques: any[], tope: number, perfil = "juvenil", primera = ""): string[] {
   // El juego que el plan eligió como primera actividad (en el bloque 1) no se recorta.
-  const protegido = (b: any, tipo: string) => b === bloques[0] && juegoDe(tipo) === primera;
+  // Tampoco el último formato distinto de la opción múltiple del bloque 1 (la vista previa debe mostrar dos formatos).
+  const protegido = (b: any, tipo: string) => b === bloques[0] && (juegoDe(tipo) === primera || (VARIEDAD_B1.includes(tipo) && VARIEDAD_B1.filter((k) => b.actividades.some((a: any) => a.tipo === k)).length <= 1));
+  const usos = (tipo: string) => bloques.filter((b) => b?.actividades?.some((a: any) => a.tipo === tipo)).length;
   const notas: string[] = [];
   let guarda = 80;
   while (estimarSlides(bloques) > tope && guarda-- > 0) {
@@ -801,7 +1006,7 @@ export function recortarBloques(bloques: any[], tope: number, perfil = "juvenil"
       if (hecho) break;
       // 4) Mini-examen si el bloque ya cierra con duelo; luego juegos prescindibles.
       if (juegosDelBloque(b) > 2 && b.mini_examen.length && b.actividades.some((a: any) => a.tipo === "duelo")) { b.mini_examen = []; notas.push(`${b.id}: sin mini-examen (cierra con duelo)`); hecho = true; break; }
-      const k = juegosDelBloque(b) > 2 ? PRESCINDIBLES.find((t) => !protegido(b, t) && b.actividades.some((a: any) => a.tipo === t)) : undefined;
+      const k = juegosDelBloque(b) > 2 ? PRESCINDIBLES.filter((t) => !protegido(b, t) && b.actividades.some((a: any) => a.tipo === t)).sort((x, y) => usos(y) - usos(x) || PRESCINDIBLES.indexOf(x) - PRESCINDIBLES.indexOf(y))[0] : undefined;
       if (k) { const i = b.actividades.findLastIndex((a: any) => a.tipo === k); const fuera = POR_PIEZA.includes(k) ? [b.actividades[i]] : b.actividades.filter((a: any) => a.tipo === k); b.actividades = b.actividades.filter((a: any) => !fuera.includes(a)); notas.push(`${b.id}: sin ${k}`); hecho = true; break; }
     }
     if (!hecho) { notas.push(`no se pudo bajar de ${estimarSlides(bloques)} slides sin quitar teoría`); break; }
@@ -826,6 +1031,155 @@ export function pistaDeCorreccion(bloques: any[], id: string, res: any): { b: an
   }
   const b0 = bloques.find((b) => b.pistas?.length);
   return mejor ?? (b0 ? { b: b0, pista: b0.pistas[0], act: null } : null);
+}
+
+// Ids de una entrada del verificador. Debe venir uno solo, pero a veces junta varios ("b2p2, b2vf3, b2c2") o agrega
+// texto ("b1om3 (pregunta…)"): se quedan los que existen en la guía; si ninguno existe, el primero tal cual (la
+// corrección se coloca entonces por su texto).
+export function idsDeVerificacion(bloques: any[], actividad: unknown): string[] {
+  const existentes = new Set(bloques.flatMap((b) => [...(b.actividades ?? []), ...(b.mini_examen ?? []), ...(b.pistas ?? [])].map((x: any) => x?.id)));
+  const piezas = String(actividad ?? "").split(/[\s,;()|/]+/).map((x) => x.trim()).filter(Boolean);
+  const ids = [...new Set(piezas.filter((x) => existentes.has(x)))];
+  return ids.length ? ids : piezas.slice(0, 1);
+}
+// Aplica una corrección del verificador a un id: la pista la muestra una sola vez y la actividad con el dato
+// equivocado se quita.
+export function aplicarCorreccion(bloques: any[], id: string, res: any): void {
+  const lugar = pistaDeCorreccion(bloques, id, res);
+  if (!lugar) return;
+  const c = { dato_apuntes: res.decia_la_foto, dato_correcto: res.dato_correcto, mensaje: res.mensaje_para_alumno, fuentes: res.fuentes ?? [] };
+  lugar.pista.correcciones = lugar.pista.correcciones ?? [];
+  if (!lugar.pista.correcciones.some((x: any) => normaliza(x.dato_correcto) === normaliza(c.dato_correcto))) lugar.pista.correcciones.push(c);
+  if (lugar.act) { lugar.b.actividades = lugar.b.actividades.filter((a: any) => a.id !== id); lugar.b.mini_examen = lugar.b.mini_examen.filter((a: any) => a.id !== id); }
+}
+
+// Aplica la respuesta del reparador: preguntas nuevas (solo de tipos que el bloque ya tiene; nunca tipos nuevos),
+// parejas o tarjetas que completan un juego, y descarta lo que no pasa la revisión.
+export function aplicarReparacion(bloques: any[], j: any, citas: string[], nivel: string, idioma: string, huecos: string[]): { colocadas: string[]; descartes: Descarte[] } {
+  const descartes: Descarte[] = [];
+  const colocadas: string[] = [];
+  const an = j?.actividades_nuevas && typeof j.actividades_nuevas === "object" && !Array.isArray(j.actividades_nuevas) ? { ...j.actividades_nuevas } : {};
+  const mini = (Array.isArray(an.mini_examen) ? an.mini_examen : []).filter((a: any) => a && typeof a === "object").map((a: any) => ({ ...a, tipo: "opcion_multiple", _mini: true }));
+  delete an.mini_examen;
+  const nuevas = [...aplanar(Array.isArray(j?.actividades_nuevas) ? j.actividades_nuevas : an), ...mini];
+  const tiene = (b: any, a: any) => a._mini ? b.mini_examen.length > 0 : b.actividades.some((x: any) => juegoDe(x.tipo) === juegoDe(a.tipo)) || (!b.actividades.length && juegoDe(a.tipo) === "opcion_multiple");
+  for (const a of nuevas) {
+    if (!revisarActividad(a, citas, nivel, [], "reparar", descartes, idioma)) continue;
+    const b = bloqueDeNueva(bloques, a, huecos);
+    if (!b) continue;
+    if (!tiene(b, a)) { descartes.push({ id: String(a.id ?? "?"), tipo: String(a.tipo), bloque: b.id, motivo: "tipo de juego que el bloque no tiene (la reparación solo completa juegos existentes)" }); continue; }
+    if (a._mini) { delete a._mini; b.mini_examen.push(a); } else b.actividades.push(a);
+    colocadas.push(`${a.id}→${b.id}`);
+  }
+  for (const am of Array.isArray(j?.ampliaciones) ? j.ampliaciones : []) {
+    const id = String(am?.id ?? "").trim().split(/[\s,(]/)[0];
+    const act = bloques.flatMap((b) => b.actividades).find((a: any) => a.id === id);
+    if (!act) continue;
+    if ((act.tipo === "conceptos" || act.tipo === "quien_es_quien") && Array.isArray(am.pares)) {
+      const tmp: any = { tipo: act.tipo, pares: am.pares }; normalizarActividad(tmp, idioma);
+      const pares = [...(act.pares ?? []), ...(tmp.pares ?? []).filter((p: any) => p?.termino && p?.definicion)];
+      act.pares = pares.filter((p: any, i: number) => pares.findIndex((q: any) => normaliza(q.termino) === normaliza(p.termino)) === i).slice(0, 8);
+      colocadas.push(`${id}: ${act.pares.length} parejas`);
+    }
+    if (act.tipo === "clasificar" && Array.isArray(am.elementos)) {
+      const nuevos = am.elementos.filter((e: any) => e && typeof e === "object" && String(e.texto ?? "").trim()).map((e: any) => ({ ...e, grupo: Number(e.grupo) }));
+      const todos = [...(act.elementos ?? []), ...nuevos.filter((e: any) => e.grupo === 0 || e.grupo === 1)];
+      act.elementos = todos.filter((e: any, i: number) => todos.findIndex((q: any) => normaliza(q.texto) === normaliza(e.texto)) === i).slice(0, 12);
+      colocadas.push(`${id}: ${act.elementos.length} tarjetas`);
+    }
+  }
+  return { colocadas, descartes };
+}
+
+// ---------- Revisión ortográfica (Daniel, 8 nov 2026) ----------
+// Registro de los textos de la guía: ruta → [objeto, clave]. En las guías de lengua (español, inglés, francés…) no se
+// mandan las opciones, respuestas, distractores, términos ni tarjetas: ahí los errores pueden ser a propósito.
+type Lugar = [any, string | number];
+export const leerRuta = (l: Lugar): string => String(l[0][l[1]] ?? "");
+export function esGuiaDeLengua(plan: any): boolean {
+  return !!plan?.es_lengua_extranjera || /espa|lengua|ingl|franc|english|french|literat|ortograf|gramat|redacc/i.test(normaliza(String(plan?.materia ?? "")));
+}
+export function textosDeGuia(D: any): Record<string, Lugar> {
+  const reg: Record<string, Lugar> = {};
+  const poner = (ruta: string, obj: any, k: string | number) => { if (obj && typeof obj[k] === "string" && obj[k].trim()) reg[ruta] = [obj, k]; };
+  const lista = (ruta: string, arr: unknown) => { if (Array.isArray(arr)) arr.forEach((_, i) => poner(`${ruta}.${i}`, arr, i)); };
+  const plan = D.plan ?? {};
+  const lengua = esGuiaDeLengua(plan);
+  const id = plan.identidad ?? {};
+  poner("plan.titulo", id, "titulo"); poner("plan.subtitulo", id, "subtitulo"); lista("plan.objetivos", id.objetivos);
+  for (const b of (D.bloques ?? []).filter(Boolean)) {
+    poner(`${b.id}.titulo`, b, "titulo");
+    for (const p of b.pistas ?? []) {
+      for (const k of ["titulo", "titulo_pagina", "ejemplo", "clave"]) poner(`${p.id}.${k}`, p, k);
+      lista(`${p.id}.ideas`, p.ideas);
+      if (p.dato_rapido && typeof p.dato_rapido === "object") poner(`${p.id}.dato_rapido.titulo`, p.dato_rapido, "titulo");
+      if (p.esquema && typeof p.esquema === "object") {
+        poner(`${p.id}.esquema.titulo`, p.esquema, "titulo");
+        (Array.isArray(p.esquema.elementos) ? p.esquema.elementos : []).forEach((e: any, i: number) => { poner(`${p.id}.esquema.${i}.nombre`, e, "nombre"); poner(`${p.id}.esquema.${i}.detalle`, e, "detalle"); });
+      }
+    }
+    for (const a of [...(b.actividades ?? []), ...(b.mini_examen ?? [])]) {
+      if (!a?.id) continue;
+      for (const k of ["pregunta", "afirmacion", "enunciado", "instruccion", "texto", "retro_correcta", "retro_incorrecta", "por_que"]) poner(`${a.id}.${k}`, a, k);
+      (Array.isArray(a.pasos) ? a.pasos : []).forEach((x: any, i: number) => poner(`${a.id}.pasos.${i}`, x, "texto"));
+      (Array.isArray(a.pares) ? a.pares : []).forEach((x: any, i: number) => { poner(`${a.id}.pares.${i}.definicion`, x, "definicion"); if (!lengua && a.tipo !== "quien_es_quien") poner(`${a.id}.pares.${i}.termino`, x, "termino"); });
+      if (!lengua) {
+        lista(`${a.id}.opciones`, a.opciones); lista(`${a.id}.distractores`, a.distractores); poner(`${a.id}.respuesta`, a, "respuesta"); lista(`${a.id}.grupos`, a.grupos);
+        (Array.isArray(a.elementos) ? a.elementos : []).forEach((x: any, i: number) => poner(`${a.id}.elementos.${i}`, x, "texto"));
+      }
+    }
+  }
+  return reg;
+}
+// Correcciones que no dependen de la IA: "exámen" (singular) siempre es "examen".
+export function corregirFijas(reg: Record<string, Lugar>): number {
+  let n = 0;
+  for (const l of Object.values(reg)) {
+    const v = leerRuta(l);
+    const w = v.replace(/(^|[^\p{L}])([Ee])x[áá]men(?![\p{L}])/gu, (_m, a, e) => `${a}${e}xamen`).replace(/(^|[^\p{L}])EXÁMEN(?![\p{L}])/gu, "$1EXAMEN");
+    if (w !== v) { l[0][l[1]] = w; n++; }
+  }
+  return n;
+}
+function distancia(a: string, b: string): number {
+  if (a === b) return 0;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let k = 1; k <= b.length; k++) cur[k] = Math.min(prev[k] + 1, cur[k - 1] + 1, prev[k - 1] + (a[i - 1] === b[k - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+// Un cambio solo ortográfico: sin tildes, signos ni mayúsculas, el texto queda casi igual (tildes, signos y mayúsculas
+// cuentan 0; letras cambiadas, un 12 % del largo como máximo, o las mismas palabras con terminaciones cambiadas). Los huecos ___ y las [[palabras]] del súper dato no se
+// tocan, y nunca se acepta "exámen".
+export function cambioOrtografico(antes: string, despues: string): boolean {
+  if (typeof despues !== "string" || !despues.trim() || despues === antes) return false;
+  if (/(^|[^\p{L}])exámen(?![\p{L}])/iu.test(despues)) return false;
+  const marcas = (s: string) => `${(s.match(/_{2,}/g) ?? []).length}|${(s.match(/\[\[(.+?)\]\]/g) ?? []).map((x) => normaliza(x)).join("·")}`;
+  if (marcas(antes) !== marcas(despues)) return false;
+  const a = normaliza(antes), b = normaliza(despues);
+  if (!b) return false;
+  const d = distancia(a, b);
+  if (d <= Math.max(2, Math.round(a.length * 0.12))) return true;
+  // Concordancia ("los pais que participo" → "los países que participaron"): mismas palabras, cada una apenas cambiada.
+  const pa = a.split(" "), pb = b.split(" ");
+  return pa.length === pb.length && d <= Math.round(a.length * 0.25) && pa.every((w, i) => distancia(w, pb[i]) <= Math.max(2, Math.ceil(w.length * 0.4)));
+}
+export function aplicarOrtografia(reg: Record<string, Lugar>, correcciones: any[]): { aplicadas: any[]; rechazadas: any[] } {
+  const aplicadas: any[] = [], rechazadas: any[] = [];
+  for (const c of Array.isArray(correcciones) ? correcciones : []) {
+    const ruta = String(c?.ruta ?? "").trim();
+    const l = reg[ruta];
+    if (!l) { rechazadas.push({ ruta, motivo: "ruta desconocida" }); continue; }
+    const antes = leerRuta(l), despues = String(c?.texto ?? "");
+    if (despues === antes) continue;
+    if (!cambioOrtografico(antes, despues)) { rechazadas.push({ ruta, antes, despues, motivo: "cambia el contenido" }); continue; }
+    l[0][l[1]] = despues;
+    aplicadas.push({ ruta, antes, despues, motivo: c?.motivo ?? "" });
+  }
+  return { aplicadas, rechazadas };
 }
 
 // Anota los descartes de un paso: datos.descartes (todos, últimos 200), datos.diagnostico.descartes (los de este paso)
@@ -866,7 +1220,6 @@ function partirOMarcar(D: any, motivo: string) {
   D.no_leidas = [...(Array.isArray(D.no_leidas) ? D.no_leidas : []), desde + 1];
   D.inventarios.push({ fotos: [{ indice: desde + 1, legible: false, motivo }], estado: "ilegible", inventario: {} });
 }
-const mitad = (juegos: Record<string, unknown> | undefined) => Object.fromEntries(Object.entries(juegos ?? {}).map(([k, v]) => [k, Math.ceil((Number(v) || 0) / 2)]));
 // Un plan sirve si trae al menos un bloque con título.
 function planDe(j: any): any {
   const p = Array.isArray(j?.bloques) ? j : Array.isArray(j?.plan?.bloques) ? j.plan : null;
@@ -1049,41 +1402,77 @@ function revisarActividad(a: any, citas: string[], nivel: string, huecos: string
     if (a.tipo === "verdadero_falso" && typeof a.es_verdadera !== "boolean") return fuera(`verdadero o falso ilegible (${JSON.stringify(a.es_verdadera)})`);
   }
   if (a.tipo === "super_dato") { const huecosSD = (String(a.texto ?? "").match(/\[\[(.+?)\]\]/g) ?? []).length; if (huecosSD < 3) return fuera(`súper dato con ${huecosSD} huecos (mín. 3)`); if (!Array.isArray(a.distractores)) return fuera("súper dato sin distractores"); }
-  if (a.tipo === "conceptos" || a.tipo === "quien_es_quien") { if (!Array.isArray(a.pares)) return fuera("sin parejas"); a.pares = a.pares.filter((p: any) => p?.termino && p?.definicion); if (a.pares.length < 3) return fuera(`${a.pares.length} parejas completas (mín. 3)`); }
+  if (a.tipo === "conceptos" || a.tipo === "quien_es_quien") { if (!Array.isArray(a.pares)) return fuera("sin parejas"); a.pares = a.pares.filter((p: any) => p?.termino && p?.definicion); if (a.pares.length < 2) return fuera(`${a.pares.length} parejas completas (mín. 2 para completarlo)`); }
   if (a.tipo === "ordenar") { if (!Array.isArray(a.pasos) || a.pasos.length < 3) return fuera(`${Array.isArray(a.pasos) ? a.pasos.length : 0} pasos (mín. 3)`); a.pasos = a.pasos.map((p: any) => typeof p === "string" ? { texto: p, emoji: "" } : p); }
-  if (a.tipo === "clasificar") { if (!Array.isArray(a.grupos) || a.grupos.length < 2 || !Array.isArray(a.elementos) || a.elementos.length < 4) return fuera("clasificar con menos de 2 grupos o 4 tarjetas"); normalizarClasificar(a); a.elementos = a.elementos.filter((e: any) => e && (e.grupo === 0 || e.grupo === 1)); if (a.elementos.length < 4 || !a.elementos.some((e: any) => e.grupo === 0) || !a.elementos.some((e: any) => e.grupo === 1)) return fuera("clasificar con un grupo vacío o menos de 4 tarjetas"); }
+  if (a.tipo === "clasificar") { if (!Array.isArray(a.grupos) || a.grupos.length < 2 || !Array.isArray(a.elementos) || a.elementos.length < 2) return fuera("clasificar con menos de 2 grupos o 2 tarjetas"); normalizarClasificar(a); a.elementos = a.elementos.filter((e: any) => e && (e.grupo === 0 || e.grupo === 1)); if (a.elementos.length < 2) return fuera("clasificar con menos de 2 tarjetas válidas"); }
   // cita respaldada
   const cita = a.fuente?.cita;
   if (cita && citas.length && !citaExiste(cita, citas) && a.fuente?.tipo !== "practica") { huecos.push(`Actividad ${a.id} del bloque ${bloque}: su cita no aparece en las fotos`); return fuera(`cita que no aparece en las fotos ("${String(cita).slice(0, 60)}")`); }
   return true;
 }
 
-// Fotografía de un personaje: Wikipedia solo para la imagen, nunca para datos.
+// Fotografía de un personaje: Wikipedia solo para la imagen, nunca para datos. Las miniaturas que da el resumen de
+// Wikipedia (a veces en thumb.wikimedia.org, o redimensionadas a 400 px) respondían error 400 en el reproductor; las que
+// sí cargan son las de upload.wikimedia.org a 960 px. Cada URL se comprueba antes de guardarla: si no responde 200, no
+// se pone.
+export function urlWikimedia(fuente: string, ancho?: number): string | null {
+  const m = String(fuente ?? "").match(/^https?:\/\/upload\.wikimedia\.org\/wikipedia\/([^/]+)\/(?:thumb\/)?([0-9a-f])\/([0-9a-f]{2})\/([^/?#]+)/i);
+  if (!m) return null;
+  const [, proyecto, a, ab, archivo] = m;
+  if (/\.(tiff?|pdf|djvu|webm|ogv|ogg)$/i.test(archivo)) return null;
+  const original = `https://upload.wikimedia.org/wikipedia/${proyecto}/${a}/${ab}/${archivo}`;
+  // Si la imagen original mide 960 px o menos, se usa tal cual (Wikimedia no agranda miniaturas).
+  if (ancho && ancho <= 960 && !/\.svg$/i.test(archivo)) return original;
+  return `https://upload.wikimedia.org/wikipedia/${proyecto}/thumb/${a}/${ab}/${archivo}/960px-${archivo}${/\.svg$/i.test(archivo) ? ".png" : ""}`;
+}
+const UA = { "user-agent": "SparkEd/1.0 (guias de estudio; sparkeducation-mx.com)" };
+async function responde(url: string): Promise<boolean> {
+  try {
+    const r = await fetch(url, { method: "HEAD", headers: UA, signal: AbortSignal.timeout(8000) });
+    return r.status === 200;
+  } catch { return false; }
+}
 async function imagenWikipedia(nombre: string, idioma: string): Promise<{ url: string; pie: string; credito: string } | null> {
   for (const lang of [idioma, "es", "en"].filter((v, i, a) => a.indexOf(v) === i)) {
     try {
-      const r = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(nombre.replace(/ /g, "_"))}`, { headers: { accept: "application/json", "user-agent": "SparkEd/1.0 (guias de estudio)" } });
+      const r = await fetch(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(nombre.replace(/ /g, "_"))}`, { headers: { accept: "application/json", ...UA }, signal: AbortSignal.timeout(8000) });
       if (!r.ok) continue;
       const d = await r.json();
       if (d.type === "disambiguation") continue;
-      const url = d.thumbnail?.source ?? d.originalimage?.source;
-      if (!url) continue;
-      return { url: url.replace(/\/\d+px-/, "/400px-"), pie: d.title ?? nombre, credito: "Wikimedia Commons" };
+      const candidatas = [urlWikimedia(d.originalimage?.source, Number(d.originalimage?.width) || undefined), urlWikimedia(d.thumbnail?.source, Number(d.originalimage?.width) || undefined)].filter((x, i, a): x is string => !!x && a.indexOf(x) === i);
+      for (const url of candidatas) if (await responde(url)) return { url, pie: d.title ?? nombre, credito: "Wikimedia Commons" };
     } catch { /* siguiente idioma */ }
   }
   return null;
 }
 
-// Vista previa: portada, primera pista y un juego del bloque 1 (lo demás se bloquea).
+// Vista previa: calentamiento y bloque 1 (pistas, sus preguntas de opción múltiple y otro formato: conceptos,
+// clasificar, verdadero o falso u ordenar), para que se vean al menos dos formatos distintos. Lo demás se bloquea.
 export function recortarVistaPrevia(c: any): any {
   const bloques = (c.bloques ?? []).filter(Boolean);
   const b0 = bloques[0];
   const planeados = Array.isArray(c.plan?.bloques_plan) ? c.plan.bloques_plan : [];
-  const hechas = bloques.reduce((n: number, b: any) => n + (b.actividades?.length ?? 0) + (b.mini_examen?.length ?? 0), 0);
+  const hechas = bloques.reduce((n: number, b: any) => n + (b.actividades?.length ?? 0) + (b.mini_examen?.length ?? 0) + (b.duelo?.length ?? 0), 0);
   // Si solo existe el bloque 1 (vista previa), los totales se estiman con el plan.
   const estimadas = planeados.reduce((n: number, pb: any) => n + Object.values(pb.juegos ?? {}).reduce((s: number, x: any) => s + (Number(x) || 0), 0) + (Number(pb.mini_examen) || 0), 0);
   const v: any = { version_formato: c.version_formato, plan: { ...c.plan }, bloques: [], calentamiento: [], reto_final: [], vista_previa: true, bloques_totales: Math.max(planeados.length, bloques.length), actividades_totales: Math.max(hechas, estimadas) };
   delete v.plan.bloques_plan;
-  if (b0) v.bloques.push({ id: b0.id, titulo: b0.titulo, pistas: (b0.pistas ?? []).slice(0, 3), actividades: (b0.actividades ?? []).filter((a: any) => a.tipo === "opcion_multiple" || a.tipo === "completar").slice(0, 6), mini_examen: [] });
+  if (b0) {
+    const acts = (b0.actividades ?? []) as any[];
+    const quiz = acts.filter((a: any) => a.tipo === "opcion_multiple" || a.tipo === "completar").slice(0, 6);
+    const orden = (Array.isArray(b0.orden) ? b0.orden : []) as string[];
+    const otro = [...orden.filter((x) => VARIEDAD_B1.includes(x)), ...VARIEDAD_B1].find((k) => acts.some((a: any) => a.tipo === k));
+    const extra = !otro ? [] : otro === "verdadero_falso" ? acts.filter((a: any) => a.tipo === otro) : acts.filter((a: any) => a.tipo === otro).slice(0, 1);
+    const actividades = [...quiz, ...extra];
+    const tipos = new Set(actividades.map((a: any) => juegoDe(a.tipo)));
+    const ordenVp = orden.filter((x) => tipos.has(x));
+    v.bloques.push({ id: b0.id, titulo: b0.titulo, pistas: (b0.pistas ?? []).slice(0, 3), actividades: actividades.sort((x: any, y: any) => ordenVp.indexOf(juegoDe(x.tipo)) - ordenVp.indexOf(juegoDe(y.tipo))), mini_examen: [], duelo: [], orden: ordenVp.length ? ordenVp : [...tipos], mecanica_quiz: b0.mecanica_quiz ?? null });
+    // Calentamiento: el del cartucho si sus preguntas están en la vista previa; si no, las de opción múltiple que sí van.
+    const ids = new Set(quiz.map((a: any) => a.id));
+    const cal = (c.calentamiento ?? []).filter((id: string) => ids.has(id));
+    const om = quiz.filter((a: any) => a.tipo === "opcion_multiple").map((a: any) => a.id);
+    v.calentamiento = cal.length >= MIN_PREGUNTAS ? cal : om.length >= MIN_PREGUNTAS ? om.slice(0, 6) : [];
+    if (c.primera_actividad && (c.primera_actividad === "calentamiento" || tipos.has(juegoDe(c.primera_actividad)))) v.primera_actividad = c.primera_actividad;
+  }
   return v;
 }
