@@ -3,10 +3,10 @@
 // retroalimentación al instante. Versión "videojuego actual" (6 nov 2026): movimiento continuo, motor que acelera,
 // saltos, flechas en arco, parejas que se juntan con animación y todo se puede jugar tocando o arrastrando.
 // Cada actividad tiene plantillas distintas (vehículos, escenarios, colores) para que ninguna guía repita la misma.
-import { esc, h, mezclar, toast, inicio, fin, gameOver, arrastrable, panelPregunta, temporizador } from "./ui.js";
+import { esc, h, mezclar, toast, inicio, fin, gameOver, arrastrable, panelPregunta, temporizador, personaje, selectorPersonaje, conectarSelector } from "./ui.js";
 import { marco } from "./teoria.js";
 import { sonido } from "./sonido.js";
-import { escenaCiudad, escenaMontana, escenaCastillo, escenaPlaneta, escenaSvg, capaVehiculo, vehiculo, capaEscalador, capaSoldado, capaArquero, capaIcono, capaSparky, icono, COLORES_DE_COCHE, escenaDuelo, capaDragonDuelo } from "./arte.js";
+import { escenaCiudad, escenaMontana, escenaCastillo, escenaPlaneta, escenaSvg, capaVehiculo, vehiculo, capaEscalador, capaSoldado, capaArquero, capaIcono, capaSparky, icono, COLORES_DE_COCHE, escenaDuelo, capaDragonDuelo, capaHeroe, capaEscaladorDe, capaArqueroDe, escenaEnemigos, capaEnemigo, ENEMIGOS } from "./arte.js";
 
 const W = 172, H = 140;
 const TEMAS = {
@@ -129,104 +129,126 @@ export function carrera(s, ctx) {
   return el;
 }
 
-// ---------- PUERTAS: torre en zigzag (estilo Donkey Kong); flechas para moverse, cada puerta se abre contestando ----------
-export function puertas(s, ctx) {
+// ---------- ENEMIGOS (8 nov 2026; sustituye al juego de puertas): cada enemigo es una pregunta; 3 vidas ----------
+// El personaje (Sparky o la princesa) avanza por un camino. Acierto = lo derrota y avanza; error o tiempo agotado = el
+// enemigo golpea, se pierde una vida (con la retroalimentación) y ese enemigo regresa al final de la fila para volver a
+// intentarlo (solo cuenta el primer intento). Sin vidas = "¡Inténtalo de nuevo!" con el botón para repasar la pista.
+// Las slides viejas con k: "puertas" se dibujan con este juego (alias), así las guías ya publicadas no se rompen.
+const ESCENARIOS_ENEMIGOS = { bosque: "bosque", cueva: "cueva", desierto: "desierto", torre: "bosque", mansion: "cueva", bodega: "desierto" };
+export function enemigos(s, ctx) {
   if (esDuelo(s, ctx)) return duelo(s, ctx);
-  const el = marco(s, ctx); const T = ctx.t; const N = s.ids.length; const TL = 15;
-  const tema = TEMAS_PUERTAS[s.plantilla] ?? TEMAS_PUERTAS.torre;
-  el.setAttribute("data-teclas", "1");
-  const F = Math.max(2, Math.min(4, Math.ceil(N / 2)));
-  const altura = (H - 24) / F;
-  const fy = (i) => Math.round(H - 8 - i * altura);
-  const dir = (i) => (i % 2 === 0 ? 1 : -1);
-  const sx = (i) => (dir(i) > 0 ? 10 : W - 10);
-  const ex = (i) => (dir(i) > 0 ? W - 10 : 10);
-  el.appendChild(h(`<div class="juego"><div class="escena-caja" id="caja"></div>${panel(ctx, `<div class="pill" id="st"></div>`)}</div>`));
-  const sem = ctx.c.semilla + ctx.cur;
-  let fondo = `<defs><linearGradient id="pt${sem}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${tema.pared1}"/><stop offset="1" stop-color="${tema.pared2}"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#pt${sem})"/>`;
-  for (let i = 0; i < F; i++) { const cx = W / 2 + (i % 2 ? -30 : 30), y = fy(i) - 6; fondo += `<path d="M${cx - 6} ${y - 14} a6 6 0 0 1 12 0 v13 h-12 z" fill="${tema.cielo}" stroke="${tema.marco}" stroke-width=".8"/><circle cx="${cx + 2}" cy="${y - 10}" r="2" fill="#FFE9A8"/><circle cx="${cx - 3}" cy="${y - 6}" r=".5" fill="#fff"/>`; }
-  for (let i = 0; i < F; i++) { const y = fy(i); if (i === 0) fondo += `<rect x="0" y="${y}" width="${W}" height="${H - y}" fill="${tema.piedra}"/>`; fondo += `<rect x="0" y="${y}" width="${W}" height="4" fill="${tema.piedra}" stroke="#2A2340" stroke-width=".6"/>`; for (let xx = (i % 2 ? 4 : 0); xx < W; xx += 10) fondo += `<rect x="${xx}" y="${y + 1}" width="6" height="2" rx=".6" fill="${tema.piedra2}" opacity=".9"/>`; }
-  for (let i = 0; i < F - 1; i++) { const x = ex(i); const y0 = fy(i + 1), y1 = fy(i) + 4; fondo += `<rect x="${x - 3.6}" y="${y0}" width="1.6" height="${y1 - y0}" fill="${tema.madera}" stroke="#2A2340" stroke-width=".4"/><rect x="${x + 2}" y="${y0}" width="1.6" height="${y1 - y0}" fill="${tema.madera}" stroke="#2A2340" stroke-width=".4"/>`; for (let yy = y0 + 3; yy < y1 - 2; yy += 4.5) fondo += `<rect x="${x - 3.2}" y="${yy}" width="6.4" height="1.2" rx=".6" fill="${tema.madera}" stroke="#2A2340" stroke-width=".3"/>`; }
-  const xs = ex(F - 1), ysal = fy(F - 1);
-  fondo += `<rect x="${xs - 7}" y="${ysal - 20}" width="14" height="20" rx="2" fill="${tema.luz}" stroke="#2A2340" stroke-width=".7"/><rect x="${xs - 5}" y="${ysal - 18}" width="10" height="18" rx="1.5" fill="#fff" opacity=".7"/><text x="${xs}" y="${ysal - 22}" font-size="4" font-weight="800" text-anchor="middle" fill="${tema.luz}" font-family="Outfit, Arial, sans-serif">${esc(T("salida"))}</text>`;
-  fondoPrevio(el, escenaSvg(fondo, W, H, `<g transform="translate(${sx(0) - 6} ${fy(0) - 16})">${capaEscalador(0, 0)}</g>`));
+  const T = ctx.t;
+  if (!String(s.t).startsWith("👾")) s.t = `👾 ${String(s.t).replace(/^\S+\s+/, "") || T("enemigos")}`;
+  const el = marco(s, ctx); el.classList.add("pl-enemigos");
+  const TL = 20, sem = ctx.c.semilla + ctx.cur;
+  const fondo = escenaEnemigos(W, H, sem, ESCENARIOS_ENEMIGOS[s.plantilla] ?? "bosque");
+  const HE = 2, EE = 1.55, HX = 18, EX = 100, hy = fondo.suelo - 19.35 * HE;
+  const ey = (tipo) => fondo.suelo - 23 * EE - (tipo === "murcielago" ? 16 : 0);
+  const tipos = mezclar(ENEMIGOS);
+  const capaHe = (p, pose) => `<g class="ene-flota">${capaHeroe(p, pose + "+espada", 0, 0)}</g>`;
+  const escena = (p, tipo) => escenaSvg(fondo.svg, W, H, `<g id="eh" transform="translate(${HX} ${hy}) scale(${HE})"><g class="ene-golpe">${capaHe(p, "decidido")}</g></g><g id="ee" transform="translate(${EX} ${ey(tipo)}) scale(${EE})"><g class="ene-golpe">${capaEnemigo(tipo, 0, 0)}</g></g><g id="fx"></g>`);
+  el.appendChild(h(`<div class="juego"><div class="escena-caja duelo-arena ene-arena" id="caja"></div>${panel(ctx, `<div class="pill" id="st"></div>`)}</div>`));
+  fondoPrevio(el, escena(personaje(), tipos[0]));
 
   const jugar = (ids) => {
-    const porPiso = Array.from({ length: F }, (_, i) => Math.floor(N / F) + (i < N % F ? 1 : 0));
-    const doors = []; let k = 0;
-    for (let i = 0; i < F; i++) for (let j = 0; j < porPiso[i]; j++) { const m = porPiso[i]; const x = Math.round(sx(i) + dir(i) * (Math.abs(ex(i) - sx(i)) - 18) * ((j + 1) / (m + 1))); doors.push({ x, floor: i, id: ids[k++], abierta: false, ang: 0, pendiente: false }); }
-    const enemigos = [];
-    for (let i = 0; i < F; i++) { enemigos.push({ floor: i, x: i === 0 ? W - 30 : clamp(sx(i) + dir(i) * (30 + (i * 17) % 60), 14, W - 14), d: dir(i), vel: 14 + i * 5, paso: 0 }); if (N >= 7 && i >= 2) enemigos.push({ floor: i, x: W / 2, d: -dir(i), vel: 16 + i * 4, paso: 2 }); }
-    const hero = { x: sx(0), floor: 0, y: fy(0), climbing: null, facing: 1, paso: 0, invuln: 0 };
-    let vidas = 3, aciertos = 0, puntos = 0, pausa = false, terminado = false, temblor = 0, timer = null;
+    const quien = personaje(), total = ids.length;
+    const fila = ids.map((id, k) => ({ id, tipo: tipos[k % tipos.length] }));
+    let vidas = 3, vencidos = 0, primeros = 0, timer = null, terminado = false, actual = null;
+    const vistos = new Set(), malas = [];
     const caja = el.querySelector("#caja");
-    const capas = doors.map((d, k2) => { const y = fy(d.floor); const lado = dir(d.floor); return `<g id="pu${k2}"><rect x="${d.x - 6.5}" y="${y - 19}" width="13" height="19" rx="1.5" fill="${tema.marco}" stroke="#2A2340" stroke-width=".6"/><rect x="${d.x - 5}" y="${y - 17.5}" width="10" height="17.5" fill="#0B0A1A"/><g class="hoja"><rect x="${d.x - 5}" y="${y - 17.5}" width="10" height="17.5" rx="1" fill="${tema.puerta}" stroke="#2A2340" stroke-width=".6"/><rect x="${d.x - 3.6}" y="${y - 16}" width="7.2" height="6" rx=".8" fill="none" stroke="#2A2340" stroke-width=".4" opacity=".6"/><circle cx="${d.x + 3 * lado}" cy="${y - 8.5}" r="1" fill="#FFD400" stroke="#2A2340" stroke-width=".4"/><circle class="cerradura" cx="${d.x}" cy="${y - 5.5}" r="1.3" fill="#E53935" opacity=".9"/></g></g>`; }).join("")
-      + enemigos.map((e, k2) => `<g id="en${k2}">${capaSoldado(0, 0)}</g>`).join("")
-      + `<g id="heroe">${capaEscalador(0, 0)}</g>`;
-    caja.innerHTML = escenaSvg(fondo, W, H, capas) + `<div style="position:absolute;left:12px;top:10px;display:flex;gap:8px;align-items:center"><span class="vidas" id="vidas"></span>${hudPill("", "hudpu")}${hudPill("", "hudpt")}</div><div class="dpad" aria-label="Controles"><button type="button" data-d="up" aria-label="Arriba">▲</button><button type="button" data-d="left" aria-label="Izquierda">◀</button><button type="button" data-d="down" aria-label="Abajo">▼</button><button type="button" data-d="right" aria-label="Derecha">▶</button></div>`;
-    const svg = caja.querySelector("svg"); const heroeG = svg.querySelector("#heroe");
-    const keys = { left: false, right: false, up: false, down: false };
-    const mapa = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", a: "left", d: "right", w: "up", s: "down", A: "left", D: "right", W: "up", S: "down" };
-    const kd = (e) => { const t2 = mapa[e.key]; if (t2) { keys[t2] = true; e.preventDefault(); } };
-    const ku = (e) => { const t2 = mapa[e.key]; if (t2) { keys[t2] = false; e.preventDefault(); } };
-    addEventListener("keydown", kd); addEventListener("keyup", ku);
-    const quitarTeclas = () => { removeEventListener("keydown", kd); removeEventListener("keyup", ku); };
-    caja.querySelectorAll(".dpad button").forEach((b) => { const d = b.dataset.d; const on = (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch {} keys[d] = true; b.classList.add("on"); }; const off = () => { keys[d] = false; b.classList.remove("on"); }; b.addEventListener("pointerdown", on); b.addEventListener("pointerup", off); b.addEventListener("pointercancel", off); b.addEventListener("pointerleave", off); });
-    const hud = () => { el.querySelector("#vidas").innerHTML = [0, 1, 2].map((k2) => icono(k2 < vidas ? "corazon" : "corazon_vacio", 3)).join(""); el.querySelector("#hudpu").textContent = `🚪 ${doors.filter((d) => d.abierta).length}/${N}`; el.querySelector("#hudpt").textContent = `★ ${puntos}`; el.querySelector("#st").textContent = `${T("vidas")}: ${vidas} · ${aciertos} ✓`; };
-    const pista = () => { const qb = el.querySelector("#qbox"); qb.innerHTML = `<div class="qcard"><div class="q">🚪 ${esc(T("llega_puerta"))}</div><div class="ayuda" style="font-size:15px">${esc(T("controles"))}</div></div>`; el.querySelector("#qn").textContent = `${T("puertas")} ${doors.filter((d) => d.abierta).length} ${T("de")} ${N}`; el.querySelector("#tm").style.width = "100%"; };
-    const perder = () => { terminado = true; quitarTeclas(); gameOver(el, ctx, puntos, s.blk + 1, () => jugar(mezclar(ids))); };
-    const ganar = () => { terminado = true; quitarTeclas(); fin(el, ctx, T("puertas_ok"), `${aciertos}/${N}`, T("correctas"), () => jugar(mezclar(ids)), aciertos >= N / 2); };
-    const abrir = (d) => {
-      if (d.pendiente || d.abierta) return; d.pendiente = true; pausa = true; keys.left = keys.right = keys.up = keys.down = false;
-      const qb = el.querySelector("#qbox"); qb.innerHTML = ""; const a = ctx.c.porId[d.id];
-      el.querySelector("#qn").textContent = `🔑 ${T("puertas")} ${doors.filter((x) => x.abierta).length + 1} ${T("de")} ${N}`;
-      const q = panelPregunta(a, ctx, (ok, txt) => {
-        timer?.detener();
-        if (ok) { aciertos++; puntos += 100; sonido.pop(); } else { vidas--; sonido.golpe(); temblor = .4; }
-        d.abierta = true; hud(); toast(el, ok, txt, ok ? 1500 : 3000);
-        ctx.luego(() => { if (vidas <= 0) { perder(); return; } pausa = false; pista(); }, ok ? 1200 : 3000);
-      });
-      qb.appendChild(q); timer = temporizador(el.querySelector("#tm"), TL, () => q.agotar(), ctx);
+    caja.classList.remove("parado");
+    caja.innerHTML = escena(quien, fila[0]?.tipo ?? "baba") + `<div style="position:absolute;left:12px;top:10px;display:flex;gap:8px;align-items:center"><span class="vidas" id="vidas"></span>${hudPill("", "hudev")}</div><div class="duelo-combo" id="combo"></div>`;
+    const svg = caja.querySelector("svg"), gH = svg.querySelector("#eh"), gE = svg.querySelector("#ee"), fx = svg.querySelector("#fx");
+    const lejos = svg.querySelector("#" + fondo.capas.lejos), cerca = svg.querySelector("#" + fondo.capas.cerca), rayas = svg.querySelector("#" + fondo.capas.rayas);
+    const he = { dx: 0, anim: null }, en = { x: W + 30, y: 0, rot: 0, op: 1, estado: "fuera", t0: 0, tipo: "baba" };
+    let avance = 0, recorrido = 0;
+    const ponerPose = (pose) => { gH.querySelector(".ene-golpe").innerHTML = capaHe(quien, pose); };
+    const ponerEnemigo = (tipo, ko = false) => { gE.querySelector(".ene-golpe").innerHTML = capaEnemigo(tipo, 0, 0, ko); };
+    const destello = (g) => { g.classList.remove("golpeado"); void g.getBoundingClientRect(); g.classList.add("golpeado"); };
+    const temblor = () => { svg.classList.remove("temblor"); void svg.getBoundingClientRect(); svg.classList.add("temblor"); };
+    const hud = () => {
+      el.querySelector("#vidas").innerHTML = [0, 1, 2].map((k) => icono(k < vidas ? "corazon" : "corazon_vacio", 3)).join("");
+      el.querySelector("#hudev").textContent = `👾 ${vencidos}/${total}`;
+      el.querySelector("#st").textContent = `${T("vidas")}: ${vidas} · ${vencidos} ✓`;
     };
-    const golpe = () => { vidas--; sonido.golpe(); temblor = .5; hero.invuln = 1.8; hero.climbing = null; hero.x = sx(hero.floor); hero.y = fy(hero.floor); enemigos.filter((e) => e.floor === hero.floor).forEach((e) => { e.x = clamp(ex(hero.floor) - dir(hero.floor) * 12, 14, W - 14); e.d = -dir(hero.floor); }); hud(); if (vidas <= 0) perder(); };
-    const mover = (dt) => {
-      if (hero.climbing) {
-        const desde = fy(hero.climbing.desde), hasta = fy(hero.climbing.to); const dy = (keys.up ? -1 : keys.down ? 1 : 0) * 36 * dt;
-        hero.y = clamp(hero.y + dy, Math.min(desde, hasta), Math.max(desde, hasta)); if (dy) hero.paso += dt * 10;
-        if (hero.y === hasta) { hero.floor = hero.climbing.to; hero.climbing = null; } else if (hero.y === desde) { hero.floor = hero.climbing.desde; hero.climbing = null; }
-        return;
-      }
-      const vx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-      if (vx) {
-        hero.facing = vx; let nx = hero.x + vx * 48 * dt; const lado = dir(hero.floor);
-        for (const d of doors) if (d.floor === hero.floor && !d.abierta) { if (lado > 0 && hero.x <= d.x - 7 && nx > d.x - 7) { nx = d.x - 7; abrir(d); } if (lado < 0 && hero.x >= d.x + 7 && nx < d.x + 7) { nx = d.x + 7; abrir(d); } }
-        hero.x = clamp(nx, 8, W - 8); hero.paso += dt * 10;
-      }
-      if (keys.up && hero.floor < F - 1 && Math.abs(hero.x - ex(hero.floor)) < 5) { hero.climbing = { desde: hero.floor, to: hero.floor + 1 }; hero.x = ex(hero.floor); }
-      else if (keys.down && hero.floor > 0 && Math.abs(hero.x - ex(hero.floor - 1)) < 5) { hero.climbing = { desde: hero.floor, to: hero.floor - 1 }; hero.x = ex(hero.floor - 1); }
-      if (hero.floor === F - 1 && Math.abs(hero.x - ex(F - 1)) < 6 && doors.every((d) => d.abierta)) ganar();
-    };
+    const cartelito = (txt) => { const c = caja.querySelector("#combo"); c.textContent = txt; c.classList.remove("on"); void c.offsetWidth; c.classList.add("on"); };
     bucle(el, ctx, (dt, t, fuera) => {
-      if (fuera) { quitarTeclas(); return false; }
-      if (terminado) return false;
-      doors.forEach((d, k2) => { if (d.abierta && d.ang < 78) { d.ang = Math.min(78, d.ang + 260 * dt); const hoja = svg.querySelector(`#pu${k2} .hoja`); hoja.setAttribute("transform", `rotate(${-d.ang * dir(d.floor)} ${d.x - 5 * dir(d.floor)} ${fy(d.floor)})`); hoja.querySelector(".cerradura").setAttribute("fill", "#2BB673"); } });
-      if (!pausa) {
-        mover(dt);
-        if (!terminado) enemigos.forEach((e) => { e.x += e.d * e.vel * dt; e.paso += dt * 9; if (e.x < 14) { e.x = 14; e.d = 1; } if (e.x > W - 14) { e.x = W - 14; e.d = -1; } if (!hero.climbing && hero.invuln <= 0 && e.floor === hero.floor && Math.abs(e.x - hero.x) < 7 && !terminado) golpe(); });
-      }
-      if (hero.invuln > 0) hero.invuln -= dt;
-      enemigos.forEach((e, k2) => { const g = svg.querySelector(`#en${k2}`); const bob = Math.abs(Math.sin(e.paso)) * 1.2; g.setAttribute("transform", `translate(${(e.x - 6).toFixed(2)} ${(fy(e.floor) - 16 - bob).toFixed(2)})${e.d < 0 ? " translate(12 0) scale(-1 1)" : ""}`); });
-      const bob = hero.climbing || keys.left || keys.right ? Math.abs(Math.sin(hero.paso)) * 1.1 : 0;
-      heroeG.setAttribute("transform", `translate(${(hero.x - 6).toFixed(2)} ${(hero.y - 16 - bob).toFixed(2)})${hero.facing < 0 ? " translate(12 0) scale(-1 1)" : ""}`);
-      heroeG.setAttribute("opacity", hero.invuln > 0 && Math.floor(t / 100) % 2 ? ".35" : "1");
-      if (temblor > 0) { temblor -= dt; svg.style.transform = `translate(${(Math.random() * 4 - 2).toFixed(1)}px, ${(Math.random() * 4 - 2).toFixed(1)}px)`; } else svg.style.transform = "";
+      if (fuera || terminado) return false;
+      // avance del camino (parallax) mientras el personaje camina al siguiente enemigo
+      if (avance > 0) { const v = 70 * dt; recorrido += v; avance = Math.max(0, avance - v); }
+      rayas?.setAttribute("transform", `translate(${-(recorrido % W)} 0)`);
+      cerca?.setAttribute("transform", `translate(${-((recorrido * .6) % W)} 0)`);
+      lejos?.setAttribute("transform", `translate(${-((recorrido * .2) % W)} 0)`);
+      const pasoHe = avance > 0 ? Math.abs(Math.sin(recorrido / 4)) * -1.5 : 0;
+      if (he.anim) { const p = Math.min(1, (t - he.anim.t0) / he.anim.dur); he.dx = he.anim.dist * Math.sin(Math.PI * Math.min(1, p * 1.1)); if (p >= 1) { he.anim = null; he.dx = 0; } }
+      const e = (t - en.t0) / 1000;
+      if (en.estado === "entra") { en.x = Math.max(EX, en.x - 90 * dt); if (en.x === EX) en.estado = "quieto"; }
+      else if (en.estado === "ataca") { const p = Math.min(1, e / .7); en.x = EX - 44 * Math.sin(Math.PI * p); if (p >= 1) en.estado = "quieto"; }
+      else if (en.estado === "cae") { en.x += 70 * dt; en.y -= (34 - 140 * e) * dt; en.rot = Math.min(80, en.rot + 260 * dt); en.op = Math.max(0, en.op - 1.1 * dt); }
+      else if (en.estado === "huye") { en.x += 110 * dt; }
+      gH.setAttribute("transform", `translate(${(HX + he.dx).toFixed(2)} ${(hy + pasoHe).toFixed(2)}) scale(${HE})`);
+      gE.setAttribute("transform", `translate(${en.x.toFixed(2)} ${(ey(en.tipo) + en.y).toFixed(2)}) rotate(${en.rot.toFixed(1)} ${(12 * EE).toFixed(1)} ${(23 * EE).toFixed(1)}) scale(${EE})`);
+      gE.setAttribute("opacity", en.op.toFixed(2));
       return true;
     });
-    hud(); pista();
+    const nuevoEnemigo = (u) => { actual = u; en.tipo = u.tipo; en.x = W + 30; en.y = 0; en.rot = 0; en.op = 1; en.estado = "entra"; en.t0 = performance.now(); ponerEnemigo(u.tipo); };
+    const siguiente = () => {
+      if (terminado) return;
+      if (!fila.length) { ganar(); return; }
+      nuevoEnemigo(fila.shift());
+      ctx.luego(preguntar, 1300);
+    };
+    const preguntar = () => {
+      if (terminado) return;
+      const a = ctx.c.porId[actual.id];
+      if (!a) { vencidos++; hud(); siguiente(); return; }
+      const qb = el.querySelector("#qbox"); qb.innerHTML = "";
+      el.querySelector("#qn").textContent = `${T("enemigo")} ${vencidos + 1} ${T("de")} ${total}`;
+      const primera = !vistos.has(actual.id); vistos.add(actual.id);
+      const q = panelPregunta(a, ctx, (ok, txt) => {
+        timer?.detener();
+        if (ok) {
+          vencidos++; if (primera) primeros++;
+          he.anim = { t0: performance.now(), dur: 650, dist: EX - HX - 30 }; sonido.whoosh();
+          if (quien === "princesa") { ponerPose("golpe"); ctx.luego(() => !terminado && ponerPose("decidido"), 650); }
+          else { gH.classList.remove("tajo"); void gH.getBoundingClientRect(); gH.classList.add("tajo"); ctx.luego(() => gH.classList.remove("tajo"), 650); }
+          ctx.luego(() => { if (terminado) return; sonido.golpe(); ponerEnemigo(actual.tipo, true); destello(gE.querySelector(".ene-golpe")); temblor(); en.estado = "cae"; en.t0 = performance.now(); cartelito(({ en: "POW!", fr: "PAF !" })[ctx.c?.plan?.idioma_guia] ?? "¡ZAS!"); hud(); }, 300);
+          ctx.luego(() => { if (!terminado) avance = 46; }, 1200);
+          toast(el, true, txt, 1800); ctx.luego(siguiente, 2100);
+        } else {
+          malas.push(a); fila.push(actual);
+          en.estado = "ataca"; en.t0 = performance.now(); sonido.whoosh();
+          ctx.luego(() => { if (terminado) return; vidas--; sonido.golpe(); destello(gH.querySelector(".ene-golpe")); temblor(); hud(); }, 330);
+          toast(el, false, txt, 3200);
+          ctx.luego(() => { if (terminado) return; if (vidas <= 0) { perder(); return; } en.estado = "huye"; ctx.luego(siguiente, 600); }, 3000);
+        }
+      });
+      qb.appendChild(q);
+      timer = temporizador(el.querySelector("#tm"), TL, () => q.agotar(), ctx);
+    };
+    const cerrar = () => { terminado = true; timer?.detener(); el.querySelector("#qbox").innerHTML = ""; caja.classList.add("parado"); };
+    const ganar = () => {
+      cerrar(); ponerPose("festejo"); sonido.brillo();
+      ctx.luego(() => { const d = fin(el, ctx, T("enemigos_ok"), `${primeros}/${total}`, `${esc(T("correctas"))} ${esc(T("primer_intento"))}`, () => { d.remove(); jugar(mezclar(ids)); }, true); }, 900);
+    };
+    const perder = () => {
+      cerrar(); ponerPose("triste"); gH.classList.add("vencido");
+      ctx.luego(() => {
+        const pista = malas.map((a) => a.pista).find((p) => p && ctx.slideDePista(p) >= 0);
+        const d = fin(el, ctx, T("enemigos_mal"), `${vencidos}/${total}`, `👾 ${esc(T("enemigos_vencidos"))}<p class="duelo-animo">${esc(T("enemigos_animo"))}</p>${pista ? `<button class="btn alt duelo-repasar" type="button">${esc(T("repasar_pista"))}</button>` : ""}`, () => { d.remove(); jugar(mezclar(ids)); }, false);
+        d.querySelector(".duelo-repasar")?.addEventListener("click", () => { sonido.toque(); ctx.go(ctx.slideDePista(pista)); });
+      }, 1100);
+    };
+    hud();
+    if (!total) { ganar(); return; }
+    siguiente();
   };
-  arranque(el, T, "puertas", () => jugar(s.ids.slice()));
+  const ov = arranque(el, T, "enemigos", () => jugar(s.ids.slice()), selectorPersonaje(ctx));
+  conectarSelector(ov, (p) => fondoPrevio(el, escena(p, tipos[0])));
   return el;
 }
+// Alias: las guías publicadas antes del 8 nov 2026 traen slides "puertas"; ahora se juegan como enemigos.
+export const puertas = enemigos;
 
 // ---------- MONTAÑA: plataformas; cada acierto es un salto, cada error un resbalón ----------
 export function montana(s, ctx) {

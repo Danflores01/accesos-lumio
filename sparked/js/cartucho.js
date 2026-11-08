@@ -46,6 +46,16 @@ export const TEXTOS = {
     instr_puertas: "Muévete con las flechas del teclado o con las flechas de la pantalla: ◀ ▶ para caminar y ▲ ▼ en las escaleras. Cada puerta se abre contestando una pregunta: la respuesta correcta es la llave. Cuidado con los guardias; tienes 3 vidas. Llega a la salida de arriba.",
     puertas: "Puertas", puertas_ok: "¡Escapaste de la torre!", puertas_mal: "Te atraparon…", llega_puerta: "Camina hasta la puerta y contesta para abrirla", controles: "◀ ▶ caminar · ▲ ▼ escaleras · teclado o flechas de la pantalla", salida: "SALIDA",
     elige_nave: "Elige tu nave", elige_caballo: "Elige tu caballo", elige_dragon: "Elige tu dragón",
+    // Juegos nuevos (8 nov 2026): elige tu personaje, enemigos, clavados de pingüino y el perro con sus platos.
+    quien_ser: "¿Quién quieres ser?", p_sparky: "Sparky", p_princesa: "Princesa guerrera",
+    instr_enemigos: "Vence a los enemigos: cada enemigo es una pregunta. Si contestas bien, tu personaje lo derrota y avanza; si fallas, el enemigo te golpea, pierdes una vida y ese enemigo vuelve más adelante. Tienes 3 vidas.",
+    enemigos: "Enemigos", enemigo: "Enemigo", enemigos_ok: "¡Venciste a todos los enemigos!", enemigos_mal: "¡Inténtalo de nuevo!", enemigos_vencidos: "enemigos vencidos",
+    enemigos_animo: "Perdiste tus 3 vidas. Repasa la pista y vuelve a intentarlo: cada pregunta que repasas te hace más fuerte.", repasar_pista: "📖 Repasar la pista",
+    instr_pinguino: "Clavados de pingüino: contesta cada pregunta antes de que se acabe el tiempo. Si aciertas, el pingüino hace un clavado espectacular y el jurado le da 10. Si fallas, el clavado sale mal y el jurado da notas bajas. Al final verás el promedio del jurado.",
+    pinguino: "Clavados de pingüino", jurado: "Jurado", promedio: "Promedio del jurado", ping_oro: "¡Clavados de campeonato!", ping_plata: "¡Muy buenos clavados!", ping_bronce: "Buen intento", ping_sigue: "Sigue practicando",
+    clavados: "¡Triple mortal!|¡Tirabuzón!|¡Bala de cañón!|¡Clavado de cisne!|¡Doble mortal hacia atrás!", fallas: "¡Panzazo!|¡Resbalón!|¡Choque con el hielo!|¡Se quedó corto!|¡De cabeza en la nieve!",
+    instr_perro: "Lee la afirmación y llévala al plato correcto: arrástrala, o tócala y luego toca el plato. Si aciertas, el perro se la come feliz. Si no, el perro la regresa y te explica por qué.",
+    perro: "El perro y su plato", perro_listo: "¡El perro quedó feliz!",
     // Reporte final (7 nov 2026): calificación sobre toda la guía y "Qué te conviene repasar" por bloque.
     como_te_fue: "¿Cómo te fue?", avance: "Avance", actividades: "actividades", calif_final: "Calificación",
     te_faltan: "Te faltan {n} actividades. Tu calificación sube cuando las contestes.", te_falta_una: "Te falta 1 actividad. Tu calificación sube cuando la contestes.",
@@ -83,6 +93,15 @@ export const TEXTOS = {
     instr_puertas: "Move with the keyboard arrows or the on-screen arrows: ◀ ▶ to walk and ▲ ▼ on the ladders. Each door opens by answering a question: the right answer is the key. Watch out for the guards; you have 3 lives. Reach the exit at the top.",
     puertas: "Doors", puertas_ok: "You escaped the tower!", puertas_mal: "They caught you…", llega_puerta: "Walk to the door and answer to open it", controles: "◀ ▶ walk · ▲ ▼ ladders · keyboard or on-screen arrows", salida: "EXIT",
     elige_nave: "Choose your ship", elige_caballo: "Choose your horse", elige_dragon: "Choose your dragon",
+    quien_ser: "Who do you want to be?", p_sparky: "Sparky", p_princesa: "Warrior princess",
+    instr_enemigos: "Defeat the enemies: each enemy is a question. If you answer right, your character defeats it and moves on; if you are wrong, the enemy hits you, you lose a life and that enemy comes back later. You have 3 lives.",
+    enemigos: "Enemies", enemigo: "Enemy", enemigos_ok: "You defeated every enemy!", enemigos_mal: "Try again!", enemigos_vencidos: "enemies defeated",
+    enemigos_animo: "You lost your 3 lives. Review the clue and try again: every question you review makes you stronger.", repasar_pista: "📖 Review the clue",
+    instr_pinguino: "Penguin diving: answer each question before time runs out. If you are right, the penguin does an amazing dive and the judges give it a 10. If you are wrong, the dive goes wrong and the judges give low scores. At the end you will see the judges' average.",
+    pinguino: "Penguin diving", jurado: "Judges", promedio: "Judges' average", ping_oro: "Championship dives!", ping_plata: "Very good dives!", ping_bronce: "Good try", ping_sigue: "Keep practicing",
+    clavados: "Triple flip!|Twist!|Cannonball!|Swan dive!|Double back flip!", fallas: "Belly flop!|Slip!|Ice crash!|Too short!|Head first in the snow!",
+    instr_perro: "Read the statement and take it to the right bowl: drag it, or tap it and then tap the bowl. If you are right, the dog happily eats it. If not, the dog pushes it back and tells you why.",
+    perro: "The dog and its bowl", perro_listo: "The dog is happy!",
     como_te_fue: "How did you do?", avance: "Progress", actividades: "activities", calif_final: "Grade",
     te_faltan: "You have {n} activities left. Your grade goes up when you answer them.", te_falta_una: "You have 1 activity left. Your grade goes up when you answer it.",
     ir_pendiente: "Go to the first unanswered activity", completo: "You answered every activity!", sobre_total: "The grade counts every activity in the guide.",
@@ -118,6 +137,15 @@ export const TEXTOS = {
     instr_puertas: "Déplace-toi avec les flèches du clavier ou celles de l'écran : ◀ ▶ pour marcher et ▲ ▼ sur les échelles. Chaque porte s'ouvre en répondant à une question : la bonne réponse est la clé. Attention aux gardes ; tu as 3 vies. Rejoins la sortie en haut.",
     puertas: "Portes", puertas_ok: "Tu t'es échappé de la tour !", puertas_mal: "Ils t'ont attrapé…", llega_puerta: "Marche jusqu'à la porte et réponds pour l'ouvrir", controles: "◀ ▶ marcher · ▲ ▼ échelles · clavier ou flèches de l'écran", salida: "SORTIE",
     elige_nave: "Choisis ton vaisseau", elige_caballo: "Choisis ton cheval", elige_dragon: "Choisis ton dragon",
+    quien_ser: "Qui veux-tu être ?", p_sparky: "Sparky", p_princesa: "Princesse guerrière",
+    instr_enemigos: "Bats les ennemis : chaque ennemi est une question. Si tu réponds bien, ton personnage le bat et avance ; si tu te trompes, l'ennemi te frappe, tu perds une vie et cet ennemi revient plus tard. Tu as 3 vies.",
+    enemigos: "Ennemis", enemigo: "Ennemi", enemigos_ok: "Tu as battu tous les ennemis !", enemigos_mal: "Essaie encore !", enemigos_vencidos: "ennemis battus",
+    enemigos_animo: "Tu as perdu tes 3 vies. Revois l'indice et réessaie : chaque question revue te rend plus fort.", repasar_pista: "📖 Revoir l'indice",
+    instr_pinguino: "Plongeons de pingouin : réponds à chaque question avant la fin du temps. Si tu as raison, le pingouin fait un plongeon spectaculaire et le jury lui donne 10. Si tu te trompes, le plongeon rate et le jury donne de mauvaises notes. À la fin, tu verras la moyenne du jury.",
+    pinguino: "Plongeons de pingouin", jurado: "Jury", promedio: "Moyenne du jury", ping_oro: "Des plongeons de champion !", ping_plata: "Très bons plongeons !", ping_bronce: "Bel essai", ping_sigue: "Continue à t'entraîner",
+    clavados: "Triple salto !|Vrille !|Bombe !|Saut de l'ange !|Double salto arrière !", fallas: "Plat ventre !|Glissade !|Choc contre la glace !|Trop court !|La tête dans la neige !",
+    instr_perro: "Lis l'affirmation et porte-la dans la bonne gamelle : glisse-la, ou touche-la puis touche la gamelle. Si tu as raison, le chien la mange tout content. Sinon, le chien la repousse et t'explique pourquoi.",
+    perro: "Le chien et sa gamelle", perro_listo: "Le chien est content !",
     como_te_fue: "Comment ça s'est passé ?", avance: "Progression", actividades: "activités", calif_final: "Note",
     te_faltan: "Il te reste {n} activités. Ta note monte quand tu y réponds.", te_falta_una: "Il te reste 1 activité. Ta note monte quand tu y réponds.",
     ir_pendiente: "Aller à la première activité sans réponse", completo: "Tu as répondu à toutes les activités !", sobre_total: "La note compte toutes les activités du guide.",
@@ -202,7 +230,8 @@ export const PLANTILLAS = {
   carrera: ["ciudad_neon", "espacio", "hipodromo", "dragones"], // coches, naves, caballos y dragones: misma mecánica, distinto personaje
   montana: ["nevada", "volcan", "aurora"],
   castillo: ["noche", "amanecer", "dragon"],
-  puertas: ["torre", "mansion", "bodega"],
+  enemigos: ["bosque", "cueva", "desierto"],
+  puertas: ["torre", "mansion", "bodega"], // alias viejo: se juega como enemigos
   swipe: ["arcade", "cartas", "neon"],
   superdato: ["laboratorio", "pergamino", "terminal"],
   match: ["planeta", "estacion", "luna"],
@@ -232,7 +261,7 @@ export function armarSlides(c) {
   const calent = c.calentamiento.length ? { k: "carrera", t: `🔥 ${t(idioma, "calentamiento")}`, ids: c.calentamiento, tag: t(idioma, "calentamiento"), blk: 0, plantilla: elegir("carrera"), calentamiento: true } : null;
   const calentDespues = !!calent && !!c.primera_actividad && c.primera_actividad !== "calentamiento";
   if (calent && !calentDespues) S.push(calent);
-  const quizJuegos = ["carrera", "puertas", "montana", "castillo"];
+  const quizJuegos = ["carrera", "enemigos", "montana", "castillo"];
   c.bloques.forEach((b, bi) => {
     const nb = bi + 1;
     // teoría: 2 o 3 pistas por slide; la última slide de teoría del bloque lleva "Ojo" y "Palabras clave".
@@ -266,7 +295,7 @@ export function armarSlides(c) {
     const por = {};
     const add = (tipo, s) => (por[tipo] ??= []).push(s);
     const mc = acts.filter((a) => a.tipo === "opcion_multiple" || a.tipo === "completar").map((a) => a.id);
-    if (mc.length) { const juego = b.juego === "duelo" ? "duelo" : quizJuegos[bi % quizJuegos.length]; add("opcion_multiple", { k: juego, t: `${{ carrera: "🏎️", puertas: "🚪", montana: "🧗", castillo: "🏰", duelo: "⚔️" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
+    if (mc.length) { const juego = b.juego === "duelo" ? "duelo" : quizJuegos[bi % quizJuegos.length]; add("opcion_multiple", { k: juego, t: `${{ carrera: "🏎️", enemigos: "👾", puertas: "👾", montana: "🧗", castillo: "🏰", duelo: "⚔️" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
     const vf = acts.filter((a) => a.tipo === "verdadero_falso");
     if (vf.length) add("verdadero_falso", { k: "swipe", t: `⏱ ${t(idioma, "vf_express")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("swipe") });
     acts.filter((a) => a.tipo === "super_dato").forEach((a) => add("super_dato", { k: "superdato", t: "⭐ Súper dato", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("superdato") }));

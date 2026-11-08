@@ -1,6 +1,6 @@
 // Piezas de interfaz que comparten la teoría y los juegos.
 import { sonido } from "./sonido.js";
-import { icono, sparky } from "./arte.js";
+import { icono, sparky, heroe, PERSONAJES } from "./arte.js";
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const h = (html) => { const d = document.createElement("div"); d.innerHTML = html.trim(); return d.firstElementChild; };
@@ -440,4 +440,24 @@ export function temporizador(barra, segundos, onFin, ctx) {
   };
   ctx.raf(requestAnimationFrame(tick));
   return { detener: () => { vivo = false; } };
+}
+
+// ---------- ¿Quién quieres ser? (8 nov 2026) ----------
+// En los juegos con protagonista (duelo, enemigos, castillo y montaña) se elige a Sparky o a la princesa guerrera antes
+// de empezar. La elección se guarda en este dispositivo para la siguiente partida y se puede cambiar cuando se quiera.
+const CLAVE_PERSONAJE = "sparked_personaje";
+export const personaje = () => { try { const v = localStorage.getItem(CLAVE_PERSONAJE); return PERSONAJES.includes(v) ? v : "sparky"; } catch { return "sparky"; } };
+export const guardarPersonaje = (v) => { try { localStorage.setItem(CLAVE_PERSONAJE, v); } catch {} };
+// HTML del selector (va dentro de la tarjeta de instrucciones, junto al selector de color si el juego lo tiene).
+export function selectorPersonaje(ctx) {
+  const actual = personaje();
+  return `<div class="ayuda elige-titulo">${esc(ctx.t("quien_ser"))}</div><div class="elige elige-personaje" role="group" aria-label="${esc(ctx.t("quien_ser"))}">${PERSONAJES.map((p) => `<button type="button" data-p="${p}" class="${p === actual ? "sel" : ""}" aria-pressed="${p === actual}">${heroe(p, "decidido+espada", 3)}<span>${esc(ctx.t("p_" + p))}</span></button>`).join("")}</div>`;
+}
+// Conecta los botones del selector dentro de la tarjeta "o"; alCambiar(personaje) sirve para redibujar la escena.
+export function conectarSelector(o, alCambiar) {
+  const botones = [...o.querySelectorAll(".elige-personaje button")];
+  botones.forEach((b) => b.onclick = () => {
+    botones.forEach((x) => { x.classList.toggle("sel", x === b); x.setAttribute("aria-pressed", String(x === b)); });
+    guardarPersonaje(b.dataset.p); sonido.toque(); alCambiar?.(b.dataset.p);
+  });
 }

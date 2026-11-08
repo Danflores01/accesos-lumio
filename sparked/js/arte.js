@@ -735,3 +735,367 @@ export function escenaDuelo(w = 172, h = 140, semilla = 21) {
 export function escenaSvg(fondo, w, h, capas = "", extra = "") {
   return `<svg class="escena" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" ${extra}>${fondo}${capas}</svg>`;
 }
+
+// ======================================================================================================================
+// Juegos nuevos (8 nov 2026): princesa guerrera, enemigos, clavados de pingüino y el perro con sus platos.
+// Acabado 3.0 (sección 20): volumen con degradados y una sola luz (arriba a la izquierda), brillos suaves, sombra difusa
+// en el piso y contorno fino. Colores reales en los animales; los colores fuertes solo van en accesorios.
+// ======================================================================================================================
+
+// ---------- Princesa guerrera (16 × 20): misma escala y mismos puntos de apoyo que Sparky ----------
+// Hombros en (3.25, 11.1) y (12.75, 11.1), manos en y = 16 y pies en y = 19.35, para que la espada de Sparky (+espada)
+// y las animaciones del duelo (.sk-espada) le sirvan igual. Poses: decidido, golpe, festejo, triste (caída) y quieto.
+const PR = { piel: "#E9B98F", pielSombra: "#C98E62", pelo: "#4A2614", peloLuz: "#8A4B2A", malla: "#3B3550", oro2: "#C9921E" };
+const DEFS_PRINCESA = `<defs>
+  <linearGradient id="pr-capa" x1="0" y1="0" x2=".35" y2="1"><stop offset="0" stop-color="#E0485A"/><stop offset=".6" stop-color="#A9233A"/><stop offset="1" stop-color="#6E1428"/></linearGradient>
+  <linearGradient id="pr-tunica" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#5ED6C6"/><stop offset=".5" stop-color="#22A393"/><stop offset="1" stop-color="#0F6259"/></linearGradient>
+  <linearGradient id="pr-plata" x1="0" y1="0" x2=".55" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#D5DCE8"/><stop offset="1" stop-color="#7F8AA0"/></linearGradient>
+  <linearGradient id="pr-oro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF3B0"/><stop offset=".5" stop-color="#FFC93D"/><stop offset="1" stop-color="#B57A12"/></linearGradient>
+  <radialGradient id="pr-piel" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#F8D5B4"/><stop offset=".65" stop-color="${PR.piel}"/><stop offset="1" stop-color="${PR.pielSombra}"/></radialGradient>
+  <radialGradient id="pr-pelo" cx=".35" cy=".28" r=".85"><stop offset="0" stop-color="${PR.peloLuz}"/><stop offset=".7" stop-color="${PR.pelo}"/><stop offset="1" stop-color="#2A140A"/></radialGradient>
+  <linearGradient id="pr-bota" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A86B3C"/><stop offset="1" stop-color="#4E2E16"/></linearGradient>
+</defs>`;
+const lp = (sw = .3) => `stroke="${C.linea}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"`;
+// Brazo: manga de la túnica, brazal de plata con filo dorado y mano. Gira desde el hombro (px, 11.1).
+const brazoPr = (px, rot) => `<g transform="rotate(${rot} ${px} 11.1)"><rect x="${r2(px - 1)}" y="10.2" width="2" height="3.4" rx="1" fill="url(#pr-tunica)" ${lp()}/><rect x="${r2(px - .95)}" y="13.1" width="1.9" height="2.3" rx=".8" fill="url(#pr-plata)" ${lp()}/><rect x="${r2(px - .95)}" y="13.25" width="1.9" height=".38" fill="${PR.oro2}"/><circle cx="${px}" cy="16" r="1" fill="url(#pr-piel)" ${lp()}/></g>`;
+const piernaPr = (x) => `<rect x="${r2(x - .85)}" y="15.6" width="1.7" height="2.4" rx=".7" fill="${PR.malla}"/><path d="M${r2(x - 1)} 17.3 h2 v1.1 q1.3 .1 1.4 .7 v.3 h-3.4 z" fill="url(#pr-bota)" ${lp()}/><path d="M${r2(x - .7)} 17.6 h1.4" stroke="#D9A066" stroke-width=".25" stroke-linecap="round"/>`;
+function caraPr(pose) {
+  const ojo = (x, ry = .72) => `<ellipse cx="${x}" cy="6.55" rx=".52" ry="${ry}" fill="#2B1A12"/><circle cx="${r2(x + .18)}" cy="6.22" r=".2" fill="#fff"/>`;
+  const rubor = `<ellipse cx="7.4" cy="7.7" rx=".7" ry=".34" fill="#F07C7C" opacity=".4"/><ellipse cx="11.1" cy="7.6" rx=".5" ry=".3" fill="#F07C7C" opacity=".4"/>`;
+  const ceja = (d) => `<path d="${d}" stroke="${PR.pelo}" stroke-width=".32" fill="none" stroke-linecap="round"/>`;
+  if (pose === "festejo") return `${[8.1, 10.3].map((x) => `<path d="M${r2(x - .55)} 6.75 q.55 -.85 1.1 0" stroke="#2B1A12" stroke-width=".36" fill="none" stroke-linecap="round"/>`).join("")}${rubor}<path d="M8.5 7.85 q1 1.5 2.1 0 z" fill="#7A2626"/><path d="M8.95 8.55 q.6 .35 1.2 0" stroke="#F28B9B" stroke-width=".35" fill="none" stroke-linecap="round"/>`;
+  if (pose === "golpe") return `${ojo(8.1)}${ojo(10.3)}${ceja("M7.4 5.3 L8.7 5.85 M9.8 5.85 L11.1 5.3")}${rubor}<ellipse cx="9.55" cy="8.25" rx=".6" ry=".5" fill="#7A2626"/>`;
+  if (pose === "triste") return `${ojo(8.1, .5)}${ojo(10.3, .5)}${ceja("M7.5 5.75 L8.6 5.35 M9.85 5.35 L10.95 5.75")}${rubor}<path d="M8.95 8.45 q.6 -.4 1.2 0" stroke="#7A2626" stroke-width=".3" fill="none" stroke-linecap="round"/>`;
+  if (pose === "decidido") return `${ojo(8.1)}${ojo(10.3)}${ceja("M7.45 5.4 L8.7 5.8 M9.8 5.8 L11.05 5.4")}${rubor}<path d="M8.9 8.1 q.65 .35 1.3 -.05" stroke="#7A2626" stroke-width=".3" fill="none" stroke-linecap="round"/>`;
+  return `${ojo(8.1)}${ojo(10.3)}${rubor}<path d="M8.8 7.95 q.75 .6 1.5 0" stroke="#7A2626" stroke-width=".3" fill="none" stroke-linecap="round"/>`;
+}
+const POSES_PR = { decidido: [-30, -60], golpe: [35, -100], festejo: [160, -165], triste: [8, -10], quieto: [10, -8] };
+function cuerpoPrincesa(frame = "quieto") {
+  const [p, ...acc] = String(frame).split("+");
+  const pose = POSES_PR[p] ? p : "quieto", conEspada = acc.includes("espada");
+  const [izq, der] = POSES_PR[pose];
+  const rl = pose === "triste" ? 20 : pose === "golpe" ? 105 : -90 - der;
+  const brazoDer = conEspada ? giro(12.75, 11.1, "sk-espada", `<g transform="rotate(${der} 12.75 11.1)">${espada(rl)}${brazoPr(12.75, 0)}</g>`, 16) : brazoPr(12.75, der);
+  const inclina = pose === "golpe" ? `transform="rotate(7 8 19)"` : "";
+  const cabeza = pose === "triste" ? `transform="rotate(9 8.5 8.5)"` : "";
+  return `${DEFS_PRINCESA}${conEspada ? DEFS_CABALLERO : ""}
+    <ellipse class="sk-sombra" cx="8" cy="19.35" rx="5.4" ry=".62" fill="${C.sombra}"/>
+    <g class="sk-cuerpo pr-cuerpo" ${inclina}><rect x="-5" y="-2" width="26" height="21.3" fill="none"/>
+    <path class="pr-capa" d="M4.7 9.6 C3.2 12.2 1.8 15.4 1.3 18.7 Q3.6 18.1 5.6 18.9 Q8.2 18.1 10.4 18.7 C10.3 15.2 10.8 12.3 11.2 9.6 Z" fill="url(#pr-capa)" ${lp()}/>
+    <path d="M3.6 12.5 C3 14.5 2.5 16.5 2.3 18.2" stroke="#fff" stroke-width=".35" opacity=".22" fill="none" stroke-linecap="round"/>
+    ${piernaPr(6.5)}${piernaPr(9.6)}
+    ${brazoPr(3.25, izq)}
+    <path d="M4.9 13.8 L11.1 13.8 L12.1 16.6 Q8 17.5 3.9 16.6 Z" fill="url(#pr-tunica)" ${lp()}/>
+    <path d="M4 16.45 Q8 17.3 12 16.45" stroke="url(#pr-oro)" stroke-width=".45" fill="none"/>
+    <path d="M5 9.9 Q8 8.8 11 9.9 L11.2 13.4 Q8 14.4 4.8 13.4 Z" fill="url(#pr-plata)" ${lp()}/>
+    <ellipse cx="6.9" cy="11" rx="1.3" ry=".7" fill="#fff" opacity=".55" transform="rotate(-20 6.9 11)"/>
+    <path d="M8 10 L8 13" stroke="#8590A6" stroke-width=".2" opacity=".6"/>
+    <rect x="4.8" y="13.2" width="6.4" height=".9" rx=".4" fill="url(#pr-oro)" ${lp(.2)}/><circle cx="8" cy="13.65" r=".45" fill="#3FE0D0" stroke="${PR.oro2}" stroke-width=".18"/>
+    <ellipse cx="4.7" cy="10.4" rx="1.55" ry="1" fill="url(#pr-plata)" ${lp()}/><ellipse cx="11.3" cy="10.4" rx="1.55" ry="1" fill="url(#pr-plata)" ${lp()}/>
+    <rect x="7.3" y="8.4" width="1.5" height="1.5" fill="${PR.pielSombra}"/>
+    <g class="pr-cabeza" ${cabeza}>
+      <ellipse cx="4.9" cy="8.8" rx=".95" ry=".9" fill="url(#pr-pelo)"/><ellipse cx="4.3" cy="10.3" rx=".85" ry=".85" fill="url(#pr-pelo)"/><ellipse cx="3.95" cy="11.7" rx=".72" ry=".75" fill="url(#pr-pelo)"/>
+      <rect x="3.4" y="12.25" width="1.05" height=".5" rx=".2" fill="url(#pr-oro)"/><path d="M3.9 12.7 q-.5 .6 -.3 1.1 q.4 -.2 .7 0 q.1 -.6 -.4 -1.1z" fill="url(#pr-pelo)"/>
+      <circle cx="8.2" cy="5.6" r="4" fill="url(#pr-pelo)" ${lp()}/>
+      <circle cx="8.6" cy="6.3" r="3.25" fill="url(#pr-piel)" ${lp()}/>
+      <ellipse cx="6.3" cy="6.8" rx=".55" ry=".75" fill="${PR.pielSombra}"/>
+      <path d="M4.6 6.3 C4.4 2.8 7.6 1.4 10.3 2.3 C11.9 2.9 12.4 4.3 12.1 5.4 C11.2 4.4 9.9 4 8.9 4.3 C8.2 5.1 7.2 5.2 6.4 4.9 C5.6 5.4 5.1 5.8 4.6 6.3 Z" fill="url(#pr-pelo)" ${lp(.25)}/>
+      <path d="M6.2 2.9 C7.6 2.2 9.4 2.2 10.6 2.9" stroke="#C07A4A" stroke-width=".3" fill="none" opacity=".7" stroke-linecap="round"/>
+      ${caraPr(pose)}
+      <path d="M5.3 3.75 Q8.45 1.85 11.6 3.6" stroke="url(#pr-oro)" stroke-width=".8" fill="none" stroke-linecap="round"/>
+      <path d="M6.6 3.2 L6.9 2.35 L7.35 2.95 Z M9.6 2.9 L10.05 2.3 L10.3 3.15 Z" fill="url(#pr-oro)"/>
+      <path d="M7.9 2.75 L8.45 1.25 L9 2.75 Z" fill="url(#pr-oro)"/>
+      <ellipse cx="8.45" cy="2.6" rx=".42" ry=".55" fill="#3FE0D0" stroke="${PR.oro2}" stroke-width=".2"/><circle cx="8.32" cy="2.4" r=".14" fill="#fff"/>
+    </g>
+    ${brazoDer}
+    </g>`;
+}
+// Personajes que se pueden elegir en los juegos con protagonista (duelo, enemigos, castillo y montaña).
+export const PERSONAJES = ["sparky", "princesa"];
+// "decidido+espada" para los dos; a Sparky se le agrega el yelmo. Sparky no tiene pose "golpe": el tajo lo hace la
+// animación de la espada, así que usa "decidido".
+const cuerpoHeroe = (quien, frame = "quieto") => {
+  if (quien === "princesa") return cuerpoPrincesa(frame);
+  const [p, ...acc] = String(frame).split("+");
+  return cuerpoSparky(leerPose([p === "golpe" ? "decidido" : p, ...acc, ...(acc.includes("espada") && !acc.includes("yelmo") ? ["yelmo"] : [])].join("+")));
+};
+export const heroe = (quien = "sparky", frame = "decidido+espada", escala = 3) => {
+  const espadaSi = String(frame).includes("espada"), [x, y, w, h] = marcoSparky({ espada: espadaSi, yelmo: espadaSi });
+  return `<svg class="vec heroe heroe-${quien === "princesa" ? "princesa" : "sparky"}" viewBox="${x} ${y} ${w} ${h}" width="${r2(w * escala)}" height="${r2(h * escala)}" xmlns="http://www.w3.org/2000/svg">${cuerpoHeroe(quien, frame)}</svg>`;
+};
+export const capaHeroe = (quien, frame, dx, dy) => grupo(dx, dy, cuerpoHeroe(quien, frame));
+// El personaje en chico (12 × 16, pies en el piso) para la montaña, y con arco para la torre del castillo.
+export const capaEscaladorDe = (quien, dx, dy) => grupo(dx, dy, `<g transform="translate(0 .9) scale(.75)">${cuerpoHeroe(quien, "quieto")}</g>`);
+export const capaArqueroDe = (quien, dx, dy) => grupo(dx, dy, `<g transform="translate(0 .9) scale(.75)">${cuerpoHeroe(quien, "decidido")}</g><path d="M10.6 5.4 Q14.2 10 10.6 14.6" fill="none" stroke="#8B5A2B" stroke-width=".9" stroke-linecap="round"/><path d="M10.6 5.4 Q14.2 10 10.6 14.6" fill="none" stroke="#C8925A" stroke-width=".35" stroke-linecap="round"/><line x1="10.6" y1="5.4" x2="10.6" y2="14.6" stroke="#EEE" stroke-width=".25"/>`);
+
+// ---------- Enemigos (24 × 24, pies en y = 23, miran a la izquierda) ----------
+// Seis diseños para el juego de enemigos: baba, duende, murciélago, gólem de piedra, hongo y robot oxidado. Con ko = true
+// ponen ojos de "noqueado". La clase en-cuerpo respira y en-ala aletea (juegos-nuevos.css).
+export const ENEMIGOS = ["baba", "duende", "murcielago", "golem", "hongo", "robot"];
+const sombraEn = (rx = 9, op = .28) => `<ellipse cx="12" cy="23.1" rx="${rx}" ry="1.3" fill="#000" opacity="${op}"/>`;
+const ojosKo = (pts, color = "#1A1A1A") => pts.map(([x, y]) => `<path d="M${r2(x - .8)} ${r2(y - .8)} L${r2(x + .8)} ${r2(y + .8)} M${r2(x + .8)} ${r2(y - .8)} L${r2(x - .8)} ${r2(y + .8)}" stroke="${color}" stroke-width=".55" stroke-linecap="round"/>`).join("");
+const DIBUJOS_ENEMIGO = {
+  baba: (ko) => `<defs><radialGradient id="en-baba" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#D4F7A6"/><stop offset=".5" stop-color="#6CC24A"/><stop offset="1" stop-color="#2C6E26"/></radialGradient></defs>
+    ${sombraEn(9.5)}<g class="en-cuerpo">
+    <path d="M2.5 22.6 C1.8 16 5.5 9 12 9 C18.5 9 22.2 16 21.5 22.6 Q17 23.8 12 23.4 Q7 23.8 2.5 22.6 Z" fill="url(#en-baba)" stroke="#24581F" stroke-width=".35"/>
+    <circle cx="16" cy="18.5" r="1.1" fill="#fff" opacity=".25"/><circle cx="18" cy="15.4" r=".6" fill="#fff" opacity=".3"/><circle cx="9" cy="20" r=".7" fill="#fff" opacity=".22"/>
+    <ellipse cx="8" cy="12.6" rx="2.6" ry="1.3" fill="#fff" opacity=".55" transform="rotate(-28 8 12.6)"/>
+    ${ko ? ojosKo([[8.2, 15.2], [12.6, 15.2]], "#1B3412") : `<ellipse cx="8.2" cy="15.2" rx="1.6" ry="2" fill="#fff"/><ellipse cx="12.6" cy="15.2" rx="1.6" ry="2" fill="#fff"/><circle cx="7.5" cy="15.6" r=".9" fill="#14240E"/><circle cx="11.9" cy="15.6" r=".9" fill="#14240E"/><circle cx="7.2" cy="15.2" r=".3" fill="#fff"/><circle cx="11.6" cy="15.2" r=".3" fill="#fff"/>
+    <path d="M6.4 12.5 L9.6 13.5 M11.2 13.5 L14.4 12.5" stroke="#1F4F1A" stroke-width=".7" stroke-linecap="round"/>`}
+    <path d="M7.6 19.2 q2.4 1.5 4.8 0" stroke="#1F4F1A" stroke-width=".55" fill="none" stroke-linecap="round"/><path d="M8.6 19.75 l.5 1 l.5 -.85 z" fill="#fff"/></g>`,
+  duende: (ko) => `<defs><radialGradient id="en-duende" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#C3E08A"/><stop offset=".6" stop-color="#7FAE48"/><stop offset="1" stop-color="#3E6526"/></radialGradient>
+    <linearGradient id="en-duende-t" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#B07A45"/><stop offset="1" stop-color="#5A381C"/></linearGradient>
+    <linearGradient id="en-duende-m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C08A55"/><stop offset="1" stop-color="#6B4320"/></linearGradient></defs>
+    ${sombraEn(7)}<g class="en-cuerpo">
+    <rect x="9" y="19.3" width="2.1" height="3.4" rx=".9" fill="#5A3A1E"/><rect x="13" y="19.3" width="2.1" height="3.4" rx=".9" fill="#5A3A1E"/><ellipse cx="9.6" cy="22.8" rx="1.7" ry=".7" fill="#2E1D0E"/><ellipse cx="13.6" cy="22.8" rx="1.7" ry=".7" fill="#2E1D0E"/>
+    <path d="M7 13 Q12 11.4 17 13 L18 20 Q12 21.6 6 20 Z" fill="url(#en-duende-t)" stroke="#3A2410" stroke-width=".3"/><rect x="6.6" y="16" width="11" height="1" fill="#3A2410"/><rect x="11.4" y="15.9" width="1.4" height="1.2" rx=".2" fill="#D9B45A"/>
+    <path d="M3.4 17.6 L2.2 6.8" stroke="url(#en-duende-m)" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="2.3" cy="6.6" rx="2.1" ry="2.6" fill="url(#en-duende-m)" stroke="#3A2410" stroke-width=".3"/><circle cx="1.6" cy="5.8" r=".5" fill="#fff" opacity=".35"/>
+    <path d="M8 14 L4 17" stroke="#6E9A3E" stroke-width="1.6" stroke-linecap="round"/><circle cx="3.6" cy="17.4" r="1.1" fill="url(#en-duende)"/>
+    <path d="M7.8 8.2 L2.4 5.4 L7.6 10.4 Z" fill="url(#en-duende)" stroke="#2F4F1A" stroke-width=".3"/><path d="M16.2 8.2 L21.6 5.4 L16.4 10.4 Z" fill="url(#en-duende)" stroke="#2F4F1A" stroke-width=".3"/>
+    <path d="M7 8.5 L4 6.6 L7 9.4 Z" fill="#E7A7A0" opacity=".7"/>
+    <circle cx="12" cy="8.6" r="4.6" fill="url(#en-duende)" stroke="#2F4F1A" stroke-width=".35"/><ellipse cx="10.4" cy="6.2" rx="1.6" ry=".8" fill="#fff" opacity=".35" transform="rotate(-20 10.4 6.2)"/>
+    ${ko ? ojosKo([[10.2, 8.4], [13.6, 8.4]], "#1E2A10") : `<ellipse cx="10.2" cy="8.4" rx="1.1" ry="1.3" fill="#FFF3B0"/><ellipse cx="13.6" cy="8.4" rx="1.1" ry="1.3" fill="#FFF3B0"/><circle cx="9.8" cy="8.7" r=".55" fill="#1A1A1A"/><circle cx="13.2" cy="8.7" r=".55" fill="#1A1A1A"/><path d="M8.8 6.6 L11 7.3 M12.6 7.3 L14.8 6.6" stroke="#2F4F1A" stroke-width=".55" stroke-linecap="round"/>`}
+    <ellipse cx="11.4" cy="10.4" rx="1" ry=".75" fill="#5E8A34"/><path d="M9.4 11.7 Q12 13.2 14.6 11.5" stroke="#2A3A14" stroke-width=".45" fill="none" stroke-linecap="round"/><path d="M10.3 12.1 l.4 .8 l.4 -.65 z M13.2 12.15 l.4 .75 l.35 -.8 z" fill="#FFFBEA"/></g>`,
+  murcielago: (ko) => `<defs><radialGradient id="en-murc" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#A88672"/><stop offset=".6" stop-color="#6B4E3E"/><stop offset="1" stop-color="#3A2A21"/></radialGradient>
+    <linearGradient id="en-murc-a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6E5244"/><stop offset="1" stop-color="#2E211B"/></linearGradient></defs>
+    ${sombraEn(5, .18)}<g class="en-vuela"><g class="en-cuerpo">
+    <g class="en-ala"><path d="M10 12 C7 8 3 7 .5 9 C2 10 2.4 11.6 2 13.2 C3.6 12.3 4.8 12.9 5.4 14.3 C6.6 13 8.4 13.2 10 14.6 Z" fill="url(#en-murc-a)" stroke="#20160F" stroke-width=".3"/><path d="M10 12 L2 13.2 M10 12 L5.4 14.3 M10 12 L.5 9" stroke="#8C6A58" stroke-width=".25" opacity=".7"/></g>
+    <g class="en-ala en-ala-b"><path d="M14 12 C17 8 21 7 23.5 9 C22 10 21.6 11.6 22 13.2 C20.4 12.3 19.2 12.9 18.6 14.3 C17.4 13 15.6 13.2 14 14.6 Z" fill="url(#en-murc-a)" stroke="#20160F" stroke-width=".3"/><path d="M14 12 L22 13.2 M14 12 L18.6 14.3 M14 12 L23.5 9" stroke="#8C6A58" stroke-width=".25" opacity=".7"/></g>
+    <path d="M9.7 9.8 L9 5.2 L11.3 8.6 Z M14.3 9.8 L15 5.2 L12.7 8.6 Z" fill="url(#en-murc)" stroke="#20160F" stroke-width=".3"/><path d="M9.8 8.8 L9.4 6.4 L10.6 8.3 Z" fill="#C9918A"/>
+    <ellipse cx="12" cy="13" rx="3.6" ry="4.4" fill="url(#en-murc)" stroke="#20160F" stroke-width=".3"/><ellipse cx="10.8" cy="11" rx="1.2" ry=".7" fill="#fff" opacity=".25"/>
+    ${ko ? ojosKo([[10.9, 11.6], [13.1, 11.6]], "#140C08") : `<circle cx="10.9" cy="11.6" r=".8" fill="#FFB74D"/><circle cx="13.1" cy="11.6" r=".8" fill="#FFB74D"/><circle cx="10.7" cy="11.7" r=".38" fill="#140C08"/><circle cx="12.9" cy="11.7" r=".38" fill="#140C08"/><path d="M10 10.5 L11.6 11 M12.4 11 L14 10.5" stroke="#20160F" stroke-width=".4" stroke-linecap="round"/>`}
+    <ellipse cx="12" cy="13.2" rx=".6" ry=".4" fill="#3A2420"/><path d="M11 14.2 l.35 .9 l.35 -.8 z M12.6 14.2 l.35 .9 l.35 -.8 z" fill="#fff"/>
+    <path d="M10.8 17.2 l-.4 1.3 M13.2 17.2 l.4 1.3" stroke="#3A2A21" stroke-width=".45" stroke-linecap="round"/></g></g>`,
+  golem: (ko) => `<defs><linearGradient id="en-golem" x1="0" y1="0" x2=".5" y2="1"><stop offset="0" stop-color="#C9CDD1"/><stop offset=".5" stop-color="#8A9096"/><stop offset="1" stop-color="#4E5459"/></linearGradient>
+    <radialGradient id="en-golem-o" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF4B8"/><stop offset=".5" stop-color="#FFB627"/><stop offset="1" stop-color="#FFB627" stop-opacity="0"/></radialGradient></defs>
+    ${sombraEn(9.5, .3)}<g class="en-cuerpo">
+    <rect x="7" y="18" width="4" height="5" rx="1.4" fill="url(#en-golem)" stroke="#33383C" stroke-width=".3"/><rect x="13" y="18" width="4" height="5" rx="1.4" fill="url(#en-golem)" stroke="#33383C" stroke-width=".3"/>
+    <circle cx="20" cy="15.5" r="2.2" fill="#6A7075"/>
+    <path d="M5 10.5 Q12 6.4 19 10.5 L20 18.6 Q12 21 4 18.6 Z" fill="url(#en-golem)" stroke="#33383C" stroke-width=".35"/>
+    <path d="M9 11 l2 2.5 l-1 2 M15 12 l-1.5 3" stroke="#4A4F54" stroke-width=".35" fill="none"/>
+    <path d="M5.2 12 Q7 10.6 9 11.4 Q8 12.6 5.6 13.2 Z M15.5 9.4 Q17.6 9.2 18.6 10.6 Q17 11 15.5 9.4 Z" fill="#6E9150"/><path d="M5.6 12.2 Q7 11.2 8.4 11.6" stroke="#9FBF7A" stroke-width=".3" fill="none"/>
+    <path d="M16.6 8.4 L17.6 5.6 L18.6 8.6 Z" fill="#5EEAD4" stroke="#1A9A8D" stroke-width=".25"/><path d="M17.2 7.8 L17.6 6.2" stroke="#fff" stroke-width=".25" opacity=".8"/>
+    <circle cx="3.6" cy="14" r="2.5" fill="url(#en-golem)" stroke="#33383C" stroke-width=".3"/><circle cx="3" cy="18.2" r="2.3" fill="url(#en-golem)" stroke="#33383C" stroke-width=".3"/>
+    <ellipse cx="12" cy="7.6" rx="3.8" ry="3.1" fill="url(#en-golem)" stroke="#33383C" stroke-width=".35"/><ellipse cx="10.8" cy="6.2" rx="1.4" ry=".6" fill="#fff" opacity=".35"/>
+    ${ko ? ojosKo([[10.6, 7.6], [13.4, 7.6]], "#2A2E31") : `<circle cx="10.6" cy="7.6" r="1.6" fill="url(#en-golem-o)"/><circle cx="13.4" cy="7.6" r="1.6" fill="url(#en-golem-o)"/><rect x="9.9" y="7.2" width="1.4" height=".8" rx=".3" fill="#FFE27A"/><rect x="12.7" y="7.2" width="1.4" height=".8" rx=".3" fill="#FFE27A"/>`}
+    <path d="M10.4 9.6 h3.2" stroke="#33383C" stroke-width=".45" stroke-linecap="round"/></g>`,
+  hongo: (ko) => `<defs><radialGradient id="en-hongo" cx=".35" cy=".25" r=".9"><stop offset="0" stop-color="#FF8A7A"/><stop offset=".55" stop-color="#D93A2F"/><stop offset="1" stop-color="#8E1A16"/></radialGradient>
+    <linearGradient id="en-hongo-t" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFF6E2"/><stop offset="1" stop-color="#D4BC98"/></linearGradient></defs>
+    ${sombraEn(7.5)}<g class="en-cuerpo">
+    <ellipse cx="9.6" cy="22.5" rx="2" ry="1" fill="#7A5230"/><ellipse cx="14.4" cy="22.5" rx="2" ry="1" fill="#7A5230"/>
+    <path d="M8 13 Q7.2 19 8.4 22 Q12 23 15.6 22 Q16.8 19 16 13 Z" fill="url(#en-hongo-t)" stroke="#8C7350" stroke-width=".3"/>
+    <path d="M8.2 16 L5.6 18.2 M15.8 16 L18.2 17.6" stroke="#D4BC98" stroke-width="1.2" stroke-linecap="round"/>
+    ${ko ? ojosKo([[10.6, 16.6], [13.4, 16.6]], "#3A2A1A") : `<ellipse cx="10.6" cy="16.6" rx=".75" ry="1" fill="#2A1C10"/><ellipse cx="13.4" cy="16.6" rx=".75" ry="1" fill="#2A1C10"/><circle cx="10.4" cy="16.2" r=".25" fill="#fff"/><circle cx="13.2" cy="16.2" r=".25" fill="#fff"/><path d="M9.4 15 L11.4 15.6 M12.6 15.6 L14.6 15" stroke="#5A4026" stroke-width=".45" stroke-linecap="round"/>`}
+    <path d="M10.6 19.2 q1.4 -.9 2.8 0" stroke="#5A4026" stroke-width=".45" fill="none" stroke-linecap="round"/>
+    <ellipse cx="12" cy="13.6" rx="9" ry="1.3" fill="#E8D3B4"/>
+    <path d="M2 13.6 C2 6 7 3 12 3 C17 3 22 6 22 13.6 Q12 15.4 2 13.6 Z" fill="url(#en-hongo)" stroke="#6E1210" stroke-width=".35"/>
+    <circle cx="7" cy="8" r="1.4" fill="#FFF8EE"/><circle cx="12" cy="5.4" r="1.2" fill="#FFF8EE"/><circle cx="16.6" cy="8.4" r="1.6" fill="#FFF8EE"/><circle cx="10" cy="11" r=".9" fill="#FFF8EE"/><circle cx="19.2" cy="11.6" r=".8" fill="#FFF8EE"/><circle cx="4.6" cy="11.6" r=".7" fill="#FFF8EE"/>
+    <ellipse cx="7.4" cy="5.6" rx="2.2" ry=".9" fill="#fff" opacity=".35" transform="rotate(-25 7.4 5.6)"/></g>`,
+  robot: (ko) => `<defs><linearGradient id="en-robot" x1="0" y1="0" x2=".5" y2="1"><stop offset="0" stop-color="#F2A15E"/><stop offset=".5" stop-color="#C0682C"/><stop offset="1" stop-color="#6E3612"/></linearGradient>
+    <radialGradient id="en-robot-o" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFD0D0"/><stop offset=".45" stop-color="#FF4D4D"/><stop offset="1" stop-color="#FF4D4D" stop-opacity="0"/></radialGradient></defs>
+    ${sombraEn(8)}<g class="en-cuerpo">
+    <rect x="5.5" y="19.5" width="13" height="3.5" rx="1.7" fill="#3A3A40" stroke="#1E1E22" stroke-width=".3"/>${[7.4, 10.4, 13.6, 16.6].map((x) => `<circle cx="${x}" cy="21.25" r="1" fill="#6A6A72"/><circle cx="${x}" cy="21.25" r=".35" fill="#2A2A30"/>`).join("")}
+    <path d="M6.4 14.4 L3.2 16.4" stroke="#8A8F98" stroke-width="1.2" stroke-linecap="round"/><path d="M3.2 16.4 l-1.6 -.6 M3.2 16.4 l-1 1.4" stroke="#5A5F68" stroke-width=".8" stroke-linecap="round"/>
+    <rect x="6" y="11" width="12" height="9" rx="2" fill="url(#en-robot)" stroke="#4A2208" stroke-width=".35"/>
+    <rect x="8.4" y="13" width="5" height="3.6" rx=".8" fill="#2A2340"/><circle cx="9.6" cy="14.8" r=".6" fill="#7DF9FF"/><circle cx="11.4" cy="14.8" r=".6" fill="#FFC247"/><rect x="8.9" y="15.9" width="4" height=".35" fill="#7DF9FF" opacity=".7"/>
+    ${[[6.8, 11.8], [17.2, 11.8], [6.8, 19.2], [17.2, 19.2]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r=".32" fill="#FFE0B8"/>`).join("")}
+    <path d="M14.6 12.4 q1.4 .4 1.8 2" stroke="#8E4A1A" stroke-width=".35" fill="none" opacity=".7"/><ellipse cx="8" cy="12" rx="1.6" ry=".5" fill="#fff" opacity=".3"/>
+    <rect x="10.6" y="10" width="2.8" height="1.2" fill="#6A6A72"/>
+    <rect x="7.5" y="4.4" width="9" height="6.2" rx="2" fill="url(#en-robot)" stroke="#4A2208" stroke-width=".35"/>
+    <rect x="8.3" y="6" width="7.4" height="2.8" rx="1.2" fill="#1A1733"/>
+    ${ko ? ojosKo([[10.4, 7.4]], "#FF8A8A") : `<circle cx="10.4" cy="7.4" r="1.6" fill="url(#en-robot-o)"/><circle cx="10.4" cy="7.4" r=".7" fill="#FF6B6B"/><circle cx="10.2" cy="7.2" r=".22" fill="#fff"/>`}
+    <line x1="12" y1="4.4" x2="12" y2="2" stroke="#6A6A72" stroke-width=".45"/><circle cx="12" cy="1.6" r=".7" fill="#FF4D4D"/><ellipse cx="9.6" cy="5" rx="1.4" ry=".45" fill="#fff" opacity=".35"/></g>`,
+};
+export const capaEnemigo = (tipo, dx, dy, ko = false) => grupo(dx, dy, (DIBUJOS_ENEMIGO[tipo] ?? DIBUJOS_ENEMIGO.baba)(ko));
+export const enemigo = (tipo, escala = 3) => envoltura(24, 24, escala, "enemigo", (DIBUJOS_ENEMIGO[tipo] ?? DIBUJOS_ENEMIGO.baba)(false));
+
+// ---------- Escenarios del juego de enemigos (172 × 140): bosque, cueva y desierto ----------
+// Camino de izquierda a derecha con capas que se desplazan (lejos, cerca y piso) cuando el personaje avanza. Cada capa
+// se dibuja dos veces seguidas (0 y 172) y nada cruza la orilla, así el desplazamiento no se nota.
+export function escenaEnemigos(w = 172, h = 140, semilla = 9, tema = "bosque") {
+  const r = azar(semilla), id = "ene" + (semilla % 997), suelo = 116;
+  const dos = (inner) => `${inner}<g transform="translate(${w} 0)">${inner}</g>`;
+  let cielo = "", lejos = "", cerca = "", piso = "", rayas = "", defs = "";
+  if (tema === "cueva") {
+    defs = `${degradado(id + "k", "#14112B", "#25214A", "#3A3566")}<linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6A6690"/><stop offset="1" stop-color="#2E2B4A"/></linearGradient>
+      <radialGradient id="${id}g" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#7FFFE8" stop-opacity=".7"/><stop offset="1" stop-color="#7FFFE8" stop-opacity="0"/></radialGradient>
+      <linearGradient id="${id}c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C9FFF6"/><stop offset=".5" stop-color="#3FD6C4"/><stop offset="1" stop-color="#127A70"/></linearGradient>
+      <linearGradient id="${id}r" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#4A4670"/><stop offset="1" stop-color="#211E3A"/></linearGradient>`;
+    cielo = `<rect width="${w}" height="${h}" fill="url(#${id}k)"/>`;
+    for (let k = 0; k < 9; k++) { const x = 8 + k * 19 + r() * 6, l = 10 + r() * 22; cielo += `<path d="M${r2(x - 5)} 0 L${r2(x)} ${r2(l)} L${r2(x + 5)} 0 Z" fill="#2A2650"/><path d="M${r2(x - 1.5)} 0 L${r2(x)} ${r2(l * .7)}" stroke="#4E4A80" stroke-width=".6"/>`; }
+    let l = ""; for (let k = 0; k < 4; k++) { const x = 18 + k * 40, a = 40 + r() * 20; l += `<path d="M${x - 9} ${suelo} L${x - 6} ${suelo - a} Q${x} ${suelo - a - 8} ${x + 6} ${suelo - a} L${x + 9} ${suelo} Z" fill="#2B2850" opacity=".9"/><circle cx="${x}" cy="${suelo - a + 6}" r="9" fill="url(#${id}g)"/><path d="M${x - 2} ${suelo - a + 10} L${x} ${suelo - a} L${x + 2} ${suelo - a + 10} Z" fill="url(#${id}c)" opacity=".8"/>`; }
+    lejos = dos(l);
+    let c = ""; [[22, 1], [96, .8], [146, 1.1]].forEach(([x, e]) => { c += `<circle cx="${x}" cy="${suelo - 4}" r="${16 * e}" fill="url(#${id}g)"/>${[-4, 0, 4].map((dx, j) => `<path d="M${r2(x + dx * e - 2.2 * e)} ${suelo + 1} L${r2(x + dx * e)} ${r2(suelo - (8 + j * 4 - Math.abs(dx)) * e)} L${r2(x + dx * e + 2.2 * e)} ${suelo + 1} Z" fill="url(#${id}c)" stroke="#0E5C54" stroke-width=".3"/>`).join("")}`; });
+    c += `<path d="M58 ${suelo + 1} L62 ${suelo - 16} L66 ${suelo + 1} Z M120 ${suelo + 1} L125 ${suelo - 20} L130 ${suelo + 1} Z" fill="url(#${id}r)"/>`;
+    cerca = dos(c);
+    piso = `<rect x="0" y="${suelo}" width="${w}" height="${h - suelo}" fill="url(#${id}s)"/><rect x="0" y="${suelo - 1}" width="${w}" height="2" fill="#8A86B8" opacity=".6"/>`;
+    let ry = ""; for (let x = 4; x < w; x += 22) ry += `<ellipse cx="${x}" cy="${suelo + 8 + (x % 3)}" rx="4" ry="1.2" fill="#24213E" opacity=".6"/><ellipse cx="${x + 11}" cy="${suelo + 16}" rx="2.6" ry=".9" fill="#7F7BAA" opacity=".35"/>`;
+    rayas = dos(ry);
+  } else if (tema === "desierto") {
+    defs = `${degradado(id + "k", "#F3A15F", "#F8CF92", "#FCEBC8")}<radialGradient id="${id}sol" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF7D6"/><stop offset=".4" stop-color="#FFE29A" stop-opacity=".8"/><stop offset="1" stop-color="#FFE29A" stop-opacity="0"/></radialGradient>
+      <linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0CF92"/><stop offset="1" stop-color="#C08E4E"/></linearGradient>
+      <linearGradient id="${id}d" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E9B572"/><stop offset="1" stop-color="#C98A4A"/></linearGradient>
+      <linearGradient id="${id}p" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F3D7A6"/><stop offset=".6" stop-color="#D2A86C"/><stop offset="1" stop-color="#9C7442"/></linearGradient>
+      <linearGradient id="${id}v" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8CBF5A"/><stop offset="1" stop-color="#3F6E28"/></linearGradient>`;
+    cielo = `<rect width="${w}" height="${h}" fill="url(#${id}k)"/><circle cx="128" cy="58" r="34" fill="url(#${id}sol)"/><circle cx="128" cy="58" r="11" fill="#FFF3C4"/>`;
+    lejos = dos(`<path d="M0 96 C24 82 46 84 70 92 C96 100 120 80 146 86 C158 89 166 92 172 96 L172 ${suelo} L0 ${suelo} Z" fill="url(#${id}d)" opacity=".85"/><path d="M0 96 C24 82 46 84 70 92" stroke="#FCE3B4" stroke-width=".8" fill="none" opacity=".7"/>`);
+    let c = "";
+    [[34, 26], [118, 34]].forEach(([x, a]) => { c += `<rect x="${x}" y="${suelo - a}" width="7" height="${a}" fill="url(#${id}p)"/><rect x="${x - 1.5}" y="${suelo - a - 3}" width="10" height="3" rx=".6" fill="#E9C994"/>${[1, 2, 3].map((k) => `<line x1="${x}" y1="${suelo - k * a / 4}" x2="${x + 7}" y2="${suelo - k * a / 4}" stroke="#9C7442" stroke-width=".3" opacity=".5"/>`).join("")}`; });
+    c += `<rect x="45" y="${suelo - 10}" width="18" height="4" rx="1" fill="url(#${id}p)" transform="rotate(-8 54 ${suelo - 8})"/>`;
+    [[82, 1], [152, .8]].forEach(([x, e]) => { c += `<g transform="translate(${x} ${suelo}) scale(${e})"><rect x="-2" y="-20" width="4" height="20" rx="2" fill="url(#${id}v)"/><path d="M-2 -10 h-3 a1.6 1.6 0 0 1 -1.6 -1.6 v-5 a1.5 1.5 0 0 1 3 0 v3.6 h1.6 Z M2 -13 h3 a1.6 1.6 0 0 0 1.6 -1.6 v-4 a1.5 1.5 0 0 0 -3 0 v2.6 h-1.6 Z" fill="url(#${id}v)"/><line x1="-.6" y1="-19" x2="-.6" y2="-1" stroke="#CDE8A8" stroke-width=".35" opacity=".6"/></g>`; });
+    cerca = dos(c);
+    piso = `<rect x="0" y="${suelo}" width="${w}" height="${h - suelo}" fill="url(#${id}s)"/><path d="M0 ${suelo} Q86 ${suelo - 3} ${w} ${suelo}" stroke="#FFF1CF" stroke-width="1" fill="none" opacity=".7"/>`;
+    let ry = ""; for (let x = 2; x < w; x += 20) ry += `<path d="M${x} ${suelo + 9} q4 -2 8 0" stroke="#B88445" stroke-width=".5" fill="none" opacity=".6"/><circle cx="${x + 12}" cy="${suelo + 17}" r=".9" fill="#A9773C" opacity=".6"/>`;
+    rayas = dos(ry);
+  } else {
+    defs = `${degradado(id + "k", "#86C3EA", "#CFE9F3", "#F6E9C4")}<radialGradient id="${id}sol" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFFBE6"/><stop offset=".4" stop-color="#FFF0B0" stop-opacity=".7"/><stop offset="1" stop-color="#FFF0B0" stop-opacity="0"/></radialGradient>
+      <linearGradient id="${id}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C79B62"/><stop offset="1" stop-color="#7E5A34"/></linearGradient>
+      <radialGradient id="${id}a" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#9FD36E"/><stop offset=".6" stop-color="#4E9038"/><stop offset="1" stop-color="#25521F"/></radialGradient>
+      <linearGradient id="${id}t" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8A5E36"/><stop offset="1" stop-color="#4A2F18"/></linearGradient>`;
+    cielo = `<rect width="${w}" height="${h}" fill="url(#${id}k)"/><circle cx="132" cy="28" r="26" fill="url(#${id}sol)"/>`;
+    for (let k = 0; k < 3; k++) { const cx = 20 + k * 58 + r() * 14, cy = 16 + r() * 12; cielo += `<g opacity=".85"><ellipse cx="${r2(cx)}" cy="${r2(cy)}" rx="11" ry="3" fill="#fff"/><ellipse cx="${r2(cx - 3)}" cy="${r2(cy - 2)}" rx="6" ry="3" fill="#fff"/></g>`; }
+    let l = `<path d="M0 90 C30 72 60 78 86 86 C112 94 140 72 172 90 L172 ${suelo} L0 ${suelo} Z" fill="#86AE8E" opacity=".85"/>`;
+    for (let k = 0; k < 8; k++) { const x = 10 + k * 20 + r() * 6, a = 14 + r() * 8, y = 92 + r() * 6; l += `<path d="M${r2(x - 4)} ${r2(y)} L${r2(x)} ${r2(y - a)} L${r2(x + 4)} ${r2(y)} Z" fill="#5F8C6C" opacity=".9"/>`; }
+    lejos = dos(l);
+    let c = "";
+    [[24, 1], [92, .85], [146, 1.05]].forEach(([x, e]) => { c += `<g transform="translate(${x} ${suelo}) scale(${e})"><ellipse cx="0" cy="0" rx="9" ry="1.6" fill="#000" opacity=".15"/><rect x="-2" y="-26" width="4" height="26" rx="1.2" fill="url(#${id}t)"/><circle cx="-5" cy="-28" r="8" fill="url(#${id}a)"/><circle cx="5" cy="-30" r="8.5" fill="url(#${id}a)"/><circle cx="0" cy="-37" r="8" fill="url(#${id}a)"/><ellipse cx="-3" cy="-40" rx="3.4" ry="1.6" fill="#fff" opacity=".25"/></g>`; });
+    [[56, 6], [120, 5]].forEach(([x, R]) => { c += `<circle cx="${x}" cy="${suelo - 2}" r="${R}" fill="url(#${id}a)"/><circle cx="${x + R}" cy="${suelo - 1}" r="${R * .75}" fill="url(#${id}a)"/>`; });
+    cerca = dos(c);
+    piso = `<rect x="0" y="${suelo}" width="${w}" height="${h - suelo}" fill="url(#${id}s)"/><rect x="0" y="${suelo - 2}" width="${w}" height="3.5" rx="1.5" fill="#7CB342"/><rect x="0" y="${suelo - 2}" width="${w}" height="1" fill="#B5E07A" opacity=".8"/>`;
+    let ry = ""; for (let x = 3; x < w; x += 21) ry += `<ellipse cx="${x}" cy="${suelo + 9}" rx="2.4" ry="1.1" fill="#9E7A4E"/><ellipse cx="${x - .5}" cy="${suelo + 8.6}" rx="1" ry=".4" fill="#E2C69A" opacity=".7"/><path d="M${x + 10} ${suelo + 17} l1 -2.4 l1 2.4" stroke="#6E9A3E" stroke-width=".5" fill="none"/>`;
+    rayas = dos(ry);
+  }
+  const svg = `<defs>${defs}</defs>${cielo}<g id="${id}L">${lejos}</g>${piso}<g id="${id}R">${rayas}</g><g id="${id}C">${cerca}</g>`;
+  return { svg, suelo, capas: { lejos: id + "L", cerca: id + "C", rayas: id + "R" } };
+}
+
+// ---------- Pingüino (16 × 20, mira a la derecha, pies en y = 19.4) ----------
+// Pingüino rey con colores reales: espalda negra con brillo azulado, panza blanca, mancha naranja en el cuello, pico
+// negro con franja naranja y patas rosado-naranja. op = { aleta: grados (0 = pegada al cuerpo, negativo = hacia atrás),
+// ojos: "normal" | "feliz" | "mareado", sombra: true }.
+const DEFS_PINGUINO = `<defs><linearGradient id="pg-espalda" x1="0" y1="0" x2=".6" y2="1"><stop offset="0" stop-color="#4A5468"/><stop offset=".45" stop-color="#1E2430"/><stop offset="1" stop-color="#0A0D13"/></linearGradient>
+  <linearGradient id="pg-panza" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#FFE6A8"/><stop offset=".22" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C9D1DC"/></linearGradient>
+  <radialGradient id="pg-mancha" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#FFD27A"/><stop offset="1" stop-color="#F28A1E"/></radialGradient></defs>`;
+function cuerpoPinguino(op = {}) {
+  const aleta = op.aleta ?? 0, ojos = op.ojos ?? "normal";
+  const ojo = ojos === "feliz" ? `<path d="M9.4 5.4 q.8 -1 1.6 0" stroke="#111" stroke-width=".4" fill="none" stroke-linecap="round"/>`
+    : ojos === "mareado" ? `<path d="M9.5 4.5 l1.4 1.4 M10.9 4.5 l-1.4 1.4" stroke="#111" stroke-width=".35" stroke-linecap="round"/>`
+    : `<circle cx="10.2" cy="5.2" r=".9" fill="#fff"/><circle cx="10.5" cy="5.25" r=".52" fill="#111"/><circle cx="10.35" cy="5" r=".18" fill="#fff"/>`;
+  return `${DEFS_PINGUINO}${op.sombra === false ? "" : `<ellipse cx="8" cy="19.4" rx="4.6" ry=".6" fill="#000" opacity=".22"/>`}
+    <ellipse cx="6.4" cy="19" rx="1.5" ry=".55" fill="#E8875A"/><ellipse cx="9.6" cy="19" rx="1.5" ry=".55" fill="#E8875A"/>
+    <path d="M8 2.2 C12 2.2 13.6 7 13.4 12 C13.2 16.6 11.2 19.2 8 19.2 C4.8 19.2 2.8 16.6 2.6 12 C2.4 7 4 2.2 8 2.2 Z" fill="url(#pg-espalda)" stroke="#06080C" stroke-width=".3"/>
+    <path d="M9.8 7 C12.2 8 12.6 12 12.2 15 C11.8 17.6 10.2 18.6 8.8 18.6 C7 18.6 6.2 16.8 6.4 14 C6.6 10.6 7.6 7.6 9.8 7 Z" fill="url(#pg-panza)"/>
+    <path d="M10.6 5.8 C12 6.2 12.6 7.4 12.2 8.8 C11.4 8.2 10.6 7.4 10.6 5.8 Z" fill="url(#pg-mancha)"/>
+    <ellipse cx="6" cy="5" rx="1.8" ry=".9" fill="#fff" opacity=".18" transform="rotate(-30 6 5)"/>
+    ${ojo}
+    <path d="M11.9 5.5 L15.4 6.3 L11.9 7.1 Z" fill="#1A1A1A"/><path d="M12.1 6.45 L14.8 6.4 L12.1 7 Z" fill="#FF8A3D"/>
+    <g transform="rotate(${aleta} 6.4 8.4)"><path d="M6.4 8 C4.6 10 3.6 13 3.4 15.6 C4.8 14.2 6.2 12 7.1 9.6 Z" fill="url(#pg-espalda)" stroke="#06080C" stroke-width=".25"/><path d="M5.6 10 C4.8 11.6 4.3 13 4.1 14.4" stroke="#fff" stroke-width=".25" opacity=".2" fill="none"/></g>`;
+}
+export const capaPinguino = (op, dx, dy) => grupo(dx, dy, cuerpoPinguino(op));
+export const pinguino = (op = {}, escala = 3) => envoltura(16, 20, escala, "pinguino", cuerpoPinguino(op));
+// Juez del jurado: pingüino que mira a la izquierda con disfraz discreto (0 = sombrero de copa, 1 = moño, 2 = lentes)
+// y una tablilla de calificación. La tablilla está en <g id="idTab"> (se sube con transform) y el número en
+// <text id="idTab+n">.
+export function capaJuez(k, dx, dy, idTab) {
+  const disfraz = k === 0 ? `<ellipse cx="8.4" cy="2.9" rx="3.6" ry=".7" fill="#111"/><rect x="6.2" y="-1.6" width="4.4" height="4.4" rx=".5" fill="#1C1C22"/><rect x="6.2" y="1.4" width="4.4" height=".8" fill="#C62842"/><rect x="6.6" y="-1.2" width=".8" height="3.6" fill="#fff" opacity=".18"/>`
+    : k === 1 ? `<path d="M9.6 9 L7.8 8 L7.8 10 Z M9.6 9 L11.4 8 L11.4 10 Z" fill="#D32F2F" stroke="#7A1010" stroke-width=".2"/><circle cx="9.6" cy="9" r=".45" fill="#9A1B1B"/>`
+    : `<circle cx="10.2" cy="5.2" r="1.25" fill="#BFE6FF" fill-opacity=".25" stroke="#C9921E" stroke-width=".32"/><circle cx="12.6" cy="5.5" r="1" fill="#BFE6FF" fill-opacity=".25" stroke="#C9921E" stroke-width=".32"/><path d="M11.45 5.2 L11.6 5.3" stroke="#C9921E" stroke-width=".3"/>`;
+  return grupo(dx, dy, `<g transform="translate(16 0) scale(-1 1)">${cuerpoPinguino({ aleta: 0 })}${disfraz}</g>
+    <g id="${idTab}" transform="translate(0 16)"><rect x="7.6" y="-2" width=".7" height="12" rx=".3" fill="#9C7442"/><rect x="2.6" y="-9" width="10.7" height="7.6" rx="1.2" fill="#FFFFFF" stroke="#2A2340" stroke-width=".45"/><rect x="2.6" y="-9" width="10.7" height="2" rx="1" fill="#E9EDF5"/><text id="${idTab}n" x="7.95" y="-2.9" font-size="5.2" font-weight="800" text-anchor="middle" fill="#2A2340" font-family="Outfit, Arial, sans-serif">–</text></g>`);
+}
+
+// ---------- Escena de los clavados (172 × 140): iceberg con resbaladilla, mar y témpano del jurado ----------
+// Temas: "polo" (día), "aurora" (noche con aurora) y "atardecer". Devuelve el fondo, la altura del mar, los puntos de
+// la resbaladilla (curva cúbica) y dónde se paran los jueces.
+export function escenaPinguino(w = 172, h = 140, semilla = 13, tema = "polo") {
+  const r = azar(semilla), id = "pg" + (semilla % 997), mar = 96;
+  const T = tema === "aurora" ? { c1: "#06142B", c2: "#0E3150", c3: "#1D6170", m1: "#155C78", m2: "#04243A", lejos: "#3E6E86" }
+    : tema === "atardecer" ? { c1: "#F59B6B", c2: "#F8C99A", c3: "#FCE6C8", m1: "#3A93B4", m2: "#0C3D5C", lejos: "#E8D2D6" }
+    : { c1: "#5FB4E6", c2: "#B6E1F5", c3: "#EAF7FD", m1: "#2E9CC4", m2: "#0A4A68", lejos: "#D6ECF7" };
+  let s = `<defs>${degradado(id + "k", T.c1, T.c2, T.c3)}
+    <linearGradient id="${id}m" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.m1}"/><stop offset="1" stop-color="${T.m2}"/></linearGradient>
+    <linearGradient id="${id}h" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".5" stop-color="#D4EEF9"/><stop offset="1" stop-color="#8CCBE4"/></linearGradient>
+    <linearGradient id="${id}hs" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#A9DCF0"/><stop offset="1" stop-color="#5FA9C9"/></linearGradient>
+    <linearGradient id="${id}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8FAFF"/><stop offset="1" stop-color="#7CC6E2"/></linearGradient>
+    <linearGradient id="${id}au" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5CFFB0" stop-opacity="0"/><stop offset=".5" stop-color="#5CFFB0" stop-opacity=".55"/><stop offset="1" stop-color="#3FD6E0" stop-opacity="0"/></linearGradient>
+  </defs><rect width="${w}" height="${h}" fill="url(#${id}k)"/>`;
+  if (tema === "aurora") { s += estrellas(r, w, 60, 40, "#E8F6FF"); s += `<path d="M0 30 C40 10 80 40 120 18 C140 8 160 20 172 14 L172 32 C150 40 130 28 110 42 C80 58 40 30 0 48 Z" fill="url(#${id}au)"/><path d="M10 50 C50 30 90 54 140 34 L172 30 L172 40 C130 52 90 64 10 60 Z" fill="url(#${id}au)" opacity=".6"/>`; }
+  else if (tema === "atardecer") s += `<circle cx="128" cy="${mar - 6}" r="16" fill="#FFE9B0" opacity=".9"/><circle cx="128" cy="${mar - 6}" r="26" fill="#FFE9B0" opacity=".25"/>`;
+  else s += `<circle cx="140" cy="22" r="10" fill="#FFFBE6"/><circle cx="140" cy="22" r="20" fill="#FFFBE6" opacity=".3"/>${[[40, 18], [100, 30]].map(([x, y]) => `<g opacity=".9"><ellipse cx="${x}" cy="${y}" rx="12" ry="3" fill="#fff"/><ellipse cx="${x - 4}" cy="${y - 2}" rx="6" ry="3" fill="#fff"/></g>`).join("")}`;
+  s += `<path d="M70 ${mar} L80 ${mar - 10} L88 ${mar - 6} L96 ${mar - 14} L108 ${mar} Z M146 ${mar} L154 ${mar - 8} L166 ${mar - 5} L172 ${mar - 9} L172 ${mar} Z" fill="${T.lejos}" opacity=".9"/>`;
+  s += `<rect x="0" y="${mar}" width="${w}" height="${h - mar}" fill="url(#${id}m)"/>`;
+  for (let k = 0; k < 12; k++) { const x = r() * w, y = mar + 4 + r() * (h - mar - 8); s += `<path d="M${r2(x)} ${r2(y)} q3 -1.2 6 0" stroke="#fff" stroke-width=".5" fill="none" opacity="${r2(.2 + r() * .3)}"/>`; }
+  // Iceberg con la plataforma arriba y la resbaladilla por el costado.
+  s += `<path d="M0 40 L30 37 L36 44 L44 54 L52 66 L62 80 L66 ${mar} L0 ${mar} Z" fill="url(#${id}h)" stroke="#7CB8D2" stroke-width=".4"/>
+    <path d="M30 37 L36 44 L44 54 L52 66 L62 80 L66 ${mar} L46 ${mar} L40 70 L34 52 Z" fill="url(#${id}hs)" opacity=".55"/>
+    <path d="M0 ${mar} L66 ${mar} L60 ${mar + 12} L4 ${mar + 14} Z" fill="#7CC6E2" opacity=".45"/>
+    <path d="M4 44 L26 41" stroke="#fff" stroke-width=".8" opacity=".8"/>
+    <path d="M22 37.5 C34 39.5 46 64 58 73 C62 76 68 76 74 72" fill="none" stroke="#5FA9C9" stroke-width="5" stroke-linecap="round"/>
+    <path d="M22 37.5 C34 39.5 46 64 58 73 C62 76 68 76 74 72" fill="none" stroke="url(#${id}r)" stroke-width="3.6" stroke-linecap="round"/>
+    <path d="M23 36.3 C35 38.3 47 63 58.6 71.6 C62.4 74.4 67.6 74.4 73.4 70.8" fill="none" stroke="#fff" stroke-width=".6" opacity=".9"/>
+    ${[[34, 42], [44, 55], [54, 69], [66, 75]].map(([x, y]) => `<rect x="${x - .6}" y="${y + 2}" width="1.2" height="${r2(mar - y - 2)}" fill="#A9DCF0" opacity=".7"/>`).join("")}
+    <rect x="4" y="34.6" width="20" height="2.6" rx="1" fill="#C9ECF8" stroke="#7CB8D2" stroke-width=".3"/>`;
+  // Témpano del jurado.
+  s += `<ellipse cx="148" cy="128" rx="26" ry="5" fill="#0A4A68" opacity=".5"/><path d="M122 124 Q148 116 172 122 L172 130 Q148 134 124 130 Z" fill="url(#${id}h)" stroke="#7CB8D2" stroke-width=".4"/>`;
+  return { svg: s, mar, rampa: [[22, 37.5], [34, 39.5], [46, 64], [58, 73]], salida: [74, 72], arriba: { x: 13, y: 35 }, jueces: [128, 142, 156], pisoJueces: 123 };
+}
+
+// ---------- Perro (border collie blanco y negro, sentado de frente; 80 × 70 con las patas en y = 68) ----------
+// Grupos con clase para animar con CSS: perro-cola (mueve la cola), perro-cabeza (inclina, mastica, dice que no),
+// boca-cerrada / boca-abierta.
+const DEFS_PERRO = `<defs><linearGradient id="pe-negro" x1="0" y1="0" x2=".5" y2="1"><stop offset="0" stop-color="#4A4A55"/><stop offset=".5" stop-color="#1C1C22"/><stop offset="1" stop-color="#08080B"/></linearGradient>
+  <linearGradient id="pe-blanco" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".7" stop-color="#ECEEF2"/><stop offset="1" stop-color="#C4C8D2"/></linearGradient>
+  <radialGradient id="pe-ojo" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#B07A3E"/><stop offset="1" stop-color="#5A3414"/></radialGradient>
+  <radialGradient id="pe-sombra" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs>`;
+function cuerpoPerro() {
+  return `${DEFS_PERRO}<ellipse cx="40" cy="68" rx="30" ry="4" fill="url(#pe-sombra)"/>
+  <g class="perro-cola"><path d="M52 60 C62 60 68 52 70 42 C71 37 75 36 75 41 C75 53 66 64 54 65 Z" fill="url(#pe-negro)"/><path d="M70 42 C71 37 75 36 75 41 C75 44 74 46 73 48 C72 46 70.6 44.6 70 42 Z" fill="url(#pe-blanco)"/></g>
+  <ellipse cx="27" cy="58" rx="12" ry="10" fill="url(#pe-negro)"/><ellipse cx="53" cy="58" rx="12" ry="10" fill="url(#pe-negro)"/>
+  <ellipse cx="17" cy="66" rx="5.4" ry="2.6" fill="url(#pe-blanco)"/><ellipse cx="63" cy="66" rx="5.4" ry="2.6" fill="url(#pe-blanco)"/>
+  <path d="M26 34 C23 46 24 58 28 64 L52 64 C56 58 57 46 54 34 Z" fill="url(#pe-negro)"/>
+  <path d="M29 30 C25 40 27 52 33 64 L47 64 C53 52 55 40 51 30 C46 35 34 35 29 30 Z" fill="url(#pe-blanco)"/>
+  ${[[33, 38], [40, 40], [47, 38], [35, 45], [45, 45]].map(([x, y]) => `<path d="M${x - 2.6} ${y} q2.6 2 5.2 0" stroke="#C4C8D2" stroke-width=".6" fill="none" opacity=".8"/>`).join("")}
+  <rect x="31" y="46" width="7.4" height="20" rx="3.6" fill="url(#pe-blanco)" stroke="#B9BDC8" stroke-width=".4"/><rect x="41.6" y="46" width="7.4" height="20" rx="3.6" fill="url(#pe-blanco)" stroke="#B9BDC8" stroke-width=".4"/>
+  <ellipse cx="34.7" cy="66" rx="4.8" ry="2.4" fill="url(#pe-blanco)" stroke="#B9BDC8" stroke-width=".4"/><ellipse cx="45.3" cy="66" rx="4.8" ry="2.4" fill="url(#pe-blanco)" stroke="#B9BDC8" stroke-width=".4"/>
+  <path d="M33 66.6 v1 M35.4 66.8 v1 M43.6 66.8 v1 M46 66.6 v1" stroke="#A9AEBA" stroke-width=".5" stroke-linecap="round"/>
+  <path d="M28.6 31 Q40 37.4 51.4 31 L51 34 Q40 40.4 29 34 Z" fill="#D23B4E"/><circle cx="40" cy="38.6" r="2.1" fill="#FFC93D" stroke="#B57A12" stroke-width=".4"/><circle cx="39.4" cy="38" r=".6" fill="#fff" opacity=".7"/>
+  <g class="perro-cabeza">
+    <g class="perro-oreja-a"><path d="M22 15 C19.6 7 21.6 .6 27 .2 C30.2 3 31.4 8.4 30.4 14 Z" fill="url(#pe-negro)"/><path d="M24.2 12 C23 7 24.2 3.4 26.6 2.6 C28.2 5 28.6 8.6 28.2 12 Z" fill="#6E5E66" opacity=".6"/><path d="M27 .2 C29 1.4 30.6 3.6 31 6 C29.2 5 27.6 4.4 26 4.6 Z" fill="#2A2A30"/></g>
+    <g class="perro-oreja-b"><path d="M58 15 C60.4 7 58.4 .6 53 .2 C49.8 3 48.6 8.4 49.6 14 Z" fill="url(#pe-negro)"/><path d="M55.8 12 C57 7 55.8 3.4 53.4 2.6 C51.8 5 51.4 8.6 51.8 12 Z" fill="#6E5E66" opacity=".6"/><path d="M53 .2 C51 1.4 49.4 3.6 49 6 C50.8 5 52.4 4.4 54 4.6 Z" fill="#2A2A30"/></g>
+    <ellipse cx="40" cy="18" rx="15.5" ry="13.4" fill="url(#pe-negro)"/>
+    <path d="M38 5.4 C37 10 35 14 33 20 C31 24.4 31 28.4 34 31.4 L46 31.4 C49 28.4 49 24.4 47 20 C45 14 43 10 42 5.4 Z" fill="url(#pe-blanco)"/>
+    <ellipse cx="40" cy="25.6" rx="8.6" ry="6.4" fill="url(#pe-blanco)"/>
+    <ellipse cx="34" cy="9" rx="4" ry="2" fill="#fff" opacity=".12" transform="rotate(-20 34 9)"/>
+    <circle cx="33.4" cy="16.4" r="2.3" fill="url(#pe-ojo)"/><circle cx="33.6" cy="16.6" r="1.1" fill="#120A04"/><circle cx="32.8" cy="15.6" r=".6" fill="#fff"/>
+    <circle cx="46.6" cy="16.4" r="2.3" fill="url(#pe-ojo)"/><circle cx="46.8" cy="16.6" r="1.1" fill="#120A04"/><circle cx="46" cy="15.6" r=".6" fill="#fff"/>
+    <path d="M30.6 13.2 Q33.4 11.8 35.8 13 M44.2 13 Q46.6 11.8 49.4 13.2" stroke="#4A4A55" stroke-width=".7" fill="none" stroke-linecap="round"/>
+    <path d="M36.6 21 Q40 19.6 43.4 21 Q43 23.6 40 24.2 Q37 23.6 36.6 21 Z" fill="#141418"/><ellipse cx="38.8" cy="20.9" rx="1.1" ry=".5" fill="#fff" opacity=".45"/>
+    <g class="boca-cerrada"><path d="M40 24.2 V25.6 M36.2 25.8 Q38.2 27.6 40 25.6 Q41.8 27.6 43.8 25.8" stroke="#2A2A30" stroke-width=".7" fill="none" stroke-linecap="round"/></g>
+    <g class="boca-abierta" opacity="0"><path d="M35.4 25.4 Q40 32.6 44.6 25.4 Q40 27 35.4 25.4 Z" fill="#6A1E2A"/><path d="M37.6 27.6 Q40 33.6 42.4 27.6 Q40 28.8 37.6 27.6 Z" fill="#F27A92"/><path d="M40 28.4 V31" stroke="#C94A64" stroke-width=".4"/></g>
+  </g>`;
+}
+export const capaPerro = (dx, dy) => grupo(dx, dy, cuerpoPerro());
+// Plato de acero (40 × 14, base en y = 14) con franja de color y croquetas.
+export const capaPlato = (dx, dy, franja = "#2BB673", id = "pl") => grupo(dx, dy, `<defs><linearGradient id="${id}a" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F4F7FB"/><stop offset=".45" stop-color="#C3CAD5"/><stop offset="1" stop-color="#7E8794"/></linearGradient></defs>
+  <ellipse cx="20" cy="14" rx="21" ry="2.4" fill="#000" opacity=".18"/>
+  <path d="M1 4 L5 13 Q20 16 35 13 L39 4 Z" fill="url(#${id}a)" stroke="#6E7784" stroke-width=".4"/>
+  <path d="M2.6 7.6 Q20 10.6 37.4 7.6 L36.4 9.8 Q20 12.8 3.6 9.8 Z" fill="${franja}"/>
+  <ellipse cx="20" cy="4" rx="19" ry="3.2" fill="#E9EDF3" stroke="#6E7784" stroke-width=".4"/><ellipse cx="20" cy="4.4" rx="16" ry="2.2" fill="#8E97A4"/>
+  ${[[13, 4.2], [17, 3.6], [21, 4.4], [25, 3.8], [28, 4.6], [15.6, 5], [23.4, 5.2]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="1.4" ry=".9" fill="#9A5F2E"/><ellipse cx="${x - .3}" cy="${y - .3}" rx=".5" ry=".25" fill="#D9A066" opacity=".8"/>`).join("")}
+  <ellipse cx="8" cy="5.6" rx="3" ry=".5" fill="#fff" opacity=".7"/>`);
+// Jardín del perro (300 × 146): cielo, árboles lejanos, cerca blanca y pasto. Piso en y = 128.
+export function escenaPerro(w = 300, h = 146) {
+  const id = "pe";
+  let s = `<defs>${degradado(id + "k", "#9AD3F2", "#D7EEF8", "#F4FAF2")}<linearGradient id="${id}p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9CD56A"/><stop offset="1" stop-color="#4E8F35"/></linearGradient>
+    <radialGradient id="${id}a" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#9FD36E"/><stop offset="1" stop-color="#3C7A2E"/></radialGradient>
+    <linearGradient id="${id}c" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D5DAE2"/></linearGradient></defs>
+    <rect width="${w}" height="${h}" fill="url(#${id}k)"/>
+    ${[[40, 20], [150, 14], [250, 24]].map(([x, y]) => `<g opacity=".9"><ellipse cx="${x}" cy="${y}" rx="18" ry="4.4" fill="#fff"/><ellipse cx="${x - 6}" cy="${y - 3}" rx="9" ry="4.4" fill="#fff"/></g>`).join("")}
+    ${[[20, 1], [70, .8], [230, .9], [285, 1.1]].map(([x, e]) => `<g transform="translate(${x} 92) scale(${e})"><rect x="-2" y="-14" width="4" height="16" fill="#7A5230"/><circle cx="-6" cy="-18" r="10" fill="url(#${id}a)"/><circle cx="6" cy="-20" r="11" fill="url(#${id}a)"/><circle cx="0" cy="-28" r="10" fill="url(#${id}a)"/></g>`).join("")}`;
+  for (let x = 2; x < w; x += 12) s += `<path d="M${x} 104 V84 l3.5 -4 l3.5 4 V104 Z" fill="url(#${id}c)" stroke="#B9C0CC" stroke-width=".4"/>`;
+  s += `<rect x="0" y="88" width="${w}" height="3" fill="#E9EDF3"/><rect x="0" y="97" width="${w}" height="3" fill="#E9EDF3"/>
+    <rect x="0" y="102" width="${w}" height="${h - 102}" fill="url(#${id}p)"/>
+    <ellipse cx="${w / 2}" cy="132" rx="140" ry="12" fill="#C9A36E" opacity=".35"/>`;
+  for (let k = 0; k < 40; k++) { const x = (k * 37) % w, y = 106 + ((k * 13) % 36); s += `<path d="M${x} ${y} l1 -3 l1 3" stroke="#3E7A2C" stroke-width=".6" fill="none" opacity=".6"/>`; }
+  return { svg: s, suelo: 128 };
+}

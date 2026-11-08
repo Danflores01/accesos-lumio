@@ -1,0 +1,78 @@
+/* Juegos nuevos (8 nov 2026): elige tu personaje, enemigos, clavados de pingüino y el perro con sus platos.
+   La lógica está en js/juegos.js y el arte en js/arte.js. Se apoya en las animaciones de duelo.css (golpe, tajo, temblor). */
+
+/* ---------- ¿Quién quieres ser? ---------- */
+.tarjeta-inicio .elige-titulo { font: 800 18px var(--titulos); color: #2A2340; margin-top: 2px; }
+.elige-personaje button { min-width: 150px; }
+.elige-personaje button svg { display: block; }
+.elige-personaje button span { font: 800 15px var(--titulos); }
+
+/* ---------- Enemigos ---------- */
+.sl.pl-enemigos { background: linear-gradient(180deg, var(--fondo), #EAF2E2); }
+.ene-arena .ene-flota, .ene-arena .ene-golpe, .ene-arena .en-cuerpo, .ene-arena .en-ala, .ene-arena .en-vuela { transform-box: fill-box; }
+.ene-arena .ene-flota { transform-origin: 50% 100%; animation: duelo-flota 1.6s ease-in-out infinite; }
+.ene-arena .en-cuerpo { transform-origin: 50% 100%; animation: ene-respira 1.3s ease-in-out infinite; }
+.ene-arena .en-vuela { animation: ene-vuela 1.1s ease-in-out infinite; }
+.ene-arena .en-ala { transform-origin: 100% 40%; animation: ene-aleteo .28s ease-in-out infinite alternate; }
+.ene-arena .en-ala-b { transform-origin: 0% 40%; }
+.ene-arena .tajo .sk-espada { animation: duelo-tajo .55s ease-in-out; }
+.ene-arena .golpeado { animation: duelo-golpeado .5s steps(2, jump-none) 1; }
+.ene-arena #eh.vencido .ene-golpe { transform-origin: 50% 100%; animation: duelo-cae-sparky .7s ease-in forwards; }
+.ene-arena .duelo-combo { right: auto; left: 52%; top: 30%; }
+@keyframes ene-respira { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.04, .95); } }
+@keyframes ene-vuela { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes ene-aleteo { from { transform: scaleY(1); } to { transform: scaleY(.55); } }
+
+/* ---------- Clavados de pingüino ---------- */
+.sl.pl-pinguino { background: linear-gradient(180deg, var(--fondo), #E3F3FA); }
+.ping-arena { background: #5FB4E6; }
+.ping-cartel { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%) scale(.4); opacity: 0; z-index: 4; pointer-events: none; font: 800 46px var(--titulos); color: #FFF; white-space: nowrap; letter-spacing: 1px; -webkit-text-stroke: 2px #2A2340; text-shadow: 0 5px 0 #1E6F96, 0 10px 24px rgba(0, 0, 0, .35); }
+.ping-cartel.mal { text-shadow: 0 5px 0 #B23A2A, 0 10px 24px rgba(0, 0, 0, .35); }
+.ping-cartel.on { animation: duelo-cartel 1.6s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+.ping-total { position: absolute; right: 12px; top: 10px; z-index: 3; }
+
+/* ---------- El perro y su plato ---------- */
+.sl.pl-perro { background: linear-gradient(180deg, var(--fondo), #EEF7E8); }
+.perro-juego { position: absolute; left: 44px; right: 44px; top: 108px; bottom: 30px; border: 4px solid #2A2340; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 0 rgba(42, 35, 64, .18); background: #CFE9F5; touch-action: none; }
+.perro-juego > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.perro-cuenta { position: absolute; left: 14px; top: 12px; z-index: 3; display: flex; gap: 8px; }
+.perro-carta { position: absolute; left: 50%; top: 18px; width: 560px; margin-left: -280px; z-index: 5; background: #fff; border: 4px solid #2A2340; border-radius: 22px; padding: 16px 22px; box-shadow: 0 8px 0 rgba(42, 35, 64, .22); display: flex; gap: 14px; align-items: center; cursor: grab; transition: left .45s cubic-bezier(.3, .9, .4, 1), top .45s cubic-bezier(.3, .9, .4, 1), transform .45s, opacity .35s; touch-action: none; user-select: none; -webkit-user-select: none; }
+.perro-carta.card-d { cursor: grab; }
+.perro-carta.dragging { transition: none; z-index: 9; box-shadow: 0 16px 30px rgba(42, 35, 64, .3); }
+.perro-carta.sel { border-color: var(--amarillo); box-shadow: 0 0 0 5px rgba(255, 212, 0, .45), 0 8px 0 rgba(42, 35, 64, .22); }
+.perro-carta .em { font-size: 40px; flex: none; }
+.perro-carta .afirmacion { font: 800 22px/1.3 var(--titulos); color: #2A2340; }
+.perro-carta .apoyo { font: italic 16px var(--texto); color: var(--gris); margin-top: 4px; }
+.perro-carta.comida { opacity: 0; transform: scale(.15) rotate(-20deg); }
+.perro-plato { position: absolute; bottom: 14px; width: 300px; height: 230px; z-index: 4; border-radius: 30px; border: 4px dashed transparent; display: flex; align-items: flex-start; justify-content: center; padding-top: 10px; cursor: pointer; transition: border-color .2s, background .2s; }
+.perro-plato.listo { border-color: rgba(42, 35, 64, .45); background: rgba(255, 255, 255, .25); }
+.perro-plato.mal { border-color: var(--mal); }
+.perro-plato .etiqueta { font: 800 22px var(--titulos); color: #fff; padding: 8px 22px; border-radius: 999px; border: 3px solid #2A2340; box-shadow: 0 5px 0 rgba(42, 35, 64, .3); pointer-events: none; }
+.perro-plato.v { left: 40px; } .perro-plato.v .etiqueta { background: var(--ok); }
+.perro-plato.f { right: 40px; } .perro-plato.f .etiqueta { background: var(--mal); }
+.perro-juego .perro-cola, .perro-juego .perro-cabeza, .perro-juego .perro-oreja-a, .perro-juego .perro-oreja-b, .perro-juego #perro-g, .perro-juego .corazon-pe { transform-box: fill-box; }
+.perro-juego .perro-cola { transform-origin: 0% 100%; animation: perro-cola 1.2s ease-in-out infinite; }
+.perro-juego .feliz .perro-cola { animation-duration: .22s; }
+.perro-juego .perro-cabeza { transform-origin: 50% 100%; transition: transform .25s; }
+.perro-juego .perro-oreja-a { transform-origin: 80% 100%; }
+.perro-juego .perro-oreja-b { transform-origin: 20% 100%; }
+.perro-juego .atento .perro-oreja-a { animation: perro-oreja .4s ease-in-out 2 alternate; }
+.perro-juego .atento .perro-oreja-b { animation: perro-oreja-b .4s ease-in-out 2 alternate; }
+.perro-juego .comiendo .perro-cabeza { animation: perro-come .32s ease-in-out infinite alternate; }
+.perro-juego .comiendo .boca-abierta { opacity: 1; animation: perro-boca .32s steps(1) infinite alternate; }
+.perro-juego .comiendo .boca-cerrada { opacity: 0; }
+.perro-juego .no .perro-cabeza { animation: perro-no .9s ease-in-out; }
+.perro-juego .empuja .perro-cabeza { animation: perro-empuja .7s ease-in-out; }
+.perro-juego .corazon-pe { transform-origin: center; animation: perro-corazon 1.1s ease-out forwards; }
+@keyframes perro-cola { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(14deg); } }
+@keyframes perro-oreja { to { transform: rotate(-10deg); } }
+@keyframes perro-oreja-b { to { transform: rotate(10deg); } }
+@keyframes perro-come { from { transform: translateY(6px) rotate(0deg); } to { transform: translateY(10px) rotate(3deg); } }
+@keyframes perro-boca { 0% { opacity: 1; } 100% { opacity: .2; } }
+@keyframes perro-no { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(-12deg); } 45% { transform: rotate(12deg); } 70% { transform: rotate(-9deg); } 90% { transform: rotate(5deg); } }
+@keyframes perro-empuja { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(8px) scale(1.04); } 60% { transform: translateY(2px); } }
+@keyframes perro-corazon { 0% { transform: translateY(0) scale(.3); opacity: 0; } 25% { opacity: 1; transform: translateY(-6px) scale(1); } 100% { transform: translateY(-30px) scale(1.1); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ene-arena .ene-flota, .ene-arena .en-cuerpo, .ene-arena .en-vuela, .ene-arena .en-ala, .perro-juego .perro-cola { animation: none; }
+}
