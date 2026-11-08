@@ -209,6 +209,8 @@ REGLAS DE ORO (si una se rompe, la actividad no sirve)
    - super_dato: cada [[palabra]] es la única que encaja en su hueco.
    - quien_es_quien: parejas personaje ↔ lo que hizo (máx. 12 palabras); el campo "termino" es el nombre exacto del personaje.
 6. Distractores de la MISMA categoría y creíbles. Nada de "todas las anteriores".
+   Opción múltiple y duelo llevan 4 opciones distintas; solo si el tema tiene exactamente 3
+   formas posibles (por ejemplo used to / would / be used to), 3 opciones.
 7. Idioma: todo en {idioma_guia}. Con apoyo "linea_corta", agrega "apoyo" solo en
    pistas e instrucciones. Con "bilingue_completo", cada texto lleva su gemelo
    "_apoyo" (pregunta_apoyo, retro_incorrecta_apoyo, ideas_apoyo…); las opciones y

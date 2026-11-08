@@ -432,7 +432,11 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       const antes = b.actividades.length;
       b.actividades = b.actividades.filter((a: any) => revisarActividad(a, citas, nivel, huecos, b.id, descartes, idioma));
       b.mini_examen = b.mini_examen.filter((a: any) => revisarActividad(a, citas, nivel, huecos, b.id, descartes, idioma));
-      if (b.actividades.length < Math.max(6, antes * 0.5)) huecos.push(`Bloque ${b.id}: quedaron ${b.actividades.length} actividades válidas de ${antes}; faltan ${Math.max(0, 10 - b.actividades.length)} de opción múltiple o verdadero/falso`);
+      // Hueco si quedan menos de la mitad de las actividades que el plan pidió (los juegos de una pieza cuentan 1), con un
+      // mínimo de 6 solo si el plan pidió 6 o más: un bloque planeado con ordenar y clasificar no tiene hueco.
+      const pbPlan = (D.plan.bloques ?? []).find((x: any) => x.id === b.id);
+      const esperado = pbPlan ? Object.entries(pbPlan.juegos ?? {}).reduce((n: number, [k, v]) => n + (POR_PIEZA.includes(k) ? Math.min(1, ent(v)) : ent(v)), 0) : antes;
+      if (b.actividades.length < Math.max(Math.min(6, esperado), esperado * 0.5)) huecos.push(`Bloque ${b.id}: quedaron ${b.actividades.length} actividades válidas de ${antes}; faltan ${Math.max(0, 10 - b.actividades.length)} de opción múltiple o verdadero/falso`);
       for (const pd of D.plan.puntos_dificiles ?? []) { const n = b.actividades.filter((a: any) => a.punto_dificil === pd.id).length; if (n > 0 && n < 3) huecos.push(`Punto difícil ${pd.id} '${pd.descripcion}' tiene ${n} actividad(es) en el bloque ${b.id}: faltan ${3 - n}`); }
     }
     D.huecos = huecos.slice(0, 8);
@@ -490,7 +494,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       if (piezas.length > 1) { b.pistas.splice(i, 1, ...piezas); notas.push(`${l.id} dividida en ${piezas.length} (${piezasIa ? "IA" : "código"})`); }
     }
     // Tope de slides: si la guía se pasa, se fusiona y luego se recorta (ver recortarBloques).
-    const recortes = recortarBloques(D.bloques, topeDe(plan), perfil);
+    const recortes = recortarBloques(D.bloques, topeDe(plan), perfil, plan.primera_actividad ?? "");
     D.slides = { ...(D.slides ?? {}), pistas_divididas: notas, recortes, tras_reparar: estimarSlides(D.bloques) };
     await guardar(supabase, t, { datos: D, paso: "verificar", progreso: { pct: 78, mensaje: "Verificando los datos 🔎", paso: "verificar" }, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
     return "verificar";
@@ -660,7 +664,7 @@ export function ajustarPlan(plan: any): string[] {
       if (pb.pistas.length > 3) { notas.push(`${pb.id}: sin la pista "${pb.pistas.pop()}"`); hecho = true; break; }
       const js = juegosDelPlan(pb);
       if (js.includes("duelo") && js.includes("mini_examen") && js.length > 2) { quitar(pb, "mini_examen"); notas.push(`${pb.id}: sin mini-examen (cierra con duelo)`); hecho = true; break; }
-      const k = js.length > 2 ? PRESCINDIBLES.find((x) => js.includes(x)) : undefined;
+      const k = js.length > 2 ? PRESCINDIBLES.find((x) => js.includes(x) && !(pb === plan.bloques[0] && x === juegoDe(String(plan.primera_actividad ?? "")))) : undefined;
       if (k) { quitar(pb, k); notas.push(`${pb.id}: sin ${k}`); hecho = true; break; }
       if (pb.pistas.length > 2) { notas.push(`${pb.id}: sin la pista "${pb.pistas.pop()}"`); hecho = true; break; }
     }
@@ -742,7 +746,9 @@ export function dividirPistaCodigo(p: any, perfil = "juvenil"): any[] {
 
 // Si la guía real se pasa del tope: primero se fusiona (varios conceptos del bloque en uno, dos pistas cortas en una)
 // y luego se recortan juegos prescindibles; nunca se deja un bloque con menos de 2 juegos ni con menos de 2 pistas.
-export function recortarBloques(bloques: any[], tope: number, perfil = "juvenil"): string[] {
+export function recortarBloques(bloques: any[], tope: number, perfil = "juvenil", primera = ""): string[] {
+  // El juego que el plan eligió como primera actividad (en el bloque 1) no se recorta.
+  const protegido = (b: any, tipo: string) => b === bloques[0] && juegoDe(tipo) === primera;
   const notas: string[] = [];
   let guarda = 80;
   while (estimarSlides(bloques) > tope && guarda-- > 0) {
@@ -773,7 +779,7 @@ export function recortarBloques(bloques: any[], tope: number, perfil = "juvenil"
       if (hecho) break;
       // 4) Mini-examen si el bloque ya cierra con duelo; luego juegos prescindibles.
       if (juegosDelBloque(b) > 2 && b.mini_examen.length && b.actividades.some((a: any) => a.tipo === "duelo")) { b.mini_examen = []; notas.push(`${b.id}: sin mini-examen (cierra con duelo)`); hecho = true; break; }
-      const k = juegosDelBloque(b) > 2 ? PRESCINDIBLES.find((t) => b.actividades.some((a: any) => a.tipo === t)) : undefined;
+      const k = juegosDelBloque(b) > 2 ? PRESCINDIBLES.find((t) => !protegido(b, t) && b.actividades.some((a: any) => a.tipo === t)) : undefined;
       if (k) { const i = b.actividades.findLastIndex((a: any) => a.tipo === k); const fuera = POR_PIEZA.includes(k) ? [b.actividades[i]] : b.actividades.filter((a: any) => a.tipo === k); b.actividades = b.actividades.filter((a: any) => !fuera.includes(a)); notas.push(`${b.id}: sin ${k}`); hecho = true; break; }
     }
     if (!hecho) { notas.push(`no se pudo bajar de ${estimarSlides(bloques)} slides sin quitar teoría`); break; }
@@ -996,9 +1002,10 @@ function revisarActividad(a: any, citas: string[], nivel: string, huecos: string
     if (palabras(texto) > tope) return fuera(`pregunta de ${palabras(texto)} palabras (máx. ${tope})`);
     if (!a.retro_incorrecta || !a.retro_correcta) { huecos.push(`Actividad ${a.id} sin retroalimentación`); return fuera("sin retroalimentación"); }
     if (a.tipo === "opcion_multiple" || a.tipo === "duelo") {
-      if (!Array.isArray(a.opciones) || a.opciones.length !== 4) return fuera(`${Array.isArray(a.opciones) ? a.opciones.length : 0} opciones (deben ser 4)`);
-      if (!(a.correcta >= 0 && a.correcta < 4)) return fuera(`respuesta correcta ilegible (${JSON.stringify(a.correcta)})`);
-      if (new Set(a.opciones.map((o: string) => normaliza(o))).size < 4) return fuera("opciones repetidas");
+      // 3 o 4 opciones: el reproductor muestra las que haya (en gramática a veces solo hay 3 formas posibles).
+      if (!Array.isArray(a.opciones) || a.opciones.length < 3 || a.opciones.length > 4) return fuera(`${Array.isArray(a.opciones) ? a.opciones.length : 0} opciones (deben ser 3 o 4)`);
+      if (!(a.correcta >= 0 && a.correcta < a.opciones.length)) return fuera(`respuesta correcta ilegible (${JSON.stringify(a.correcta)})`);
+      if (new Set(a.opciones.map((o: string) => normaliza(o))).size < a.opciones.length) return fuera("opciones repetidas");
     }
     if (a.tipo === "completar" && (!a.respuesta || !Array.isArray(a.distractores) || a.distractores.length < 2)) return fuera(!a.respuesta ? "completar sin respuesta" : "completar con menos de 2 distractores");
     if (a.tipo === "verdadero_falso" && typeof a.es_verdadera !== "boolean") return fuera(`verdadero o falso ilegible (${JSON.stringify(a.es_verdadera)})`);
