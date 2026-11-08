@@ -4,7 +4,7 @@ export const CONFIG = {
   api: "https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/sparked",
   sitio: "https://sparkeducation-mx.com/sparked/",
   precio: 100,
-  paginasMax: 15,
+  paginasMax: 25,
   diasAcceso: 7,
   dispositivos: 2,
 };
