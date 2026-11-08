@@ -1001,7 +1001,7 @@ export function capaJuez(k, dx, dy, idTab) {
     : k === 1 ? `<path d="M9.6 9 L7.8 8 L7.8 10 Z M9.6 9 L11.4 8 L11.4 10 Z" fill="#D32F2F" stroke="#7A1010" stroke-width=".2"/><circle cx="9.6" cy="9" r=".45" fill="#9A1B1B"/>`
     : `<circle cx="10.2" cy="5.2" r="1.25" fill="#BFE6FF" fill-opacity=".25" stroke="#C9921E" stroke-width=".32"/><circle cx="12.6" cy="5.5" r="1" fill="#BFE6FF" fill-opacity=".25" stroke="#C9921E" stroke-width=".32"/><path d="M11.45 5.2 L11.6 5.3" stroke="#C9921E" stroke-width=".3"/>`;
   return grupo(dx, dy, `<g transform="translate(16 0) scale(-1 1)">${cuerpoPinguino({ aleta: 0 })}${disfraz}</g>
-    <g id="${idTab}" transform="translate(0 16)"><rect x="7.6" y="-2" width=".7" height="12" rx=".3" fill="#9C7442"/><rect x="2.6" y="-9" width="10.7" height="7.6" rx="1.2" fill="#FFFFFF" stroke="#2A2340" stroke-width=".45"/><rect x="2.6" y="-9" width="10.7" height="2" rx="1" fill="#E9EDF5"/><text id="${idTab}n" x="7.95" y="-2.9" font-size="5.2" font-weight="800" text-anchor="middle" fill="#2A2340" font-family="Outfit, Arial, sans-serif">–</text></g>`);
+    <g id="${idTab}" transform="translate(0 16)" opacity="0"><rect x="7.6" y="-2" width=".7" height="12" rx=".3" fill="#9C7442"/><rect x="2.6" y="-9" width="10.7" height="7.6" rx="1.2" fill="#FFFFFF" stroke="#2A2340" stroke-width=".45"/><rect x="2.6" y="-9" width="10.7" height="2" rx="1" fill="#E9EDF5"/><text id="${idTab}n" x="7.95" y="-2.9" font-size="5.2" font-weight="800" text-anchor="middle" fill="#2A2340" font-family="Outfit, Arial, sans-serif">–</text></g>`);
 }
 
 // ---------- Escena de los clavados (172 × 140): iceberg con resbaladilla, mar y témpano del jurado ----------

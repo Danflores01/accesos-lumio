@@ -231,6 +231,7 @@ export const PLANTILLAS = {
   montana: ["nevada", "volcan", "aurora"],
   castillo: ["noche", "amanecer", "dragon"],
   enemigos: ["bosque", "cueva", "desierto"],
+  pinguino: ["polo", "aurora", "atardecer"],
   puertas: ["torre", "mansion", "bodega"], // alias viejo: se juega como enemigos
   swipe: ["arcade", "cartas", "neon"],
   superdato: ["laboratorio", "pergamino", "terminal"],
@@ -261,7 +262,7 @@ export function armarSlides(c) {
   const calent = c.calentamiento.length ? { k: "carrera", t: `🔥 ${t(idioma, "calentamiento")}`, ids: c.calentamiento, tag: t(idioma, "calentamiento"), blk: 0, plantilla: elegir("carrera"), calentamiento: true } : null;
   const calentDespues = !!calent && !!c.primera_actividad && c.primera_actividad !== "calentamiento";
   if (calent && !calentDespues) S.push(calent);
-  const quizJuegos = ["carrera", "enemigos", "montana", "castillo"];
+  const quizJuegos = ["carrera", "enemigos", "montana", "castillo", "pinguino"];
   c.bloques.forEach((b, bi) => {
     const nb = bi + 1;
     // teoría: 2 o 3 pistas por slide; la última slide de teoría del bloque lleva "Ojo" y "Palabras clave".
@@ -295,7 +296,7 @@ export function armarSlides(c) {
     const por = {};
     const add = (tipo, s) => (por[tipo] ??= []).push(s);
     const mc = acts.filter((a) => a.tipo === "opcion_multiple" || a.tipo === "completar").map((a) => a.id);
-    if (mc.length) { const juego = b.juego === "duelo" ? "duelo" : quizJuegos[bi % quizJuegos.length]; add("opcion_multiple", { k: juego, t: `${{ carrera: "🏎️", enemigos: "👾", puertas: "👾", montana: "🧗", castillo: "🏰", duelo: "⚔️" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
+    if (mc.length) { const juego = b.juego === "duelo" ? "duelo" : quizJuegos[bi % quizJuegos.length]; add("opcion_multiple", { k: juego, t: `${{ carrera: "🏎️", enemigos: "👾", puertas: "👾", montana: "🧗", castillo: "🏰", pinguino: "🐧", duelo: "⚔️" }[juego]} ${b.titulo}`, ids: mc, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir(juego) }); }
     const vf = acts.filter((a) => a.tipo === "verdadero_falso");
     if (vf.length) add("verdadero_falso", { k: "swipe", t: `⏱ ${t(idioma, "vf_express")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("swipe") });
     acts.filter((a) => a.tipo === "super_dato").forEach((a) => add("super_dato", { k: "superdato", t: "⭐ Súper dato", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("superdato") }));

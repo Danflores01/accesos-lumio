@@ -76,6 +76,11 @@ export const sonido = {
   salto() { tono({ f: 300, f2: 760, dur: .2, vol: .06 }); },
   whoosh() { rafaga({ dur: .26, vol: .06, f: 500, f2: 2600, q: .8 }); },
   golpe() { tono({ f: 130, f2: 60, dur: .22, vol: .09 }); rafaga({ dur: .07, vol: .05, tipo: "lowpass", f: 500 }); },
+  // Juegos nuevos (8 nov 2026): chapuzón del pingüino (fuerte = bala de cañón o panzazo), ñam del perro y ladrido.
+  chapuzon(fuerte = false) { rafaga({ dur: fuerte ? .7 : .45, vol: fuerte ? .1 : .07, tipo: "lowpass", f: 2600, f2: 220, q: .7 }); rafaga({ dur: .2, vol: .04, f: 3200, f2: 900, inicio: .05, q: 1.5 }); tono({ f: 180, f2: 70, dur: .25, vol: fuerte ? .06 : .03 }); },
+  plaf() { rafaga({ dur: .16, vol: .11, tipo: "lowpass", f: 900, f2: 300 }); tono({ f: 110, f2: 55, dur: .2, vol: .08 }); },
+  nam() { [0, .16, .32].forEach((t) => { rafaga({ dur: .07, vol: .05, tipo: "lowpass", f: 1400, inicio: t }); tono({ f: 240, f2: 160, dur: .07, vol: .03, inicio: t }); }); },
+  ladrido() { tono({ f: 520, f2: 300, dur: .12, tipo: "sawtooth", vol: .045, filtro: 1500, q: 3 }); tono({ f: 560, f2: 320, dur: .12, tipo: "sawtooth", vol: .045, filtro: 1500, q: 3, inicio: .2 }); },
   // Voz de Sparky (Daniel, 7 nov 2026): bips robóticos de alegría cuando lo tocan, uno distinto para cada reacción.
   // Solo suena con un toque o un clic de la persona (nunca solo), y respeta el botón de silencio de las guías.
   sparky(reaccion = "brinco") {

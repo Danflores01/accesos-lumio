@@ -6,7 +6,7 @@
 import { esc, h, mezclar, toast, inicio, fin, gameOver, arrastrable, panelPregunta, temporizador, personaje, selectorPersonaje, conectarSelector } from "./ui.js";
 import { marco } from "./teoria.js";
 import { sonido } from "./sonido.js";
-import { escenaCiudad, escenaMontana, escenaCastillo, escenaPlaneta, escenaSvg, capaVehiculo, vehiculo, capaEscalador, capaSoldado, capaArquero, capaIcono, capaSparky, icono, COLORES_DE_COCHE, escenaDuelo, capaDragonDuelo, capaHeroe, capaEscaladorDe, capaArqueroDe, escenaEnemigos, capaEnemigo, ENEMIGOS } from "./arte.js";
+import { escenaCiudad, escenaMontana, escenaCastillo, escenaPlaneta, escenaSvg, capaVehiculo, vehiculo, capaEscalador, capaSoldado, capaArquero, capaIcono, capaSparky, icono, COLORES_DE_COCHE, escenaDuelo, capaDragonDuelo, capaHeroe, capaEscaladorDe, capaArqueroDe, escenaEnemigos, capaEnemigo, ENEMIGOS, escenaPinguino, capaPinguino, capaJuez } from "./arte.js";
 
 const W = 172, H = 140;
 const TEMAS = {
@@ -356,6 +356,146 @@ export function castillo(s, ctx) {
     pintarVidas(); preguntar();
   };
   conectarSelector(arranque(el, T, "castillo", () => jugar(s.ids.slice()), selectorPersonaje(ctx)), previa);
+  return el;
+}
+
+// ---------- CLAVADOS DE PINGÜINO (8 nov 2026): una pregunta por turno, como la carrera ----------
+// Un pingüino en lo alto de un iceberg con resbaladilla y un jurado de tres pingüinos (sombrero, moño y lentes).
+// Acierto = se desliza, hace un clavado épico (5 distintos) y el jurado levanta 10. Error o tiempo agotado = el clavado
+// sale mal (5 fracasos distintos) y el jurado levanta notas bajas. Nunca se repite seguido el mismo clavado ni el mismo
+// fracaso. Cada pregunta se registra en ctx.resultados (panelPregunta); al final se muestra el promedio del jurado.
+const ESCENARIOS_PINGUINO = ["polo", "aurora", "atardecer"];
+export function pinguino(s, ctx) {
+  if (esDuelo(s, ctx)) return duelo(s, ctx);
+  const T = ctx.t;
+  if (!String(s.t).startsWith("🐧")) s.t = `🐧 ${String(s.t).replace(/^\S+\s+/, "") || T("pinguino")}`;
+  const el = marco(s, ctx); el.classList.add("pl-pinguino");
+  const ids = s.ids, N = ids.length, TL = 20, E = .9, EJ = .8;
+  const esc0 = escenaPinguino(W, H, ctx.c.semilla + ctx.cur, ESCENARIOS_PINGUINO.includes(s.plantilla) ? s.plantilla : "polo");
+  const nombresBien = String(T("clavados")).split("|"), nombresMal = String(T("fallas")).split("|");
+  const cy = 9.4 * E; // del centro del pingüino a sus patas
+  const inicioP = { x: esc0.arriba.x, y: esc0.arriba.y - cy };
+  const POSES_PG = { parado: { aleta: 0 }, panza: { aleta: 15 }, bola: { aleta: -35 }, brazos: { aleta: 110 } };
+  const dibujo = (pose, ojos) => capaPinguino({ ...(POSES_PG[pose] ?? POSES_PG.parado), ojos }, 0, 0);
+  const jueces = esc0.jueces.map((x, k) => `<g transform="translate(${(x - 8 * EJ).toFixed(2)} ${(esc0.pisoJueces - 19.4 * EJ).toFixed(2)}) scale(${EJ})">${capaJuez(k, 0, 0, "jz" + k)}</g>`).join("");
+  const escena = () => escenaSvg(esc0.svg, W, H, `<g id="hielo"></g><g id="pg" transform="translate(${inicioP.x} ${inicioP.y}) scale(${E}) translate(-8 -10)"><g id="pgc">${dibujo("parado", "normal")}</g></g><g id="fx"></g>${jueces}`);
+  el.appendChild(h(`<div class="juego"><div class="escena-caja ping-arena" id="caja"></div>${panel(ctx, `<div class="pill" id="pos"></div>`)}</div>`));
+  fondoPrevio(el, escena());
+
+  const jugar = () => {
+    let i = 0, aciertos = 0, timer = null, anim = null, ultimoBien = -1, ultimoMal = -1, puntos = 0;
+    const promedios = [];
+    const caja = el.querySelector("#caja");
+    caja.innerHTML = escena() + `<div style="position:absolute;left:12px;top:10px;display:flex;gap:8px">${hudPill("", "hudcl")}${hudPill("", "hudpt")}</div><div class="ping-cartel" id="cartel"></div>`;
+    const svg = caja.querySelector("svg"), gP = svg.querySelector("#pg"), gC = svg.querySelector("#pgc"), fx = svg.querySelector("#fx"), hielo = svg.querySelector("#hielo");
+    let poseAct = "parado:normal";
+    const ponerPose = (pose, ojos = "normal") => { const k = pose + ":" + ojos; if (k !== poseAct) { poseAct = k; gC.innerHTML = dibujo(pose, ojos); } };
+    const particulas = [];
+    const textos = () => { el.querySelector("#hudcl").textContent = `🐧 ${Math.min(i + 1, N)}/${N}`; el.querySelector("#hudpt").textContent = `★ ${puntos}`; el.querySelector("#pos").textContent = `${T("jurado")}: ${promedios.length ? (promedios.reduce((a, b) => a + b, 0) / promedios.length).toFixed(1) : "–"} · ${aciertos} ✓`; };
+    const cartel = (txt, ok) => { const c = caja.querySelector("#cartel"); c.className = "ping-cartel" + (ok ? "" : " mal"); c.textContent = txt; void c.offsetWidth; c.classList.add("on"); };
+    // Gotas del chapuzón (y nieve en el fracaso de la nieve): caen con gravedad dentro del bucle.
+    const salpicar = (x, y, n, abierto = 1, color = "#E6F7FF") => {
+      for (let k = 0; k < n; k++) { const a = -Math.PI / 2 + (Math.random() - .5) * 1.6 * abierto; const v = 30 + Math.random() * 45; const c = document.createElementNS("http://www.w3.org/2000/svg", "circle"); c.setAttribute("r", (.6 + Math.random() * 1.2).toFixed(2)); c.setAttribute("fill", color); fx.appendChild(c); particulas.push({ c, x, y, vx: Math.cos(a) * v * (abierto > 1 ? 1.4 : 1), vy: Math.sin(a) * v, vida: 1 }); }
+      const o = gSvg(`<ellipse cx="${x}" cy="${esc0.mar + 1}" rx="3" ry="1" fill="none" stroke="#fff" stroke-width=".8"><animate attributeName="rx" from="3" to="${14 * abierto}" dur=".8s" fill="freeze"/><animate attributeName="opacity" from=".9" to="0" dur=".8s" fill="freeze"/></ellipse>`);
+      fx.appendChild(o); ctx.luego(() => o.remove(), 900);
+    };
+    // Curva de la resbaladilla (cúbica) y su dirección.
+    const [P0, P1, P2, P3] = esc0.rampa;
+    const bez = (t) => { const u = 1 - t; return [u * u * u * P0[0] + 3 * u * u * t * P1[0] + 3 * u * t * t * P2[0] + t * t * t * P3[0], u * u * u * P0[1] + 3 * u * u * t * P1[1] + 3 * u * t * t * P2[1] + t * t * t * P3[1]]; };
+    const ang = (t) => { const a = bez(Math.max(0, t - .01)), b = bez(Math.min(1, t + .01)); return Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI; };
+    const [SX, SY] = esc0.salida;
+    // Fases de una animación: cada una dura "dur" ms y devuelve la posición, el giro y la pose para p de 0 a 1.
+    const caminar = { dur: 320, f: (p) => ({ x: inicioP.x + (P0[0] - inicioP.x) * p, y: inicioP.y + (P0[1] - cy - inicioP.y) * p - Math.abs(Math.sin(p * Math.PI * 3)) * 1.2, rot: Math.sin(p * Math.PI * 6) * 6, pose: "parado" }) };
+    const deslizar = (giro = 0) => ({ dur: 820, f: (p) => { const e = p * p * (1.6 - .6 * p); const [x, y] = bez(e); return { x, y: y - 3.2, rot: ang(e) + 90 + giro * p, pose: "panza" }; } });
+    const subida = { dur: 160, f: (p) => ({ x: P3[0] + (SX - P3[0]) * p, y: P3[1] - 3.2 + (SY - P3[1]) * p, rot: 90 - 10 * p, pose: "panza" }) };
+    const vuelo = (a, b, alto, dur, rotF, pose = "parado", extra = {}) => ({ dur, f: (p) => ({ x: a[0] + (b[0] - a[0]) * p, y: a[1] + (b[1] - a[1]) * p - alto * 4 * p * (1 - p), rot: rotF(p), pose: typeof pose === "function" ? pose(p) : pose, ...(typeof extra === "function" ? extra(p) : extra) }) });
+    const hundir = (x, rot) => ({ dur: 380, f: (p) => ({ x, y: esc0.mar + 2 + 12 * p, rot, pose: "parado", op: 1 - p }) });
+    const suave2 = (p) => p * p * (3 - 2 * p);
+    const entrada = () => [108 + Math.random() * 12, esc0.mar + 2];
+    // Los 5 clavados buenos.
+    const CLAVADOS = [
+      () => { const b = entrada(); return { fases: [caminar, deslizar(), subida, vuelo([SX, SY], b, 40, 1300, (p) => 80 + 1170 * suave2(p), (p) => p > .12 && p < .85 ? "bola" : "parado"), hundir(b[0], 180)], al: [[4, () => { salpicar(b[0], esc0.mar, 10, .6); sonido.chapuzon(); }]] }; },
+      () => { const b = entrada(); return { fases: [caminar, deslizar(), subida, vuelo([SX, SY], b, 36, 1250, (p) => 80 + 100 * suave2(p), "parado", (p) => ({ sx: Math.cos(p * Math.PI * 6) }))], al: [[4, () => { salpicar(b[0], esc0.mar, 9, .6); sonido.chapuzon(); }]], fin: hundir(b[0], 180) }; },
+      () => { const b = entrada(); return { fases: [caminar, deslizar(), subida, vuelo([SX, SY], b, 46, 1250, (p) => 80 + 720 * p, "bola")], al: [[4, () => { salpicar(b[0], esc0.mar, 26, 1.1); sonido.chapuzon(true); }]], fin: hundir(b[0], 180) }; },
+      () => { const b = entrada(); return { fases: [caminar, deslizar(), subida, vuelo([SX, SY], b, 50, 1450, (p) => 80 + 100 * suave2(p), (p) => p < .75 ? "brazos" : "parado")], al: [[4, () => { salpicar(b[0], esc0.mar, 5, .4); sonido.chapuzon(); }]], fin: hundir(b[0], 180) }; },
+      () => { const b = entrada(); return { fases: [caminar, deslizar(), subida, vuelo([SX, SY], b, 44, 1300, (p) => 80 - 980 * suave2(p), (p) => p > .1 && p < .8 ? "bola" : "parado")], al: [[4, () => { salpicar(b[0], esc0.mar, 10, .6); sonido.chapuzon(); }]], fin: hundir(b[0], -900) }; },
+    ];
+    // Los 5 fracasos.
+    const FALLAS = [
+      // panzazo: cae plano, con los brazos abiertos
+      () => { const b = [104 + Math.random() * 10, esc0.mar - 2]; return { fases: [caminar, deslizar(), subida, vuelo([SX, SY], b, 22, 950, (p) => 80 + 10 * p, "brazos", (p) => ({ ojos: p > .7 ? "mareado" : "normal" })), { dur: 600, f: (p) => ({ x: b[0], y: b[1] + 1.5 * p, rot: 90, pose: "brazos", ojos: "mareado" }) }], al: [[4, () => { salpicar(b[0], esc0.mar, 24, 2.2); sonido.plaf(); sonido.chapuzon(true); }]], fin: hundir(b[0], 90) }; },
+      // resbalón: da vueltas sin control por la resbaladilla y cae de lado
+      () => { const b = [86 + Math.random() * 6, esc0.mar + 1]; return { fases: [caminar, deslizar(620), { dur: 160, f: (p) => ({ x: P3[0] + (SX - P3[0]) * p, y: P3[1] - 3.2 + (SY - P3[1]) * p, rot: ang(1) + 90 + 620 + 200 * p, pose: "brazos", ojos: "mareado" }) }, vuelo([SX, SY], b, 6, 520, (p) => 780 + 260 * p, "brazos", { ojos: "mareado" })], al: [[4, () => { salpicar(b[0], esc0.mar, 14, 1.2); sonido.chapuzon(); }]], fin: hundir(b[0], 1040) }; },
+      // choque con el hielo: un témpano se atraviesa, se pega y cae
+      () => { const c = [96, 80]; return { hielo: `<g opacity="0"><animate attributeName="opacity" from="0" to="1" dur=".4s" fill="freeze"/><path d="M89 ${esc0.mar + 1} L92 84 L99 79 L105 82 L107 ${esc0.mar + 1} Z" fill="#E6F7FF" stroke="#7CB8D2" stroke-width=".4"/><path d="M99 79 L105 82 L107 ${esc0.mar + 1} L101 ${esc0.mar + 1} Z" fill="#9ED3EA" opacity=".7"/></g>`, fases: [caminar, deslizar(), subida, vuelo([SX, SY], [c[0] - 6, c[1] - 2], 16, 700, (p) => 80 + 30 * p, "parado"), { dur: 260, f: (p) => ({ x: c[0] - 6 - 5 * p, y: c[1] - 2 - 4 * Math.sin(Math.PI * p), rot: 110 - 70 * p, pose: "brazos", ojos: "mareado" }) }, vuelo([c[0] - 11, c[1] - 2], [c[0] - 12, esc0.mar + 1], 0, 420, (p) => 40 + 160 * p, "brazos", { ojos: "mareado" })], al: [[4, () => { sonido.golpe(); const g = gSvg(`<g><circle cx="${c[0] - 4}" cy="${c[1] - 5}" r="1.4" fill="#FFE45C"/><circle cx="${c[0] - 8}" cy="${c[1] - 8}" r="1" fill="#FFE45C"/><circle cx="${c[0]}" cy="${c[1] - 8}" r="1.1" fill="#FFE45C"/></g>`); fx.appendChild(g); ctx.luego(() => g.remove(), 900); }], [6, () => { salpicar(c[0] - 12, esc0.mar, 10, .8); sonido.chapuzon(); }]], fin: hundir(c[0] - 12, 200) }; },
+      // se quedó corto: aterriza en la orilla del iceberg y se resbala despacito al agua
+      () => { const b = [66, esc0.mar - 5]; return { fases: [caminar, deslizar(), subida, vuelo([SX, SY], b, 3, 420, (p) => 80 + 30 * p, "panza"), { dur: 380, f: (p) => ({ x: b[0] + Math.sin(p * Math.PI * 4) * .6, y: b[1], rot: 110, pose: "brazos" }) }, { dur: 900, f: (p) => ({ x: b[0] + 6 * p, y: b[1] + 7 * p * p, rot: 110 + 40 * p, pose: "brazos", ojos: "mareado" }) }], al: [[4, () => sonido.plaf()], [6, () => { salpicar(b[0] + 6, esc0.mar, 7, .7); sonido.chapuzon(); }]], fin: hundir(b[0] + 6, 150) }; },
+      // de cabeza en la nieve: brinca antes de la resbaladilla y se clava en un montón de nieve
+      () => { const m = [40, 55]; return { hielo: `<g><ellipse cx="${m[0]}" cy="${m[1] + 1}" rx="9" ry="4" fill="#FFFFFF" stroke="#BFE3F2" stroke-width=".4"/><ellipse cx="${m[0] - 2}" cy="${m[1] - 1}" rx="5" ry="2.2" fill="#FFFFFF"/></g>`, fases: [vuelo([inicioP.x, inicioP.y], [m[0], m[1] - 2], 14, 760, (p) => 200 * suave2(p), (p) => p < .5 ? "brazos" : "parado"), { dur: 1400, f: (p) => ({ x: m[0] + Math.sin(p * Math.PI * 7) * .5, y: m[1] - 2, rot: 180 + Math.sin(p * Math.PI * 9) * 7, pose: "parado", ojos: "mareado" }) }], al: [[1, () => { salpicar(m[0], m[1] - 3, 16, 1, "#FFFFFF"); sonido.plaf(); }]], frente: `<ellipse cx="${m[0]}" cy="${m[1] + .5}" rx="7.5" ry="2.6" fill="#FFFFFF"/>` }; },
+    ];
+    const elegirSin = (n, ultimo) => { let k; do { k = Math.floor(Math.random() * n); } while (n > 1 && k === ultimo); return k; };
+    const clavar = (ok, listo) => {
+      const k = ok ? (ultimoBien = elegirSin(CLAVADOS.length, ultimoBien)) : (ultimoMal = elegirSin(FALLAS.length, ultimoMal));
+      const a = (ok ? CLAVADOS : FALLAS)[k]();
+      if (a.fin) a.fases.push(a.fin);
+      hielo.innerHTML = a.hielo ?? "";
+      fx.querySelectorAll(".frente").forEach((x) => x.remove());
+      if (a.frente) fx.appendChild(gSvg(a.frente, "")).classList.add("frente");
+      a.fases.push({ dur: 450, f: (p) => ({ x: inicioP.x, y: inicioP.y - 6 * (1 - p), rot: 0, pose: "parado", op: p }) });
+      anim = { ...a, t0: performance.now(), hechos: new Set(), listo, nombre: (ok ? nombresBien : nombresMal)[k] ?? "", ok };
+      sonido.whoosh();
+      const nombre = anim.nombre, este = anim, total = a.fases.reduce((n, f) => n + f.dur, 0);
+      ctx.luego(() => cartel(nombre, ok), ok ? 2300 : 1900);
+      ctx.luego(() => { if (anim === este) terminarAnim(); }, total + 700);
+    };
+    // Fin de la animación (también por temporizador, por si el navegador frena los cuadros con la pestaña oculta).
+    const terminarAnim = () => { if (!anim) return; const a0 = anim; a0.fases.forEach((_, k) => { if (!a0.hechos.has(k)) { a0.hechos.add(k); a0.al?.filter(([n]) => n === k + 1).forEach(([, f]) => f()); } }); hielo.innerHTML = ""; fx.querySelectorAll(".frente").forEach((x) => x.remove()); anim = null; pintarP({ x: inicioP.x, y: inicioP.y, rot: 0 }); a0.listo?.(); };
+    const pintarP = (st) => {
+      ponerPose(st.pose ?? "parado", st.ojos ?? (anim?.ok ? "normal" : "normal"));
+      gP.setAttribute("transform", `translate(${st.x.toFixed(2)} ${st.y.toFixed(2)}) rotate(${(st.rot ?? 0).toFixed(1)}) scale(${((st.sx ?? 1) * E).toFixed(3)} ${E}) translate(-8 -10)`);
+      gP.setAttribute("opacity", (st.op ?? 1).toFixed(2));
+    };
+    bucle(el, ctx, (dt, t, fuera) => {
+      if (fuera) return false;
+      if (anim) {
+        let e = t - anim.t0, k = 0;
+        while (k < anim.fases.length && e > anim.fases[k].dur) { e -= anim.fases[k].dur; if (!anim.hechos.has(k)) { anim.hechos.add(k); anim.al?.filter(([n]) => n === k + 1).forEach(([, f]) => f()); } k++; }
+        if (k >= anim.fases.length) terminarAnim();
+        else pintarP(anim.fases[k].f(Math.min(1, e / anim.fases[k].dur)));
+      } else pintarP({ x: inicioP.x, y: inicioP.y + Math.sin(t / 300) * .3, rot: Math.sin(t / 700) * 2 });
+      for (let k = particulas.length - 1; k >= 0; k--) { const q = particulas[k]; q.vy += 160 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vida -= dt * .9; if (q.vida <= 0 || q.y > esc0.mar + 8) { q.c.remove(); particulas.splice(k, 1); continue; } q.c.setAttribute("cx", q.x.toFixed(2)); q.c.setAttribute("cy", q.y.toFixed(2)); q.c.setAttribute("opacity", Math.max(0, q.vida).toFixed(2)); }
+      return true;
+    });
+    // El jurado levanta sus tablillas: 10 en un acierto; de 1 a 4 en un error.
+    const calificar = (ok) => {
+      const notas = [0, 1, 2].map(() => ok ? 10 : 1 + Math.floor(Math.random() * 4));
+      notas.forEach((n, k) => { const tab = svg.querySelector("#jz" + k), tx = svg.querySelector("#jz" + k + "n"); tx.textContent = String(n); tab.style.transition = `transform .35s cubic-bezier(.3,1.5,.6,1) ${k * .12}s, opacity .2s ${k * .12}s`; tab.style.transform = "translate(0px, 0px)"; tab.style.opacity = "1"; ctx.luego(() => { tab.style.transform = "translate(0px, 16px)"; tab.style.opacity = "0"; }, 1900 + k * 100); });
+      ok ? sonido.brillo() : sonido.nivel();
+      puntos += notas.reduce((a, b) => a + b, 0); promedios.push(notas.reduce((a, b) => a + b, 0) / 3);
+    };
+    const preguntar = () => {
+      const qb = el.querySelector("#qbox"); qb.innerHTML = ""; textos();
+      if (i >= N) {
+        const prom = promedios.length ? promedios.reduce((a, b) => a + b, 0) / promedios.length : 0;
+        const titulo = prom >= 9 ? T("ping_oro") : prom >= 7 ? T("ping_plata") : prom >= 5 ? T("ping_bronce") : T("ping_sigue");
+        fin(el, ctx, titulo, prom.toFixed(1), `${esc(T("promedio"))} · ${aciertos}/${N} ${esc(T("correctas"))}`, () => ctx.go(ctx.cur), prom >= 7);
+        return;
+      }
+      el.querySelector("#qn").textContent = `${T("pregunta")} ${i + 1} ${T("de")} ${N}`;
+      const a = ctx.c.porId[ids[i]];
+      if (!a) { i++; preguntar(); return; }
+      const q = panelPregunta(a, ctx, (ok, txt) => {
+        timer?.detener();
+        if (ok) aciertos++;
+        toast(el, ok, txt, ok ? 2600 : 3800);
+        clavar(ok, () => { calificar(ok); i++; textos(); ctx.luego(preguntar, 2200); });
+      });
+      qb.appendChild(q);
+      timer = temporizador(el.querySelector("#tm"), TL, () => q.agotar(), ctx);
+    };
+    preguntar();
+  };
+  arranque(el, T, "pinguino", jugar);
   return el;
 }
 

@@ -33,3 +33,21 @@ estilos en `sparked/css/juegos-nuevos.css` (enlazada en `sparked/guia.html`) y t
 - **Funciones:** `heroe(quien, pose, escala)`, `capaHeroe`, `capaEscaladorDe` (montaña) y `capaArqueroDe` (torre, con
   arco) en arte.js; `personaje()`, `selectorPersonaje(ctx)` y `conectarSelector(tarjeta, alCambiar)` en ui.js.
 - **Duelo:** la barra de vida dice SPARKY o PRINCESA y la instrucción dice "tu personaje ataca con su espada".
+
+## 3. Clavados de pingüino (opción múltiple y completar)
+
+- **Mecánica:** la de la carrera: una pregunta por turno, 20 segundos cada una. Un pingüino rey (colores reales) espera
+  en lo alto de un iceberg con resbaladilla; a la derecha, en un témpano, un jurado de tres pingüinos con disfraces
+  discretos (sombrero de copa, moño y lentes) y tablillas de calificación.
+  - **Acierto:** se desliza, hace un clavado y el jurado levanta 10. Cinco clavados al azar, sin repetir el mismo dos
+    veces seguidas: triple mortal, tirabuzón, bala de cañón, clavado de cisne y doble mortal hacia atrás.
+  - **Error o tiempo agotado:** el clavado sale mal y el jurado levanta notas de 1 a 4. Cinco fracasos al azar, sin
+    repetir seguido: panzazo, resbalón, choque con el hielo, se quedó corto y de cabeza en la nieve.
+  - Cada clavado muestra su nombre en un letrero y la retroalimentación de la pregunta.
+- **Puntuación:** los puntos suman las tablillas de cada clavado; al final se muestra el promedio del jurado (0 a 10) con
+  un mensaje (9 o más: "¡Clavados de campeonato!"; 7 o más: "¡Muy buenos clavados!"; 5 o más: "Buen intento"; menos:
+  "Sigue practicando") y los aciertos.
+- **Calificación:** cada pregunta se registra en `ctx.resultados` con su `id`, como en la carrera.
+- **Escenarios (`PLANTILLAS.pinguino`):** polo (día), aurora (noche) y atardecer (`escenaPinguino`).
+- **Slide:** `k: "pinguino"` (ícono 🐧). Sonidos nuevos en `sonido.js`: `chapuzon`, `plaf`.
+- La animación termina también por temporizador: si el navegador frena los cuadros (pestaña oculta), el juego sigue.
