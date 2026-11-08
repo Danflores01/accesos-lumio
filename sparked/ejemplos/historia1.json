@@ -1,2985 +1,1836 @@
 {
- "version_formato": "1.2",
- "prueba": "Guía de ejemplo · Historia Universal 1° · construida a mano desde la lección de Lumio",
- "plan": {
-  "materia": "Historia Universal",
-  "grado": "1° de Secundaria",
-  "es_lengua_extranjera": false,
-  "idioma_guia": "es",
-  "perfil_edad": "juvenil",
-  "presupuesto_slides": 40,
-  "apoyo": null,
-  "camino": "convertir",
-  "temas_a_investigar": [],
-  "identidad": {
-   "paleta": "historia_azul",
-   "titulo": "De las primeras aldeas a un mundo global",
-   "subtitulo": "Guía de estudio: civilizaciones antiguas, Roma, la Edad Media y el mundo moderno.",
-   "emojis_portada": [
-    "📜",
-    "🏛️",
-    "🏰",
-    "🌐"
-   ],
-   "retratos_portada": [
-    {
-     "nombre": "Heródoto",
-     "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Marble_bust_of_Herodotos_MET_DT11742_%28cropped%29.jpg/960px-Marble_bust_of_Herodotos_MET_DT11742_%28cropped%29.jpg"
+  "plan": {
+    "apoyo": null,
+    "grado": "1° Secundaria",
+    "camino": "convertir",
+    "materia": "Historia",
+    "identidad": {
+      "paleta": "historia_azul",
+      "titulo": "De las primeras aldeas al mundo global",
+      "objetivos": [
+        "Usar el método histórico para analizar una fuente",
+        "Ordenar la historia de Roma, desde su leyenda hasta su caída",
+        "Explicar el feudalismo, las Cruzadas, la Peste Negra y cómo se conectó el mundo"
+      ],
+      "subtitulo": "Un viaje en el tiempo: Roma, caballeros, plagas y rutas de comercio",
+      "emojis_portada": [
+        "🏛️",
+        "🏰",
+        "🌍",
+        "📜"
+      ],
+      "retratos_portada": [
+        {
+          "nombre": "Heródoto",
+          "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Marble_bust_of_Herodotos_MET_DT11742_%28cropped%29.jpg/960px-Marble_bust_of_Herodotos_MET_DT11742_%28cropped%29.jpg"
+        },
+        {
+          "nombre": "Los Graco",
+          "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Eugene_Guillaume_-_the_Gracchi_%28cropped%29.jpg/960px-Eugene_Guillaume_-_the_Gracchi_%28cropped%29.jpg"
+        },
+        {
+          "nombre": "Atila",
+          "url": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Eugene_Ferdinand_Victor_Delacroix_Attila_fragment_%28cropped%29.jpg"
+        },
+        {
+          "nombre": "Odoacro",
+          "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Coin_of_Odoacer_at_the_British_Museum_%28obverse%29.png/960px-Coin_of_Odoacer_at_the_British_Museum_%28obverse%29.png"
+        }
+      ]
     },
-    {
-     "nombre": "Julio César",
-     "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Retrato_de_Julio_C%C3%A9sar_%2826724093101%29_%28cropped%29.jpg/960px-Retrato_de_Julio_C%C3%A9sar_%2826724093101%29_%28cropped%29.jpg"
-    },
-    {
-     "nombre": "Atila",
-     "url": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Eugene_Ferdinand_Victor_Delacroix_Attila_fragment_%28cropped%29.jpg"
-    },
-    {
-     "nombre": "Los Graco",
-     "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Eugene_Guillaume_-_the_Gracchi_%28cropped%29.jpg/960px-Eugene_Guillaume_-_the_Gracchi_%28cropped%29.jpg"
-    }
-   ],
-   "objetivos": [
-    "Qué es la historia y cómo los historiadores estudian las fuentes.",
-    "Las civilizaciones antiguas y el auge y la caída de Roma.",
-    "La Edad Media y cómo el mundo moderno se conectó."
-   ]
+    "reto_final": 18,
+    "idioma_guia": "es",
+    "perfil_edad": "caricatura",
+    "bloques_plan": [
+      {
+        "id": "b1",
+        "temas": [
+          "Qué es la historia",
+          "Método histórico",
+          "Neolítico y mundo antiguo"
+        ],
+        "juegos": {
+          "duelo": 0,
+          "ordenar": 0,
+          "completar": 2,
+          "conceptos": 6,
+          "clasificar": 1,
+          "super_dato": 0,
+          "quien_es_quien": 0,
+          "opcion_multiple": 6,
+          "verdadero_falso": 0
+        },
+        "pistas": [
+          "Qué es la historia y sus fuentes",
+          "El método histórico: 6 preguntas",
+          "Del Neolítico al mundo antiguo"
+        ],
+        "titulo": "Historia, método y primeras civilizaciones",
+        "mini_examen": 6,
+        "slides_teoria": 3,
+        "ids_inventario": [
+          "tem5",
+          "tem6",
+          "tem7",
+          "tem9",
+          "tem10",
+          "tem11",
+          "tem12",
+          "tem13",
+          "tem14",
+          "tem15",
+          "tem16",
+          "tem17",
+          "dat121",
+          "dat122",
+          "dat123",
+          "dat124",
+          "dat125",
+          "dat126",
+          "dat127",
+          "dat128",
+          "dat129",
+          "dat130",
+          "dat131",
+          "dat132",
+          "dat133",
+          "dat134",
+          "dat135",
+          "dat136",
+          "dat137",
+          "dat138",
+          "dat139",
+          "dat140",
+          "dat141",
+          "dat143",
+          "dat144",
+          "dat145",
+          "dat146",
+          "dat147",
+          "dat148",
+          "cat56",
+          "cat57",
+          "cat59",
+          "cat60",
+          "cat61",
+          "cat62",
+          "per69",
+          "per79",
+          "per81",
+          "voc195",
+          "voc196",
+          "voc199",
+          "voc200",
+          "voc201",
+          "voc202",
+          "voc203",
+          "sec115",
+          "eje229",
+          "eje231"
+        ],
+        "formato_practica": null,
+        "orden_actividades": [
+          "conceptos",
+          "opcion_multiple",
+          "clasificar",
+          "mini_examen"
+        ]
+      },
+      {
+        "id": "b2",
+        "temas": [
+          "Leyenda y orígenes",
+          "República y derecho romano",
+          "Crisis y caída"
+        ],
+        "juegos": {
+          "duelo": 6,
+          "ordenar": 1,
+          "completar": 0,
+          "conceptos": 0,
+          "clasificar": 0,
+          "super_dato": 0,
+          "quien_es_quien": 1,
+          "opcion_multiple": 0,
+          "verdadero_falso": 5
+        },
+        "pistas": [
+          "Leyenda y república de Roma",
+          "Expansión, crisis y caída de Roma"
+        ],
+        "titulo": "Roma: de pueblo a imperio y su caída",
+        "mini_examen": 0,
+        "slides_teoria": 2,
+        "ids_inventario": [
+          "tem18",
+          "tem19",
+          "tem20",
+          "tem21",
+          "tem22",
+          "tem23",
+          "tem24",
+          "tem25",
+          "tem26",
+          "dat149",
+          "dat150",
+          "dat151",
+          "dat152",
+          "dat153",
+          "dat154",
+          "dat155",
+          "dat156",
+          "dat157",
+          "dat158",
+          "dat159",
+          "dat160",
+          "dat161",
+          "dat162",
+          "dat163",
+          "dat164",
+          "dat165",
+          "dat166",
+          "dat167",
+          "dat168",
+          "dat169",
+          "dat170",
+          "dat171",
+          "dat172",
+          "dat173",
+          "cat63",
+          "cat64",
+          "per84",
+          "per85",
+          "per86",
+          "per93",
+          "per94",
+          "per95",
+          "per96",
+          "per97",
+          "per98",
+          "per99",
+          "per102",
+          "sec116",
+          "sec117",
+          "sec118",
+          "dia46",
+          "dia47",
+          "tex226",
+          "voc209",
+          "voc210",
+          "voc211",
+          "voc212",
+          "voc214",
+          "eje233",
+          "eje234"
+        ],
+        "formato_practica": null,
+        "orden_actividades": [
+          "quien_es_quien",
+          "verdadero_falso",
+          "ordenar",
+          "duelo"
+        ]
+      },
+      {
+        "id": "b3",
+        "temas": [
+          "Periodos y feudalismo",
+          "Cruzadas y Peste Negra",
+          "Otomanos, Ruta de la Seda y globalización"
+        ],
+        "juegos": {
+          "duelo": 6,
+          "ordenar": 0,
+          "completar": 2,
+          "conceptos": 6,
+          "clasificar": 1,
+          "super_dato": 0,
+          "quien_es_quien": 0,
+          "opcion_multiple": 6,
+          "verdadero_falso": 0
+        },
+        "pistas": [
+          "Feudalismo: la pirámide social",
+          "Cruzadas, Peste Negra y ciudades",
+          "Imperio otomano y mundo conectado"
+        ],
+        "titulo": "Edad Media y mundo moderno",
+        "mini_examen": 0,
+        "slides_teoria": 3,
+        "ids_inventario": [
+          "tem27",
+          "tem28",
+          "tem29",
+          "tem30",
+          "tem31",
+          "tem32",
+          "tem33",
+          "tem34",
+          "tem35",
+          "tem36",
+          "tem37",
+          "tem38",
+          "tem39",
+          "tem40",
+          "tem41",
+          "dat174",
+          "dat175",
+          "dat176",
+          "dat177",
+          "dat178",
+          "dat179",
+          "dat180",
+          "dat181",
+          "dat182",
+          "dat183",
+          "dat185",
+          "dat186",
+          "dat187",
+          "dat188",
+          "dat189",
+          "dat190",
+          "dat191",
+          "dat192",
+          "dat194",
+          "voc215",
+          "voc216",
+          "voc217",
+          "voc218",
+          "voc219",
+          "voc220",
+          "voc221",
+          "voc222",
+          "voc223",
+          "voc224",
+          "voc225",
+          "reg44",
+          "cat65",
+          "cat66",
+          "cat67",
+          "cat68",
+          "sec119",
+          "dia48",
+          "dia49",
+          "per106",
+          "per107",
+          "per109",
+          "per110",
+          "per113",
+          "per114",
+          "eje236",
+          "eje237",
+          "eje238"
+        ],
+        "formato_practica": null,
+        "orden_actividades": [
+          "opcion_multiple",
+          "conceptos",
+          "clasificar",
+          "duelo"
+        ]
+      }
+    ],
+    "idioma_forzado": true,
+    "puntos_dificiles": [
+      {
+        "id": "pd1",
+        "descripcion": "Las 6 preguntas del método histórico: fecha, lugar, autoría, análisis, integridad y credibilidad"
+      },
+      {
+        "id": "pd2",
+        "descripcion": "Cómo se gobernaba la República romana (cónsules, Senado, patricios, plebeyos, tribunos) y las Doce Tablas"
+      },
+      {
+        "id": "pd3",
+        "descripcion": "La pirámide feudal y quién daba qué a quién"
+      },
+      {
+        "id": "pd4",
+        "descripcion": "Términos del mundo moderno: bloqueo, sitio y embargo; globalización y burguesía"
+      }
+    ],
+    "slides_estimados": 25,
+    "nota_planificador": "Tres bloques cronológicos (24 slides). Se omiten datos dudosos señalados como sospechas (cifra de la peste, inicio de la globalización, etc.).",
+    "primera_actividad": "conceptos",
+    "presupuesto_slides": 25,
+    "temas_a_investigar": [],
+    "es_lengua_extranjera": false,
+    "justificacion_slides": "",
+    "plantillas_sugeridas": [
+      "pergaminos y mapa antiguo",
+      "línea del tiempo",
+      "castillo medieval",
+      "museo de historia",
+      "expedición de exploradores"
+    ]
   },
-  "puntos_dificiles": [
-   {
-    "id": "pd1",
-    "descripcion": "Las 6 preguntas del método histórico"
-   },
-   {
-    "id": "pd2",
-    "descripcion": "Distinguir las civilizaciones agrícolas de las mediterráneas y ordenarlas en el tiempo"
-   },
-   {
-    "id": "pd3",
-    "descripcion": "Quién gobernaba en la República romana: cónsules, Senado, patricios, plebeyos y tribunos"
-   },
-   {
-    "id": "pd4",
-    "descripcion": "La pirámide feudal: quién da qué a quién"
-   },
-   {
-    "id": "pd5",
-    "descripcion": "Bloqueo frente a embargo, sanciones y asedio"
-   }
-  ],
   "bloques": [
-   {
-    "id": "b1",
-    "titulo": "La historia y su método",
-    "fotos": [
-     2,
-     3
-    ]
-   },
-   {
-    "id": "b2",
-    "titulo": "Las civilizaciones antiguas",
-    "fotos": [
-     4,
-     5,
-     6
-    ]
-   },
-   {
-    "id": "b3",
-    "titulo": "Roma",
-    "fotos": [
-     7,
-     8,
-     9
-    ]
-   },
-   {
-    "id": "b4",
-    "titulo": "La Edad Media",
-    "fotos": [
-     10,
-     11,
-     12
-    ]
-   },
-   {
-    "id": "b5",
-    "titulo": "El mundo moderno",
-    "fotos": [
-     13,
-     14
-    ]
-   },
-   {
-    "id": "b6",
-    "titulo": "El encuentro de dos mundos",
-    "fotos": []
-   }
+    {
+      "id": "b1",
+      "orden": [
+        "conceptos",
+        "opcion_multiple",
+        "clasificar",
+        "mini_examen"
+      ],
+      "pistas": [
+        {
+          "id": "b1p1",
+          "clave": "Historia: estudio del pasado y sus fuentes",
+          "emoji": "📜",
+          "ideas": [
+            "Historia: estudio del pasado y su relación con las personas",
+            "Trabajo histórico: memoria, descubrimiento, colección, organización e interpretación",
+            "Puente: la historia une humanidades y ciencias sociales"
+          ],
+          "titulo": "Qué es la historia y sus fuentes",
+          "ejemplo": "Monumentos, inscripciones e imágenes son fuentes que usan los historiadores.",
+          "esquema": {
+            "tipo": "partes",
+            "titulo": "Fuentes del conocimiento histórico",
+            "elementos": [
+              {
+                "emoji": "📝",
+                "nombre": "Lo escrito",
+                "detalle": "Documentos y textos que registran el pasado"
+              },
+              {
+                "emoji": "🗣️",
+                "nombre": "Lo dicho",
+                "detalle": "Tradición oral: el pasado transmitido de forma hablada"
+              },
+              {
+                "emoji": "🏛️",
+                "nombre": "Lo conservado físicamente",
+                "detalle": "Monumentos, inscripciones e imágenes"
+              }
+            ]
+          },
+          "personajes": [],
+          "dato_rapido": {
+            "valor": "3",
+            "titulo": "Fuentes del conocimiento histórico"
+          }
+        },
+        {
+          "id": "b1p2",
+          "clave": "Método histórico: seis preguntas sobre una fuente",
+          "emoji": "🔍",
+          "ideas": [
+            "Método histórico: seis preguntas que se le hacen a una fuente",
+            "Fecha (DATE) y Lugar (LOCALIZATION): ¿cuándo y dónde?",
+            "Autoría (AUTHORSHIP) y Análisis (ANALYSIS): ¿quién y con qué material?",
+            "Integridad (INTEGRITY): ¿está en su forma original?",
+            "Credibilidad (CREDIBILITY): ¿qué valor como prueba tiene?"
+          ],
+          "titulo": "El método histórico: 6 preguntas",
+          "ejemplo": "Una carta antigua: ¿quién la escribió, cuándo y dónde? ¿Es confiable?",
+          "esquema": null,
+          "personajes": [],
+          "dato_rapido": {
+            "valor": "6",
+            "titulo": "Preguntas del método histórico"
+          }
+        },
+        {
+          "id": "b1p3",
+          "clave": "Neolítico: inicio de la vida sedentaria y la agricultura",
+          "emoji": "🌾",
+          "ideas": [
+            "Neolítico: agricultura, aldeas, propiedad privada y clases sociales",
+            "Mundo antiguo: grandes civilizaciones agrícolas y mediterráneas",
+            "Caída de Roma: 476 d. C., fin del mundo antiguo"
+          ],
+          "titulo": "Del Neolítico al mundo antiguo",
+          "ejemplo": "Mesopotamia fue lugar de origen de la escritura cuneiforme.",
+          "esquema": {
+            "tipo": "linea_tiempo",
+            "titulo": "Línea de tiempo del mundo antiguo",
+            "elementos": [
+              {
+                "emoji": "🌾",
+                "nombre": "6000 a. C.",
+                "detalle": "Comienza el Neolítico"
+              },
+              {
+                "emoji": "🏛️",
+                "nombre": "3000 a. C.",
+                "detalle": "Comienza el mundo antiguo"
+              },
+              {
+                "emoji": "🏚️",
+                "nombre": "476 d. C.",
+                "detalle": "Caída de Roma"
+              }
+            ]
+          },
+          "personajes": [],
+          "imagenes": [
+            {
+              "tipo": "foto",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Early_house_at_Skara_Brae_-_geograph.org.uk_-_7445679.jpg/960px-Early_house_at_Skara_Brae_-_geograph.org.uk_-_7445679.jpg",
+              "pie": "Casa neolítica en Skara Brae, Escocia (c. 3100 a. C.) · Foto: Eirian Evans (CC BY-SA 2.0)"
+            }
+          ]
+        }
+      ],
+      "titulo": "Historia, método y primeras civilizaciones",
+      "actividades": [
+        {
+          "id": "b1co1",
+          "tipo": "conceptos",
+          "pares": [
+            {
+              "termino": "Historia",
+              "definicion": "Estudio del pasado y su relación con las personas"
+            },
+            {
+              "termino": "Historiadores",
+              "definicion": "Registran el pasado por escrito o tradición oral"
+            },
+            {
+              "termino": "Tradición oral",
+              "definicion": "Transmisión del pasado de forma hablada"
+            },
+            {
+              "termino": "Monumentos",
+              "definicion": "Fuentes físicas que usan los historiadores"
+            },
+            {
+              "termino": "Integración",
+              "definicion": "Cómo la historia mundial ha unido a las personas"
+            },
+            {
+              "termino": "Diferencia",
+              "definicion": "Muestra la diversidad de la experiencia humana"
+            },
+            {
+              "termino": "Fecha (DATE)",
+              "definicion": "¿Cuándo se escribió o produjo?"
+            },
+            {
+              "termino": "Lugar (LOCALIZATION)",
+              "definicion": "¿Dónde se produjo?"
+            }
+          ],
+          "pista": "b1p1",
+          "fuente": {
+            "cita": "History is the study of the past, particularly how it relates to humans.",
+            "foto": 2,
+            "tipo": "textual"
+          },
+          "instruccion": "Une cada término con su definición."
+        },
+        {
+          "id": "b1om1",
+          "tipo": "opcion_multiple",
+          "emoji": "📜",
+          "pista": "b1p1",
+          "fuente": {
+            "cita": "The word history comes from the Greek historia, meaning inquiry",
+            "foto": 2,
+            "tipo": "textual"
+          },
+          "correcta": 0,
+          "opciones": [
+            "Investigación o conocimiento que se obtiene al indagar",
+            "Un libro con fechas memorizadas",
+            "Una guerra entre civilizaciones",
+            "Un monumento antiguo"
+          ],
+          "pregunta": "¿Qué significa la palabra historia según su origen griego?",
+          "dificultad": "facil",
+          "punto_dificil": null,
+          "retro_correcta": "Correcto: historia viene del griego historia, que significa investigación.",
+          "retro_incorrecta": "La respuesta correcta es «investigación o conocimiento que se obtiene al indagar»: historia viene del griego historia."
+        },
+        {
+          "id": "b1om2",
+          "tipo": "opcion_multiple",
+          "emoji": "🏺",
+          "pista": "b1p1",
+          "fuente": {
+            "cita": "History is the study of the past, particularly how it relates to humans.",
+            "foto": 2,
+            "tipo": "textual"
+          },
+          "correcta": 1,
+          "opciones": [
+            "Solo los reinados y las fechas",
+            "El estudio del pasado y su relación con los seres humanos",
+            "Únicamente el clima de la Tierra",
+            "La vida de los animales salvajes"
+          ],
+          "pregunta": "Según el material, ¿qué estudia la historia?",
+          "dificultad": "facil",
+          "punto_dificil": null,
+          "retro_correcta": "Exacto: la historia estudia el pasado en relación con las personas.",
+          "retro_incorrecta": "La respuesta correcta es el estudio del pasado y su relación con los seres humanos."
+        },
+        {
+          "id": "b1om3",
+          "tipo": "opcion_multiple",
+          "emoji": "📚",
+          "pista": "b1p1",
+          "fuente": {
+            "cita": "The 3 sources of historical knowledge",
+            "foto": 2,
+            "tipo": "textual"
+          },
+          "correcta": 2,
+          "opciones": [
+            "Lo pintado, lo cantado y lo inventado",
+            "Lo antiguo, lo moderno y lo futuro",
+            "Lo escrito, lo dicho y lo conservado físicamente",
+            "Lo rico, lo pobre y lo olvidado"
+          ],
+          "pregunta": "¿Cuáles son las tres fuentes del conocimiento histórico?",
+          "dificultad": "media",
+          "punto_dificil": null,
+          "retro_correcta": "Muy bien: lo escrito, lo dicho y lo conservado físicamente.",
+          "retro_incorrecta": "La respuesta correcta es lo escrito, lo dicho y lo conservado físicamente."
+        },
+        {
+          "id": "b1om4",
+          "tipo": "opcion_multiple",
+          "emoji": "🗓️",
+          "pista": "b1p2",
+          "fuente": {
+            "cita": "DATE: When was it written or produced?",
+            "foto": 3,
+            "tipo": "textual"
+          },
+          "correcta": 0,
+          "opciones": [
+            "¿Cuándo se escribió o produjo?",
+            "¿Dónde se produjo?",
+            "¿Por quién se produjo?",
+            "¿Qué valor probatorio tiene?"
+          ],
+          "pregunta": "¿Qué pregunta responde la Fecha (DATE) en el método histórico?",
+          "dificultad": "media",
+          "punto_dificil": "pd1",
+          "retro_correcta": "Correcto: la Fecha (DATE) pregunta cuándo se escribió o produjo la fuente.",
+          "retro_incorrecta": "La respuesta correcta es «¿Cuándo se escribió o produjo?». La Fecha (DATE) se refiere al momento."
+        },
+        {
+          "id": "b1om5",
+          "tipo": "opcion_multiple",
+          "emoji": "🧩",
+          "pista": "b1p2",
+          "fuente": {
+            "cita": "In what original form was it produced?",
+            "foto": 3,
+            "tipo": "textual"
+          },
+          "correcta": 1,
+          "opciones": [
+            "¿De qué material preexistente se produjo?",
+            "¿En qué forma original se produjo?",
+            "¿Dónde se produjo?",
+            "¿Quién la escribió?"
+          ],
+          "pregunta": "¿Qué pregunta plantea la Integridad (INTEGRITY) sobre una fuente?",
+          "dificultad": "media",
+          "punto_dificil": "pd1",
+          "retro_correcta": "Exacto: la Integridad (INTEGRITY) revisa la forma original de la fuente.",
+          "retro_incorrecta": "La respuesta correcta es «¿En qué forma original se produjo?». La Integridad busca la forma original."
+        },
+        {
+          "id": "b1om6",
+          "tipo": "opcion_multiple",
+          "emoji": "⚖️",
+          "pista": "b1p2",
+          "fuente": {
+            "cita": "What is the evidential value of its contents?",
+            "foto": 3,
+            "tipo": "textual"
+          },
+          "correcta": 2,
+          "opciones": [
+            "Autoría (AUTHORSHIP)",
+            "Análisis (ANALYSIS)",
+            "Credibilidad (CREDIBILITY)",
+            "Lugar (LOCALIZATION)"
+          ],
+          "pregunta": "¿Qué pregunta del método busca el valor como prueba del contenido?",
+          "dificultad": "media",
+          "punto_dificil": "pd1",
+          "retro_correcta": "Correcto: la Credibilidad (CREDIBILITY) evalúa el valor como prueba del contenido.",
+          "retro_incorrecta": "La respuesta correcta es Credibilidad (CREDIBILITY): pregunta qué valor como prueba tiene su contenido."
+        },
+        {
+          "id": "b1cp1",
+          "tipo": "completar",
+          "emoji": "✍️",
+          "pista": "b1p1",
+          "fuente": {
+            "cita": "People who record the past, in writing or through oral tradition.",
+            "foto": 2,
+            "tipo": "textual"
+          },
+          "enunciado": "Los ___ registran el pasado por escrito o por tradición oral.",
+          "respuesta": "historiadores",
+          "dificultad": "facil",
+          "distractores": [
+            "geógrafos",
+            "filósofos",
+            "matemáticos"
+          ],
+          "punto_dificil": null,
+          "retro_correcta": "Correcto: los historiadores registran y estudian el pasado.",
+          "retro_incorrecta": "La respuesta correcta es historiadores, quienes registran el pasado por escrito o tradición oral."
+        },
+        {
+          "id": "b1cp2",
+          "tipo": "completar",
+          "emoji": "🏺",
+          "pista": "b1p3",
+          "fuente": {
+            "cita": "Birthplace of cuneiform writing.",
+            "foto": 4,
+            "tipo": "textual"
+          },
+          "enunciado": "Mesopotamia fue el lugar de origen de la escritura ___.",
+          "respuesta": "cuneiforme",
+          "dificultad": "media",
+          "distractores": [
+            "jeroglífica",
+            "china",
+            "fenicia"
+          ],
+          "punto_dificil": null,
+          "retro_correcta": "Exacto: Mesopotamia dio origen a la escritura cuneiforme.",
+          "retro_incorrecta": "La respuesta correcta es cuneiforme, la escritura originada en Mesopotamia."
+        },
+        {
+          "id": "b1cl1",
+          "tipo": "clasificar",
+          "pista": "b1p3",
+          "fuente": {
+            "cita": "Great agricultural civilizations: Mesopotamia, Egypt, Indus Valley and China.",
+            "foto": 4,
+            "tipo": "textual"
+          },
+          "grupos": [
+            "Grandes civilizaciones agrícolas",
+            "Civilizaciones mediterráneas"
+          ],
+          "elementos": [
+            {
+              "grupo": 0,
+              "texto": "Mesopotamia"
+            },
+            {
+              "grupo": 0,
+              "texto": "Egipto"
+            },
+            {
+              "grupo": 0,
+              "texto": "China antigua"
+            },
+            {
+              "grupo": 1,
+              "texto": "Fenicios"
+            },
+            {
+              "grupo": 1,
+              "texto": "Griegos"
+            },
+            {
+              "grupo": 1,
+              "texto": "Romanos"
+            }
+          ],
+          "instruccion": "Clasifica cada civilización en su grupo."
+        }
+      ],
+      "mini_examen": [
+        {
+          "id": "b1me1",
+          "tipo": "opcion_multiple",
+          "emoji": "🧭",
+          "pista": "b1p1",
+          "fuente": {
+            "cita": "It covers past events and the memory, discovery, collection, organization",
+            "foto": 2,
+            "tipo": "textual"
+          },
+          "correcta": 0,
+          "opciones": [
+            "Memoria, descubrimiento, colección y organización de la información",
+            "Solo nombres de reyes",
+            "Únicamente leyendas",
+            "Solo datos del clima"
+          ],
+          "pregunta": "¿Qué incluye la historia además de las fechas?",
+          "dificultad": "media",
+          "punto_dificil": null,
+          "retro_correcta": "Correcto: la historia abarca mucho más que fechas.",
+          "retro_incorrecta": "La respuesta correcta es memoria, descubrimiento, colección y organización de información."
+        },
+        {
+          "id": "b1me2",
+          "tipo": "opcion_multiple",
+          "emoji": "🌉",
+          "pista": "b1p1",
+          "fuente": {
+            "cita": "History is part of the humanities and the social sciences.",
+            "foto": 2,
+            "tipo": "textual"
+          },
+          "correcta": 1,
+          "opciones": [
+            "Matemáticas y física",
+            "Humanidades y ciencias sociales",
+            "Biología y medicina",
+            "Ingeniería y arte"
+          ],
+          "pregunta": "¿En qué áreas del conocimiento se ubica la historia?",
+          "dificultad": "facil",
+          "punto_dificil": null,
+          "retro_correcta": "Exacto: la historia es puente entre humanidades y ciencias sociales.",
+          "retro_incorrecta": "La respuesta correcta es humanidades y ciencias sociales, según el material."
+        },
+        {
+          "id": "b1me3",
+          "tipo": "opcion_multiple",
+          "emoji": "🧪",
+          "pista": "b1p2",
+          "fuente": {
+            "cita": "From what pre-existing material was it produced?",
+            "foto": 3,
+            "tipo": "textual"
+          },
+          "correcta": 0,
+          "opciones": [
+            "Análisis (ANALYSIS)",
+            "Integridad (INTEGRITY)",
+            "Fecha (DATE)",
+            "Credibilidad (CREDIBILITY)"
+          ],
+          "pregunta": "¿Qué pregunta del método histórico se refiere al material del que se hizo la fuente?",
+          "dificultad": "media",
+          "punto_dificil": "pd1",
+          "retro_correcta": "Correcto: el Análisis (ANALYSIS) pregunta de qué material ya existente se produjo.",
+          "retro_incorrecta": "La respuesta correcta es Análisis (ANALYSIS): pregunta de qué material ya existente se produjo."
+        },
+        {
+          "id": "b1me4",
+          "tipo": "opcion_multiple",
+          "emoji": "🌊",
+          "pista": "b1p3",
+          "fuente": {
+            "cita": "Between the Tigris and Euphrates rivers (modern Iraq)",
+            "foto": 4,
+            "tipo": "textual"
+          },
+          "correcta": 1,
+          "opciones": [
+            "Egipto",
+            "Mesopotamia",
+            "China antigua",
+            "Roma"
+          ],
+          "pregunta": "¿Qué civilización agrícola se desarrolló entre los ríos Tigris y Éufrates?",
+          "dificultad": "media",
+          "punto_dificil": null,
+          "retro_correcta": "Exacto: Mesopotamia se ubicó entre los ríos Tigris y Éufrates.",
+          "retro_incorrecta": "La respuesta correcta es Mesopotamia, entre los ríos Tigris y Éufrates."
+        },
+        {
+          "id": "b1me5",
+          "tipo": "opcion_multiple",
+          "emoji": "🏘️",
+          "pista": "b1p3",
+          "fuente": {
+            "cita": "Private property appears and society divides into classes.",
+            "foto": 4,
+            "tipo": "textual"
+          },
+          "correcta": 1,
+          "opciones": [
+            "Desapareció por completo",
+            "Apareció y la sociedad se dividió en clases",
+            "Se usó solo en Egipto",
+            "Llegó con la caída de Roma"
+          ],
+          "pregunta": "¿Qué ocurrió con la propiedad privada en el Neolítico?",
+          "dificultad": "media",
+          "punto_dificil": null,
+          "retro_correcta": "Correcto: la propiedad privada apareció y dividió a la sociedad en clases.",
+          "retro_incorrecta": "La respuesta correcta es que apareció y la sociedad se dividió en clases."
+        },
+        {
+          "id": "b1me6",
+          "tipo": "opcion_multiple",
+          "emoji": "🔤",
+          "pista": "b1p3",
+          "fuente": {
+            "cita": "Their alphabet influenced Greek and later Roman writing.",
+            "foto": 5,
+            "tipo": "textual"
+          },
+          "correcta": 2,
+          "opciones": [
+            "El cuneiforme",
+            "El jeroglífico",
+            "El fenicio",
+            "El chino"
+          ],
+          "pregunta": "¿Qué alfabeto influyó en la escritura griega y romana posterior?",
+          "dificultad": "media",
+          "punto_dificil": null,
+          "retro_correcta": "Exacto: el alfabeto fenicio influyó en la escritura griega y romana.",
+          "retro_incorrecta": "La respuesta correcta es el alfabeto fenicio, que influyó en la escritura griega y romana."
+        }
+      ]
+    },
+    {
+      "id": "b2",
+      "orden": [
+        "quien_es_quien",
+        "verdadero_falso",
+        "ordenar",
+        "duelo"
+      ],
+      "pistas": [
+        {
+          "id": "b2p1",
+          "clave": "Roma: de aldea de leyenda a república con leyes escritas.",
+          "emoji": "📜",
+          "ideas": [
+            "Leyenda: Rómulo y Remo, hijos de Marte, fundaron Roma en 753 a. C.",
+            "Realeza: tras matar a su hermano, Rómulo fue el primer rey.",
+            "República: el poder pasó a dos magistrados elegidos cada año."
+          ],
+          "titulo": "Leyenda y república de Roma",
+          "ejemplo": "Roma lleva el nombre de Rómulo, el primer rey.",
+          "esquema": {
+            "tipo": "linea_tiempo",
+            "titulo": "De la leyenda a la república",
+            "elementos": [
+              {
+                "emoji": "🏛️",
+                "nombre": "753 a. C.",
+                "detalle": "Fundación de Roma según la leyenda"
+              },
+              {
+                "emoji": "📜",
+                "nombre": "450 a. C.",
+                "detalle": "Doce Tablas, primera ley escrita"
+              },
+              {
+                "emoji": "🏛️",
+                "nombre": "300 a. C.",
+                "detalle": "El poder real ya está en el Senado"
+              }
+            ]
+          },
+          "imagenes": [
+            {
+              "tipo": "foto",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Lupa_Capitolina%2C_Rome.jpg/960px-Lupa_Capitolina%2C_Rome.jpg",
+              "pie": "La Loba Capitolina con Rómulo y Remo · Museos Capitolinos, Roma (CC0)"
+            }
+          ],
+          "personajes": [
+            "Rómulo",
+            "Remo"
+          ]
+        },
+        {
+          "id": "b2p2",
+          "clave": "Caída: Roma se debilitó perdiendo provincias hasta 476 d. C.",
+          "emoji": "⚔️",
+          "ideas": [
+            "Expansión: Roma llegó a cubrir Europa, Britania y el norte de África.",
+            "Crisis: creció la brecha entre ricos y pobres; las reformas fallaron.",
+            "Invasiones: hacia 450, Atila y los hunos atacaron la Galia e Italia.",
+            "Pérdida: Roma perdió Britania, España y el norte de África.",
+            "Caída: en 476, Odoacro depuso al último emperador de Occidente."
+          ],
+          "titulo": "Expansión, crisis y caída de Roma",
+          "ejemplo": "Los hermanos Tiberio y Cayo Graco intentaron reformas y fueron asesinados.",
+          "esquema": null,
+          "imagenes": [
+            {
+              "tipo": "retrato",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Coin_of_Odoacer_at_the_British_Museum_%28obverse%29.png/960px-Coin_of_Odoacer_at_the_British_Museum_%28obverse%29.png",
+              "nombre": "Odoacro",
+              "pie": "Moneda de Odoacro · Museo Británico",
+              "credito": "Wikimedia Commons"
+            },
+            {
+              "tipo": "retrato",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Eugene_Guillaume_-_the_Gracchi_%28cropped%29_Gaius.jpg/960px-Eugene_Guillaume_-_the_Gracchi_%28cropped%29_Gaius.jpg",
+              "nombre": "Cayo Graco",
+              "pie": "Cayo Graco · Escultura de Eugène Guillaume",
+              "credito": "Wikimedia Commons"
+            },
+            {
+              "tipo": "retrato",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Eugene_Ferdinand_Victor_Delacroix_Attila_fragment_%28cropped%29.jpg",
+              "nombre": "Atila",
+              "pie": "Atila · Detalle de una pintura de Delacroix",
+              "credito": "Wikimedia Commons"
+            }
+          ],
+          "personajes": [
+            "Odoacro",
+            "Cayo Graco",
+            "Atila"
+          ],
+          "dato_rapido": {
+            "valor": "476",
+            "titulo": "Fin de Roma de Occidente"
+          }
+        }
+      ],
+      "titulo": "Roma: de pueblo a imperio y su caída",
+      "actividades": [
+        {
+          "id": "b2qq1",
+          "tipo": "quien_es_quien",
+          "pares": [
+            {
+              "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Lupa_Capitolina%2C_Rome.jpg/960px-Lupa_Capitolina%2C_Rome.jpg",
+              "termino": "Rómulo",
+              "definicion": "Tras matar a su hermano, fue el primer rey de Roma"
+            },
+            {
+              "imagen": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Eugene_Ferdinand_Victor_Delacroix_Attila_fragment_%28cropped%29.jpg",
+              "termino": "Atila",
+              "definicion": "Invadió la Galia e Italia, hacia el año 450"
+            },
+            {
+              "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Coin_of_Odoacer_at_the_British_Museum_%28obverse%29.png/960px-Coin_of_Odoacer_at_the_British_Museum_%28obverse%29.png",
+              "termino": "Odoacro",
+              "definicion": "Depuso al último emperador de Occidente en 476"
+            },
+            {
+              "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Eugene_Guillaume_-_the_Gracchi_%28cropped%29_Gaius.jpg/960px-Eugene_Guillaume_-_the_Gracchi_%28cropped%29_Gaius.jpg",
+              "termino": "Cayo Graco",
+              "definicion": "Intentó reformar Roma y fue asesinado"
+            }
+          ],
+          "pista": "b2p2",
+          "fuente": {
+            "cita": "Gaius Gracchus (123–22 B.C.) tried to fix this",
+            "foto": 7,
+            "tipo": "textual"
+          },
+          "instruccion": "Une cada personaje con lo que hizo."
+        },
+        {
+          "id": "b2vf1",
+          "tipo": "verdadero_falso",
+          "emoji": "🌊",
+          "pista": "b2p1",
+          "fuente": {
+            "cita": "Starting in the 8th century B.C., Rome grew from a small town on the Tiber River",
+            "foto": 6,
+            "tipo": "textual"
+          },
+          "afirmacion": "Roma comenzó en el siglo VIII a. C. como un pequeño pueblo en el río Tíber.",
+          "dificultad": "facil",
+          "es_verdadera": true,
+          "punto_dificil": null,
+          "retro_correcta": "Correcto: Roma empezó como un pequeño pueblo junto al Tíber.",
+          "retro_incorrecta": "Es verdadera: Roma nació como un pequeño pueblo en el río Tíber en el siglo VIII a. C."
+        },
+        {
+          "id": "b2vf2",
+          "tipo": "verdadero_falso",
+          "emoji": "🗳️",
+          "pista": "b2p1",
+          "fuente": {
+            "cita": "Power passed from the king to two magistrates elected every year",
+            "foto": 7,
+            "tipo": "textual"
+          },
+          "afirmacion": "Al caer el rey, el poder pasó a un único emperador.",
+          "dificultad": "media",
+          "es_verdadera": false,
+          "punto_dificil": "pd2",
+          "retro_correcta": "Correcto: el poder pasó a dos magistrados elegidos cada año.",
+          "retro_incorrecta": "Es falsa: el poder pasó a dos magistrados elegidos cada año, no a un emperador."
+        },
+        {
+          "id": "b2vf3",
+          "tipo": "verdadero_falso",
+          "emoji": "🏛️",
+          "pista": "b2p1",
+          "fuente": {
+            "cita": "The Senate was dominated by the patricians (descendants of the first",
+            "foto": 7,
+            "tipo": "textual"
+          },
+          "afirmacion": "Los patricios dominaban el Senado.",
+          "dificultad": "media",
+          "es_verdadera": true,
+          "punto_dificil": "pd2",
+          "retro_correcta": "Correcto: el Senado estaba dominado por los patricios.",
+          "retro_incorrecta": "Es verdadera: el Senado lo dominaban los patricios, descendientes de los primeros senadores."
+        },
+        {
+          "id": "b2vf4",
+          "tipo": "verdadero_falso",
+          "emoji": "📜",
+          "pista": "b2p1",
+          "fuente": {
+            "cita": "The basis of all future Roman civil law",
+            "foto": 7,
+            "tipo": "textual"
+          },
+          "afirmacion": "Las Doce Tablas fueron la base del derecho civil romano posterior.",
+          "dificultad": "media",
+          "es_verdadera": true,
+          "punto_dificil": "pd2",
+          "retro_correcta": "Correcto: las Doce Tablas sostienen todo el derecho civil posterior.",
+          "retro_incorrecta": "Es verdadera: las Doce Tablas fueron la base de todo el derecho civil romano futuro."
+        },
+        {
+          "id": "b2vf5",
+          "tipo": "verdadero_falso",
+          "emoji": "🗺️",
+          "pista": "b2p2",
+          "fuente": {
+            "cita": "Rome loses Britain.",
+            "foto": 7,
+            "tipo": "textual"
+          },
+          "afirmacion": "Roma perdió Britania después del año 450.",
+          "dificultad": "dificil",
+          "es_verdadera": false,
+          "punto_dificil": null,
+          "retro_correcta": "Correcto: Roma perdió Britania hacia el año 410, antes del 450.",
+          "retro_incorrecta": "Es falsa: Roma perdió Britania hacia el año 410, antes de las invasiones de Atila (c. 450)."
+        },
+        {
+          "id": "b2or1",
+          "tipo": "ordenar",
+          "pasos": [
+            {
+              "emoji": "🗺️",
+              "texto": "c. 410: Roma pierde Britania"
+            },
+            {
+              "emoji": "🌍",
+              "texto": "Hacia 430: pierde España y el norte de África"
+            },
+            {
+              "emoji": "🐎",
+              "texto": "c. 450: Atila y los hunos invaden la Galia e Italia"
+            },
+            {
+              "emoji": "🏰",
+              "texto": "476: Odoacro depone a Rómulo Augústulo y cae el Imperio romano de Occidente"
+            }
+          ],
+          "pista": "b2p2",
+          "fuente": {
+            "cita": "Rome loses Britain. Loses Spain and northern Africa.",
+            "foto": 7,
+            "tipo": "textual"
+          },
+          "por_que": "Primero Britania (c. 410), luego España y el norte de África (hacia 430), después Atila (c. 450) y al final Odoacro (476).",
+          "instruccion": "Ordena los hechos de la pérdida de provincias y la caída de Roma."
+        }
+      ],
+      "mini_examen": [],
+      "duelo": [
+        {
+          "id": "b2du1",
+          "tipo": "opcion_multiple",
+          "emoji": "🐉",
+          "pista": "b2p1",
+          "fuente": {
+            "cita": "They founded Rome in 753 B.C.",
+            "foto": 6,
+            "tipo": "textual"
+          },
+          "correcta": 2,
+          "opciones": [
+            "Julio César y Atila",
+            "Tiberio y Cayo Graco",
+            "Rómulo y Remo",
+            "Odoacro y Atila"
+          ],
+          "pregunta": "¿Quiénes fundaron Roma según la leyenda?",
+          "dificultad": "facil",
+          "punto_dificil": null,
+          "retro_correcta": "Rómulo y Remo, hijos de Marte, fundaron Roma en 753 a. C.",
+          "retro_incorrecta": "La respuesta es Rómulo y Remo: según la leyenda, fundaron Roma en 753 a. C."
+        },
+        {
+          "id": "b2du2",
+          "tipo": "opcion_multiple",
+          "emoji": "👑",
+          "pista": "b2p1",
+          "fuente": {
+            "cita": "Romulus became the first king",
+            "foto": 6,
+            "tipo": "textual"
+          },
+          "correcta": 3,
+          "opciones": [
+            "Remo",
+            "Julio César",
+            "Atila",
+            "Rómulo"
+          ],
+          "pregunta": "¿Quién fue el primer rey de Roma?",
+          "dificultad": "facil",
+          "punto_dificil": null,
+          "retro_correcta": "Rómulo se convirtió en el primer rey tras matar a su hermano.",
+          "retro_incorrecta": "Fue Rómulo, el primer rey; Roma lleva su nombre según la leyenda."
+        },
+        {
+          "id": "b2du3",
+          "tipo": "opcion_multiple",
+          "emoji": "📜",
+          "pista": "b2p1",
+          "fuente": {
+            "cita": "written on 12 bronze tablets and shown in the",
+            "foto": 7,
+            "tipo": "textual"
+          },
+          "correcta": 0,
+          "opciones": [
+            "Las Doce Tablas",
+            "El Senado",
+            "El acueducto",
+            "El Coliseo"
+          ],
+          "pregunta": "¿Cómo se llamó la primera ley escrita de Roma, grabada en 12 tablas de bronce?",
+          "dificultad": "media",
+          "punto_dificil": null,
+          "retro_correcta": "Las Doce Tablas (450 a. C.) fueron el primer código de leyes romano.",
+          "retro_incorrecta": "La respuesta es Las Doce Tablas, escritas en bronce en 450 a. C."
+        },
+        {
+          "id": "b2du4",
+          "tipo": "opcion_multiple",
+          "emoji": "⚖️",
+          "pista": "b2p1",
+          "fuente": {
+            "cita": "the tribunes, who could start or veto laws",
+            "foto": 7,
+            "tipo": "textual"
+          },
+          "correcta": 2,
+          "opciones": [
+            "Los patricios",
+            "Los cónsules",
+            "Los tribunos",
+            "Los emperadores"
+          ],
+          "pregunta": "¿Quiénes podían iniciar o vetar leyes?",
+          "dificultad": "media",
+          "punto_dificil": "pd2",
+          "retro_correcta": "Los tribunos podían iniciar o vetar leyes en la República.",
+          "retro_incorrecta": "Eran los tribunos, quienes podían iniciar o vetar leyes en Roma."
+        },
+        {
+          "id": "b2du5",
+          "tipo": "opcion_multiple",
+          "emoji": "🏛️",
+          "pista": "b2p2",
+          "fuente": {
+            "cita": "Reformers Tiberius (133 B.C.) and Gaius Gracchus (123–22 B.C.)",
+            "foto": 7,
+            "tipo": "textual"
+          },
+          "correcta": 1,
+          "opciones": [
+            "Julio César",
+            "Tiberio Graco",
+            "Odoacro",
+            "Atila"
+          ],
+          "pregunta": "¿Qué reformador fue asesinado en 133 a. C. por intentar reformar Roma?",
+          "dificultad": "media",
+          "punto_dificil": null,
+          "retro_correcta": "Tiberio Graco intentó una reforma y fue asesinado en 133 a. C.",
+          "retro_incorrecta": "La respuesta es Tiberio Graco: intentó una reforma en 133 a. C. y fue asesinado."
+        },
+        {
+          "id": "b2du6",
+          "tipo": "opcion_multiple",
+          "emoji": "🏰",
+          "pista": "b2p2",
+          "fuente": {
+            "cita": "removes the last western emperor, Romulus Augustus",
+            "foto": 7,
+            "tipo": "textual"
+          },
+          "correcta": 2,
+          "opciones": [
+            "753 a. C.",
+            "450 a. C.",
+            "476 d. C.",
+            "133 a. C."
+          ],
+          "pregunta": "¿En qué año fue depuesto el último emperador romano de Occidente?",
+          "dificultad": "media",
+          "punto_dificil": null,
+          "retro_correcta": "En 476 d. C., Odoacro depuso al último emperador de Occidente.",
+          "retro_incorrecta": "La respuesta es 476 d. C., cuando Odoacro depuso a Rómulo Augústulo."
+        }
+      ]
+    },
+    {
+      "id": "b3",
+      "orden": [
+        "opcion_multiple",
+        "conceptos",
+        "clasificar",
+        "duelo"
+      ],
+      "pistas": [
+        {
+          "id": "b3p1",
+          "clave": "Feudalismo: pirámide de tierra y lealtad.",
+          "emoji": "🏰",
+          "ideas": [
+            "Periodos: Alta, Plena y Baja Edad Media, del siglo V al XV.",
+            "Feudalismo: relaciones jerárquicas entre señores, vasallos y siervos.",
+            "Pirámide: el rey da feudos y los siervos trabajan la tierra."
+          ],
+          "titulo": "Feudalismo: la pirámide social",
+          "ejemplo": "El rey otorgaba feudos a nobles y obispos.",
+          "esquema": {
+            "tipo": "partes",
+            "titulo": "Pirámide feudal",
+            "elementos": [
+              {
+                "emoji": "👑",
+                "nombre": "Rey",
+                "detalle": "Concede feudos y campesinos"
+              },
+              {
+                "emoji": "🛡️",
+                "nombre": "Señores (vasallos del rey)",
+                "detalle": "Dan lealtad y ayuda militar"
+              },
+              {
+                "emoji": "⚔️",
+                "nombre": "Caballeros (vasallos de los señores)",
+                "detalle": "Dan homenaje y servicio militar"
+              },
+              {
+                "emoji": "🌾",
+                "nombre": "Campesinos (siervos)",
+                "detalle": "Trabajan la tierra y pagan renta"
+              }
+            ]
+          },
+          "personajes": [],
+          "dato_rapido": {
+            "valor": "Siglos V a XV",
+            "titulo": "Edad Media"
+          }
+        },
+        {
+          "id": "b3p2",
+          "clave": "Peste Negra: crisis que frenó el feudalismo.",
+          "emoji": "⚔️",
+          "ideas": [
+            "Siglo XI: el arado pesado y la rotación de tres campos dan más cosechas.",
+            "Cruzadas: campañas cristianas por Tierra Santa desde finales del siglo XI.",
+            "Peste Negra (1347–1350): mató cerca del 30 % de la población europea.",
+            "Ciudades: crecen el comercio y la burguesía."
+          ],
+          "titulo": "Cruzadas, Peste Negra y ciudades",
+          "ejemplo": "Las Cruzadas expandieron rutas comerciales hacia Oriente.",
+          "esquema": null,
+          "imagenes": [
+            {
+              "tipo": "pintura",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/SiegeofAntioch.jpeg/960px-SiegeofAntioch.jpeg",
+              "pie": "Sitio de Antioquía durante la Primera Cruzada (1098) · Miniatura medieval",
+              "credito": "Wikimedia Commons"
+            },
+            {
+              "tipo": "pintura",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Burying_Plague_Victims_of_Tournai.jpg",
+              "pie": "Entierro de víctimas de la peste · Tournai, 1349"
+            }
+          ],
+          "personajes": [
+            "Las Cruzadas",
+            "La Peste Negra",
+            "La burguesía"
+          ]
+        },
+        {
+          "id": "b3p3",
+          "clave": "Globalización: intercambio de ideas, productos y cultura.",
+          "emoji": "🌍",
+          "ideas": [
+            "Imperio otomano: nació de tribus turcas en Anatolia y duró hasta 1922.",
+            "Ruta de la Seda: rutas de comercio de 130 a. C. a 1453 d. C.",
+            "Bloqueo: corta los suministros de un país o región; no es un sitio.",
+            "Globalización: el mundo se integra al intercambiar ideas y cultura."
+          ],
+          "titulo": "Imperio otomano y mundo conectado",
+          "ejemplo": "El Imperio otomano cerró las rutas de la Seda en 1453.",
+          "esquema": null,
+          "personajes": [
+            "Imperio otomano",
+            "Ruta de la Seda"
+          ],
+          "imagenes": [
+            {
+              "tipo": "pintura",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Conquest_of_Constantinople%2C_Zonaro.jpg/960px-Conquest_of_Constantinople%2C_Zonaro.jpg",
+              "pie": "Mehmed II entra en Constantinopla, 1453 · Pintura de Fausto Zonaro"
+            },
+            {
+              "tipo": "mapa",
+              "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Silk_route.jpg/960px-Silk_route.jpg",
+              "pie": "Las Rutas de la Seda (mapa sobre imagen de la NASA)"
+            }
+          ]
+        }
+      ],
+      "titulo": "Edad Media y mundo moderno",
+      "actividades": [
+        {
+          "id": "b3om1",
+          "tipo": "opcion_multiple",
+          "emoji": "👑",
+          "pista": "b3p1",
+          "fuente": {
+            "cita": "The king granted large pieces of land called fiefs to noblemen and bishops.",
+            "foto": 9,
+            "tipo": "textual"
+          },
+          "correcta": 1,
+          "opciones": [
+            "Los siervos",
+            "El rey",
+            "Los caballeros",
+            "Los campesinos"
+          ],
+          "pregunta": "¿Quién otorgaba feudos a nobles y obispos?",
+          "dificultad": "facil",
+          "punto_dificil": "pd3",
+          "retro_correcta": "El rey daba grandes tierras llamadas feudos a nobles y obispos.",
+          "retro_incorrecta": "La respuesta es el rey: él otorgaba feudos a nobles y obispos."
+        },
+        {
+          "id": "b3om2",
+          "tipo": "opcion_multiple",
+          "emoji": "🌾",
+          "pista": "b3p1",
+          "fuente": {
+            "cita": "live on the land and were protected from invasions.",
+            "foto": 10,
+            "tipo": "textual"
+          },
+          "correcta": 3,
+          "opciones": [
+            "Dinero del rey",
+            "Títulos de nobleza",
+            "Feudos propios",
+            "Protección y derecho a vivir en la tierra"
+          ],
+          "pregunta": "¿Qué recibían los siervos a cambio de su trabajo?",
+          "dificultad": "media",
+          "punto_dificil": "pd3",
+          "retro_correcta": "Los siervos vivían en la tierra y estaban protegidos de invasiones.",
+          "retro_incorrecta": "La respuesta es protección y derecho a vivir en la tierra, a cambio de su trabajo."
+        },
+        {
+          "id": "b3om3",
+          "tipo": "opcion_multiple",
+          "emoji": "🏯",
+          "pista": "b3p3",
+          "fuente": {
+            "cita": "Not a siege: a siege targets a fortress or city; a blockade, a whole country or region.",
+            "foto": 12,
+            "tipo": "textual"
+          },
+          "correcta": 2,
+          "opciones": [
+            "Un país o región entera",
+            "Solo rutas marítimas",
+            "Una fortaleza o ciudad",
+            "Los impuestos de un reino"
+          ],
+          "pregunta": "¿Qué ataca un sitio?",
+          "dificultad": "media",
+          "punto_dificil": "pd4",
+          "retro_correcta": "El sitio ataca una fortaleza o ciudad; el bloqueo, un país o región.",
+          "retro_incorrecta": "La respuesta es una fortaleza o ciudad. Un bloqueo, en cambio, afecta a un país o región entera."
+        },
+        {
+          "id": "b3om4",
+          "tipo": "opcion_multiple",
+          "emoji": "🐫",
+          "pista": "b3p3",
+          "fuente": {
+            "cita": "Used from 130 BC to 1453 AD",
+            "foto": 12,
+            "tipo": "textual"
+          },
+          "correcta": 0,
+          "opciones": [
+            "De 130 a. C. a 1453 d. C.",
+            "De 476 d. C. a 1453 d. C.",
+            "De 1347 a 1350",
+            "De 1922 hasta hoy"
+          ],
+          "pregunta": "¿Cuándo se usó la Ruta de la Seda?",
+          "dificultad": "media",
+          "punto_dificil": "pd4",
+          "retro_correcta": "La Ruta de la Seda se usó de 130 a. C. a 1453 d. C.",
+          "retro_incorrecta": "La respuesta es de 130 a. C. a 1453 d. C., cuando los otomanos tomaron Constantinopla y cerraron el paso."
+        },
+        {
+          "id": "b3om5",
+          "tipo": "opcion_multiple",
+          "emoji": "☠️",
+          "pista": "b3p2",
+          "fuente": {
+            "cita": "about 30% of the population. It was especially deadly in cities",
+            "foto": 11,
+            "tipo": "textual"
+          },
+          "correcta": 2,
+          "opciones": [
+            "Cerca del 5 %",
+            "Cerca del 10 %",
+            "Cerca del 30 %",
+            "Cerca del 50 %"
+          ],
+          "pregunta": "¿Qué porcentaje aproximado de la población europea mató la Peste Negra?",
+          "dificultad": "media",
+          "punto_dificil": null,
+          "retro_correcta": "La Peste Negra mató cerca del 30 % de la población, sobre todo en las ciudades.",
+          "retro_incorrecta": "La respuesta es cerca del 30 %. La epidemia fue especialmente mortal en las ciudades."
+        },
+        {
+          "id": "b3om6",
+          "tipo": "opcion_multiple",
+          "emoji": "🏙️",
+          "pista": "b3p2",
+          "fuente": {
+            "cita": "Means \"those who live in the borough\": city people such as merchants and craftsmen.",
+            "foto": 12,
+            "tipo": "textual"
+          },
+          "correcta": 1,
+          "opciones": [
+            "Campesinos sin tierra",
+            "Habitantes de la ciudad como comerciantes y artesanos",
+            "Nobles dueños de feudos",
+            "Soldados de las Cruzadas"
+          ],
+          "pregunta": "¿Qué significa burguesía según su origen?",
+          "dificultad": "media",
+          "punto_dificil": "pd4",
+          "retro_correcta": "Burguesía viene de «los que viven en el burgo»: gente de ciudad, como comerciantes y artesanos.",
+          "retro_incorrecta": "La respuesta es habitantes de la ciudad, como comerciantes y artesanos."
+        },
+        {
+          "id": "b3c1",
+          "tipo": "completar",
+          "emoji": "🌾",
+          "pista": "b3p1",
+          "fuente": {
+            "cita": "Landless peasants called serfs did most of the work and gave most of the produce",
+            "foto": 10,
+            "tipo": "textual"
+          },
+          "enunciado": "Los ___ eran campesinos sin tierra que hacían la mayor parte del trabajo.",
+          "respuesta": "siervos",
+          "dificultad": "media",
+          "distractores": [
+            "vasallos",
+            "caballeros",
+            "obispos"
+          ],
+          "punto_dificil": "pd3",
+          "retro_correcta": "Los siervos trabajaban la tierra y entregaban la mayor parte de la producción.",
+          "retro_incorrecta": "La respuesta es siervos: campesinos sin tierra que hacían casi todo el trabajo."
+        },
+        {
+          "id": "b3c2",
+          "tipo": "completar",
+          "emoji": "🏯",
+          "pista": "b3p3",
+          "fuente": {
+            "cita": "Not a siege: a siege targets a fortress or city; a blockade, a whole country or region.",
+            "foto": 12,
+            "tipo": "textual"
+          },
+          "enunciado": "Un ___ ataca una fortaleza o ciudad; un bloqueo ataca un país o región.",
+          "respuesta": "sitio",
+          "dificultad": "media",
+          "distractores": [
+            "bloqueo",
+            "embargo",
+            "cruzada"
+          ],
+          "punto_dificil": "pd4",
+          "retro_correcta": "El sitio se dirige contra una fortaleza o una ciudad.",
+          "retro_incorrecta": "La respuesta es sitio: ataca una fortaleza o ciudad, no un país entero."
+        },
+        {
+          "id": "b3con1",
+          "tipo": "conceptos",
+          "pares": [
+            {
+              "termino": "Feudalismo",
+              "definicion": "Sistema social, económico y político jerárquico."
+            },
+            {
+              "termino": "Feudo",
+              "definicion": "Gran extensión de tierra que el rey otorgaba a nobles."
+            },
+            {
+              "termino": "Siervo",
+              "definicion": "Campesino sin tierra que entregaba gran parte de su producción."
+            },
+            {
+              "termino": "Bloqueo",
+              "definicion": "Cortar por la fuerza suministros o comunicaciones de un área."
+            },
+            {
+              "termino": "Sitio",
+              "definicion": "Ataque contra una fortaleza o ciudad."
+            },
+            {
+              "termino": "Embargo",
+              "definicion": "Barreras legales al comercio; no es lo mismo que bloqueo."
+            },
+            {
+              "termino": "Ruta de la Seda",
+              "definicion": "Red de rutas comerciales establecida durante la dinastía Han."
+            },
+            {
+              "termino": "Burguesía",
+              "definicion": "Habitantes de la ciudad, como comerciantes y artesanos."
+            }
+          ],
+          "pista": "b3p1",
+          "fuente": {
+            "cita": "Feudalism: a social, economic and political system of hierarchical relationships",
+            "foto": 10,
+            "tipo": "textual"
+          },
+          "instruccion": "Une cada término con su definición."
+        },
+        {
+          "id": "b3cl1",
+          "tipo": "clasificar",
+          "pista": "b3p3",
+          "fuente": {
+            "cita": "Driven by transport (steam locomotive, steamship, jet engine, container ships)",
+            "foto": 12,
+            "tipo": "textual"
+          },
+          "grupos": [
+            "Transporte",
+            "Comunicaciones"
+          ],
+          "elementos": [
+            {
+              "grupo": 0,
+              "texto": "Locomotora de vapor"
+            },
+            {
+              "grupo": 1,
+              "texto": "Telégrafo"
+            },
+            {
+              "grupo": 0,
+              "texto": "Barcos portacontenedores"
+            },
+            {
+              "grupo": 1,
+              "texto": "Internet"
+            }
+          ],
+          "instruccion": "Clasifica los medios que impulsaron la globalización."
+        }
+      ],
+      "mini_examen": [],
+      "duelo": [
+        {
+          "id": "b3du1",
+          "tipo": "opcion_multiple",
+          "emoji": "🐉",
+          "pista": "b3p1",
+          "fuente": {
+            "cita": "give homage and military service",
+            "foto": 10,
+            "tipo": "textual"
+          },
+          "correcta": 1,
+          "opciones": [
+            "Los siervos",
+            "Los caballeros",
+            "Los obispos",
+            "El rey"
+          ],
+          "pregunta": "¿Quién da homenaje y servicio militar a los señores?",
+          "dificultad": "media",
+          "punto_dificil": "pd3",
+          "retro_correcta": "Los caballeros son vasallos de los señores y les dan homenaje.",
+          "retro_incorrecta": "La respuesta es los caballeros: son vasallos de los señores y dan servicio militar."
+        },
+        {
+          "id": "b3du2",
+          "tipo": "opcion_multiple",
+          "emoji": "🐉",
+          "pista": "b3p1",
+          "fuente": {
+            "cita": "Economic and cultural growth, feudalism and powerful monarchies.",
+            "foto": 9,
+            "tipo": "textual"
+          },
+          "correcta": 3,
+          "opciones": [
+            "Siglos V a X",
+            "Siglos XIV a XV",
+            "Siglos V a XV",
+            "Siglos XI a XIII"
+          ],
+          "pregunta": "¿Qué siglos abarca la Plena Edad Media?",
+          "dificultad": "media",
+          "punto_dificil": null,
+          "retro_correcta": "La Plena Edad Media fue de los siglos XI a XIII, con crecimiento económico y monarquías poderosas.",
+          "retro_incorrecta": "La respuesta es siglos XI a XIII: la Plena Edad Media, con crecimiento económico y monarquías poderosas."
+        },
+        {
+          "id": "b3du3",
+          "tipo": "opcion_multiple",
+          "emoji": "🐉",
+          "pista": "b3p3",
+          "fuente": {
+            "cita": "A network of trade routes formally established during China's Han Dynasty.",
+            "foto": 12,
+            "tipo": "textual"
+          },
+          "correcta": 0,
+          "opciones": [
+            "Una red de rutas comerciales",
+            "Un sistema de feudos",
+            "Un imperio de tribus turcas",
+            "Un tratado de paz"
+          ],
+          "pregunta": "¿Qué se estableció formalmente durante la dinastía Han de China?",
+          "dificultad": "media",
+          "punto_dificil": "pd4",
+          "retro_correcta": "La Ruta de la Seda fue una red de rutas comerciales de la dinastía Han.",
+          "retro_incorrecta": "La respuesta es una red de rutas comerciales, establecida formalmente en la dinastía Han."
+        },
+        {
+          "id": "b3du4",
+          "tipo": "opcion_multiple",
+          "emoji": "🐉",
+          "pista": "b3p3",
+          "fuente": {
+            "cita": "Driven by transport (steam locomotive, steamship, jet engine, container ships)",
+            "foto": 12,
+            "tipo": "textual"
+          },
+          "correcta": 2,
+          "opciones": [
+            "Los feudos y los siervos",
+            "Las campañas de las Cruzadas",
+            "El transporte y las comunicaciones",
+            "Los sitios de fortalezas"
+          ],
+          "pregunta": "¿Qué medios impulsaron la globalización?",
+          "dificultad": "media",
+          "punto_dificil": "pd4",
+          "retro_correcta": "El transporte y las comunicaciones impulsaron la globalización.",
+          "retro_incorrecta": "La respuesta es el transporte y las comunicaciones, como los barcos de vapor e Internet."
+        },
+        {
+          "id": "b3du5",
+          "tipo": "opcion_multiple",
+          "emoji": "🐉",
+          "pista": "b3p2",
+          "fuente": {
+            "cita": "The heavy plow and three-field crop rotation made farming more productive",
+            "foto": 10,
+            "tipo": "textual"
+          },
+          "correcta": 0,
+          "opciones": [
+            "Arado pesado y rotación de tres campos",
+            "Barcos portacontenedores",
+            "Telégrafo",
+            "Motor de reacción"
+          ],
+          "pregunta": "¿Qué mejoró la producción agrícola en el siglo XI?",
+          "dificultad": "media",
+          "punto_dificil": null,
+          "retro_correcta": "El arado pesado y la rotación de tres campos hicieron la tierra más productiva.",
+          "retro_incorrecta": "La respuesta es el arado pesado y la rotación de tres campos."
+        },
+        {
+          "id": "b3du6",
+          "tipo": "opcion_multiple",
+          "emoji": "🐉",
+          "pista": "b3p3",
+          "fuente": {
+            "cita": "Mostly at sea, but also used on land.",
+            "foto": 12,
+            "tipo": "textual"
+          },
+          "correcta": 1,
+          "opciones": [
+            "Solo en las montañas",
+            "Sobre todo en el mar",
+            "Solo dentro de las ciudades",
+            "Solo en el cielo"
+          ],
+          "pregunta": "¿Dónde se usa sobre todo el bloqueo?",
+          "dificultad": "media",
+          "punto_dificil": "pd4",
+          "retro_correcta": "El bloqueo se usa sobre todo en el mar, aunque también en tierra.",
+          "retro_incorrecta": "La respuesta es sobre todo en el mar, pero también se usa en tierra."
+        }
+      ]
+    }
   ],
-  "reto_final": 16,
-  "nota_planificador": "Guía de ejemplo construida a mano a partir de la lección de Lumio 'World History 1° – From the First Villages to a Global World' (13 páginas de teoría), traducida al español con imágenes reales de Wikimedia Commons."
- },
- "bloques": [
-  {
-   "id": "b1",
-   "titulo": "La historia y su método",
-   "pistas": [
-    {
-     "id": "b1p1",
-     "titulo_pagina": "¿Qué es la historia?",
-     "titulo": "La palabra «historia»",
-     "emoji": "📜",
-     "ideas": [
-      "Historia: viene del griego historia, que significa «investigación, conocimiento adquirido al indagar».",
-      "Es el estudio del pasado, sobre todo de lo que tiene que ver con los seres humanos."
-     ],
-     "imagenes": [
-      {
-       "tipo": "retrato",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Marble_bust_of_Herodotos_MET_DT11742_%28cropped%29.jpg/960px-Marble_bust_of_Herodotos_MET_DT11742_%28cropped%29.jpg",
-       "nombre": "Heródoto",
-       "pie": "Busto de Heródoto · Museo Metropolitano de Arte (CC0)"
-      }
-     ]
-    },
-    {
-     "id": "b1p2",
-     "titulo": "Más que fechas",
-     "emoji": "🧠",
-     "ideas": [
-      "Abarca los hechos del pasado y también cómo se descubre, recolecta, organiza, presenta e interpreta la información sobre ellos.",
-      "Un puente: forma parte de las humanidades y de las ciencias sociales; conecta ambas áreas y usa sus métodos."
-     ]
-    },
-    {
-     "id": "b1p3",
-     "titulo": "Historiadores y sus 3 fuentes",
-     "emoji": "🏺",
-     "ideas": [
-      "Historiadores: registran el pasado por escrito o por tradición oral, y usan monumentos, inscripciones e imágenes como fuentes.",
-      "Las 3 fuentes: lo escrito (documentos e inscripciones), lo dicho (la tradición oral) y lo que se conserva (monumentos, objetos e imágenes)."
-     ],
-     "clave": "Tres fuentes del conocimiento histórico: lo escrito, lo dicho y lo que se conserva físicamente."
-    },
-    {
-     "id": "b1p4",
-     "titulo_pagina": "La historia universal y el método histórico",
-     "titulo": "Historia universal",
-     "emoji": "🌍",
-     "ideas": [
-      "Es un campo académico propio desde los años 1980.",
-      "Estudia la historia desde una perspectiva global y busca patrones comunes en todas las culturas."
-     ],
-     "dato_rapido": {
-      "titulo": "Nace como campo",
-      "valor": "años 1980"
-     }
-    },
-    {
-     "id": "b1p5",
-     "titulo": "Dos enfoques",
-     "emoji": "🔭",
-     "ideas": [
-      "Integración: cómo la historia universal ha unido a las personas.",
-      "Diferencia: cómo muestra la diversidad de la experiencia humana."
-     ],
-     "esquema": {
-      "tipo": "partes",
-      "elementos": [
-       {
-        "emoji": "📅",
-        "nombre": "Fecha",
-        "detalle": "¿Cuándo se escribió o produjo?"
-       },
-       {
-        "emoji": "📍",
-        "nombre": "Localización",
-        "detalle": "¿Dónde se produjo?"
-       },
-       {
-        "emoji": "✍️",
-        "nombre": "Autoría",
-        "detalle": "¿Quién la produjo?"
-       },
-       {
-        "emoji": "🔬",
-        "nombre": "Análisis",
-        "detalle": "¿A partir de qué material previo se produjo?"
-       },
-       {
-        "emoji": "🧩",
-        "nombre": "Integridad",
-        "detalle": "¿En qué forma original se produjo?"
-       },
-       {
-        "emoji": "⚖️",
-        "nombre": "Credibilidad",
-        "detalle": "¿Qué valor tiene su contenido como evidencia?"
-       }
-      ]
-     }
-    }
-   ],
-   "actividades": [
-    {
-     "id": "b1om1",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿De qué palabra viene «historia» y qué significa?",
-     "opciones": [
-      "Del latín historia: «relato de reyes»",
-      "Del griego historia: «investigación, conocimiento adquirido al indagar»",
-      "Del griego histos: «tejido»",
-      "Del latín hora: «tiempo»"
-     ],
-     "correcta": 1,
-     "pista": "b1p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "📜",
-     "fuente": {
-      "foto": 2,
-      "tipo": "textual",
-      "cita": "The word history comes from the Greek historia, meaning “inquiry, knowledge acquired by investigation.”"
-     },
-     "retro_correcta": "¡Sí! «Historia» viene del griego y significa investigación: conocimiento que se adquiere al indagar.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Del griego historia: «investigación, conocimiento adquirido al indagar»». «Historia» viene del griego y significa investigación: conocimiento que se adquiere al indagar."
-    },
-    {
-     "id": "b1om2",
-     "tipo": "opcion_multiple",
-     "pregunta": "La historia es, sobre todo, el estudio de…",
-     "opciones": [
-      "el futuro de las naciones",
-      "las rocas y los fósiles",
-      "las leyes de hoy",
-      "el pasado, en especial en relación con los seres humanos"
-     ],
-     "correcta": 3,
-     "pista": "b1p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🕰️",
-     "fuente": {
-      "foto": 2,
-      "tipo": "textual",
-      "cita": "History is the study of the past, particularly how it relates to humans."
-     },
-     "retro_correcta": "¡Sí! La historia estudia el pasado, sobre todo el de los seres humanos.",
-     "retro_incorrecta": "No exactamente: la respuesta es «el pasado, en especial en relación con los seres humanos». La historia estudia el pasado, sobre todo el de los seres humanos."
-    },
-    {
-     "id": "b1om3",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿A qué dos grandes áreas pertenece la historia?",
-     "opciones": [
-      "A las humanidades y a las ciencias sociales",
-      "A las matemáticas y a la física",
-      "A la medicina y a la química",
-      "A la ingeniería y al deporte"
-     ],
-     "correcta": 0,
-     "pista": "b1p2",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🌉",
-     "fuente": {
-      "foto": 2,
-      "tipo": "textual",
-      "cita": "History is part of the humanities and the social sciences."
-     },
-     "retro_correcta": "¡Sí! La historia es un puente: pertenece a las humanidades y a las ciencias sociales y usa los métodos de ambas.",
-     "retro_incorrecta": "No exactamente: la respuesta es «A las humanidades y a las ciencias sociales». La historia es un puente: pertenece a las humanidades y a las ciencias sociales y usa los métodos de ambas."
-    },
-    {
-     "id": "b1om4",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Desde cuándo es la historia universal un campo académico propio?",
-     "opciones": [
-      "Desde la antigua Grecia",
-      "Desde 1492",
-      "Desde los años 1980",
-      "Desde el año 2000"
-     ],
-     "correcta": 2,
-     "pista": "b1p4",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🌍",
-     "fuente": {
-      "foto": 3,
-      "tipo": "textual",
-      "cita": "A field that became a distinct academic field in the 1980s."
-     },
-     "retro_correcta": "¡Sí! La historia universal se volvió un campo académico propio en los años 1980.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Desde los años 1980». La historia universal se volvió un campo académico propio en los años 1980."
-    },
-    {
-     "id": "b1om5",
-     "tipo": "opcion_multiple",
-     "pregunta": "El enfoque de «integración» de la historia universal estudia…",
-     "opciones": [
-      "cómo se dividen los países",
-      "cómo se escriben los libros",
-      "cómo la historia ha unido a las personas",
-      "cómo se fechan los fósiles"
-     ],
-     "correcta": 2,
-     "pista": "b1p5",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🤝",
-     "fuente": {
-      "foto": 3,
-      "tipo": "textual",
-      "cita": "Integration: how world history has drawn people together."
-     },
-     "retro_correcta": "¡Sí! Integración = cómo la historia universal ha unido a las personas; diferencia = la diversidad de la experiencia humana.",
-     "retro_incorrecta": "No exactamente: la respuesta es «cómo la historia ha unido a las personas». Integración = cómo la historia universal ha unido a las personas; diferencia = la diversidad de la experiencia humana."
-    },
-    {
-     "id": "b1om6",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué pregunta del método histórico corresponde a la «autoría»?",
-     "opciones": [
-      "¿Quién produjo la fuente?",
-      "¿Cuándo se produjo?",
-      "¿Dónde se produjo?",
-      "¿Qué valor tiene como evidencia?"
-     ],
-     "correcta": 0,
-     "pista": "b1p5",
-     "punto_dificil": "pd1",
-     "dificultad": "media",
-     "emoji": "✍️",
-     "fuente": {
-      "foto": 3,
-      "tipo": "textual",
-      "cita": "AUTHORSHIP: By whom was it produced?"
-     },
-     "retro_correcta": "¡Sí! Autoría pregunta quién produjo la fuente.",
-     "retro_incorrecta": "No exactamente: la respuesta es «¿Quién produjo la fuente?». Autoría pregunta quién produjo la fuente."
-    },
-    {
-     "id": "b1vf1",
-     "tipo": "verdadero_falso",
-     "afirmacion": "La palabra «historia» viene del latín y significa «relato de reyes».",
-     "es_verdadera": false,
-     "pista": "b1p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "⚖️",
-     "fuente": {
-      "foto": 2,
-      "tipo": "textual",
-      "cita": "The word history comes from the Greek historia"
-     },
-     "retro_correcta": "¡Sí! Viene del griego historia: «investigación, conocimiento adquirido al indagar».",
-     "retro_incorrecta": "No exactamente: la respuesta es «Falso». Viene del griego historia: «investigación, conocimiento adquirido al indagar»."
-    },
-    {
-     "id": "b1vf2",
-     "tipo": "verdadero_falso",
-     "afirmacion": "La historia solo se ocupa de memorizar fechas.",
-     "es_verdadera": false,
-     "pista": "b1p2",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "⚖️",
-     "fuente": {
-      "foto": 2,
-      "tipo": "textual",
-      "cita": "More than dates"
-     },
-     "retro_correcta": "¡Sí! Es mucho más que fechas: incluye la memoria, el descubrimiento, la organización y la interpretación de la información.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Falso». Es mucho más que fechas: incluye la memoria, el descubrimiento, la organización y la interpretación de la información."
-    },
-    {
-     "id": "b1vf3",
-     "tipo": "verdadero_falso",
-     "afirmacion": "La tradición oral (lo que se dice) es una de las tres fuentes del conocimiento histórico.",
-     "es_verdadera": true,
-     "pista": "b1p3",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "⚖️",
-     "fuente": {
-      "foto": 2,
-      "tipo": "textual",
-      "cita": "The 3 sources of historical knowledge: What is written, What is said, What is physically preserved"
-     },
-     "retro_correcta": "¡Sí! Las tres fuentes son lo escrito, lo dicho y lo que se conserva físicamente.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Verdadero». Las tres fuentes son lo escrito, lo dicho y lo que se conserva físicamente."
-    },
-    {
-     "id": "b1vf4",
-     "tipo": "verdadero_falso",
-     "afirmacion": "La historia universal busca patrones comunes en todas las culturas.",
-     "es_verdadera": true,
-     "pista": "b1p4",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "⚖️",
-     "fuente": {
-      "foto": 3,
-      "tipo": "textual",
-      "cita": "looks for common patterns across all cultures"
-     },
-     "retro_correcta": "¡Sí! Mira la historia con perspectiva global y busca patrones comunes en todas las culturas.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Verdadero». Mira la historia con perspectiva global y busca patrones comunes en todas las culturas."
-    },
-    {
-     "id": "b1vf5",
-     "tipo": "verdadero_falso",
-     "afirmacion": "La pregunta «¿dónde se produjo?» corresponde a la credibilidad de una fuente.",
-     "es_verdadera": false,
-     "pista": "b1p5",
-     "punto_dificil": "pd1",
-     "dificultad": "media",
-     "emoji": "⚖️",
-     "fuente": {
-      "foto": 3,
-      "tipo": "textual",
-      "cita": "LOCALIZATION: Where was it produced?"
-     },
-     "retro_correcta": "¡Sí! «¿Dónde se produjo?» es la localización; la credibilidad pregunta qué valor tiene su contenido como evidencia.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Falso». «¿Dónde se produjo?» es la localización; la credibilidad pregunta qué valor tiene su contenido como evidencia."
-    },
-    {
-     "id": "b1cp1",
-     "tipo": "completar",
-     "enunciado": "Los historiadores registran el pasado por escrito o por ___ oral.",
-     "respuesta": "tradición",
-     "distractores": [
-      "memoria",
-      "historia",
-      "ley"
-     ],
-     "pista": "b1p3",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "✏️",
-     "fuente": {
-      "foto": 2,
-      "tipo": "textual",
-      "cita": "People who record the past, in writing or through oral tradition."
-     },
-     "retro_correcta": "¡Sí! Los historiadores registran el pasado por escrito o por tradición oral.",
-     "retro_incorrecta": "No exactamente: la respuesta es «tradición». Los historiadores registran el pasado por escrito o por tradición oral."
-    },
-    {
-     "id": "b1co1",
-     "tipo": "conceptos",
-     "instruccion": "Une cada idea con su significado.",
-     "pares": [
-      {
-       "termino": "Historia",
-       "definicion": "Estudio del pasado, sobre todo del humano"
-      },
-      {
-       "termino": "Historiador",
-       "definicion": "Persona que registra e investiga el pasado"
-      },
-      {
-       "termino": "Fuente",
-       "definicion": "Lo escrito, lo dicho o lo que se conserva"
-      },
-      {
-       "termino": "Historia universal",
-       "definicion": "Mira el pasado con perspectiva global"
-      },
-      {
-       "termino": "Integración",
-       "definicion": "Cómo la historia ha unido a las personas"
-      },
-      {
-       "termino": "Credibilidad",
-       "definicion": "Valor de una fuente como evidencia"
-      }
-     ],
-     "pista": "b1p5",
-     "punto_dificil": "pd1",
-     "dificultad": "media",
-     "emoji": "🧩",
-     "fuente": {
-      "foto": 3,
-      "tipo": "textual",
-      "cita": "CREDIBILITY: What is the evidential value of its contents?"
-     }
-    }
-   ],
-   "mini_examen": [
-    {
-     "id": "b1me1",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué significa la palabra griega historia?",
-     "opciones": [
-      "Relato de guerras",
-      "Libro de fechas",
-      "Memoria de los reyes",
-      "Investigación, conocimiento adquirido al indagar"
-     ],
-     "correcta": 3,
-     "pista": "b1p1",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 2,
-      "tipo": "textual",
-      "cita": "“inquiry, knowledge acquired by investigation.”"
-     },
-     "retro_correcta": "¡Sí! Historia = investigación, conocimiento adquirido al indagar.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Investigación, conocimiento adquirido al indagar». Historia = investigación, conocimiento adquirido al indagar."
-    },
-    {
-     "id": "b1me2",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Cuál NO es una de las tres fuentes del conocimiento histórico?",
-     "opciones": [
-      "Lo escrito",
-      "Lo imaginado",
-      "Lo dicho",
-      "Lo que se conserva físicamente"
-     ],
-     "correcta": 1,
-     "pista": "b1p3",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 2,
-      "tipo": "textual",
-      "cita": "What is written · What is said · What is physically preserved"
-     },
-     "retro_correcta": "¡Sí! Las fuentes son lo escrito, lo dicho y lo que se conserva; lo imaginado no es una fuente.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Lo imaginado». Las fuentes son lo escrito, lo dicho y lo que se conserva; lo imaginado no es una fuente."
-    },
-    {
-     "id": "b1me3",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué estudia el enfoque de «diferencia»?",
-     "opciones": [
-      "Las fechas exactas",
-      "La diversidad de la experiencia humana",
-      "Solo la historia de Europa",
-      "Los mapas antiguos"
-     ],
-     "correcta": 1,
-     "pista": "b1p5",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 3,
-      "tipo": "textual",
-      "cita": "Difference: how it shows the diversity of human experience."
-     },
-     "retro_correcta": "¡Sí! Diferencia = cómo la historia universal muestra la diversidad de la experiencia humana.",
-     "retro_incorrecta": "No exactamente: la respuesta es «La diversidad de la experiencia humana». Diferencia = cómo la historia universal muestra la diversidad de la experiencia humana."
-    },
-    {
-     "id": "b1me4",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué pregunta responde la «integridad» de una fuente?",
-     "opciones": [
-      "¿Quién la produjo?",
-      "¿Cuándo se produjo?",
-      "¿Dónde se produjo?",
-      "¿En qué forma original se produjo?"
-     ],
-     "correcta": 3,
-     "pista": "b1p5",
-     "punto_dificil": "pd1",
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 3,
-      "tipo": "textual",
-      "cita": "INTEGRITY: In what original form was it produced?"
-     },
-     "retro_correcta": "¡Sí! Integridad = en qué forma original se produjo la fuente.",
-     "retro_incorrecta": "No exactamente: la respuesta es «¿En qué forma original se produjo?». Integridad = en qué forma original se produjo la fuente."
-    },
-    {
-     "id": "b1me5",
-     "tipo": "opcion_multiple",
-     "pregunta": "La historia conecta dos áreas y usa los métodos de ambas. ¿Cuáles?",
-     "opciones": [
-      "Las humanidades y las ciencias sociales",
-      "Las ciencias naturales y la ingeniería",
-      "La música y el deporte",
-      "La medicina y el derecho"
-     ],
-     "correcta": 0,
-     "pista": "b1p2",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 2,
-      "tipo": "textual",
-      "cita": "It connects both areas and uses methods from both."
-     },
-     "retro_correcta": "¡Sí! La historia conecta las humanidades con las ciencias sociales.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Las humanidades y las ciencias sociales». La historia conecta las humanidades con las ciencias sociales."
-    }
-   ]
-  },
-  {
-   "id": "b2",
-   "titulo": "Las civilizaciones antiguas",
-   "pistas": [
-    {
-     "id": "b2p1",
-     "titulo_pagina": "Del Neolítico al mundo antiguo",
-     "titulo": "Neolítico (6000 – 3000 a. C.)",
-     "emoji": "🌾",
-     "ideas": [
-      "Domesticación de plantas y animales.",
-      "Vida sedentaria: surgen las aldeas.",
-      "Aparece la propiedad privada y la sociedad se divide en clases."
-     ],
-     "imagenes": [
-      {
-       "tipo": "foto",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Early_house_at_Skara_Brae_-_geograph.org.uk_-_7445679.jpg/960px-Early_house_at_Skara_Brae_-_geograph.org.uk_-_7445679.jpg",
-       "pie": "Casa neolítica en Skara Brae, Escocia (c. 3100 a. C.) · Foto: Eirian Evans (CC BY-SA 2.0)"
-      }
-     ]
-    },
-    {
-     "id": "b2p2",
-     "titulo": "Mundo antiguo (3000 a. C. – 476 d. C.)",
-     "emoji": "🏛️",
-     "ideas": [
-      "Grandes civilizaciones agrícolas: Mesopotamia, Egipto, valle del Indo y China.",
-      "Civilizaciones mediterráneas: fenicios, griegos y romanos."
-     ],
-     "esquema": {
-      "tipo": "linea_tiempo",
-      "elementos": [
-       {
-        "nombre": "6000 a. C.",
-        "detalle": "Empieza el Neolítico",
-        "emoji": "🌾"
-       },
-       {
-        "nombre": "3000 a. C.",
-        "detalle": "Empieza el mundo antiguo",
-        "emoji": "🏛️"
-       },
-       {
-        "nombre": "476 d. C.",
-        "detalle": "Cae Roma",
-        "emoji": "🏚️"
-       }
-      ]
-     }
-    },
-    {
-     "id": "b2p3",
-     "titulo": "Dos familias de civilizaciones",
-     "emoji": "🗺️",
-     "ideas": [
-      "Agrícolas: Mesopotamia, Egipto, el valle del Indo y China crecieron junto a grandes ríos.",
-      "Mediterráneas: fenicios, griegos y romanos, en las costas del mar Mediterráneo."
-     ]
-    },
-    {
-     "id": "b2p4",
-     "titulo_pagina": "Las grandes civilizaciones agrícolas",
-     "titulo": "Mesopotamia",
-     "emoji": "🏺",
-     "ideas": [
-      "c. 3500 – 539 a. C. · Entre los ríos Tigris y Éufrates (actual Irak).",
-      "Cuna de la escritura cuneiforme y del Código de Hammurabi.",
-      "Avances en agricultura y astronomía."
-     ],
-     "imagenes": [
-      {
-       "tipo": "foto",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/P1050763_Louvre_code_Hammurabi_face_rwk.JPG/960px-P1050763_Louvre_code_Hammurabi_face_rwk.JPG",
-       "pie": "Estela del Código de Hammurabi · Museo del Louvre · Foto: Mbzt (CC BY 3.0)"
-      }
-     ]
-    },
-    {
-     "id": "b2p5",
-     "titulo": "Egipto",
-     "emoji": "🔺",
-     "ideas": [
-      "c. 3100 – 30 a. C. · Valle del río Nilo.",
-      "Pirámides, jeroglíficos y estructuras sociales y religiosas complejas."
-     ],
-     "imagenes": [
-      {
-       "tipo": "foto",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Giza_Great_Pyramid_of_Khufu_%289793952173%29.jpg/960px-Giza_Great_Pyramid_of_Khufu_%289793952173%29.jpg",
-       "pie": "Gran Pirámide de Keops, en Guiza · Foto: Gary Todd (CC0)"
-      }
-     ]
-    },
-    {
-     "id": "b2p6",
-     "titulo": "Valle del Indo",
-     "emoji": "🏙️",
-     "ideas": [
-      "c. 3300 – 1300 a. C. · Río Indo (India, Pakistán, Afganistán).",
-      "Una de las primeras ciudades planificadas, Mohenjo-Daro, con un sistema de drenaje avanzado."
-     ],
-     "imagenes": [
-      {
-       "tipo": "foto",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Mohenjo-daro.jpg/960px-Mohenjo-daro.jpg",
-       "pie": "Ruinas de Mohenjo-Daro, Pakistán · Foto: Saqib Qayyum (CC BY-SA 3.0)"
-      }
-     ]
-    },
-    {
-     "id": "b2p7",
-     "titulo_pagina": "Las grandes civilizaciones agrícolas (II)",
-     "titulo": "China antigua",
-     "emoji": "🐉",
-     "ideas": [
-      "c. 2000 – 221 a. C. · Valles de los ríos Amarillo y Yangtsé.",
-      "Escritura china, filosofías, metalurgia y cerámica. Se empezó a construir la Gran Muralla."
-     ],
-     "imagenes": [
-      {
-       "tipo": "foto",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/20090529_Great_Wall_8185.jpg/960px-20090529_Great_Wall_8185.jpg",
-       "pie": "Gran Muralla china en Jinshanling · Foto: Jakub Hałun (CC BY-SA 3.0)"
-      }
-     ]
-    },
-    {
-     "id": "b2p8",
-     "titulo": "Lo que comparten",
-     "emoji": "💧",
-     "ideas": [
-      "Todas crecieron junto a grandes ríos: Tigris y Éufrates, Nilo, Indo, Amarillo y Yangtsé.",
-      "Mesopotamia, Egipto y China crearon su propia escritura: cuneiforme, jeroglíficos y escritura china.",
-      "Todas levantaron grandes obras: ciudades planificadas, pirámides y la Gran Muralla."
-     ]
-    },
-    {
-     "id": "b2p9",
-     "titulo": "Las cuatro en el tiempo",
-     "emoji": "⏳",
-     "ideas": [
-      "Mesopotamia es la más antigua y China, la más reciente."
-     ],
-     "esquema": {
-      "tipo": "linea_tiempo",
-      "elementos": [
-       {
-        "nombre": "c. 3500 a. C.",
-        "detalle": "Mesopotamia",
-        "emoji": "🏺"
-       },
-       {
-        "nombre": "c. 3300 a. C.",
-        "detalle": "Valle del Indo",
-        "emoji": "🏙️"
-       },
-       {
-        "nombre": "c. 3100 a. C.",
-        "detalle": "Egipto",
-        "emoji": "🔺"
-       },
-       {
-        "nombre": "c. 2000 a. C.",
-        "detalle": "China",
-        "emoji": "🐉"
-       }
-      ]
-     }
-    },
-    {
-     "id": "b2p10",
-     "titulo_pagina": "Las civilizaciones mediterráneas",
-     "titulo": "Fenicios",
-     "emoji": "⛵",
-     "ideas": [
-      "1500 – 539 a. C. · Costa del Mediterráneo (Líbano, Siria, Israel).",
-      "Famosos navegantes y comerciantes. Su alfabeto influyó en el griego y, después, en la escritura romana."
-     ],
-     "imagenes": [
-      {
-       "tipo": "foto",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/AssyrianWarship.jpg/960px-AssyrianWarship.jpg",
-       "pie": "Barco fenicio en un relieve asirio (c. 700 a. C.) · Museo Británico · Foto: World Imaging (CC BY-SA 3.0)"
-      }
-     ]
-    },
-    {
-     "id": "b2p11",
-     "titulo": "Grecia antigua",
-     "emoji": "🏛️",
-     "ideas": [
-      "Siglo VIII – 146 a. C. · Grecia.",
-      "Cuna de la democracia y la filosofía. Ciudades-estado como Atenas y Esparta."
-     ],
-     "imagenes": [
-      {
-       "tipo": "foto",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Acropolis_Parthenon_Athens_Greece.jpg/960px-Acropolis_Parthenon_Athens_Greece.jpg",
-       "pie": "El Partenón, en la Acrópolis de Atenas · Foto: Jebulon (CC0)"
-      }
-     ]
-    },
-    {
-     "id": "b2p12",
-     "titulo": "Roma antigua",
-     "emoji": "🦅",
-     "ideas": [
-      "753 a. C. – 476 d. C. (Imperio de Occidente) · Roma, Europa, norte de África y Medio Oriente.",
-      "Un vasto imperio: derecho romano, acueductos y caminos, el Coliseo. Pasó de república a imperio."
-     ],
-     "imagenes": [
-      {
-       "tipo": "foto",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Rome_Colosseum_001.jpg/960px-Rome_Colosseum_001.jpg",
-       "pie": "El Coliseo de Roma · Foto: Wilfredor (CC0)"
-      }
-     ],
-     "clave": "Fenicios = comercio y alfabeto · Griegos = democracia y filosofía · Romanos = derecho e imperio."
-    }
-   ],
-   "actividades": [
-    {
-     "id": "b2om1",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué característica es propia del Neolítico?",
-     "opciones": [
-      "La invención del internet",
-      "La fundación de Roma",
-      "La domesticación de plantas y animales",
-      "Las Cruzadas"
-     ],
-     "correcta": 2,
-     "pista": "b2p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🌾",
-     "fuente": {
-      "foto": 4,
-      "tipo": "textual",
-      "cita": "Domestication of plants and animals."
-     },
-     "retro_correcta": "¡Sí! En el Neolítico se domesticaron plantas y animales y surgieron las aldeas.",
-     "retro_incorrecta": "No exactamente: la respuesta es «La domesticación de plantas y animales». En el Neolítico se domesticaron plantas y animales y surgieron las aldeas."
-    },
-    {
-     "id": "b2om2",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿En qué año empieza el mundo antiguo, según la línea del tiempo?",
-     "opciones": [
-      "6000 a. C.",
-      "476 d. C.",
-      "3000 a. C.",
-      "1453 d. C."
-     ],
-     "correcta": 2,
-     "pista": "b2p2",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "⏳",
-     "fuente": {
-      "foto": 4,
-      "tipo": "textual",
-      "cita": "3000 BC · Ancient world begins"
-     },
-     "retro_correcta": "¡Sí! El mundo antiguo va del 3000 a. C. al 476 d. C., la caída de Roma.",
-     "retro_incorrecta": "No exactamente: la respuesta es «3000 a. C.». El mundo antiguo va del 3000 a. C. al 476 d. C., la caída de Roma."
-    },
-    {
-     "id": "b2om3",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Entre qué ríos se desarrolló Mesopotamia?",
-     "opciones": [
-      "Tigris y Éufrates",
-      "Nilo y Congo",
-      "Indo y Ganges",
-      "Amarillo y Yangtsé"
-     ],
-     "correcta": 0,
-     "pista": "b2p4",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🏺",
-     "fuente": {
-      "foto": 5,
-      "tipo": "textual",
-      "cita": "Between the Tigris and Euphrates rivers (modern Iraq)"
-     },
-     "retro_correcta": "¡Sí! Mesopotamia creció entre el Tigris y el Éufrates, en el actual Irak.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Tigris y Éufrates». Mesopotamia creció entre el Tigris y el Éufrates, en el actual Irak."
-    },
-    {
-     "id": "b2om4",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué civilización construyó pirámides y escribió con jeroglíficos?",
-     "opciones": [
-      "China",
-      "Fenicia",
-      "Esparta",
-      "Egipto"
-     ],
-     "correcta": 3,
-     "pista": "b2p5",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🔺",
-     "fuente": {
-      "foto": 5,
-      "tipo": "textual",
-      "cita": "Pyramids, hieroglyphics and complex social and religious structures."
-     },
-     "retro_correcta": "¡Sí! Egipto, en el valle del Nilo, construyó pirámides y usó jeroglíficos.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Egipto». Egipto, en el valle del Nilo, construyó pirámides y usó jeroglíficos."
-    },
-    {
-     "id": "b2om5",
-     "tipo": "opcion_multiple",
-     "pregunta": "Mohenjo-Daro, una de las primeras ciudades planificadas, pertenece a…",
-     "opciones": [
-      "Mesopotamia",
-      "el valle del Indo",
-      "Grecia",
-      "Roma"
-     ],
-     "correcta": 1,
-     "pista": "b2p6",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🏙️",
-     "fuente": {
-      "foto": 5,
-      "tipo": "textual",
-      "cita": "One of the first planned cities, Mohenjo-Daro, with advanced sewage systems."
-     },
-     "retro_correcta": "¡Sí! Mohenjo-Daro fue una ciudad planificada del valle del Indo, con drenaje avanzado.",
-     "retro_incorrecta": "No exactamente: la respuesta es «el valle del Indo». Mohenjo-Daro fue una ciudad planificada del valle del Indo, con drenaje avanzado."
-    },
-    {
-     "id": "b2om6",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué aportaron los fenicios a la escritura?",
-     "opciones": [
-      "Los jeroglíficos",
-      "Un alfabeto que influyó en el griego y luego en el romano",
-      "La escritura cuneiforme",
-      "La imprenta"
-     ],
-     "correcta": 1,
-     "pista": "b2p10",
-     "punto_dificil": "pd2",
-     "dificultad": "facil",
-     "emoji": "⛵",
-     "fuente": {
-      "foto": 6,
-      "tipo": "textual",
-      "cita": "Their alphabet influenced Greek and later Roman writing."
-     },
-     "retro_correcta": "¡Sí! El alfabeto fenicio influyó en el griego y, después, en la escritura romana.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Un alfabeto que influyó en el griego y luego en el romano». El alfabeto fenicio influyó en el griego y, después, en la escritura romana."
-    },
-    {
-     "id": "b2om7",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué dos ciudades-estado griegas menciona la pista?",
-     "opciones": [
-      "Roma y Cartago",
-      "Tebas y Menfis",
-      "Babilonia y Ur",
-      "Atenas y Esparta"
-     ],
-     "correcta": 3,
-     "pista": "b2p11",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🏛️",
-     "fuente": {
-      "foto": 6,
-      "tipo": "textual",
-      "cita": "City-states like Athens and Sparta."
-     },
-     "retro_correcta": "¡Sí! Grecia se organizó en ciudades-estado como Atenas y Esparta.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Atenas y Esparta». Grecia se organizó en ciudades-estado como Atenas y Esparta."
-    },
-    {
-     "id": "b2cp1",
-     "tipo": "completar",
-     "enunciado": "La escritura ___ nació en Mesopotamia.",
-     "respuesta": "cuneiforme",
-     "distractores": [
-      "jeroglífica",
-      "latina",
-      "china"
-     ],
-     "pista": "b2p4",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "✏️",
-     "fuente": {
-      "foto": 5,
-      "tipo": "textual",
-      "cita": "Birthplace of cuneiform writing."
-     },
-     "retro_correcta": "¡Sí! Mesopotamia es la cuna de la escritura cuneiforme.",
-     "retro_incorrecta": "No exactamente: la respuesta es «cuneiforme». Mesopotamia es la cuna de la escritura cuneiforme."
-    },
-    {
-     "id": "b2cp2",
-     "tipo": "completar",
-     "enunciado": "Grecia es la cuna de la ___ y de la filosofía.",
-     "respuesta": "democracia",
-     "distractores": [
-      "monarquía",
-      "agricultura",
-      "navegación"
-     ],
-     "pista": "b2p11",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "✏️",
-     "fuente": {
-      "foto": 6,
-      "tipo": "textual",
-      "cita": "Birthplace of democracy and philosophy."
-     },
-     "retro_correcta": "¡Sí! Grecia es la cuna de la democracia y la filosofía.",
-     "retro_incorrecta": "No exactamente: la respuesta es «democracia». Grecia es la cuna de la democracia y la filosofía."
-    },
-    {
-     "id": "b2cl1",
-     "tipo": "clasificar",
-     "instruccion": "¿Agrícola o mediterránea?",
-     "grupos": [
-      "Civilización agrícola 🌾",
-      "Civilización mediterránea ⛵"
-     ],
-     "elementos": [
-      {
-       "texto": "Mesopotamia",
-       "grupo": 0
-      },
-      {
-       "texto": "Egipto",
-       "grupo": 0
-      },
-      {
-       "texto": "Valle del Indo",
-       "grupo": 0
-      },
-      {
-       "texto": "China",
-       "grupo": 0
-      },
-      {
-       "texto": "Fenicios",
-       "grupo": 1
-      },
-      {
-       "texto": "Griegos",
-       "grupo": 1
-      },
-      {
-       "texto": "Romanos",
-       "grupo": 1
-      }
-     ],
-     "pista": "b2p3",
-     "punto_dificil": "pd2",
-     "dificultad": "media",
-     "emoji": "🗂️",
-     "fuente": {
-      "foto": 4,
-      "tipo": "textual",
-      "cita": "Great agricultural civilizations: Mesopotamia, Egypt, Indus Valley and China. Mediterranean civilizations: Phoenicians, Greeks and Romans."
-     }
-    },
-    {
-     "id": "b2or1",
-     "tipo": "ordenar",
-     "instruccion": "De la más antigua a la más reciente: ordena las civilizaciones por su fecha de inicio.",
-     "pasos": [
-      {
-       "texto": "Mesopotamia (c. 3500 a. C.)",
-       "emoji": "🏺"
-      },
-      {
-       "texto": "Valle del Indo (c. 3300 a. C.)",
-       "emoji": "🏙️"
-      },
-      {
-       "texto": "Egipto (c. 3100 a. C.)",
-       "emoji": "🔺"
-      },
-      {
-       "texto": "China (c. 2000 a. C.)",
-       "emoji": "🐉"
-      },
-      {
-       "texto": "Fenicios (1500 a. C.)",
-       "emoji": "⛵"
-      },
-      {
-       "texto": "Roma (753 a. C.)",
-       "emoji": "🦅"
-      }
-     ],
-     "pista": "b2p9",
-     "punto_dificil": "pd2",
-     "dificultad": "media",
-     "emoji": "🔢",
-     "fuente": {
-      "foto": 5,
-      "tipo": "textual",
-      "cita": "c. 3500 BC · c. 3100 BC · c. 3300 BC · c. 2000 BC · 1500 BC · 753 BC"
-     },
-     "retro_correcta": "¡Sí! El orden es Mesopotamia → valle del Indo → Egipto → China → fenicios → Roma.",
-     "retro_incorrecta": "No exactamente: El orden es Mesopotamia → valle del Indo → Egipto → China → fenicios → Roma."
-    }
-   ],
-   "mini_examen": [
-    {
-     "id": "b2me1",
-     "tipo": "opcion_multiple",
-     "pregunta": "La vida sedentaria y el surgimiento de las aldeas ocurren en…",
-     "opciones": [
-      "el Neolítico",
-      "la Edad Media",
-      "el Imperio otomano",
-      "la globalización"
-     ],
-     "correcta": 0,
-     "pista": "b2p1",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 4,
-      "tipo": "textual",
-      "cita": "Sedentary life: the rise of villages."
-     },
-     "retro_correcta": "¡Sí! El sedentarismo y las primeras aldeas son del Neolítico.",
-     "retro_incorrecta": "No exactamente: la respuesta es «el Neolítico». El sedentarismo y las primeras aldeas son del Neolítico."
-    },
-    {
-     "id": "b2me2",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Cuál es una civilización mediterránea?",
-     "opciones": [
-      "Egipto",
-      "Mesopotamia",
-      "Los fenicios",
-      "China"
-     ],
-     "correcta": 2,
-     "pista": "b2p3",
-     "punto_dificil": "pd2",
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 4,
-      "tipo": "textual",
-      "cita": "Mediterranean civilizations: Phoenicians, Greeks and Romans."
-     },
-     "retro_correcta": "¡Sí! Las mediterráneas son fenicios, griegos y romanos.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Los fenicios». Las mediterráneas son fenicios, griegos y romanos."
-    },
-    {
-     "id": "b2me3",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué civilización empezó a construir la Gran Muralla?",
-     "opciones": [
-      "Egipto",
-      "Grecia",
-      "China",
-      "Valle del Indo"
-     ],
-     "correcta": 2,
-     "pista": "b2p7",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 5,
-      "tipo": "textual",
-      "cita": "The Great Wall was begun."
-     },
-     "retro_correcta": "¡Sí! La Gran Muralla se empezó en la China antigua.",
-     "retro_incorrecta": "No exactamente: la respuesta es «China». La Gran Muralla se empezó en la China antigua."
-    },
-    {
-     "id": "b2me4",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué civilización duró del 753 a. C. al 476 d. C. en Occidente?",
-     "opciones": [
-      "Roma",
-      "Grecia",
-      "Fenicia",
-      "Egipto"
-     ],
-     "correcta": 0,
-     "pista": "b2p12",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 6,
-      "tipo": "textual",
-      "cita": "753 BC – 476 AD (Western Empire)"
-     },
-     "retro_correcta": "¡Sí! Roma: del 753 a. C. al 476 d. C. en el Imperio de Occidente.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Roma». Roma: del 753 a. C. al 476 d. C. en el Imperio de Occidente."
-    },
-    {
-     "id": "b2me5",
-     "tipo": "opcion_multiple",
-     "pregunta": "El Código de Hammurabi es de…",
-     "opciones": [
-      "Egipto",
-      "Grecia",
-      "Roma",
-      "Mesopotamia"
-     ],
-     "correcta": 3,
-     "pista": "b2p4",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 5,
-      "tipo": "textual",
-      "cita": "Code of Hammurabi."
-     },
-     "retro_correcta": "¡Sí! El Código de Hammurabi es de Mesopotamia.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Mesopotamia». El Código de Hammurabi es de Mesopotamia."
-    }
-   ]
-  },
-  {
-   "id": "b3",
-   "titulo": "Roma",
-   "pistas": [
-    {
-     "id": "b3p1",
-     "titulo_pagina": "La antigua Roma y su origen legendario",
-     "titulo": "De un pueblito a un imperio",
-     "emoji": "🏙️",
-     "ideas": [
-      "Desde el siglo VIII a. C., Roma creció de un pueblo junto al río Tíber a un imperio que cubrió casi toda Europa, Britania, gran parte de Asia occidental, el norte de África y las islas del Mediterráneo.",
-      "Tras 450 años como república, Roma se volvió imperio después del ascenso y la caída de Julio César (siglo I a. C.). Declinó y cayó en el siglo V d. C."
-     ]
-    },
-    {
-     "id": "b3p2",
-     "titulo": "Su legado",
-     "emoji": "🏛️",
-     "ideas": [
-      "Lenguas romances, hijas del latín: italiano, francés, español, portugués y rumano.",
-      "El alfabeto y el calendario occidentales modernos.",
-      "El cristianismo como una gran religión mundial."
-     ]
-    },
-    {
-     "id": "b3p3",
-     "titulo": "La leyenda",
-     "emoji": "🐺",
-     "ideas": [
-      "Rómulo y Remo, gemelos hijos de Marte (dios de la guerra), fueron abandonados en el Tíber por un rey de Alba Longa y rescatados por una loba.",
-      "Fundaron Roma en el 753 a. C. Tras matar a su hermano, Rómulo fue el primer rey; Roma lleva su nombre."
-     ],
-     "imagenes": [
-      {
-       "tipo": "foto",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Lupa_Capitolina%2C_Rome.jpg/960px-Lupa_Capitolina%2C_Rome.jpg",
-       "pie": "La Loba Capitolina con Rómulo y Remo · Museos Capitolinos, Roma (CC0)"
-      }
-     ]
-    },
-    {
-     "id": "b3p4",
-     "titulo_pagina": "La República romana y el derecho romano",
-     "titulo": "¿Quién gobernaba?",
-     "emoji": "⚖️",
-     "ideas": [
-      "El poder pasó del rey a dos magistrados elegidos cada año: los cónsules, también jefes del ejército.",
-      "El Senado estaba dominado por los patricios (descendientes de los primeros senadores).",
-      "Los plebeyos (el pueblo común) lucharon contra los patricios y ganaron sus propios órganos: los tribunos, que podían proponer o vetar leyes.",
-      "Hacia el 300 a. C., el poder real estaba en el Senado."
-     ]
-    },
-    {
-     "id": "b3p5",
-     "titulo": "Las Doce Tablas (450 a. C.)",
-     "emoji": "📜",
-     "ideas": [
-      "El primer código de leyes romano, escrito en 12 tablas de bronce y exhibido en el Foro Romano: procedimiento legal, derechos civiles y propiedad.",
-      "La base de todo el derecho civil romano posterior."
-     ],
-     "imagenes": [
-      {
-       "tipo": "pintura",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Cicero_Denounces_Catiline_in_the_Roman_Senate_by_Cesare_Maccari.png/960px-Cicero_Denounces_Catiline_in_the_Roman_Senate_by_Cesare_Maccari.png",
-       "pie": "El Senado romano: Cicerón denuncia a Catilina · Pintura de Cesare Maccari (1889)"
-      }
-     ]
-    },
-    {
-     "id": "b3p6",
-     "titulo": "Expansión militar",
-     "emoji": "🛡️",
-     "ideas": [
-      "Las conquistas pusieron a Roma en contacto con culturas avanzadas como la griega.",
-      "La primera literatura romana (hacia el 240 a. C.) fueron clásicos griegos traducidos al latín."
-     ],
-     "clave": "Cónsules (2, elegidos cada año) · Senado (patricios) · Tribunos (plebeyos) · Doce Tablas (450 a. C.)."
-    },
-    {
-     "id": "b3p7",
-     "titulo_pagina": "Crisis y caída de Roma",
-     "titulo": "Problemas al final de la República",
-     "emoji": "📉",
-     "ideas": [
-      "La brecha entre ricos y pobres creció: los grandes terratenientes expulsaron a los pequeños agricultores de las tierras públicas.",
-      "Solo las clases privilegiadas llegaban al gobierno.",
-      "Los reformadores Tiberio (133 a. C.) y Cayo Graco (123–122 a. C.) intentaron arreglarlo, pero sus opositores los mataron."
-     ]
-    },
-    {
-     "id": "b3p8",
-     "titulo": "Decadencia y desintegración",
-     "emoji": "🏚️",
-     "ideas": [
-      "Roma se derrumbó bajo el peso de su enorme imperio, perdiendo sus provincias una por una.",
-      "Fin de la Roma antigua: septiembre del 476 d. C."
-     ],
-     "esquema": {
-      "tipo": "linea_tiempo",
-      "elementos": [
-       {
-        "nombre": "c. 410",
-        "detalle": "Roma pierde Britania",
-        "emoji": "🏝️"
-       },
-       {
-        "nombre": "hacia 430",
-        "detalle": "Pierde Hispania y el norte de África",
-        "emoji": "🗺️"
-       },
-       {
-        "nombre": "c. 450",
-        "detalle": "Atila y los hunos invaden Galia e Italia",
-        "imagen": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Eugene_Ferdinand_Victor_Delacroix_Attila_fragment_%28cropped%29.jpg"
-       },
-       {
-        "nombre": "sept. 476",
-        "detalle": "Odoacro destituye a Rómulo Augústulo: rey de Italia",
-        "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Romulus_Augustulus_and_Odoacer.jpg/960px-Romulus_Augustulus_and_Odoacer.jpg"
-       }
-      ]
-     }
-    }
-   ],
-   "actividades": [
-    {
-     "id": "b3om1",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Junto a qué río nació Roma?",
-     "opciones": [
-      "El Nilo",
-      "El Tíber",
-      "El Tigris",
-      "El Danubio"
-     ],
-     "correcta": 1,
-     "pista": "b3p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🏙️",
-     "fuente": {
-      "foto": 7,
-      "tipo": "textual",
-      "cita": "Rome grew from a small town on the Tiber River"
-     },
-     "retro_correcta": "¡Sí! Roma empezó como un pueblo junto al río Tíber.",
-     "retro_incorrecta": "No exactamente: la respuesta es «El Tíber». Roma empezó como un pueblo junto al río Tíber."
-    },
-    {
-     "id": "b3om2",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Cuántos años fue Roma una república antes de volverse imperio?",
-     "opciones": [
-      "100 años",
-      "Unos 450 años",
-      "1,000 años",
-      "20 años"
-     ],
-     "correcta": 1,
-     "pista": "b3p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🦅",
-     "fuente": {
-      "foto": 7,
-      "tipo": "textual",
-      "cita": "After 450 years as a republic, Rome became an empire"
-     },
-     "retro_correcta": "¡Sí! Roma fue república unos 450 años; se volvió imperio tras Julio César.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Unos 450 años». Roma fue república unos 450 años; se volvió imperio tras Julio César."
-    },
-    {
-     "id": "b3om3",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué lenguas vienen del latín?",
-     "opciones": [
-      "Inglés, alemán y holandés",
-      "Griego y turco",
-      "Chino y japonés",
-      "Italiano, francés, español, portugués y rumano"
-     ],
-     "correcta": 3,
-     "pista": "b3p2",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🗣️",
-     "fuente": {
-      "foto": 7,
-      "tipo": "textual",
-      "cita": "Romance languages from Latin: Italian, French, Spanish, Portuguese and Romanian."
-     },
-     "retro_correcta": "¡Sí! Las lenguas romances vienen del latín: italiano, francés, español, portugués y rumano.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Italiano, francés, español, portugués y rumano». Las lenguas romances vienen del latín: italiano, francés, español, portugués y rumano."
-    },
-    {
-     "id": "b3om4",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Quiénes eran los cónsules?",
-     "opciones": [
-      "Dos magistrados elegidos cada año, también jefes del ejército",
-      "Los descendientes de los primeros senadores",
-      "Los representantes de los plebeyos",
-      "Los reyes de Alba Longa"
-     ],
-     "correcta": 0,
-     "pista": "b3p4",
-     "punto_dificil": "pd3",
-     "dificultad": "media",
-     "emoji": "⚖️",
-     "fuente": {
-      "foto": 8,
-      "tipo": "textual",
-      "cita": "two magistrates elected every year: the consuls, also commanders of the army"
-     },
-     "retro_correcta": "¡Sí! Los cónsules eran dos magistrados elegidos cada año y mandaban el ejército.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Dos magistrados elegidos cada año, también jefes del ejército». Los cónsules eran dos magistrados elegidos cada año y mandaban el ejército."
-    },
-    {
-     "id": "b3om5",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué podían hacer los tribunos?",
-     "opciones": [
-      "Nombrar al rey",
-      "Escribir las Doce Tablas",
-      "Proponer o vetar leyes",
-      "Mandar el ejército"
-     ],
-     "correcta": 2,
-     "pista": "b3p4",
-     "punto_dificil": "pd3",
-     "dificultad": "media",
-     "emoji": "🗳️",
-     "fuente": {
-      "foto": 8,
-      "tipo": "textual",
-      "cita": "the tribunes, who could start or veto laws"
-     },
-     "retro_correcta": "¡Sí! Los tribunos, órganos de los plebeyos, podían proponer o vetar leyes.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Proponer o vetar leyes». Los tribunos, órganos de los plebeyos, podían proponer o vetar leyes."
-    },
-    {
-     "id": "b3om6",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué pasó en septiembre del año 476?",
-     "opciones": [
-      "Se fundó Roma",
-      "Se escribieron las Doce Tablas",
-      "Odoacro destituyó a Rómulo Augústulo: fin de la Roma antigua",
-      "Julio César llegó al poder"
-     ],
-     "correcta": 2,
-     "pista": "b3p8",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🏚️",
-     "fuente": {
-      "foto": 9,
-      "tipo": "textual",
-      "cita": "Sept. 476 · Germanic prince Odovacar takes control of the army, removes the last western emperor, Romulus Augustus, and is proclaimed king of Italy."
-     },
-     "retro_correcta": "¡Sí! En 476 Odoacro destituyó al último emperador de Occidente y fue proclamado rey de Italia.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Odoacro destituyó a Rómulo Augústulo: fin de la Roma antigua». En 476 Odoacro destituyó al último emperador de Occidente y fue proclamado rey de Italia."
-    },
-    {
-     "id": "b3cp1",
-     "tipo": "completar",
-     "enunciado": "Las Doce Tablas, del año ___ a. C., fueron el primer código de leyes romano.",
-     "respuesta": "450",
-     "distractores": [
-      "753",
-      "300",
-      "476"
-     ],
-     "pista": "b3p5",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "✏️",
-     "fuente": {
-      "foto": 8,
-      "tipo": "textual",
-      "cita": "The Twelve Tablets (450 B.C.)"
-     },
-     "retro_correcta": "¡Sí! Las Doce Tablas son del 450 a. C.",
-     "retro_incorrecta": "No exactamente: la respuesta es «450». Las Doce Tablas son del 450 a. C."
-    },
-    {
-     "id": "b3cp2",
-     "tipo": "completar",
-     "enunciado": "Según la leyenda, Rómulo y Remo fueron rescatados por una ___.",
-     "respuesta": "loba",
-     "distractores": [
-      "águila",
-      "reina",
-      "diosa"
-     ],
-     "pista": "b3p3",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "✏️",
-     "fuente": {
-      "foto": 7,
-      "tipo": "textual",
-      "cita": "rescued by a she-wolf"
-     },
-     "retro_correcta": "¡Sí! Una loba rescató a los gemelos Rómulo y Remo.",
-     "retro_incorrecta": "No exactamente: la respuesta es «loba». Una loba rescató a los gemelos Rómulo y Remo."
-    },
-    {
-     "id": "b3or1",
-     "tipo": "ordenar",
-     "instruccion": "Roma: pon los hechos en orden.",
-     "pasos": [
-      {
-       "texto": "Fundación de Roma (753 a. C.)",
-       "emoji": "🐺"
-      },
-      {
-       "texto": "Las Doce Tablas (450 a. C.)",
-       "emoji": "📜"
-      },
-      {
-       "texto": "Reformas de los Graco (133–122 a. C.)",
-       "emoji": "⚖️"
-      },
-      {
-       "texto": "Ascenso y caída de Julio César (siglo I a. C.)",
-       "emoji": "🦅"
-      },
-      {
-       "texto": "Roma pierde Britania (c. 410)",
-       "emoji": "🏝️"
-      },
-      {
-       "texto": "Odoacro, rey de Italia (476)",
-       "emoji": "🏚️"
-      }
-     ],
-     "pista": "b3p8",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "🔢",
-     "fuente": {
-      "foto": 9,
-      "tipo": "textual",
-      "cita": "c. 410 · by 430 · c. 450 · Sept. 476"
-     },
-     "retro_correcta": "¡Sí! El orden es fundación → Doce Tablas → los Graco → Julio César → pérdida de Britania → Odoacro.",
-     "retro_incorrecta": "No exactamente: El orden es fundación → Doce Tablas → los Graco → Julio César → pérdida de Britania → Odoacro."
-    },
-    {
-     "id": "b3qq1",
-     "tipo": "quien_es_quien",
-     "instruccion": "¿Quién hizo qué en Roma? Une cada personaje con su hecho.",
-     "pares": [
-      {
-       "termino": "Julio César",
-       "definicion": "Su ascenso y caída (siglo I a. C.) marcaron el paso de república a imperio",
-       "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Retrato_de_Julio_C%C3%A9sar_%2826724093101%29_%28cropped%29.jpg/960px-Retrato_de_Julio_C%C3%A9sar_%2826724093101%29_%28cropped%29.jpg"
-      },
-      {
-       "termino": "Los Graco",
-       "definicion": "Reformadores que quisieron ayudar a los pequeños agricultores y fueron asesinados",
-       "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Eugene_Guillaume_-_the_Gracchi_%28cropped%29.jpg/960px-Eugene_Guillaume_-_the_Gracchi_%28cropped%29.jpg"
-      },
-      {
-       "termino": "Atila",
-       "definicion": "Líder de los hunos que invadió la Galia e Italia hacia el 450",
-       "imagen": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Eugene_Ferdinand_Victor_Delacroix_Attila_fragment_%28cropped%29.jpg"
-      },
-      {
-       "termino": "Odoacro",
-       "definicion": "Príncipe germano que destituyó al último emperador de Occidente en 476",
-       "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Romulus_Augustulus_and_Odoacer.jpg/960px-Romulus_Augustulus_and_Odoacer.jpg"
-      },
-      {
-       "termino": "Rómulo",
-       "definicion": "Primer rey de Roma según la leyenda; la ciudad lleva su nombre",
-       "imagen": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Lupa_Capitolina%2C_Rome.jpg/960px-Lupa_Capitolina%2C_Rome.jpg"
-      }
-     ],
-     "pista": "b3p7",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "🖼️",
-     "fuente": {
-      "foto": 9,
-      "tipo": "textual",
-      "cita": "The Gracchi · Julius Caesar · Attila · Odovacar"
-     }
-    },
-    {
-     "id": "b3sd1",
-     "tipo": "super_dato",
-     "texto": "Al caer el rey, el poder pasó a dos [[cónsules]] elegidos cada año. El [[Senado]] estaba dominado por los [[patricios]], mientras que los plebeyos ganaron a los [[tribunos]], que podían vetar leyes. El primer código de leyes fueron las Doce Tablas, escritas en 12 tablas de [[bronce]] en el año 450 a. C.",
-     "distractores": [
-      "emperadores",
-      "esclavos",
-      "mármol",
-      "gladiadores"
-     ],
-     "pista": "b3p4",
-     "punto_dificil": "pd3",
-     "dificultad": "media",
-     "emoji": "⭐",
-     "fuente": {
-      "foto": 8,
-      "tipo": "textual",
-      "cita": "written on 12 bronze tablets"
-     }
-    }
-   ],
-   "mini_examen": [
-    {
-     "id": "b3me1",
-     "tipo": "opcion_multiple",
-     "pregunta": "Según la leyenda, ¿quién fundó Roma y en qué año?",
-     "opciones": [
-      "Rómulo, en el 753 a. C.",
-      "Julio César, en el 100 a. C.",
-      "Odoacro, en el 476 d. C.",
-      "Atila, en el 450 d. C."
-     ],
-     "correcta": 0,
-     "pista": "b3p3",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 7,
-      "tipo": "textual",
-      "cita": "They founded Rome in 753 B.C."
-     },
-     "retro_correcta": "¡Sí! Rómulo y Remo fundaron Roma en el 753 a. C.; Rómulo fue el primer rey.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Rómulo, en el 753 a. C.». Rómulo y Remo fundaron Roma en el 753 a. C.; Rómulo fue el primer rey."
-    },
-    {
-     "id": "b3me2",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Quiénes dominaban el Senado?",
-     "opciones": [
-      "Los plebeyos",
-      "Los tribunos",
-      "Los hunos",
-      "Los patricios"
-     ],
-     "correcta": 3,
-     "pista": "b3p4",
-     "punto_dificil": "pd3",
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 8,
-      "tipo": "textual",
-      "cita": "The Senate was dominated by the patricians"
-     },
-     "retro_correcta": "¡Sí! El Senado estaba dominado por los patricios.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Los patricios». El Senado estaba dominado por los patricios."
-    },
-    {
-     "id": "b3me3",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Dónde se exhibieron las Doce Tablas?",
-     "opciones": [
-      "En el Coliseo",
-      "En el Foro Romano",
-      "En Alba Longa",
-      "En Atenas"
-     ],
-     "correcta": 1,
-     "pista": "b3p5",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 8,
-      "tipo": "textual",
-      "cita": "shown in the Roman Forum"
-     },
-     "retro_correcta": "¡Sí! Las Doce Tablas se exhibieron en el Foro Romano.",
-     "retro_incorrecta": "No exactamente: la respuesta es «En el Foro Romano». Las Doce Tablas se exhibieron en el Foro Romano."
-    },
-    {
-     "id": "b3me4",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Cuál fue la primera literatura romana?",
-     "opciones": [
-      "Poemas egipcios",
-      "Clásicos griegos traducidos al latín",
-      "Leyes fenicias",
-      "Crónicas chinas"
-     ],
-     "correcta": 1,
-     "pista": "b3p6",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 8,
-      "tipo": "textual",
-      "cita": "The first Roman literature (around 240 B.C.) was Greek classics translated into Latin."
-     },
-     "retro_correcta": "¡Sí! Hacia el 240 a. C., la primera literatura romana fueron clásicos griegos traducidos al latín.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Clásicos griegos traducidos al latín». Hacia el 240 a. C., la primera literatura romana fueron clásicos griegos traducidos al latín."
-    },
-    {
-     "id": "b3me5",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué problema creció al final de la República?",
-     "opciones": [
-      "La falta de ríos",
-      "La Peste Negra",
-      "El cierre de la Ruta de la Seda",
-      "La brecha entre ricos y pobres"
-     ],
-     "correcta": 3,
-     "pista": "b3p7",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 9,
-      "tipo": "textual",
-      "cita": "The gap between rich and poor grew"
-     },
-     "retro_correcta": "¡Sí! Al final de la República creció la brecha entre ricos y pobres.",
-     "retro_incorrecta": "No exactamente: la respuesta es «La brecha entre ricos y pobres». Al final de la República creció la brecha entre ricos y pobres."
-    }
-   ]
-  },
-  {
-   "id": "b4",
-   "titulo": "La Edad Media",
-   "pistas": [
-    {
-     "id": "b4p1",
-     "titulo_pagina": "La Edad Media (el periodo medieval)",
-     "titulo": "Alta Edad Media (siglos V–X)",
-     "emoji": "🌄",
-     "ideas": [
-      "Empieza tras la caída del Imperio romano de Occidente (476 d. C.).",
-      "Reinos descentralizados y expansión del cristianismo."
-     ],
-     "dato_rapido": {
-      "titulo": "La Edad Media duró",
-      "valor": "≈ 1,000 años"
-     }
-    },
-    {
-     "id": "b4p2",
-     "titulo": "Plena Edad Media (siglos XI–XIII)",
-     "emoji": "🏰",
-     "ideas": [
-      "Crecimiento económico y cultural.",
-      "Feudalismo y monarquías poderosas."
-     ],
-     "imagenes": [
-      {
-       "tipo": "pintura",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Les_Tr%C3%A8s_Riches_Heures_du_duc_de_Berry_mars.jpg/960px-Les_Tr%C3%A8s_Riches_Heures_du_duc_de_Berry_mars.jpg",
-       "pie": "Campesinos trabajando la tierra · Calendario medieval, siglo XV"
-      }
-     ]
-    },
-    {
-     "id": "b4p3",
-     "titulo": "Baja Edad Media (siglos XIV–XV)",
-     "emoji": "🦠",
-     "ideas": [
-      "Crisis: la Peste Negra.",
-      "Declive del feudalismo; en el siglo XIV empieza el Renacimiento."
-     ],
-     "clave": "Edad Media: la historia europea del siglo V a finales del XV, entre la caída de Roma (476 d. C.) y el inicio del Renacimiento (siglo XIV). También se le llama «periodo medieval»."
-    },
-    {
-     "id": "b4p4",
-     "titulo_pagina": "El feudalismo: ¿quién da qué?",
-     "titulo": "Feudalismo",
-     "emoji": "🏰",
-     "ideas": [
-      "Sistema social, económico y político de relaciones jerárquicas entre señores, vasallos y siervos."
-     ],
-     "esquema": {
-      "tipo": "causa_efecto",
-      "elementos": [
-       {
-        "emoji": "👑",
-        "nombre": "Rey:",
-        "detalle": "concede feudos y protección a los señores."
-       },
-       {
-        "emoji": "🏰",
-        "nombre": "Señores (vasallos del rey):",
-        "detalle": "dan lealtad y ayuda militar."
-       },
-       {
-        "emoji": "🛡️",
-        "nombre": "Caballeros (vasallos de los señores):",
-        "detalle": "rinden homenaje y servicio militar."
-       },
-       {
-        "emoji": "🌾",
-        "nombre": "Campesinos (siervos):",
-        "detalle": "trabajan la tierra y pagan renta; reciben comida, protección y techo."
-       }
-      ]
-     }
-    },
-    {
-     "id": "b4p5",
-     "titulo": "Economía y sociedad",
-     "emoji": "🌾",
-     "ideas": [
-      "El rey entregaba grandes tierras, los feudos, a nobles y obispos.",
-      "Los siervos, campesinos sin tierra, hacían casi todo el trabajo y daban la mayor parte de la cosecha al dueño.",
-      "A cambio vivían en la tierra, protegidos de las invasiones."
-     ]
-    },
-    {
-     "id": "b4p6",
-     "titulo": "El cambio del siglo XI",
-     "emoji": "🐂",
-     "ideas": [
-      "El arado pesado y la rotación de tres campos hicieron la agricultura más productiva.",
-      "Menos trabajadores, más comida y más población → la gente se mudó a pueblos y ciudades."
-     ]
-    },
-    {
-     "id": "b4p7",
-     "titulo_pagina": "Las Cruzadas, la Peste Negra y una nueva era",
-     "titulo": "Las Cruzadas",
-     "emoji": "⚔️",
-     "ideas": [
-      "Campañas religiosas y militares de cristianos europeos, desde finales del siglo XI, para recuperar Tierra Santa del control musulmán y frenar la expansión del islam.",
-      "Muchos las vieron como una forma de obtener el perdón de sus pecados."
-     ],
-     "imagenes": [
-      {
-       "tipo": "pintura",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Taking_of_Jerusalem_by_the_Crusaders%2C_15th_July_1099.jpg/960px-Taking_of_Jerusalem_by_the_Crusaders%2C_15th_July_1099.jpg",
-       "pie": "Toma de Jerusalén, 1099 · Émile Signol (1847)"
-      }
-     ]
-    },
-    {
-     "id": "b4p8",
-     "titulo": "La Peste Negra",
-     "emoji": "🦠",
-     "ideas": [
-      "Entre 1347 y 1350, la peste bubónica mató a unos 20 millones de personas en Europa: cerca del 30 % de la población.",
-      "Fue especialmente mortal en las ciudades, donde se contagiaba de persona a persona."
-     ],
-     "imagenes": [
-      {
-       "tipo": "pintura",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Burying_Plague_Victims_of_Tournai.jpg",
-       "pie": "Entierro de víctimas de la peste · Tournai, 1349"
-      }
-     ]
-    },
-    {
-     "id": "b4p9",
-     "titulo": "Conclusión: una nueva era",
-     "emoji": "✨",
-     "ideas": [
-      "Las Cruzadas ampliaron el comercio con Oriente: vino, aceite de oliva y telas de lujo.",
-      "Las ciudades portuarias prosperaron: hacia 1300, unas 15 ciudades pasaban de 50,000 habitantes.",
-      "Ahí nació una nueva era: el Renacimiento, con raíces en la Edad Media."
-     ]
-    }
-   ],
-   "actividades": [
-    {
-     "id": "b4om1",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Entre qué dos hechos se ubica la Edad Media?",
-     "opciones": [
-      "La caída de Roma (476) y el inicio del Renacimiento (siglo XIV)",
-      "La fundación de Roma y las Doce Tablas",
-      "El Neolítico y el mundo antiguo",
-      "La Ruta de la Seda y la globalización"
-     ],
-     "correcta": 0,
-     "pista": "b4p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🏰",
-     "fuente": {
-      "foto": 10,
-      "tipo": "textual",
-      "cita": "between the fall of Rome (476 AD) and the beginning of the Renaissance (14th century)"
-     },
-     "retro_correcta": "¡Sí! La Edad Media va de la caída de Roma (476) al inicio del Renacimiento (siglo XIV).",
-     "retro_incorrecta": "No exactamente: la respuesta es «La caída de Roma (476) y el inicio del Renacimiento (siglo XIV)». La Edad Media va de la caída de Roma (476) al inicio del Renacimiento (siglo XIV)."
-    },
-    {
-     "id": "b4om2",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué caracteriza a la Alta Edad Media (siglos V–X)?",
-     "opciones": [
-      "La Peste Negra",
-      "Monarquías poderosas y feudalismo en su apogeo",
-      "Reinos descentralizados y expansión del cristianismo",
-      "La globalización"
-     ],
-     "correcta": 2,
-     "pista": "b4p1",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "🌄",
-     "fuente": {
-      "foto": 10,
-      "tipo": "textual",
-      "cita": "Early: 5th–10th century. After the fall of the Western Roman Empire: decentralized kingdoms and the spread of Christianity."
-     },
-     "retro_correcta": "¡Sí! En la Alta Edad Media hubo reinos descentralizados y se expandió el cristianismo.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Reinos descentralizados y expansión del cristianismo». En la Alta Edad Media hubo reinos descentralizados y se expandió el cristianismo."
-    },
-    {
-     "id": "b4om3",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué es un feudo?",
-     "opciones": [
-      "Un impuesto de los comerciantes",
-      "Un barco fenicio",
-      "Tierra que el rey concedía a nobles y obispos",
-      "Una ley romana"
-     ],
-     "correcta": 2,
-     "pista": "b4p5",
-     "punto_dificil": "pd4",
-     "dificultad": "facil",
-     "emoji": "🏞️",
-     "fuente": {
-      "foto": 11,
-      "tipo": "textual",
-      "cita": "The king granted large pieces of land called fiefs to noblemen and bishops."
-     },
-     "retro_correcta": "¡Sí! Un feudo es la tierra que el rey entregaba a nobles y obispos.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Tierra que el rey concedía a nobles y obispos». Un feudo es la tierra que el rey entregaba a nobles y obispos."
-    },
-    {
-     "id": "b4om4",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué daban los caballeros a los señores?",
-     "opciones": [
-      "Homenaje y servicio militar",
-      "Feudos",
-      "La cosecha",
-      "Dinero de la Ruta de la Seda"
-     ],
-     "correcta": 0,
-     "pista": "b4p4",
-     "punto_dificil": "pd4",
-     "dificultad": "media",
-     "emoji": "🛡️",
-     "fuente": {
-      "foto": 11,
-      "tipo": "textual",
-      "cita": "Knights (vassals to lords): give homage and military service"
-     },
-     "retro_correcta": "¡Sí! Los caballeros, vasallos de los señores, rendían homenaje y servicio militar.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Homenaje y servicio militar». Los caballeros, vasallos de los señores, rendían homenaje y servicio militar."
-    },
-    {
-     "id": "b4om5",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué inventos hicieron más productiva la agricultura en el siglo XI?",
-     "opciones": [
-      "La locomotora de vapor",
-      "La imprenta",
-      "Los acueductos",
-      "El arado pesado y la rotación de tres campos"
-     ],
-     "correcta": 3,
-     "pista": "b4p6",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🐂",
-     "fuente": {
-      "foto": 11,
-      "tipo": "textual",
-      "cita": "The heavy plow and three-field crop rotation made farming more productive"
-     },
-     "retro_correcta": "¡Sí! El arado pesado y la rotación de tres campos aumentaron la producción.",
-     "retro_incorrecta": "No exactamente: la respuesta es «El arado pesado y la rotación de tres campos». El arado pesado y la rotación de tres campos aumentaron la producción."
-    },
-    {
-     "id": "b4om6",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué porcentaje de la población europea murió por la Peste Negra, aproximadamente?",
-     "opciones": [
-      "5 %",
-      "30 %",
-      "80 %",
-      "1 %"
-     ],
-     "correcta": 1,
-     "pista": "b4p8",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🦠",
-     "fuente": {
-      "foto": 12,
-      "tipo": "textual",
-      "cita": "some 20 million people in Europe, about 30% of the population"
-     },
-     "retro_correcta": "¡Sí! La Peste Negra mató a unos 20 millones de personas, cerca del 30 % de la población europea.",
-     "retro_incorrecta": "No exactamente: la respuesta es «30 %». La Peste Negra mató a unos 20 millones de personas, cerca del 30 % de la población europea."
-    },
-    {
-     "id": "b4cp1",
-     "tipo": "completar",
-     "enunciado": "Los campesinos sin tierra se llamaban ___.",
-     "respuesta": "siervos",
-     "distractores": [
-      "cónsules",
-      "vasallos",
-      "obispos"
-     ],
-     "pista": "b4p5",
-     "punto_dificil": "pd4",
-     "dificultad": "facil",
-     "emoji": "✏️",
-     "fuente": {
-      "foto": 11,
-      "tipo": "textual",
-      "cita": "Landless peasants called serfs"
-     },
-     "retro_correcta": "¡Sí! Los campesinos sin tierra eran los siervos.",
-     "retro_incorrecta": "No exactamente: la respuesta es «siervos». Los campesinos sin tierra eran los siervos."
-    },
-    {
-     "id": "b4cp2",
-     "tipo": "completar",
-     "enunciado": "La Peste Negra fue especialmente mortal en las ___.",
-     "respuesta": "ciudades",
-     "distractores": [
-      "montañas",
-      "aldeas",
-      "islas"
-     ],
-     "pista": "b4p8",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "✏️",
-     "fuente": {
-      "foto": 12,
-      "tipo": "textual",
-      "cita": "It was especially deadly in cities"
-     },
-     "retro_correcta": "¡Sí! Fue especialmente mortal en las ciudades, donde se contagiaba de persona a persona.",
-     "retro_incorrecta": "No exactamente: la respuesta es «ciudades». Fue especialmente mortal en las ciudades, donde se contagiaba de persona a persona."
-    },
-    {
-     "id": "b4or1",
-     "tipo": "ordenar",
-     "instruccion": "Arma la pirámide feudal: de arriba hacia abajo.",
-     "pasos": [
-      {
-       "texto": "Rey",
-       "emoji": "👑"
-      },
-      {
-       "texto": "Señores (vasallos del rey)",
-       "emoji": "🏰"
-      },
-      {
-       "texto": "Caballeros (vasallos de los señores)",
-       "emoji": "🛡️"
-      },
-      {
-       "texto": "Campesinos (siervos)",
-       "emoji": "🌾"
-      }
-     ],
-     "pista": "b4p4",
-     "punto_dificil": "pd4",
-     "dificultad": "media",
-     "emoji": "🔢",
-     "fuente": {
-      "foto": 11,
-      "tipo": "textual",
-      "cita": "King · Lords (vassals to the king) · Knights (vassals to lords) · Peasants (serfs)"
-     },
-     "retro_correcta": "¡Sí! La pirámide va rey → señores → caballeros → campesinos.",
-     "retro_incorrecta": "No exactamente: La pirámide va rey → señores → caballeros → campesinos."
-    },
-    {
-     "id": "b4cl1",
-     "tipo": "clasificar",
-     "instruccion": "¿Cruzadas o Peste Negra?",
-     "grupos": [
-      "Cruzadas ⚔️",
-      "Peste Negra 🦠"
-     ],
-     "elementos": [
-      {
-       "texto": "Recuperar Tierra Santa",
-       "grupo": 0
-      },
-      {
-       "texto": "Desde finales del siglo XI",
-       "grupo": 0
-      },
-      {
-       "texto": "Perdón de los pecados",
-       "grupo": 0
-      },
-      {
-       "texto": "Ampliaron las rutas comerciales a Oriente",
-       "grupo": 0
-      },
-      {
-       "texto": "1347–1350",
-       "grupo": 1
-      },
-      {
-       "texto": "Peste bubónica",
-       "grupo": 1
-      },
-      {
-       "texto": "Unos 20 millones de muertos",
-       "grupo": 1
-      },
-      {
-       "texto": "Se contagiaba de persona a persona",
-       "grupo": 1
-      }
-     ],
-     "pista": "b4p9",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "🗂️",
-     "fuente": {
-      "foto": 12,
-      "tipo": "textual",
-      "cita": "The Crusades · The Black Death"
-     }
-    }
-   ],
-   "mini_examen": [
-    {
-     "id": "b4me1",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Cómo también se le llama a la Edad Media?",
-     "opciones": [
-      "Renacimiento",
-      "Periodo medieval",
-      "Mundo antiguo",
-      "Edad de Piedra"
-     ],
-     "correcta": 1,
-     "pista": "b4p1",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 10,
-      "tipo": "textual",
-      "cita": "It is also called the “medieval period.”"
-     },
-     "retro_correcta": "¡Sí! A la Edad Media también se le llama periodo medieval.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Periodo medieval». A la Edad Media también se le llama periodo medieval."
-    },
-    {
-     "id": "b4me2",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿En qué periodo medieval ocurrió la crisis de la Peste Negra?",
-     "opciones": [
-      "Alta Edad Media",
-      "Plena Edad Media",
-      "Neolítico",
-      "Baja Edad Media (siglos XIV–XV)"
-     ],
-     "correcta": 3,
-     "pista": "b4p3",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 10,
-      "tipo": "textual",
-      "cita": "Late: 14th–15th century. Crisis: the Black Death and the decline of feudalism."
-     },
-     "retro_correcta": "¡Sí! La Peste Negra y el declive del feudalismo son de la Baja Edad Media.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Baja Edad Media (siglos XIV–XV)». La Peste Negra y el declive del feudalismo son de la Baja Edad Media."
-    },
-    {
-     "id": "b4me3",
-     "tipo": "opcion_multiple",
-     "pregunta": "En el feudalismo, ¿quién concedía los feudos?",
-     "opciones": [
-      "El rey",
-      "Los siervos",
-      "Los comerciantes",
-      "Los cruzados"
-     ],
-     "correcta": 0,
-     "pista": "b4p4",
-     "punto_dificil": "pd4",
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 11,
-      "tipo": "textual",
-      "cita": "King: grants fiefs and peasants"
-     },
-     "retro_correcta": "¡Sí! El rey concedía los feudos.",
-     "retro_incorrecta": "No exactamente: la respuesta es «El rey». El rey concedía los feudos."
-    },
-    {
-     "id": "b4me4",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué recibían los siervos a cambio de trabajar la tierra?",
-     "opciones": [
-      "Un feudo propio",
-      "Un asiento en el Senado",
-      "Vivir en la tierra y protección contra las invasiones",
-      "Un barco"
-     ],
-     "correcta": 2,
-     "pista": "b4p5",
-     "punto_dificil": "pd4",
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 11,
-      "tipo": "textual",
-      "cita": "In exchange they could live on the land and were protected from invasions."
-     },
-     "retro_correcta": "¡Sí! A cambio, los siervos podían vivir en la tierra y estaban protegidos de las invasiones.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Vivir en la tierra y protección contra las invasiones». A cambio, los siervos podían vivir en la tierra y estaban protegidos de las invasiones."
-    },
-    {
-     "id": "b4me5",
-     "tipo": "opcion_multiple",
-     "pregunta": "Hacia 1300, ¿cuántas ciudades tenían más de 50,000 habitantes?",
-     "opciones": [
-      "Unas 200",
-      "Solo Roma",
-      "Unas 15",
-      "Ninguna"
-     ],
-     "correcta": 2,
-     "pista": "b4p9",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 12,
-      "tipo": "textual",
-      "cita": "By 1300, some 15 cities had more than 50,000 people."
-     },
-     "retro_correcta": "¡Sí! Hacia 1300, unas 15 ciudades pasaban de 50,000 habitantes.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Unas 15». Hacia 1300, unas 15 ciudades pasaban de 50,000 habitantes."
-    }
-   ]
-  },
-  {
-   "id": "b5",
-   "titulo": "El mundo moderno",
-   "pistas": [
-    {
-     "id": "b5p1",
-     "titulo_pagina": "El Imperio otomano y el bloqueo",
-     "titulo": "El Imperio otomano",
-     "emoji": "🕌",
-     "ideas": [
-      "Creado por tribus turcas en Anatolia (Asia Menor).",
-      "Uno de los estados más poderosos del mundo en los siglos XV y XVI.",
-      "Duró más de 600 años. Terminó en 1922, reemplazado por la República de Turquía y otros estados."
-     ],
-     "imagenes": [
-      {
-       "tipo": "pintura",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Conquest_of_Constantinople%2C_Zonaro.jpg/960px-Conquest_of_Constantinople%2C_Zonaro.jpg",
-       "pie": "Mehmed II entra en Constantinopla, 1453 · Pintura de Fausto Zonaro"
-      }
-     ]
-    },
-    {
-     "id": "b5p2",
-     "titulo": "¿Qué es un bloqueo?",
-     "emoji": "⚓",
-     "ideas": [
-      "Un esfuerzo por cortar los suministros, el material de guerra o las comunicaciones de una zona por la fuerza, parcial o totalmente.",
-      "Casi siempre por mar, pero también se usa por tierra."
-     ],
-     "imagenes": [
-      {
-       "tipo": "pintura",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Thomas_Buttersworth_-_A_ship-of-the-line_off_Cadiz.jpg/960px-Thomas_Buttersworth_-_A_ship-of-the-line_off_Cadiz.jpg",
-       "pie": "Navío de guerra frente a Cádiz · Pintura de Thomas Buttersworth (c. 1800)"
-      }
-     ]
-    },
-    {
-     "id": "b5p3",
-     "titulo": "No lo confundas",
-     "emoji": "🚫",
-     "ideas": [
-      "No es un embargo ni son sanciones: esas son barreras legales al comercio.",
-      "No es un asedio: el asedio apunta a una fortaleza o ciudad; el bloqueo, a todo un país o región."
-     ],
-     "clave": "Bloqueo = por la fuerza, a toda una región · Embargo = barrera legal · Asedio = a una ciudad o fortaleza."
-    },
-    {
-     "id": "b5p4",
-     "titulo_pagina": "La Ruta de la Seda, la globalización y la burguesía",
-     "titulo": "La Ruta de la Seda",
-     "emoji": "🐫",
-     "ideas": [
-      "Red de rutas comerciales establecida formalmente en la dinastía Han de China; también llamada «Rutas de la Seda».",
-      "Se usó del 130 a. C. al 1453 d. C., cuando el Imperio otomano boicoteó el comercio con Occidente y cerró las rutas."
-     ],
-     "imagenes": [
-      {
-       "tipo": "mapa",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Silk_route.jpg/960px-Silk_route.jpg",
-       "pie": "Las Rutas de la Seda (mapa sobre imagen de la NASA)"
-      }
-     ]
-    },
-    {
-     "id": "b5p5",
-     "titulo": "Globalización",
-     "emoji": "🌐",
-     "ideas": [
-      "Integración internacional por el intercambio de visiones del mundo, productos, ideas y cultura.",
-      "Impulsada por el transporte (vapor, avión, portacontenedores) y las comunicaciones (telégrafo, internet, celulares).",
-      "A gran escala empezó en el siglo XIX."
-     ],
-     "imagenes": [
-      {
-       "tipo": "foto",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Golden_Gate_Bridge_as_seen_from_Marshall%E2%80%99s_Beach%2C_March_2018.jpg/960px-Golden_Gate_Bridge_as_seen_from_Marshall%E2%80%99s_Beach%2C_March_2018.jpg",
-       "pie": "Puente Golden Gate · Foto: Frank Schulenburg (CC BY-SA 4.0)"
-      }
-     ]
-    },
-    {
-     "id": "b5p6",
-     "titulo": "La burguesía",
-     "emoji": "🎩",
-     "ideas": [
-      "«Los que viven en el burgo»: gente de ciudad como comerciantes y artesanos. Surgió en el siglo XI.",
-      "Después, la clase dueña de los medios de producción en la industrialización."
-     ],
-     "imagenes": [
-      {
-       "tipo": "pintura",
-       "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Van_Eyck_-_Arnolfini_Portrait.jpg/960px-Van_Eyck_-_Arnolfini_Portrait.jpg",
-       "pie": "El matrimonio Arnolfini, comerciantes · Jan van Eyck, 1434"
-      }
-     ]
-    }
-   ],
-   "actividades": [
-    {
-     "id": "b5om1",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Quiénes crearon el Imperio otomano?",
-     "opciones": [
-      "Tribus turcas en Anatolia",
-      "Los fenicios",
-      "Los romanos",
-      "Los hunos"
-     ],
-     "correcta": 0,
-     "pista": "b5p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🕌",
-     "fuente": {
-      "foto": 13,
-      "tipo": "textual",
-      "cita": "Created by Turkish tribes in Anatolia (Asia Minor)."
-     },
-     "retro_correcta": "¡Sí! El Imperio otomano lo crearon tribus turcas en Anatolia (Asia Menor).",
-     "retro_incorrecta": "No exactamente: la respuesta es «Tribus turcas en Anatolia». El Imperio otomano lo crearon tribus turcas en Anatolia (Asia Menor)."
-    },
-    {
-     "id": "b5om2",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿En qué año terminó el Imperio otomano?",
-     "opciones": [
-      "1453",
-      "1492",
-      "1799",
-      "1922"
-     ],
-     "correcta": 3,
-     "pista": "b5p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "📅",
-     "fuente": {
-      "foto": 13,
-      "tipo": "textual",
-      "cita": "It ended in 1922, replaced by the Turkish Republic and other states."
-     },
-     "retro_correcta": "¡Sí! Terminó en 1922, reemplazado por la República de Turquía y otros estados.",
-     "retro_incorrecta": "No exactamente: la respuesta es «1922». Terminó en 1922, reemplazado por la República de Turquía y otros estados."
-    },
-    {
-     "id": "b5om3",
-     "tipo": "opcion_multiple",
-     "pregunta": "Un bloqueo es…",
-     "opciones": [
-      "una barrera legal al comercio",
-      "cortar suministros o comunicaciones de una zona por la fuerza",
-      "un ataque a una sola fortaleza",
-      "un tratado de paz"
-     ],
-     "correcta": 1,
-     "pista": "b5p2",
-     "punto_dificil": "pd5",
-     "dificultad": "media",
-     "emoji": "⚓",
-     "fuente": {
-      "foto": 13,
-      "tipo": "textual",
-      "cita": "An effort to cut off supplies, war material or communications from an area by force"
-     },
-     "retro_correcta": "¡Sí! Bloqueo = cortar suministros, material de guerra o comunicaciones por la fuerza.",
-     "retro_incorrecta": "No exactamente: la respuesta es «cortar suministros o comunicaciones de una zona por la fuerza». Bloqueo = cortar suministros, material de guerra o comunicaciones por la fuerza."
-    },
-    {
-     "id": "b5om4",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Durante qué dinastía china se estableció formalmente la Ruta de la Seda?",
-     "opciones": [
-      "Ming",
-      "Han",
-      "Tang",
-      "Qin"
-     ],
-     "correcta": 1,
-     "pista": "b5p4",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🐫",
-     "fuente": {
-      "foto": 14,
-      "tipo": "textual",
-      "cita": "formally established during China's Han Dynasty"
-     },
-     "retro_correcta": "¡Sí! La Ruta de la Seda se estableció formalmente durante la dinastía Han.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Han». La Ruta de la Seda se estableció formalmente durante la dinastía Han."
-    },
-    {
-     "id": "b5om5",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Cuándo empezó la globalización a gran escala?",
-     "opciones": [
-      "En el siglo XI",
-      "En 1453",
-      "En el año 2000",
-      "En el siglo XIX"
-     ],
-     "correcta": 3,
-     "pista": "b5p5",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🌐",
-     "fuente": {
-      "foto": 14,
-      "tipo": "textual",
-      "cita": "Large-scale globalization began in the 19th century."
-     },
-     "retro_correcta": "¡Sí! La globalización a gran escala empezó en el siglo XIX.",
-     "retro_incorrecta": "No exactamente: la respuesta es «En el siglo XIX». La globalización a gran escala empezó en el siglo XIX."
-    },
-    {
-     "id": "b5om6",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué significa «burguesía»?",
-     "opciones": [
-      "«Los que viven en el burgo»: gente de ciudad",
-      "Los dueños de los feudos",
-      "Los soldados del rey",
-      "Los navegantes fenicios"
-     ],
-     "correcta": 0,
-     "pista": "b5p6",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🎩",
-     "fuente": {
-      "foto": 14,
-      "tipo": "textual",
-      "cita": "Means “those who live in the borough”: city people such as merchants and craftsmen."
-     },
-     "retro_correcta": "¡Sí! Burguesía = los que viven en el burgo: comerciantes y artesanos de la ciudad.",
-     "retro_incorrecta": "No exactamente: la respuesta es ««Los que viven en el burgo»: gente de ciudad». Burguesía = los que viven en el burgo: comerciantes y artesanos de la ciudad."
-    },
-    {
-     "id": "b5cp1",
-     "tipo": "completar",
-     "enunciado": "La Ruta de la Seda se cerró en ___, cuando el Imperio otomano boicoteó el comercio con Occidente.",
-     "respuesta": "1453",
-     "distractores": [
-      "1922",
-      "476",
-      "1347"
-     ],
-     "pista": "b5p4",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "✏️",
-     "fuente": {
-      "foto": 14,
-      "tipo": "textual",
-      "cita": "Used from 130 BC to 1453 AD, when the Ottoman Empire boycotted trade with the West and closed the routes."
-     },
-     "retro_correcta": "¡Sí! Las rutas se cerraron en 1453.",
-     "retro_incorrecta": "No exactamente: la respuesta es «1453». Las rutas se cerraron en 1453."
-    },
-    {
-     "id": "b5vf1",
-     "tipo": "verdadero_falso",
-     "afirmacion": "El Imperio otomano fue uno de los estados más poderosos del mundo en los siglos XV y XVI.",
-     "es_verdadera": true,
-     "pista": "b5p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "⚖️",
-     "fuente": {
-      "foto": 13,
-      "tipo": "textual",
-      "cita": "One of the most powerful states in the world in the 15th and 16th centuries."
-     },
-     "retro_correcta": "¡Sí! Fue uno de los estados más poderosos en los siglos XV y XVI.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Verdadero». Fue uno de los estados más poderosos en los siglos XV y XVI."
-    },
-    {
-     "id": "b5vf2",
-     "tipo": "verdadero_falso",
-     "afirmacion": "Un embargo y un bloqueo son exactamente lo mismo.",
-     "es_verdadera": false,
-     "pista": "b5p3",
-     "punto_dificil": "pd5",
-     "dificultad": "media",
-     "emoji": "⚖️",
-     "fuente": {
-      "foto": 13,
-      "tipo": "textual",
-      "cita": "Not the same as an embargo or sanctions: those are legal barriers to trade."
-     },
-     "retro_correcta": "¡Sí! El embargo es una barrera legal; el bloqueo se hace por la fuerza.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Falso». El embargo es una barrera legal; el bloqueo se hace por la fuerza."
-    },
-    {
-     "id": "b5vf3",
-     "tipo": "verdadero_falso",
-     "afirmacion": "Un asedio apunta a una fortaleza o ciudad; un bloqueo, a un país o una región entera.",
-     "es_verdadera": true,
-     "pista": "b5p3",
-     "punto_dificil": "pd5",
-     "dificultad": "media",
-     "emoji": "⚖️",
-     "fuente": {
-      "foto": 13,
-      "tipo": "textual",
-      "cita": "a siege targets a fortress or city; a blockade, a whole country or region."
-     },
-     "retro_correcta": "¡Sí! Asedio = fortaleza o ciudad; bloqueo = todo un país o región.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Verdadero». Asedio = fortaleza o ciudad; bloqueo = todo un país o región."
-    },
-    {
-     "id": "b5vf4",
-     "tipo": "verdadero_falso",
-     "afirmacion": "La globalización solo tiene que ver con el intercambio de productos.",
-     "es_verdadera": false,
-     "pista": "b5p5",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "⚖️",
-     "fuente": {
-      "foto": 14,
-      "tipo": "textual",
-      "cita": "the exchange of world views, products, ideas and culture"
-     },
-     "retro_correcta": "¡Sí! También intercambia visiones del mundo, ideas y cultura, no solo productos.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Falso». También intercambia visiones del mundo, ideas y cultura, no solo productos."
-    },
-    {
-     "id": "b5vf5",
-     "tipo": "verdadero_falso",
-     "afirmacion": "La burguesía surgió en el siglo XI en las ciudades.",
-     "es_verdadera": true,
-     "pista": "b5p6",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "⚖️",
-     "fuente": {
-      "foto": 14,
-      "tipo": "textual",
-      "cita": "It grew from the 11th century."
-     },
-     "retro_correcta": "¡Sí! La burguesía, la gente del burgo, surgió en el siglo XI.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Verdadero». La burguesía, la gente del burgo, surgió en el siglo XI."
-    },
-    {
-     "id": "b5co1",
-     "tipo": "conceptos",
-     "instruccion": "Términos clave del mundo moderno: une cada uno con su significado.",
-     "pares": [
-      {
-       "termino": "Imperio otomano",
-       "definicion": "Estado creado por tribus turcas; duró más de 600 años"
-      },
-      {
-       "termino": "Bloqueo",
-       "definicion": "Cortar suministros de una zona por la fuerza"
-      },
-      {
-       "termino": "Embargo",
-       "definicion": "Barrera legal al comercio"
-      },
-      {
-       "termino": "Ruta de la Seda",
-       "definicion": "Red de rutas comerciales desde la dinastía Han"
-      },
-      {
-       "termino": "Globalización",
-       "definicion": "Integración internacional de productos, ideas y cultura"
-      },
-      {
-       "termino": "Burguesía",
-       "definicion": "Gente del burgo: comerciantes y artesanos"
-      }
-     ],
-     "pista": "b5p3",
-     "punto_dificil": "pd5",
-     "dificultad": "media",
-     "emoji": "🧩",
-     "fuente": {
-      "foto": 14,
-      "tipo": "textual",
-      "cita": "The Silk Road · Globalization · The bourgeoisie"
-     }
-    }
-   ],
-   "mini_examen": [
-    {
-     "id": "b5me1",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué reemplazó al Imperio otomano en 1922?",
-     "opciones": [
-      "El Imperio romano",
-      "Grecia",
-      "La República de Turquía y otros estados",
-      "China"
-     ],
-     "correcta": 2,
-     "pista": "b5p1",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 13,
-      "tipo": "textual",
-      "cita": "replaced by the Turkish Republic and other states"
-     },
-     "retro_correcta": "¡Sí! En 1922 lo reemplazaron la República de Turquía y otros estados.",
-     "retro_incorrecta": "No exactamente: la respuesta es «La República de Turquía y otros estados». En 1922 lo reemplazaron la República de Turquía y otros estados."
-    },
-    {
-     "id": "b5me2",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Qué diferencia a un bloqueo de las sanciones?",
-     "opciones": [
-      "No hay diferencia",
-      "El bloqueo es solo por tierra",
-      "El bloqueo es por la fuerza; las sanciones son barreras legales",
-      "Las sanciones son militares"
-     ],
-     "correcta": 2,
-     "pista": "b5p3",
-     "punto_dificil": "pd5",
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 13,
-      "tipo": "textual",
-      "cita": "those are legal barriers to trade"
-     },
-     "retro_correcta": "¡Sí! El bloqueo se impone por la fuerza; el embargo y las sanciones son barreras legales.",
-     "retro_incorrecta": "No exactamente: la respuesta es «El bloqueo es por la fuerza; las sanciones son barreras legales». El bloqueo se impone por la fuerza; el embargo y las sanciones son barreras legales."
-    },
-    {
-     "id": "b5me3",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Entre qué años se usó la Ruta de la Seda?",
-     "opciones": [
-      "Del 130 a. C. al 1453 d. C.",
-      "Del 476 al 1492",
-      "Del 3000 a. C. al 476 d. C.",
-      "De 1800 a 1922"
-     ],
-     "correcta": 0,
-     "pista": "b5p4",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 14,
-      "tipo": "textual",
-      "cita": "Used from 130 BC to 1453 AD"
-     },
-     "retro_correcta": "¡Sí! Se usó del 130 a. C. al 1453 d. C.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Del 130 a. C. al 1453 d. C.». Se usó del 130 a. C. al 1453 d. C."
-    },
-    {
-     "id": "b5me4",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Cuál de estos transportes impulsó la globalización?",
-     "opciones": [
-      "El carro de bueyes",
-      "El barco fenicio",
-      "El arado pesado",
-      "El buque portacontenedores"
-     ],
-     "correcta": 3,
-     "pista": "b5p5",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 14,
-      "tipo": "textual",
-      "cita": "Driven by transport (steam locomotive, steamship, jet engine, container ships)"
-     },
-     "retro_correcta": "¡Sí! El transporte moderno, como el buque portacontenedores, impulsó la globalización.",
-     "retro_incorrecta": "No exactamente: la respuesta es «El buque portacontenedores». El transporte moderno, como el buque portacontenedores, impulsó la globalización."
-    },
-    {
-     "id": "b5me5",
-     "tipo": "opcion_multiple",
-     "pregunta": "En la industrialización, la burguesía fue la clase que…",
-     "opciones": [
-      "trabajaba la tierra como sierva",
-      "poseía los medios de producción",
-      "gobernaba como cónsules",
-      "defendía los castillos"
-     ],
-     "correcta": 1,
-     "pista": "b5p6",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "❓",
-     "fuente": {
-      "foto": 14,
-      "tipo": "textual",
-      "cita": "the class that owned the means of production in industrialization"
-     },
-     "retro_correcta": "¡Sí! En la industrialización, la burguesía poseía los medios de producción.",
-     "retro_incorrecta": "No exactamente: la respuesta es «poseía los medios de producción». En la industrialización, la burguesía poseía los medios de producción."
-    }
-   ]
-  },
-  {
-   "id": "b6",
-   "titulo": "El encuentro de dos mundos",
-   "juego": "duelo",
-   "pistas": [
-    {
-     "id": "b6p1",
-     "titulo_pagina": "El encuentro de dos mundos",
-     "titulo": "De la Ruta de la Seda al mar (1453–1492)",
-     "emoji": "⛵",
-     "ideas": [
-      "En 1453 el Imperio otomano cerró las rutas de la Seda: Europa necesitaba otro camino hacia Asia.",
-      "Portugueses y españoles buscaron rutas por mar.",
-      "Cristóbal Colón, al servicio de los Reyes Católicos, llegó a América el 12 de octubre de 1492."
-     ]
-    },
-    {
-     "id": "b6p2",
-     "titulo": "La llegada a México (1519)",
-     "emoji": "🛶",
-     "ideas": [
-      "En 1519 Hernán Cortés llegó a las costas del Golfo de México y fundó la Villa Rica de la Vera Cruz.",
-      "Moctezuma II (Moctezuma Xocoyotzin) gobernaba a los mexicas desde México-Tenochtitlan, fundada hacia 1325 en un islote del lago de Texcoco.",
-      "Malintzin (la Malinche), mujer nahua, fue intérprete de Cortés: hablaba náhuatl y maya."
-     ]
-    },
-    {
-     "id": "b6p3",
-     "titulo": "La caída de México-Tenochtitlan (1521)",
-     "emoji": "🏯",
-     "ideas": [
-      "Cortés se alió con pueblos enemigos de los mexicas, como los tlaxcaltecas.",
-      "Tras un largo sitio, México-Tenochtitlan cayó el 13 de agosto de 1521.",
-      "Cuauhtémoc, el último tlatoani mexica, fue capturado."
-     ]
-    }
-   ],
-   "actividades": [
-    {
-     "id": "b6om1",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Por qué los europeos buscaron nuevas rutas por mar hacia Asia en el siglo XV?",
-     "opciones": [
-      "Porque el Imperio otomano cerró las rutas de la Seda en 1453",
-      "Porque la Peste Negra cerró todos los puertos de Europa",
-      "Porque Roma prohibió el comercio con Oriente",
-      "Porque en China se terminó la seda"
-     ],
-     "correcta": 0,
-     "pista": "b6p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "🐫",
-     "retro_correcta": "¡Sí! En 1453 el Imperio otomano cerró las rutas de la Seda y Europa buscó otro camino hacia Asia: el mar.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Porque el Imperio otomano cerró las rutas de la Seda en 1453». En 1453 el Imperio otomano cerró las rutas de la Seda y Europa buscó otro camino hacia Asia: el mar."
-    },
-    {
-     "id": "b6om2",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿En qué año llegó Cristóbal Colón a América?",
-     "opciones": [
-      "1453",
-      "1492",
-      "1519",
-      "1521"
-     ],
-     "correcta": 1,
-     "pista": "b6p1",
-     "punto_dificil": null,
-     "dificultad": "facil",
-     "emoji": "⛵",
-     "retro_correcta": "¡Sí! Colón llegó a América el 12 de octubre de 1492, al servicio de los Reyes Católicos.",
-     "retro_incorrecta": "No exactamente: la respuesta es «1492». Colón llegó a América el 12 de octubre de 1492, al servicio de los Reyes Católicos."
-    },
-    {
-     "id": "b6om3",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Quién gobernaba a los mexicas cuando llegó Hernán Cortés en 1519?",
-     "opciones": [
-      "Cuauhtémoc",
-      "Moctezuma II (Moctezuma Xocoyotzin)",
-      "Rómulo",
-      "Mehmed II"
-     ],
-     "correcta": 1,
-     "pista": "b6p2",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "👑",
-     "retro_correcta": "¡Sí! Moctezuma II gobernaba desde México-Tenochtitlan; Cuauhtémoc fue el último tlatoani, después.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Moctezuma II (Moctezuma Xocoyotzin)». Moctezuma II gobernaba desde México-Tenochtitlan; Cuauhtémoc fue el último tlatoani, después."
-    },
-    {
-     "id": "b6om4",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Quién fue la intérprete de Hernán Cortés y hablaba náhuatl y maya?",
-     "opciones": [
-      "Malintzin (la Malinche)",
-      "Isabel la Católica",
-      "Leona Vicario",
-      "Sor Juana Inés de la Cruz"
-     ],
-     "correcta": 0,
-     "pista": "b6p2",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "🗣️",
-     "retro_correcta": "¡Sí! Malintzin, mujer nahua, hablaba náhuatl y maya y fue intérprete de Cortés.",
-     "retro_incorrecta": "No exactamente: la respuesta es «Malintzin (la Malinche)». Malintzin, mujer nahua, hablaba náhuatl y maya y fue intérprete de Cortés."
-    },
-    {
-     "id": "b6om5",
-     "tipo": "opcion_multiple",
-     "pregunta": "¿Cuándo cayó México-Tenochtitlan?",
-     "opciones": [
-      "12 de octubre de 1492",
-      "13 de agosto de 1521",
-      "16 de septiembre de 1810",
-      "4 de septiembre de 476"
-     ],
-     "correcta": 1,
-     "pista": "b6p3",
-     "punto_dificil": null,
-     "dificultad": "media",
-     "emoji": "🏯",
-     "retro_correcta": "¡Sí! México-Tenochtitlan cayó el 13 de agosto de 1521, tras un largo sitio.",
-     "retro_incorrecta": "No exactamente: la respuesta es «13 de agosto de 1521». México-Tenochtitlan cayó el 13 de agosto de 1521, tras un largo sitio."
-    }
-   ],
-   "mini_examen": []
-  }
- ],
- "calentamiento": [
-  "b1om2",
-  "b2om4",
-  "b3om1",
-  "b4om1",
-  "b5om2",
-  "b2om1"
- ],
- "reto_final": [
-  "b1om3",
-  "b1vf3",
-  "b2om3",
-  "b2cp2",
-  "b3om4",
-  "b3cp1",
-  "b4om2",
-  "b4cp1",
-  "b5om4",
-  "b5vf3",
-  "b1om5",
-  "b2om6",
-  "b3om6",
-  "b4om5",
-  "b5om6",
-  "b5cp1"
- ]
+  "completo": true,
+  "reto_final": [
+    "b1om4",
+    "b1om5",
+    "b1om6",
+    "b2vf2",
+    "b2vf3",
+    "b2vf4",
+    "b3om1",
+    "b3om2",
+    "b3om3",
+    "b3om4",
+    "b3om6",
+    "b3c1",
+    "b3c2",
+    "b1om1",
+    "b1om2",
+    "b1om3",
+    "b1cp1",
+    "b1cp2"
+  ],
+  "verificacion": [],
+  "calentamiento": [
+    "b1om1",
+    "b1om2",
+    "b1om3",
+    "b1cp1",
+    "b1cp2"
+  ],
+  "version_formato": "1.2",
+  "slides_estimados": 25,
+  "primera_actividad": "conceptos"
 }
