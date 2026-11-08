@@ -74,10 +74,19 @@ DECIDE, EN ESTE ORDEN:
    contenido en "temas_a_investigar" (textos cortos; menciona su recurso si lo hay).
    EXCEPCIÓN: si el material describe el examen pero el temario pide una HABILIDAD (por ejemplo, evaluar argumentos
    o estructurar una respuesta), esa habilidad SÍ se enseña como contenido; la descripción del examen se descarta.
-4. "presupuesto_slides" según las fotos subidas:
-   1–5 fotos → 15–20 · 6–15 → 20–25 · 16–40 → 22–30 · 41–80 → 25–35.
-   Pasa de 35 (máximo 40) solo si el contenido lo exige; explícalo en
-   "nota_planificador".
+4. TAMAÑO: la guía se estudia en UNA HORA como máximo y tiene 25 SLIDES como máximo.
+   Cómo se cuentan las slides:
+   - 5 fijas: portada, tutorial, calentamiento, reto final y resultados.
+   - 1 slide por cada pista de teoría (cada título de "pistas").
+   - 1 slide por cada juego del bloque: opcion_multiple y completar juntos son UN juego ·
+     verdadero_falso es uno · duelo es uno · conceptos es uno · cada super_dato, ordenar,
+     clasificar y quien_es_quien es uno · el mini-examen es uno.
+   Por eso, entre pistas y juegos de TODOS los bloques caben 20 slides (18 a 20 es lo normal).
+   Prioriza lo más importante de los apuntes; lo que no quepa va en "inventario_no_usado".
+   "presupuesto_slides" = tu cuenta total (máximo 25). Solo si los apuntes de verdad no caben
+   (mucho contenido distinto que el examen pide), puedes llegar a 30 y lo explicas en
+   "justificacion_slides"; si no, "justificacion_slides" va vacío.
+   "slides_estimados" = la misma cuenta, hecha con la regla de arriba.
 5. "identidad": "paleta" (historia_azul · espanol_rojo · mate_naranja ·
    ciencias_verde · frances_cielo · civica_morado · ingles_mostaza · geo_turquesa ·
    otra), "titulo" (divertido, no infantil), "subtitulo" (1 línea),
@@ -90,39 +99,58 @@ DECIDE, EN ESTE ORDEN:
    EDAD.
 6. "puntos_dificiles": 3 a 5. Lo que más cuesta entender o memorizar. Todo texto
    difícil es punto difícil.
-7. "bloques": según el presupuesto (2 a 5), en el orden del material. Elige lo
+7. "bloques": según el presupuesto (2 a 4; lo normal son 3), en el orden del material. Elige lo
    CRUCIAL: con mucho material, usa primero la prioridad 1, y lo que no quepa va en
    "inventario_no_usado" (solo sus ids). Para cada bloque:
    - "temas" (títulos cortos) e "ids_inventario": los "id" exactos de los elementos del inventario
      que entran en el bloque (por ejemplo "dat12"); solo esos elementos se le mandan al Generador.
      Nunca copies en el plan los textos del inventario.
-   - "pistas": 2 a 4 títulos (máx. 5 ideas cada una).
-   - "juegos": de 3 a 5, elegidos por el contenido:
+   - "pistas": 2 o 3 títulos cortos (máx. 6 palabras). UNA idea central por pista: cada
+     pista debe caber en UNA slide (máx. 5 viñetas cortas). Si un tema necesita más, haz
+     dos pistas bien separadas, nunca una saturada; cada pista cuenta como una slide.
+   - "juegos": de 2 a 4 juegos por bloque (recuerda: cada juego es una slide), elegidos
+     por el contenido. Los números son cuántas preguntas o parejas lleva cada juego
+     (0 = no va):
      datos y definiciones → opcion_multiple (6–8) + completar (2–4) ·
      afirmaciones → verdadero_falso (4–6) · texto con datos clave → super_dato (1) ·
-     vocabulario → conceptos (5–7 parejas) · secuencias → ordenar ·
-     categorías → clasificar · personajes con imagen → quien_es_quien (1, 3–6 parejas).
+     vocabulario o término ↔ definición → conceptos (5–7 parejas) · secuencias → ordenar (1) ·
+     categorías → clasificar (1) · personajes con imagen → quien_es_quien (1, 3–6 parejas) ·
+     repaso de conceptos con preguntas de opción múltiple → duelo (5–7 preguntas; Sparky
+     contra un dragón por rounds; es un muy buen cierre de bloque y puede sustituir al
+     mini-examen).
      Cada punto difícil del bloque aparece en al menos 3 actividades.
+   - "orden_actividades": el orden en que se juegan los juegos del bloque, después de sus
+     pistas (usa los nombres de "juegos" y "mini_examen"; completar va junto con
+     opcion_multiple y no se escribe). Incluye todos los juegos con número mayor que 0.
    - "formato_practica": si el material describe un examen, el formato en que se
      PRACTICA el contenido. Nunca se pregunta sobre el formato.
-   - "mini_examen": 6 a 8 preguntas.
-8. "reto_final": 15 a 20 preguntas.
-9. Revisa la cuenta: 5 slides fijas + por bloque (teoría + juegos + mini-examen) debe
-   caer dentro del presupuesto.
+   - "mini_examen": 0 o de 5 a 7 preguntas (0 si el bloque cierra con duelo).
+8. VARIEDAD. Portada y tutorial siempre van primero; lo demás debe sentirse distinto en
+   cada guía:
+   - "primera_actividad": el primer juego después del tutorial ("calentamiento" = carrera
+     de preguntas rápidas, o el nombre de un juego del bloque 1, que entonces va primero
+     en su "orden_actividades"). Te damos una sugerencia: úsala si el contenido lo permite.
+   - No repitas la misma secuencia de juegos en todos los bloques.
+   - Usa todo el repertorio que el contenido permita; no siempre los mismos dos juegos.
+9. "reto_final": 15 a 20 preguntas.
+10. Revisa la cuenta: 5 fijas + pistas + juegos de todos los bloques ≤ 25 (o lo que
+   justifiques, máximo 30).
 
 Sé breve: el plan es un índice, no un resumen. "nota_planificador" en 1 o 2 líneas.
 
 Responde SOLO con JSON:
 { "materia": "...", "es_lengua_extranjera": false, "idioma_guia": "es", "apoyo": null,
   "camino": "convertir", "temas_a_investigar": [], "presupuesto_slides": 24,
+  "slides_estimados": 24, "justificacion_slides": "", "primera_actividad": "conceptos",
   "perfil_edad": "juvenil", "plantillas_sugeridas": ["laboratorio","espacio","deportes","futurista"],
   "identidad": { "paleta": "...", "titulo": "...", "subtitulo": "...",
     "emojis_portada": ["...","...","..."], "objetivos": ["...","...","..."], "retratos_portada": [] },
   "puntos_dificiles": [ { "id": "pd1", "descripcion": "..." } ],
   "bloques": [ { "id": "b1", "titulo": "...", "temas": ["..."], "ids_inventario": ["..."],
-    "pistas": ["..."], "slides_teoria": 1,
-    "juegos": { "opcion_multiple": 7, "completar": 3, "verdadero_falso": 5,
-                "super_dato": 1, "conceptos": 6, "ordenar": 0, "clasificar": 1, "quien_es_quien": 0 },
+    "pistas": ["...", "..."], "slides_teoria": 2,
+    "juegos": { "opcion_multiple": 7, "completar": 3, "verdadero_falso": 0,
+                "super_dato": 0, "conceptos": 6, "ordenar": 0, "clasificar": 1, "quien_es_quien": 0, "duelo": 0 },
+    "orden_actividades": ["conceptos", "opcion_multiple", "clasificar", "mini_examen"],
     "formato_practica": null, "mini_examen": 6 } ],
   "reto_final": 18, "inventario_no_usado": [], "nota_planificador": "" }`;
 
@@ -131,11 +159,14 @@ Responde SOLO con JSON:
 const TXT = { type: "string" };
 const LISTA = { type: "array", items: TXT };
 const NUM = { type: "integer" };
+// Repertorio de juegos que conocen el planificador y el generador (el duelo usa el formato de la opción múltiple).
+export const TIPOS_JUEGO = ["opcion_multiple", "completar", "verdadero_falso", "super_dato", "conceptos", "ordenar", "clasificar", "quien_es_quien", "duelo"];
 const obj = (props: Record<string, unknown>) => ({ type: "object", additionalProperties: false, required: Object.keys(props), properties: props });
 export const ESQUEMA_PLAN = obj({
   materia: TXT, es_lengua_extranjera: { type: "boolean" }, idioma_guia: { type: "string", enum: ["es", "en", "fr"] },
   apoyo: { anyOf: [{ type: "null" }, obj({ idioma: TXT, formato: { type: "string", enum: ["linea_corta", "bilingue_completo"] } })] },
   camino: { type: "string", enum: ["convertir", "investigar", "mixto"] }, temas_a_investigar: LISTA, presupuesto_slides: NUM,
+  slides_estimados: NUM, justificacion_slides: TXT, primera_actividad: { type: "string", enum: ["calentamiento", ...TIPOS_JUEGO] },
   perfil_edad: { type: "string", enum: ["infantil", "caricatura", "juvenil", "sobrio"] }, plantillas_sugeridas: LISTA,
   identidad: obj({
     paleta: { type: "string", enum: ["historia_azul", "espanol_rojo", "mate_naranja", "ciencias_verde", "frances_cielo", "civica_morado", "ingles_mostaza", "geo_turquesa", "otra"] },
@@ -144,7 +175,8 @@ export const ESQUEMA_PLAN = obj({
   puntos_dificiles: { type: "array", items: obj({ id: TXT, descripcion: TXT }) },
   bloques: { type: "array", items: obj({
     id: TXT, titulo: TXT, temas: LISTA, ids_inventario: LISTA, pistas: LISTA, slides_teoria: NUM,
-    juegos: obj({ opcion_multiple: NUM, completar: NUM, verdadero_falso: NUM, super_dato: NUM, conceptos: NUM, ordenar: NUM, clasificar: NUM, quien_es_quien: NUM }),
+    juegos: obj({ opcion_multiple: NUM, completar: NUM, verdadero_falso: NUM, super_dato: NUM, conceptos: NUM, ordenar: NUM, clasificar: NUM, quien_es_quien: NUM, duelo: NUM }),
+    orden_actividades: { type: "array", items: { type: "string", enum: [...TIPOS_JUEGO.filter((x) => x !== "completar"), "mini_examen"] } },
     formato_practica: { anyOf: [{ type: "null" }, TXT] }, mini_examen: NUM,
   }) },
   reto_final: NUM, inventario_no_usado: LISTA, nota_planificador: TXT,
@@ -167,7 +199,7 @@ REGLAS DE ORO (si una se rompe, la actividad no sirve)
 4. TODO SE CALIFICA SOLO. Una sola respuesta defendible con el material. Si un
    elemento podría ir en dos grupos o tener dos respuestas, no lo uses.
 5. RETROALIMENTACIÓN EN TODO:
-   - opcion_multiple, verdadero_falso, completar: "retro_correcta" (refuerza el dato,
+   - opcion_multiple, duelo, verdadero_falso, completar: "retro_correcta" (refuerza el dato,
      máx. 15 palabras) y "retro_incorrecta" (dice la respuesta correcta y por qué, sin
      regañar, máx. 20 palabras).
    - ordenar: "por_que" (1 línea con el orden correcto y su lógica).
@@ -188,17 +220,23 @@ REGLAS DE ORO (si una se rompe, la actividad no sirve)
    formato.
 
 PISTAS (lo que el alumno lee antes de jugar; deben ser cortas y cruciales)
-- 2 a 4 pistas por bloque. Cada una: "titulo", "emoji" y 3 a 5 "ideas".
-- Cada idea tiene máx. 20 palabras y empieza con su palabra clave:
-  "Palabra clave: explicación corta". La plataforma pone en negritas lo que va
-  antes de los dos puntos.
-- Cada pista puede llevar "ejemplo" (1 línea concreta del material), "clave" (síntesis de 1 línea de la pista, en la forma
+- Escribe UNA pista por cada título de "pistas" del plan, en ese orden (normalmente 2 o 3).
+- CADA PISTA CABE EN UNA SLIDE: toda su información se ve completa, ordenada y visual.
+  · UNA idea central por pista. "titulo" de máx. 6 palabras.
+  · De 2 a 5 "ideas" de máx. 12 palabras cada una (o, en total, unas 60 palabras).
+  · Si la pista lleva "esquema", máx. 3 ideas y el esquema con máx. 6 elementos de máx.
+    10 palabras cada uno.
+  · Si un tema no cabe, NO lo amontones: el plan ya lo repartió en varias pistas; deja
+    fuera lo menos importante.
+- Cada idea empieza con su palabra clave: "Palabra clave: explicación corta". La
+  plataforma pone en negritas lo que va antes de los dos puntos.
+- Cada pista puede llevar "ejemplo" (1 línea concreta del material, máx. 15 palabras), "clave" (síntesis de 1 línea de la pista, en la forma
   "Palabra: idea") y "dato_rapido" ({ "titulo", "valor" }, por ejemplo { "titulo": "Viajes de Colón", "valor": "4" }) solo si el material lo da.
 - "personajes": nombres exactos de personas, lugares u obras del inventario que esta pista menciona (para buscar su fotografía).
 - Para un texto difícil, agrega una pista "En palabras sencillas" (sin datos nuevos).
 - Tono y largo según {perfil_edad}: infantil → 2–3 ideas de máx. 10 palabras, con
   emoji en cada idea · caricatura → 3–4 ideas · juvenil → hasta 5 ideas · sobrio →
-  hasta 5 ideas con relación entre conceptos.
+  hasta 5 ideas con relación entre conceptos. Siempre dentro de los límites de arriba.
 - ESQUEMA: en cada bloque, al menos 1 pista lleva un "esquema" para que la plataforma
   lo dibuje (no es texto). Elige el que va con el contenido:
   "comparacion" (2–3 columnas con sus rasgos) · "linea_tiempo" (fechas y eventos) ·
@@ -207,6 +245,11 @@ PISTAS (lo que el alumno lee antes de jugar; deben ser cortas y cruciales)
   Solo con datos del inventario. Formato:
   "esquema": { "tipo": "comparacion", "titulo": "...",
     "elementos": [ { "nombre": "...", "detalle": "...", "emoji": "..." } ] }
+
+DUELO (si el plan lo pide): Sparky contra un dragón, una pregunta por round. Mismo formato
+que la opción múltiple (pregunta, 4 opciones, correcta, retro_correcta, retro_incorrecta,
+fuente), en la lista "duelo". Úsalo para repasar los conceptos del bloque con preguntas
+NUEVAS (no copies las de opción múltiple ni las del mini-examen).
 
 SÚPER DATO (1 por bloque, si el plan lo pide)
 - Un texto de 300 a 450 caracteres, escrito con datos del inventario y en el orden
@@ -220,6 +263,7 @@ ANTES DE RESPONDER, REVISA (si algo es "no", corrígelo):
 □ ¿Cada cita está en el inventario?
 □ ¿Cada actividad tiene una sola respuesta y su retroalimentación?
 □ ¿Las pistas respetan el perfil de edad y hay al menos 1 esquema en el bloque?
+□ ¿Cada pista cabe en una slide (título corto, máx. 5 ideas de máx. 12 palabras)?
 □ ¿Todo está en {idioma_guia}, con el apoyo que pide el plan?
 □ ¿El mini-examen tiene preguntas NUEVAS?
 □ ¿El JSON es válido?
@@ -233,6 +277,7 @@ Responde SOLO con JSON:
       "correcta": 2, "dificultad": "media", "punto_dificil": "pd1", "pista": "b1p1",
       "emoji": "⚔️", "retro_correcta": "...", "retro_incorrecta": "...",
       "fuente": { "foto": 3, "tipo": "textual", "cita": "..." } } ],
+    "duelo": [ { "id": "b1du1", "pregunta": "...", "opciones": ["...","...","...","..."], "correcta": 1, "dificultad": "media", "punto_dificil": null, "pista": "b1p1", "emoji": "🐉", "retro_correcta": "...", "retro_incorrecta": "...", "fuente": {} } ],
     "verdadero_falso": [ { "id": "...", "afirmacion": "...", "es_verdadera": false, "dificultad": "media", "punto_dificil": null, "pista": "b1p1", "emoji": "...", "retro_correcta": "...", "retro_incorrecta": "...", "fuente": {} } ],
     "completar": [ { "id": "...", "enunciado": "... ___ ...", "respuesta": "...", "distractores": ["...","...","..."], "dificultad": "media", "punto_dificil": null, "pista": "b1p1", "emoji": "...", "retro_correcta": "...", "retro_incorrecta": "...", "fuente": {} } ],
     "super_dato": [ { "id": "...", "texto": "... [[palabra]] ...", "distractores": ["...","...","...","..."], "pista": "...", "punto_dificil": "...", "fuente": {} } ],
@@ -247,10 +292,21 @@ Tu trabajo: crear SOLO las actividades que faltan, con las MISMAS reglas y el MI
 formato JSON del generador (fuente con cita del inventario, retroalimentación que enseña, distractores
 de la misma categoría, cero ambigüedad, nunca inventar).
 
-Usa ids nuevos con el prefijo "r" (ej. "r_om1").
+Usa ids nuevos con el prefijo "r" (ej. "r_om1"). Para llenar huecos prefiere opción
+múltiple o completar: la guía ya tiene su número de slides y no debe crecer.
+
+PISTAS DEMASIADO LARGAS (si te mandamos alguna): cada slide debe caber completa. Divide
+cada pista larga en DOS pistas de continuación, cada una con sentido completo por sí
+sola: misma información (no inventes ni quites datos clave), "titulo" de máx. 6 palabras
+(la segunda puede decir "… (2)"), de 2 a 5 "ideas" de máx. 12 palabras que empiezan con
+"Palabra clave: ", y si hay "esquema", va en una sola de las dos con máx. 3 ideas.
+Conserva "emoji", "personajes" (en la pista que los menciona) y el idioma.
+
 Responde SOLO con JSON: { "actividades_nuevas": { "opcion_multiple": [...],
-  "verdadero_falso": [...], "completar": [...], "conceptos": [...], "clasificar": [...] } }
-Incluye solo los tipos que uses.`;
+  "verdadero_falso": [...], "completar": [...], "conceptos": [...], "clasificar": [...] },
+  "pistas_divididas": [ { "id": "b1p2", "pistas": [ { "titulo": "...", "emoji": "...", "ideas": ["..."],
+    "ejemplo": null, "clave": null, "dato_rapido": null, "personajes": [], "esquema": null }, { ... } ] } ] }
+Incluye solo los tipos que uses; "pistas_divididas" vacío si no te mandamos pistas largas.`;
 
 export const VERIFICADOR = `ERES EL VERIFICADOR DE DATOS DE "SPARKED". Un niño va a estudiar este cartucho para su
 examen: cada respuesta correcta y cada pista tienen que ser VERDAD.
@@ -273,6 +329,9 @@ Recibes: las pistas y actividades de un bloque (JSON), el tipo de cada foto y el
    - No "corrijas" convenciones o enfoques del libro, ni redacciones distintas que
      dicen lo mismo, ni simplificaciones normales para la edad del alumno. Solo errores de hecho claros.
 5. Matemáticas: no las verifiques tú; el código las recalcula.
+6. No verifiques datos sobre el formato del examen (partes, número de preguntas, cuántas
+   palabras pide una tarea): la guía no enseña eso.
+7. En "actividad" pon SIEMPRE el id exacto de la actividad o pista donde está el dato.
 Responde SOLO con JSON:
 { "resultados": [ { "actividad": "b1om3 (id de la actividad o de la pista)", "afirmacion": "...", "estado": "corregida",
   "dato_correcto": "...", "decia_la_foto": "...", "fuentes": ["url1","url2"],

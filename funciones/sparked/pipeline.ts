@@ -1,7 +1,7 @@
 // La cadena de generación por pasos (Documento 1): extraer → unir → planear → generar por bloque → revisar →
 // reparar → verificar → imágenes → armar. Cada ejecución hace UN paso y deja el siguiente listo.
 import { jsonrepair } from "npm:jsonrepair@3";
-import { EXTRACTOR, PLANIFICADOR, ESQUEMA_PLAN, GENERADOR, REPARADOR, VERIFICADOR, DOMINIOS_CONFIABLES, NIVEL_LECTURA } from "./prompts.ts";
+import { EXTRACTOR, PLANIFICADOR, ESQUEMA_PLAN, GENERADOR, REPARADOR, VERIFICADOR, DOMINIOS_CONFIABLES, NIVEL_LECTURA, TIPOS_JUEGO } from "./prompts.ts";
 
 export type Trabajo = { id: string; borrador_id: string | null; guia_id: string | null; alcance: string; paso: string; estado: string; progreso: Record<string, unknown>; datos: Record<string, unknown>; intentos: number; costo_usd: number; tokens_entrada: number; tokens_salida: number };
 type Supa = ReturnType<typeof import("npm:@supabase/supabase-js@2").createClient>;
@@ -123,7 +123,7 @@ async function llamar(supabase: Supa, t: Trabajo, fuente: Fuente, paso: string, 
 
 // Prueba de velocidad: una sola llamada del planificador con el modelo y el esfuerzo dados, sobre el inventario de un
 // trabajo ya leído. No guarda nada; devuelve tiempo, tokens, costo y un resumen del plan.
-const contenidoPlan = (D: any, fuente: Fuente) => [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${NIVEL_LECTURA(fuente.grado)} · idioma del alumno ${fuente.idioma_alumno ?? "es"} · fotos subidas ${fuente.archivos.length} · materia indicada ${fuente.materia} · tipo de material ${JSON.stringify(D.tipo_material)}.\n\nINVENTARIO:\n${JSON.stringify(D.inventario)}` }];
+const contenidoPlan = (D: any, fuente: Fuente, variedad = "") => [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${NIVEL_LECTURA(fuente.grado)} · idioma del alumno ${fuente.idioma_alumno ?? "es"} · fotos subidas ${fuente.archivos.length} · materia indicada ${fuente.materia} · tipo de material ${JSON.stringify(D.tipo_material)}.${variedad ? "\n" + variedad : ""}\n\nINVENTARIO:\n${JSON.stringify(D.inventario)}` }];
 export async function medirPlan(D: any, fuente: Fuente, modelo: string, esfuerzo: string) {
   const a = ajusteDe("plan", { modelo_plan: modelo, esfuerzo_plan: esfuerzo });
   try {
@@ -337,7 +337,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       // pensamiento de la IA cuenta dentro de max_tokens. Segundo intento: tope mayor si se cortó, o se le muestra su
       // respuesta si no fue JSON.
       const cortado = n === 1 && D.intento_ia?.motivo === "max_tokens";
-      const res = await llamar(supabase, t, fuente, "plan", "planear", { sistema: PLANIFICADOR, contenido: contenidoPlan(D, fuente), esquema: ESQUEMA_PLAN, maxTokens: cortado ? 24000 : 16000, previo: n === 1 && !cortado ? D.intento_ia?.previo : undefined });
+      const res = await llamar(supabase, t, fuente, "plan", "planear", { sistema: PLANIFICADOR, contenido: contenidoPlan(D, fuente, sugerenciaVariedad(semillaDe(t.borrador_id ?? t.id))), esquema: ESQUEMA_PLAN, maxTokens: cortado ? 24000 : 16000, previo: n === 1 && !cortado ? D.intento_ia?.previo : undefined });
       if (res === REPETIR) return "planear";
       const r = res;
       plan = r.parada !== "max_tokens" || n === 1 ? planDe(r.json) : null;
@@ -355,8 +355,12 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     // Solo se quedan los ids que existen en el inventario (si un bloque se queda sin ids, el Generador recibe todo).
     const idsValidos = new Set(Object.values(D.inventario as Record<string, any[]>).flat().map((e: any) => e?.id));
     plan.bloques = plan.bloques.slice(0, 5).map((pb: any, i: number) => ({ ...pb, id: pb.id || `b${i + 1}`, juegos: pb.juegos ?? {}, ids_inventario: (Array.isArray(pb.ids_inventario) ? pb.ids_inventario : []).filter((x: unknown) => idsValidos.has(x)) }));
+    // Tope de slides, orden variado de los juegos y primera actividad (ver ajustarPlan).
+    const slidesIa = plan.slides_estimados ?? null;
+    const recortesPlan = ajustarPlan(plan);
     D.plan = plan;
-    D.plan.grado = fuente.grado; D.plan.presupuesto_slides = Math.min(40, D.plan.presupuesto_slides ?? 25);
+    D.plan.grado = fuente.grado;
+    D.slides = { plan_ia: slidesIa, plan: plan.slides_estimados, tope: plan.presupuesto_slides, recortes_plan: recortesPlan, sugerencia: sugerenciaVariedad(semillaDe(t.borrador_id ?? t.id)) };
     D.bloques = [];
     await guardar(supabase, t, { datos: D, paso: "generar:0", progreso: { pct: 40, mensaje: `Escribiendo el bloque 1 de ${D.plan.bloques.length} ✍️`, paso: "generar:0" }, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
     return "generar:0";
@@ -430,26 +434,55 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       for (const pd of D.plan.puntos_dificiles ?? []) { const n = b.actividades.filter((a: any) => a.punto_dificil === pd.id).length; if (n > 0 && n < 3) huecos.push(`Punto difícil ${pd.id} '${pd.descripcion}' tiene ${n} actividad(es) en el bloque ${b.id}: faltan ${3 - n}`); }
     }
     D.huecos = huecos.slice(0, 8);
-    const sig = huecos.length ? "reparar" : "verificar";
-    await guardar(supabase, t, { datos: D, paso: sig, progreso: { pct: 72, mensaje: huecos.length ? "Arreglando detallitos 🔧" : "Verificando los datos 🔎", paso: sig } });
+    // Pistas que no caben en una slide y exceso de slides: los arregla el paso reparar.
+    const perfil = D.plan.perfil_edad ?? "juvenil";
+    D.pistas_largas = (D.bloques as any[]).flatMap((b) => b.pistas.map((p: any) => ({ bloque: b.id, id: p.id, motivo: problemaDePista(p, perfil) })).filter((x: any) => x.motivo));
+    const tope = topeDe(D.plan);
+    const estimado = estimarSlides(D.bloques) + D.pistas_largas.length;
+    D.slides = { ...(D.slides ?? {}), tope, generado: estimarSlides(D.bloques), exceso: Math.max(0, estimado - tope) };
+    const arreglar = huecos.length > 0 || D.pistas_largas.length > 0 || estimado > tope;
+    const sig = arreglar ? "reparar" : "verificar";
+    await guardar(supabase, t, { datos: D, paso: sig, progreso: { pct: 72, mensaje: arreglar ? "Arreglando detallitos 🔧" : "Verificando los datos 🔎", paso: sig } });
     return sig;
   }
 
   if (t.paso === "reparar") {
     const plan = D.plan;
     const sistema = REPARADOR;
-    const contenido = [{ type: "text", text: `Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n")}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => b.actividades.map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
-    try {
+    const perfil = plan.perfil_edad ?? "juvenil";
+    const largas = (D.pistas_largas ?? []) as { bloque: string; id: string; motivo: string }[];
+    const pistaPorId = (id: string) => (D.bloques as any[]).flatMap((b) => b.pistas).find((p: any) => p.id === id);
+    const textoLargas = largas.length ? `\nPistas demasiado largas (divídelas en dos):\n${largas.map((l) => `- ${l.id} (${l.motivo}): ${JSON.stringify(pistaPorId(l.id))}`).join("\n")}` : "";
+    const contenido = [{ type: "text", text: `Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n") || "(ninguno)"}${textoLargas}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => b.actividades.map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
+    let divididas: any[] = [];
+    if ((D.huecos ?? []).length || largas.length) try {
       const res = await llamar(supabase, t, fuente, "reparar", "reparar", { sistema, contenido, maxTokens: 16000 });
       if (res === REPETIR) return "reparar";
       const r = res;
-      if (!r.json?.actividades_nuevas) await diagnosticar(supabase, t, "reparar", r);
+      if (!r.json?.actividades_nuevas && !r.json?.pistas_divididas) await diagnosticar(supabase, t, "reparar", r);
+      divididas = Array.isArray(r.json?.pistas_divididas) ? r.json.pistas_divididas : [];
       const nuevas = aplanar(r.json?.actividades_nuevas);
       const citas: string[] = D.citas ?? [];
       const okNuevas = nuevas.filter((a: any) => revisarActividad(a, citas, nivel, [], "r"));
       // se reparten en el bloque del punto difícil o en el primero
       for (const a of okNuevas) { const b = (D.bloques as any[]).find((x) => x.actividades.some((y: any) => y.punto_dificil && y.punto_dificil === a.punto_dificil)) ?? D.bloques[0]; b.actividades.push(a); }
     } catch (e) { if ((e as any)?.reintentar) throw e; console.warn("Reparación falló, sigue sin ella:", (e as Error).message); }
+    // Pistas largas: se usan las pistas de continuación de la IA si ya caben; si no, se dividen por código.
+    const notas: string[] = [];
+    for (const l of largas) {
+      const b = (D.bloques as any[]).find((x) => x.id === l.bloque); if (!b) continue;
+      const i = b.pistas.findIndex((p: any) => p.id === l.id); if (i < 0) continue;
+      const p = b.pistas[i];
+      const ia = divididas.find((d: any) => d?.id === l.id)?.pistas;
+      const piezasIa = Array.isArray(ia) && ia.length >= 2 && ia.every((x: any) => x && typeof x === "object" && x.titulo && Array.isArray(x.ideas) && x.ideas.length && !problemaDePista(x, perfil))
+        ? ia.slice(0, 3).map((x: any, k: number) => ({ ...x, id: k === 0 ? p.id : `${p.id}_${k + 1}`, emoji: x.emoji ?? p.emoji, ...(k === 0 && p.titulo_pagina ? { titulo_pagina: p.titulo_pagina } : {}) }))
+        : null;
+      const piezas = piezasIa ?? dividirPistaCodigo(p, perfil);
+      if (piezas.length > 1) { b.pistas.splice(i, 1, ...piezas); notas.push(`${l.id} dividida en ${piezas.length} (${piezasIa ? "IA" : "código"})`); }
+    }
+    // Tope de slides: si la guía se pasa, se fusiona y luego se recorta (ver recortarBloques).
+    const recortes = recortarBloques(D.bloques, topeDe(plan), perfil);
+    D.slides = { ...(D.slides ?? {}), pistas_divididas: notas, recortes, tras_reparar: estimarSlides(D.bloques) };
     await guardar(supabase, t, { datos: D, paso: "verificar", progreso: { pct: 78, mensaje: "Verificando los datos 🔎", paso: "verificar" }, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
     return "verificar";
   }
@@ -468,15 +501,20 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       if (!Array.isArray(r.json?.resultados)) await diagnosticar(supabase, t, "verificar", r);
       for (const res of r.json?.resultados ?? []) {
         reporte.push(res);
-        const id = String(res.actividad ?? "");
-        for (const b of D.bloques as any[]) {
-          if (res.estado === "no_confirmada") { b.actividades = b.actividades.filter((a: any) => a.id !== id); b.mini_examen = b.mini_examen.filter((a: any) => a.id !== id); }
-          if (res.estado === "corregida") {
-            const act = [...b.actividades, ...b.mini_examen].find((a: any) => a.id === id);
-            const pista = b.pistas.find((p: any) => p.id === id) ?? (act ? b.pistas.find((p: any) => p.id === act.pista) : null) ?? b.pistas[0];
-            if (pista) { pista.correcciones = pista.correcciones ?? []; pista.correcciones.push({ dato_apuntes: res.decia_la_foto, dato_correcto: res.dato_correcto, mensaje: res.mensaje_para_alumno, fuentes: res.fuentes ?? [] }); }
+        // El id puede venir con texto después ("b1om3 (pregunta…)"): se toma solo el id.
+        const id = String(res.actividad ?? "").trim().split(/[\s,(]/)[0];
+        const quitar = (b: any) => { b.actividades = b.actividades.filter((a: any) => a.id !== id); b.mini_examen = b.mini_examen.filter((a: any) => a.id !== id); };
+        if (res.estado === "no_confirmada") for (const b of D.bloques as any[]) quitar(b);
+        if (res.estado === "corregida") {
+          // Antes se revisaba bloque por bloque y, si el id no era de ese bloque, la corrección caía en su primera
+          // pista: el alumno la veía una vez por bloque. Ahora va una sola vez, en el lugar que le corresponde.
+          const lugar = pistaDeCorreccion(D.bloques as any[], id, res);
+          if (lugar) {
+            const c = { dato_apuntes: res.decia_la_foto, dato_correcto: res.dato_correcto, mensaje: res.mensaje_para_alumno, fuentes: res.fuentes ?? [] };
+            lugar.pista.correcciones = lugar.pista.correcciones ?? [];
+            if (!lugar.pista.correcciones.some((x: any) => normaliza(x.dato_correcto) === normaliza(c.dato_correcto))) lugar.pista.correcciones.push(c);
             // la actividad con el dato equivocado se quita: la pista ya enseña el dato correcto
-            if (act) { b.actividades = b.actividades.filter((a: any) => a.id !== id); b.mini_examen = b.mini_examen.filter((a: any) => a.id !== id); }
+            if (lugar.act) quitar(lugar.b);
           }
         }
       }
@@ -515,6 +553,20 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const candidatos = cartucho.bloques.flatMap((b: any) => b.actividades.filter((a: any) => ["opcion_multiple", "verdadero_falso", "completar"].includes(a.tipo)));
     const conPeso = candidatos.sort((a: any, b: any) => Number(pdIds.has(b.punto_dificil)) - Number(pdIds.has(a.punto_dificil)));
     cartucho.reto_final = conPeso.slice(0, Math.min(20, Math.max(8, plan.reto_final ?? 16))).map((a: any) => a.id);
+    // Orden variado de los juegos: cada bloque lleva "orden" (tipos en el orden en que se juegan, después de sus pistas)
+    // y sus actividades vienen ya en ese orden; "primera_actividad" dice qué va justo después del tutorial.
+    for (const b of cartucho.bloques) {
+      const pb = (plan.bloques ?? []).find((x: any) => x.id === b.id) ?? {};
+      const hay = [...new Set(b.actividades.map((a: any) => juegoDe(a.tipo)))] as string[];
+      if (b.mini_examen?.length) hay.push("mini_examen");
+      b.orden = [...new Set([...(pb.orden_actividades ?? []).filter((x: string) => hay.includes(x)), ...hay])];
+      const pos = (a: any) => b.orden.indexOf(juegoDe(a.tipo));
+      b.actividades = b.actividades.map((a: any, i: number) => [a, i]).sort((x: any, y: any) => pos(x[0]) - pos(y[0]) || x[1] - y[1]).map((x: any) => x[0]);
+    }
+    const primera = plan.primera_actividad ?? "calentamiento";
+    cartucho.primera_actividad = primera === "calentamiento" || cartucho.bloques[0]?.orden?.[0] === primera ? primera : "calentamiento";
+    cartucho.slides_estimados = estimarSlides(cartucho.bloques);
+    cartucho.plan.presupuesto_slides = topeDe(plan);
     cartucho.verificacion = D.verificacion ?? [];
     cartucho.completo = t.alcance !== "vista_previa"; // la vista previa solo trae el bloque 1
     D.cartucho = cartucho;
@@ -531,6 +583,212 @@ export function aplanar(obj: any): any[] {
   const out: any[] = [];
   for (const [tipo, lista] of Object.entries(obj)) for (const a of (lista as any[]) ?? []) if (a && typeof a === "object") out.push({ ...a, tipo: a.tipo ?? tipo });
   return out;
+}
+
+// ---------- Tamaño, pistas y variedad (criterios de Daniel, 7 nov 2026) ----------
+// Cuenta de slides: 5 fijas (portada, tutorial, calentamiento, reto final y resultados) + 1 por pista + 1 por juego
+// (opción múltiple y completar juntos son uno; verdadero o falso, duelo y mini-examen juntan sus preguntas en una sola;
+// cada conceptos, súper dato, ordenar, clasificar y quién es quién es uno). Tope: 25; hasta 30 si el plan lo justifica.
+export const SLIDES_FIJAS = 5;
+export const TOPE_SLIDES = 25;
+const TOPE_JUSTIFICADO = 30;
+const POR_PIEZA = ["conceptos", "super_dato", "ordenar", "clasificar", "quien_es_quien"];
+// Juegos que se pueden quitar cuando sobra, del primero al último (siempre quedan al menos 2 juegos por bloque).
+const PRESCINDIBLES = ["verdadero_falso", "super_dato", "quien_es_quien", "ordenar", "clasificar", "conceptos", "duelo"];
+const ent = (x: unknown) => Math.max(0, Math.round(Number(x) || 0));
+const juegoDe = (k: string) => k === "completar" ? "opcion_multiple" : k;
+
+function juegosDelPlan(pb: any): string[] {
+  const j = pb.juegos ?? {};
+  const out: string[] = [];
+  for (const k of TIPOS_JUEGO) if (ent(j[k]) > 0 && !out.includes(juegoDe(k))) out.push(juegoDe(k));
+  if (ent(pb.mini_examen) > 0) out.push("mini_examen");
+  return out;
+}
+export function estimarSlidesPlan(plan: any): number {
+  return SLIDES_FIJAS + (plan?.bloques ?? []).reduce((n: number, pb: any) => n + (Array.isArray(pb.pistas) ? pb.pistas.length : 0) + juegosDelPlan(pb).length, 0);
+}
+function juegosDelBloque(b: any): number {
+  const acts = (b?.actividades ?? []) as any[];
+  const hay = (...t: string[]) => acts.some((a) => t.includes(a?.tipo));
+  return (hay("opcion_multiple", "completar") ? 1 : 0) + (hay("verdadero_falso") ? 1 : 0) + (hay("duelo") ? 1 : 0) + acts.filter((a) => POR_PIEZA.includes(a?.tipo)).length + ((b?.mini_examen?.length ?? 0) > 0 ? 1 : 0);
+}
+export const slidesDeBloque = (b: any) => (b?.pistas?.length ?? 0) + juegosDelBloque(b);
+export const estimarSlides = (bloques: any[]) => SLIDES_FIJAS + (bloques ?? []).filter(Boolean).reduce((n, b) => n + slidesDeBloque(b), 0);
+export function topeDe(plan: any): number {
+  const justificado = String(plan?.justificacion_slides ?? "").trim().length > 10;
+  return justificado ? Math.min(TOPE_JUSTIFICADO, Math.max(TOPE_SLIDES, ent(plan?.presupuesto_slides), ent(plan?.slides_estimados))) : TOPE_SLIDES;
+}
+
+// Semilla de variedad por guía (del id del borrador): sugiere una primera actividad distinta para que no todas las
+// guías empiecen igual.
+const PRIMERAS = ["conceptos", "calentamiento", "verdadero_falso", "duelo", "ordenar", "clasificar", "opcion_multiple", "super_dato"];
+export function semillaDe(s: string): number { let h = 2166136261; for (const ch of String(s ?? "")) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+export function sugerenciaVariedad(semilla: number): string {
+  const a = PRIMERAS[semilla % PRIMERAS.length];
+  let b = PRIMERAS[(semilla >>> 7) % PRIMERAS.length]; if (b === a) b = PRIMERAS[(semilla + 3) % PRIMERAS.length];
+  return `Semilla de variedad ${semilla % 1000}. Sugerencia de primera actividad: "${a}" (si el contenido no lo permite: "${b}").`;
+}
+
+// El plan de la IA se ajusta por código: juegos de una pieza a 1 por bloque, orden de actividades completo y variado,
+// primera actividad válida y, si se pasa del tope, se recorta (primero juegos prescindibles, luego pistas de más).
+export function ajustarPlan(plan: any): string[] {
+  const notas: string[] = [];
+  const tope = topeDe(plan);
+  for (const pb of plan.bloques) {
+    pb.pistas = (Array.isArray(pb.pistas) ? pb.pistas : []).map((x: unknown) => String(x ?? "").trim()).filter(Boolean).slice(0, 4);
+    if (!pb.pistas.length) pb.pistas = (Array.isArray(pb.temas) && pb.temas.length ? pb.temas : [pb.titulo]).slice(0, 2).map(String);
+    pb.juegos = Object.fromEntries(TIPOS_JUEGO.map((k) => [k, ent(pb.juegos?.[k])]));
+    for (const k of POR_PIEZA) if (k !== "conceptos" && pb.juegos[k] > 1) pb.juegos[k] = 1;
+    pb.mini_examen = ent(pb.mini_examen);
+  }
+  const quitar = (pb: any, k: string) => { pb.juegos[k] = 0; if (k === "opcion_multiple") pb.juegos.completar = 0; if (k === "mini_examen") pb.mini_examen = 0; };
+  let guarda = 60;
+  while (estimarSlidesPlan(plan) > tope && guarda-- > 0) {
+    const orden = [...plan.bloques].sort((x: any, y: any) => (y.pistas.length + juegosDelPlan(y).length) - (x.pistas.length + juegosDelPlan(x).length));
+    let hecho = false;
+    for (const pb of orden) {
+      if (pb.pistas.length > 3) { notas.push(`${pb.id}: sin la pista "${pb.pistas.pop()}"`); hecho = true; break; }
+      const js = juegosDelPlan(pb);
+      if (js.includes("duelo") && js.includes("mini_examen") && js.length > 2) { quitar(pb, "mini_examen"); notas.push(`${pb.id}: sin mini-examen (cierra con duelo)`); hecho = true; break; }
+      const k = js.length > 2 ? PRESCINDIBLES.find((x) => js.includes(x)) : undefined;
+      if (k) { quitar(pb, k); notas.push(`${pb.id}: sin ${k}`); hecho = true; break; }
+      if (pb.pistas.length > 2) { notas.push(`${pb.id}: sin la pista "${pb.pistas.pop()}"`); hecho = true; break; }
+    }
+    if (!hecho && plan.bloques.length > 2) {
+      const ultimo = plan.bloques.pop();
+      plan.inventario_no_usado = [...(plan.inventario_no_usado ?? []), ...(ultimo.ids_inventario ?? [])];
+      notas.push(`sin el bloque "${ultimo.titulo}"`); hecho = true;
+    }
+    if (!hecho) break;
+  }
+  // Orden de los juegos de cada bloque: solo los que lleva, sin repetir, y los que falten al final.
+  for (const pb of plan.bloques) {
+    const js = juegosDelPlan(pb);
+    const pedido = (Array.isArray(pb.orden_actividades) ? pb.orden_actividades : []).map((x: unknown) => juegoDe(String(x)));
+    pb.orden_actividades = [...new Set([...pedido.filter((x: string) => js.includes(x)), ...js])];
+  }
+  // Si todos los bloques traen la misma secuencia, se rota (el cierre con mini-examen o duelo se queda al final).
+  const firmas = new Set(plan.bloques.map((pb: any) => pb.orden_actividades.join(",")));
+  if (plan.bloques.length > 1 && firmas.size === 1) {
+    plan.bloques.forEach((pb: any, i: number) => {
+      const cierre = pb.orden_actividades.filter((x: string) => x === "mini_examen");
+      const resto = pb.orden_actividades.filter((x: string) => x !== "mini_examen");
+      const r = resto.length ? i % resto.length : 0;
+      pb.orden_actividades = [...resto.slice(r), ...resto.slice(0, r), ...cierre];
+    });
+    notas.push("secuencias de juegos rotadas para que no se repitan");
+  }
+  // Primera actividad: "calentamiento" o un juego del bloque 1, que entonces va primero en ese bloque.
+  const b1 = plan.bloques[0];
+  const primera = juegoDe(String(plan.primera_actividad ?? ""));
+  if (b1 && primera !== "calentamiento" && b1.orden_actividades.includes(primera)) b1.orden_actividades = [primera, ...b1.orden_actividades.filter((x: string) => x !== primera)];
+  else plan.primera_actividad = "calentamiento";
+  plan.presupuesto_slides = tope;
+  plan.slides_estimados = estimarSlidesPlan(plan);
+  return notas;
+}
+
+// Una pista cabe en una slide: título corto, máx. 5 ideas (3 con esquema) de unas 12 palabras, unas 60 palabras en
+// total. El código da un margen sobre lo que pide el prompt. Devuelve el problema, o null si cabe.
+const textoDe = (x: any): string => typeof x === "string" ? x : x && typeof x === "object" ? String(x.texto ?? x.idea ?? Object.values(x).filter((v) => typeof v === "string").join(" ")) : "";
+export function problemaDePista(p: any, perfil = "juvenil"): string | null {
+  const ideas = (Array.isArray(p?.ideas) ? p.ideas : []).map(textoDe);
+  const max = perfil === "infantil" ? 3 : 5;
+  const elementos = Array.isArray(p?.esquema?.elementos) ? p.esquema.elementos : [];
+  if (palabras(p?.titulo) > 8) return `título de ${palabras(p.titulo)} palabras (máx. 6)`;
+  if (ideas.length > max) return `${ideas.length} ideas (máx. ${max})`;
+  if (elementos.length && ideas.length > 4) return `esquema y ${ideas.length} ideas (con esquema, máx. 3)`;
+  if (elementos.length > 7) return `esquema con ${elementos.length} elementos (máx. 6)`;
+  const larga = ideas.find((i: string) => palabras(i) > 18);
+  if (larga) return `una idea de ${palabras(larga)} palabras (máx. 12)`;
+  const detalle = elementos.find((e: any) => palabras(e?.detalle) > 16);
+  if (detalle) return `un elemento del esquema de ${palabras(detalle.detalle)} palabras (máx. 10)`;
+  const total = ideas.reduce((n: number, i: string) => n + palabras(i), 0) + palabras(textoDe(p?.ejemplo));
+  if (total > 80) return `${total} palabras de texto (máx. unas 60)`;
+  return null;
+}
+
+// Respaldo si la IA no dividió una pista larga: se reparte en piezas de continuación (la primera conserva el id, el
+// esquema y la foto; el ejemplo y la clave van en la última).
+export function dividirPistaCodigo(p: any, perfil = "juvenil"): any[] {
+  const ideas = Array.isArray(p.ideas) ? p.ideas : [];
+  const conEsquema = Array.isArray(p?.esquema?.elementos) && p.esquema.elementos.length > 0;
+  const porPieza = perfil === "infantil" ? 3 : 4;
+  const trozos: any[][] = [];
+  let resto = ideas;
+  if (conEsquema) { trozos.push(resto.slice(0, 2)); resto = resto.slice(2); }
+  if (resto.length) { const n = Math.max(conEsquema ? 1 : 2, Math.ceil(resto.length / porPieza)); const t = Math.ceil(resto.length / n); for (let i = 0; i < resto.length; i += t) trozos.push(resto.slice(i, i + t)); }
+  if (trozos.length < 2) return [p];
+  const nombres = (Array.isArray(p.personajes) ? p.personajes : []) as string[];
+  return trozos.map((ids, k) => {
+    const pieza: any = { ...p, id: k === 0 ? p.id : `${p.id}_${k + 1}`, titulo: k === 0 ? p.titulo : `${p.titulo} (${k + 1})`, ideas: ids };
+    if (k > 0) { delete pieza.titulo_pagina; pieza.esquema = null; pieza.dato_rapido = null; }
+    if (k < trozos.length - 1) { pieza.ejemplo = null; pieza.clave = null; }
+    const texto = normaliza(ids.map(textoDe).join(" "));
+    pieza.personajes = nombres.filter((n) => texto.includes(normaliza(n)) || (k === 0 && !trozos.slice(1).some((o) => normaliza(o.map(textoDe).join(" ")).includes(normaliza(n)))));
+    return pieza;
+  });
+}
+
+// Si la guía real se pasa del tope: primero se fusiona (varios conceptos del bloque en uno, dos pistas cortas en una)
+// y luego se recortan juegos prescindibles; nunca se deja un bloque con menos de 2 juegos ni con menos de 2 pistas.
+export function recortarBloques(bloques: any[], tope: number, perfil = "juvenil"): string[] {
+  const notas: string[] = [];
+  let guarda = 80;
+  while (estimarSlides(bloques) > tope && guarda-- > 0) {
+    const orden = bloques.filter(Boolean).sort((x, y) => slidesDeBloque(y) - slidesDeBloque(x));
+    let hecho = false;
+    for (const b of orden) {
+      // 1) Fusionar los juegos de conceptos del bloque (hasta 8 parejas).
+      const cs = b.actividades.filter((a: any) => a.tipo === "conceptos");
+      if (cs.length > 1) {
+        const [c0, c1] = cs;
+        c0.pares = [...(c0.pares ?? []), ...(c1.pares ?? [])].filter((p: any, i: number, arr: any[]) => arr.findIndex((q: any) => normaliza(q.termino) === normaliza(p.termino)) === i).slice(0, 8);
+        b.actividades = b.actividades.filter((a: any) => a !== c1);
+        notas.push(`${b.id}: dos juegos de conceptos fusionados`); hecho = true; break;
+      }
+      // 2) Juegos de una pieza repetidos en el bloque: se queda el primero.
+      const repetido = ["super_dato", "ordenar", "clasificar", "quien_es_quien"].find((t) => b.actividades.filter((a: any) => a.tipo === t).length > 1);
+      if (repetido) { const sobra = b.actividades.filter((a: any) => a.tipo === repetido)[1]; b.actividades = b.actividades.filter((a: any) => a !== sobra); notas.push(`${b.id}: un ${repetido} de más`); hecho = true; break; }
+      // 3) Dos pistas cortas seguidas que juntas caben en una slide.
+      for (let i = 0; i + 1 < b.pistas.length && b.pistas.length > 2; i++) {
+        const [p, q] = [b.pistas[i], b.pistas[i + 1]];
+        if (p.esquema && q.esquema) continue;
+        const junta = { ...p, ideas: [...(p.ideas ?? []), ...(q.ideas ?? [])], esquema: p.esquema ?? q.esquema ?? null, ejemplo: p.ejemplo ?? q.ejemplo ?? null, clave: p.clave ?? q.clave ?? null, dato_rapido: p.dato_rapido ?? q.dato_rapido ?? null, personajes: [...new Set([...(p.personajes ?? []), ...(q.personajes ?? [])])] };
+        if (problemaDePista(junta, perfil)) continue;
+        b.pistas.splice(i, 2, junta);
+        for (const a of [...b.actividades, ...b.mini_examen]) if (a.pista === q.id) a.pista = p.id;
+        notas.push(`${b.id}: pistas "${p.titulo}" y "${q.titulo}" fusionadas`); hecho = true; break;
+      }
+      if (hecho) break;
+      // 4) Mini-examen si el bloque ya cierra con duelo; luego juegos prescindibles.
+      if (juegosDelBloque(b) > 2 && b.mini_examen.length && b.actividades.some((a: any) => a.tipo === "duelo")) { b.mini_examen = []; notas.push(`${b.id}: sin mini-examen (cierra con duelo)`); hecho = true; break; }
+      const k = juegosDelBloque(b) > 2 ? PRESCINDIBLES.find((t) => b.actividades.some((a: any) => a.tipo === t)) : undefined;
+      if (k) { const i = b.actividades.findLastIndex((a: any) => a.tipo === k); const fuera = POR_PIEZA.includes(k) ? [b.actividades[i]] : b.actividades.filter((a: any) => a.tipo === k); b.actividades = b.actividades.filter((a: any) => !fuera.includes(a)); notas.push(`${b.id}: sin ${k}`); hecho = true; break; }
+    }
+    if (!hecho) { notas.push(`no se pudo bajar de ${estimarSlides(bloques)} slides sin quitar teoría`); break; }
+  }
+  return notas;
+}
+
+// Coloca una corrección UNA sola vez: en la pista de la actividad o pista corregida; si el id no es de ninguna, en la
+// pista que más se parece al dato (y si ninguna se parece, en la primera pista de la guía).
+export function pistaDeCorreccion(bloques: any[], id: string, res: any): { b: any; pista: any; act: any } | null {
+  for (const b of bloques) {
+    const act = [...b.actividades, ...b.mini_examen].find((a: any) => a.id === id) ?? null;
+    const pista = b.pistas.find((p: any) => p.id === id) ?? (act ? b.pistas.find((p: any) => p.id === act.pista) ?? b.pistas[0] : null);
+    if (pista) return { b, pista, act };
+  }
+  const buscar = new Set(normaliza(`${res.decia_la_foto ?? ""} ${res.dato_correcto ?? ""} ${res.afirmacion ?? ""}`).split(" ").filter((w) => w.length > 3));
+  let mejor: { b: any; pista: any; act: any } | null = null, puntos = 0;
+  for (const b of bloques) for (const p of b.pistas) {
+    const txt = new Set(normaliza([p.titulo, ...(p.ideas ?? []).map(textoDe), textoDe(p.ejemplo), textoDe(p.clave)].join(" ")).split(" "));
+    const n = [...buscar].filter((w) => txt.has(w)).length;
+    if (n > puntos) { puntos = n; mejor = { b, pista: p, act: null }; }
+  }
+  const b0 = bloques.find((b) => b.pistas?.length);
+  return mejor ?? (b0 ? { b: b0, pista: b0.pistas[0], act: null } : null);
 }
 
 // ---------- Respaldos para que siempre salga una guía ----------
@@ -621,10 +879,10 @@ function revisarActividad(a: any, citas: string[], nivel: string, huecos: string
   const texto = String(a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.instruccion ?? a.texto ?? "");
   const tl = texto.toLowerCase();
   if (PROHIBIDAS.some((p) => tl.includes(p)) && !/\bp[aá]gina web\b/.test(tl)) return false;
-  if (["opcion_multiple", "verdadero_falso", "completar"].includes(a.tipo)) {
+  if (["opcion_multiple", "duelo", "verdadero_falso", "completar"].includes(a.tipo)) {
     if (palabras(texto) > (topePalabras[nivel] ?? 25) + 5) return false;
     if (!a.retro_incorrecta || !a.retro_correcta) { huecos.push(`Actividad ${a.id} sin retroalimentación`); return false; }
-    if (a.tipo === "opcion_multiple") { if (!Array.isArray(a.opciones) || a.opciones.length !== 4 || !(a.correcta >= 0 && a.correcta < 4)) return false; if (new Set(a.opciones.map((o: string) => normaliza(o))).size < 4) return false; }
+    if (a.tipo === "opcion_multiple" || a.tipo === "duelo") { if (!Array.isArray(a.opciones) || a.opciones.length !== 4 || !(a.correcta >= 0 && a.correcta < 4)) return false; if (new Set(a.opciones.map((o: string) => normaliza(o))).size < 4) return false; }
     if (a.tipo === "completar" && (!a.respuesta || !Array.isArray(a.distractores) || a.distractores.length < 2)) return false;
     if (a.tipo === "verdadero_falso" && typeof a.es_verdadera !== "boolean") return false;
   }
