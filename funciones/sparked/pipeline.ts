@@ -436,6 +436,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const idioma = D.plan.idioma_guia ?? "es";
     const descartes: Descarte[] = [];
     for (const b of D.bloques as any[]) {
+      b.actividades = fusionarParejas(b.actividades, idioma);
       const antes = b.actividades.length;
       b.actividades = b.actividades.filter((a: any) => revisarActividad(a, citas, nivel, huecos, b.id, descartes, idioma));
       b.mini_examen = b.mini_examen.filter((a: any) => revisarActividad(a, citas, nivel, huecos, b.id, descartes, idioma));
@@ -1004,6 +1005,22 @@ export function normalizarActividad(a: any, idioma = "es"): void {
     if (Array.isArray(a.pares)) a.pares = a.pares.map((p: any) => Array.isArray(p) ? { termino: p[0], definicion: p[1] } : p && typeof p === "object" ? { ...p, termino: p.termino ?? p.concepto ?? p.palabra ?? p.term ?? p.nombre, definicion: p.definicion ?? p.significado ?? p.definition ?? p.descripcion } : p);
   }
   if (a.tipo === "ordenar" && !Array.isArray(a.pasos) && Array.isArray(a.elementos)) a.pasos = a.elementos;
+}
+// La IA a veces escribe cada pareja de conceptos (o de quién es quién) como una actividad aparte, con 1 o 2 parejas.
+// Si en un bloque hay varias de esas, se juntan en una sola (hasta 8 parejas, sin términos repetidos).
+export function fusionarParejas(acts: any[], idioma = "es"): any[] {
+  let out = acts;
+  for (const tipo of ["conceptos", "quien_es_quien"]) {
+    const grupo = out.filter((a: any) => a?.tipo === tipo);
+    grupo.forEach((a: any) => normalizarActividad(a, idioma));
+    const cortas = grupo.filter((a: any) => !Array.isArray(a.pares) || a.pares.filter((p: any) => p?.termino && p?.definicion).length < 3);
+    if (grupo.length < 2 || !cortas.length) continue;
+    const base = grupo[0];
+    const pares = grupo.flatMap((a: any) => Array.isArray(a.pares) ? a.pares : []).filter((p: any) => p?.termino && p?.definicion);
+    base.pares = pares.filter((p: any, i: number) => pares.findIndex((q: any) => normaliza(q.termino) === normaliza(p.termino)) === i).slice(0, 8);
+    out = out.filter((a: any) => a === base || !grupo.includes(a));
+  }
+  return out;
 }
 // Preguntas sobre el examen o el libro (regla 3 del generador). "gap" y "huecos" solo cuentan cuando hablan del número
 // o la posición de un hueco del examen ("How many gaps…", "gap 3"); en inglés "fill the gap" es una instrucción normal.
