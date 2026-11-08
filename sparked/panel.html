@@ -96,7 +96,7 @@
           <div class="campo"><label>Materia</label><select name="materia" required></select></div>
           <div class="campo"><label>Examen (opcional)</label><input name="examen" placeholder="Ej. Examen bimestral 2"></div>
           <div class="campo"><label>Fecha del examen (opcional)</label><input name="fecha_examen" type="date"></div>
-          <div class="campo" style="grid-column:1/-1"><label>Material de estudio: fotos o PDF (hasta 15 páginas)</label>
+          <div class="campo" style="grid-column:1/-1"><label>Material de estudio: fotos o PDF (hasta 25 páginas)</label>
             <div class="zona-carga" id="zona"><div>📷 Arrastra aquí las fotos o el PDF, o toca para elegir</div><input id="archivos" type="file" accept="image/*,application/pdf" multiple hidden></div>
             <div class="miniaturas" id="minis"></div><div class="ayuda" id="conteo"></div></div>
           <div class="campo" style="grid-column:1/-1"><label>O sube un cartucho ya hecho (archivo .json)</label><input name="cartucho" type="file" accept="application/json,.json"></div>
@@ -322,7 +322,7 @@ async function agregar(files) { paginas = paginas.concat(await convertir(files, 
 function pintarMinis() {
   minis.innerHTML = paginas.map((p, i) => `<div class="mini"><img src="${p.url}" alt=""><button type="button" data-i="${i}" aria-label="Quitar">✕</button></div>`).join("");
   $$("button", minis).forEach((b) => b.onclick = () => { paginas.splice(+b.dataset.i, 1); pintarMinis(); });
-  $("#conteo").textContent = paginas.length ? `${paginas.length} de 15 páginas` : "";
+  $("#conteo").textContent = paginas.length ? `${paginas.length} de 25 páginas` : "";
 }
 async function convertir(files, max = 15) {
   const out = [];
