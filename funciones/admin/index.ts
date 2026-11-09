@@ -123,6 +123,14 @@ async function baseLinks(): Promise<string> {
 }
 const linkDe = (base: string, token: string) => base + token;
 
+// Las guías vendidas en SparkEd (fase 2) crean una clase de tipo "guia" con un acceso por compra.
+// Ese acceso pertenece solo a la familia que pagó: esta app no las lista (ni sus links ni sus intentos).
+async function idsClasesGuia(): Promise<string[]> {
+  const { data, error } = await supabase.from("clases").select("id").eq("tipo", "guia");
+  if (error) throw error;
+  return (data ?? []).map((r) => r.id as string);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
 
@@ -216,7 +224,7 @@ Deno.serve(async (req: Request) => {
 
     // ---------- Clases ----------
     if (recurso === "clases" && !id && m === "GET") {
-      const { data: clases, error } = await supabase.from("clases").select("*").order("creada_en", { ascending: false });
+      const { data: clases, error } = await supabase.from("clases").select("*").or("tipo.is.null,tipo.neq.guia").order("creada_en", { ascending: false });
       if (error) throw error;
       const { data: acc } = await supabase.from("accesos_vista").select("clase_id, estado");
       const conteo: Record<string, Record<string, number>> = {};
@@ -276,6 +284,10 @@ Deno.serve(async (req: Request) => {
       const clase_id = url.searchParams.get("clase_id");
       let q = supabase.from("accesos_vista").select("*").order("creado_en", { ascending: false }).limit(500);
       if (esUuid(clase_id)) q = q.eq("clase_id", clase_id);
+      else {
+        const guias = await idsClasesGuia();
+        if (guias.length) q = q.not("clase_id", "in", `(${guias.join(",")})`);
+      }
       const { data, error } = await q;
       if (error) throw error;
       return json((data ?? []).map((a) => ({ ...a, link: linkDe(base, a.token) })));
@@ -428,14 +440,18 @@ Deno.serve(async (req: Request) => {
       const limite = Math.min(500, Number(url.searchParams.get("limite") ?? 100) || 100);
       const campos = "id, resultado, ip, user_agent, creado_en, token_intentado";
       let q;
+      let guias: string[] = [];
       if (esUuid(clase_id)) {
         q = supabase.from("eventos").select(`${campos}, accesos!inner(alumno, clase_id)`).eq("accesos.clase_id", clase_id);
       } else {
         q = supabase.from("eventos").select(`${campos}, accesos(alumno, clase_id)`);
+        guias = await idsClasesGuia();
       }
-      const { data, error } = await q.order("creado_en", { ascending: false }).limit(limite);
+      // Sin clase: se piden de más y se quitan los intentos de links de guías de SparkEd.
+      const { data, error } = await q.order("creado_en", { ascending: false }).limit(guias.length ? limite * 3 : limite);
       if (error) throw error;
-      return json((data ?? []).map((e) => ({
+      const visibles = (data ?? []).filter((e) => !guias.includes(String((e as { accesos?: { clase_id?: string } }).accesos?.clase_id ?? ""))).slice(0, limite);
+      return json(visibles.map((e) => ({
         id: e.id, resultado: e.resultado, ip: e.ip, user_agent: e.user_agent, creado_en: e.creado_en,
         token_intentado: e.token_intentado, alumno: (e as { accesos?: { alumno?: string } }).accesos?.alumno ?? null,
       })));
