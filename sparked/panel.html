@@ -448,11 +448,11 @@ async function cargarCompras() {
       ${c.codigo ? `<div class="ayuda">🎟️ Código <b>${esc(c.codigo)}</b>${c.metodo_pago === "codigo" ? " · guía gratis (no cuenta como venta)" : ` · descuento de ${dinero(c.descuento_mxn)}`}</div>` : ""}
       ${c.mp_preferencia_id || c.mp_estado ? `<div class="ayuda">Mercado Pago: ${esc(METODOS_MP[c.metodo_pago] ?? c.metodo_pago ?? "todavía sin pago")}${c.mp_estado ? " · " + esc(ESTADOS_MP[c.mp_estado] ?? c.mp_estado) : ""}${c.mp_vence_en && c.estado === "pendiente" ? " · se puede pagar hasta el " + esc(fecha(c.mp_vence_en)) : ""}${c.mp_pago_id ? " · pago " + esc(c.mp_pago_id) : ""}${c.mp_ficha_url ? ` · <a href="${esc(c.mp_ficha_url)}" target="_blank" rel="noopener">ver ficha</a>` : ""}</div>` : ""}
       ${c.estado === "pagada" ? estadoEntrega(c) : ""}
-      ${c.link ? `<div class="link-caja ayuda" style="margin-top:6px">${esc(c.link)}</div>` : ""}
+      ${c.link && c.guia_lista !== false ? `<div class="link-caja ayuda" style="margin-top:6px">${esc(c.link)}</div>` : ""}
     </div><div class="acciones">
       ${c.estado === "pendiente" && c.mp_preferencia_id ? `<button class="boton linea" data-act="revisar" data-id="${c.id}">🔄 Revisar en Mercado Pago</button>` : ""}
       ${c.estado === "pendiente" ? `<button class="boton" data-act="pagar" data-id="${c.id}">✅ Marcar pagada</button><button class="boton linea" data-act="cancelar" data-id="${c.id}">✖ Cancelar</button>` : ""}
-      ${c.link ? `<button class="boton linea" data-act="copiar" data-link="${esc(c.link)}">📋 Copiar link</button><a class="boton linea" target="_blank" rel="noopener" href="${esc(waLink(c.telefono ?? "", mensajeWhatsApp(c.titulo ?? "Tu guía", c.link)))}">💬 WhatsApp</a><button class="boton linea" data-act="reenviar" data-id="${c.id}">✉️ Reenviar correo</button>` : ""}
+      ${c.link && c.guia_lista !== false ? `<button class="boton linea" data-act="copiar" data-link="${esc(c.link)}">📋 Copiar link</button><a class="boton linea" target="_blank" rel="noopener" href="${esc(waLink(c.telefono ?? "", mensajeWhatsApp(c.titulo ?? "Tu guía", c.link)))}">💬 WhatsApp</a><button class="boton linea" data-act="reenviar" data-id="${c.id}">✉️ Reenviar correo</button>` : ""}
       ${c.estado === "pagada" && c.guia_lista === true ? `<button class="boton linea" data-act="wa-reenviar" data-id="${c.id}">📲 Reenviar por WhatsApp</button>` : ""}
     </div></div>`).join("") || "<p class='ayuda'>No hay compras en esta lista.</p>";
   $$("#listaCompras [data-act]").forEach((b) => b.onclick = async () => {

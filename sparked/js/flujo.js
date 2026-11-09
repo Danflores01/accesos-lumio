@@ -125,7 +125,8 @@ export function esperarPago(el, compraId, cada = 5000) {
   const tick = async () => {
     try {
       const d = await api.get(`/pago/estado/${encodeURIComponent(compraId)}`);
-      if (d.estado === "pagada" && d.link) { location.href = `listo.html?compra=${encodeURIComponent(compraId)}`; return; }
+      // El link ya no llega al pagar, sino cuando la guía está 100 % lista: listo.html muestra el avance mientras tanto.
+      if (d.estado === "pagada") { location.href = `listo.html?compra=${encodeURIComponent(compraId)}`; return; }
       // Mercado Pago: si el pago quedó pendiente (OXXO, SPEI o tarjeta en revisión), se explica qué sigue.
       if (el && PAGO_VIVO.includes(d.pago_mp)) { const tx = textoPagoPendiente(d); el.innerHTML = `${tx.tituloHtml}${tx.html}`; }
     } catch {}

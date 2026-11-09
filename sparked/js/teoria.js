@@ -500,12 +500,21 @@ export function resultados(s, ctx) {
 }
 
 // Fin de la vista previa: lo que falta y el botón para comprar.
+// El candado es un texto de venta para quien compra (mamá, papá o el alumno), no parte de la guía: va completo en el
+// idioma del sitio (selector ES | EN), aunque la guía esté en otro idioma.
+const idiomaDelSitio = () => { try { return localStorage.getItem("sparked_idioma") === "en" ? "en" : "es"; } catch { return "es"; } };
+const TEXTO_CANDADO = {
+  es: { titulo: "Desbloquea tu guía entera", bloque: "bloque con teoría a todo color", bloques: "bloques con teoría a todo color", actividades: "actividades y juegos con retroalimentación al instante", mini: "Mini-examen por bloque y reto final", acceso: "7 días de acceso ilimitado a tu guía · 2 dispositivos por familia", iva: "MXN · IVA incluido" },
+  en: { titulo: "Unlock your full guide", bloque: "block with full-color theory", bloques: "blocks with full-color theory", actividades: "activities and games with instant feedback", mini: "A mini-exam per block and a final challenge", acceso: "7 days of unlimited access to your guide · 2 devices per family", iva: "MXN · tax included" },
+};
 export function candado(s, ctx) {
   const c = ctx.c;
-  const el = h(`<div class="sl candado"><div class="caja">${sparky("saludo", 5)}<h2>${esc(ctx.t("desbloquea"))}</h2>
-    <ul><li><b>${c.bloques_totales ?? c.bloques.length}</b> ${esc(ctx.t("bloque")).toLowerCase()}s con teoría a todo color</li><li><b>${c.actividades_totales ?? "+40"}</b> actividades y juegos con retroalimentación al instante</li><li>${esc(ctx.t("mini"))} por bloque y ${esc(ctx.t("reto")).toLowerCase()}</li><li>7 días de acceso ilimitado a tu guía · 2 dispositivos por familia</li></ul>
-    <div class="precio">$${ctx.precio ?? 100}<small>MXN · IVA incluido</small></div>
-    <button class="boton" id="pagar">🔓 ${esc(ctx.t("desbloquea"))}</button></div></div>`);
+  const T = TEXTO_CANDADO[idiomaDelSitio()];
+  const nb = c.bloques_totales ?? c.bloques.length;
+  const el = h(`<div class="sl candado"><div class="caja">${sparky("saludo", 5)}<h2>${esc(T.titulo)}</h2>
+    <ul><li><b>${nb}</b> ${esc(nb === 1 ? T.bloque : T.bloques)}</li><li><b>${c.actividades_totales ?? "+40"}</b> ${esc(T.actividades)}</li><li>${esc(T.mini)}</li><li>${esc(T.acceso)}</li></ul>
+    <div class="precio">$${ctx.precio ?? 100}<small>${esc(T.iva)}</small></div>
+    <button class="boton" id="pagar">🔓 ${esc(T.titulo)}</button></div></div>`);
   el.querySelector("#pagar").onclick = () => ctx.desbloquear();
   return el;
 }
