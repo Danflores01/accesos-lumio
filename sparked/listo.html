@@ -42,11 +42,11 @@ async function revisar() {
   if (!compra) { caja.innerHTML = `${marca("listo.sin_compra_t", null, "h1")}${marca("listo.sin_compra", null, "p")}`; return; }
   try {
     const d = await api.get(`/pago/estado/${encodeURIComponent(compra)}${/^\d+$/.test(pagoId) ? `?pago=${pagoId}` : ""}`);
-    if (d.estado === "pagada" && d.link) {
-      // Entrega en dos tiempos: "¡Tu guía está lista!" solo cuando la guía completa ya existe.
-      if (d.guia_lista !== false) { espera?.detener(); espera = null; vista = "lista"; mostrar(d); return; }
+    if (d.estado === "pagada") {
+      // El link aparece solo cuando la guía está 100 % completa y verificada (entonces también sale el correo).
+      if (d.link && d.guia_lista !== false) { espera?.detener(); espera = null; vista = "lista"; mostrar(d); return; }
       if (d.revision) { revisando(d); setTimeout(revisar, 60000); return; }
-      terminando(d); setTimeout(revisar, 5000); return;
+      terminando(d); setTimeout(revisar, 8000); return;
     }
     const pagoMP = d.pago_mp || "";
     // Mercado Pago: pago pendiente (OXXO, SPEI o tarjeta en revisión).
@@ -76,7 +76,8 @@ function fallido(d, vencido) {
     catch (err) { const e = caja.querySelector("#errOtraVez"); e.dataset.i18nServidor = err.message; e.textContent = mensajeError(err); boton.disabled = false; poner(boton, "listo.reintentar"); }
   };
 }
-// Pago (o código) confirmado, pero la guía completa todavía se está terminando (unos 4 minutos después del pago).
+// Pago (o código) confirmado, pero la guía completa todavía se está terminando y revisando (unos 4 minutos después del
+// pago). Sin link ni botones: el link aparece aquí (y llega por correo) cuando la guía está lista.
 let espera = null;
 const encabezado = (d, etiqueta, extra) => marca(d.metodo === "codigo" ? "listo.codigo_ok" : "listo.pago_ok", null, etiqueta, extra);
 function terminando(d) {
@@ -84,10 +85,9 @@ function terminando(d) {
   if (pintar("terminando", `<div>${encabezado(d, "h1", 'style="margin-bottom:4px"')}<div class="ayuda">${esc(d.titulo ?? "")}</div></div>
       ${marca("listo.terminando", null, "p")}
       <div id="espera"></div>
-      ${cajaLink(d, d.jugar ? "listo.term_jugar" : "listo.term_espera")}`)) {
+      ${marca("listo.term_nota", null, "p", 'class="ayuda"')}`)) {
     espera?.detener();
     espera = pantallaEspera(caja.querySelector("#espera"), "espera.terminando", { estimado: 240, inicio: d.pagada_en ? new Date(d.pagada_en).getTime() : Date.now(), base: 42 });
-    conectarLink(d);
   }
   const pr = d.progreso ?? {};
   espera?.actualizar(pr.pct ?? 42, pr.mensaje ?? "");
@@ -96,18 +96,8 @@ function terminando(d) {
 function revisando(d) {
   espera?.detener(); espera = null;
   poner(titulo, "titulo.revisando");
-  if (pintar("revisando", `<div style="display:flex;gap:14px;align-items:center">${sparky("escribiendo", 5)}<div>${encabezado(d, "h1")}<div class="ayuda">${esc(d.titulo ?? "")}</div></div></div>
-      <div class="caja-clave">${marca("listo.revisando", null, "b")}${marca("listo.revisando_nota", { folio: d.folio ?? "" }, "p", 'style="margin:6px 0 0"')}</div>
-      ${cajaLink(d, d.jugar ? "listo.rev_jugar" : "listo.rev_espera")}`)) conectarLink(d);
-}
-function cajaLink(d, nota) {
-  return `<div class="caja-clave" style="margin-top:14px">${marca("link.tu_link", null, "b")}<div class="link-caja" style="margin-top:6px">${esc(d.link)}</div>${marca(nota, null, "p", 'class="ayuda" style="margin:6px 0"')}
-    <div class="acciones">${d.jugar ? `<a class="boton linea" href="${esc(d.link)}" data-i18n="link.abrir">${th("link.abrir")}</a>` : ""}${marca("link.copiar", null, "button", 'class="boton linea" data-copiar')}<a class="boton linea" data-wa target="_blank" rel="noopener" href="${esc(waLink(d.telefono ?? "", mensajeWhatsApp(d.titulo ?? t("tu_guia"), d.link)))}" data-i18n="link.whatsapp">${th("link.whatsapp")}</a></div></div>`;
-}
-function conectarLink(d) {
-  const b = caja.querySelector("[data-copiar]"); if (b) b.onclick = async () => { try { await navigator.clipboard.writeText(d.link); poner(b, "link.copiado"); } catch {} };
-  // El mensaje de WhatsApp va en el idioma del sitio: se rehace si cambian de idioma.
-  const wa = caja.querySelector("[data-wa]"); if (wa) redibujar = () => { wa.href = waLink(d.telefono ?? "", mensajeWhatsApp(d.titulo ?? t("tu_guia"), d.link)); };
+  pintar("revisando", `<div style="display:flex;gap:14px;align-items:center">${sparky("escribiendo", 5)}<div>${encabezado(d, "h1")}<div class="ayuda">${esc(d.titulo ?? "")}</div></div></div>
+      <div class="caja-clave">${marca("listo.revisando", null, "b")}${marca("listo.revisando_nota", { folio: d.folio ?? "" }, "p", 'style="margin:6px 0 0"')}</div>`);
 }
 
 function mostrar(d) {

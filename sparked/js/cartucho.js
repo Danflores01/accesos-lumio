@@ -518,14 +518,44 @@ function recortar(S, c) {
   return S;
 }
 
-// Vista previa gratis: portada, primera pista y primer juego. El resto se bloquea.
+// ---------- Vista previa gratis (Daniel, 9 nov 2026) ----------
+// Exactamente 4 slides y el candado: PORTADA, UNA PISTA (una sola página de teoría) y DOS JUEGOS de formato distinto: el
+// primer juego de preguntas (nunca una carrera) y otro formato (conceptos, clasificar, verdadero o falso u ordenar).
+// Sin tutorial ni calentamiento (sí en la guía completa). El candado dice cuántos bloques y actividades trae la guía.
+const OTROS_VP = ["conceptos", "clasificar", "verdadero_falso", "ordenar"];
+const pistaDeUnaPagina = (pistas) => pistas.find((p) => pesoPista(p) <= PESO_PISTA_MAX) ?? pistas[0];
+// Deja en el cartucho (ya normalizado) solo lo que la vista previa muestra.
+export function prepararVistaPrevia(c) {
+  const b0 = c.bloques[0];
+  c.bloques = b0 ? [{ ...b0, pistas: b0.pistas.length ? [pistaDeUnaPagina(b0.pistas)] : [], mini_examen: [], duelo: [] }] : [];
+  c.calentamiento = []; c.reto_final = []; c.primera_actividad = null;
+  return c;
+}
+const SLIDES_OTRO_VP = new Set(["match", "sort", "swipe", "perro", "rank"]);
+// De las slides armadas, solo portada, la primera página de teoría y dos juegos de formato distinto del bloque 1.
+export function slidesVistaPrevia(S) {
+  const portada = S.find((s) => s.k === "portada");
+  const pista = S.find((s) => s.k === "teoria");
+  const juegos = S.filter((s) => !NO_ACTIVIDAD.has(s.k) && !s.calentamiento && s.blk === 0);
+  const esPregunta = (s) => JUEGOS_PREGUNTA.some((j) => j.k === s.k) && s.k !== "carrera";
+  const pregunta = juegos.find(esPregunta);
+  const otro = juegos.find((s) => s !== pregunta && SLIDES_OTRO_VP.has(s.k) && !s.retratos && s.k !== pregunta?.k)
+    ?? juegos.find((s) => s !== pregunta && s.k !== pregunta?.k && !esPregunta(s));
+  const dos = pregunta ? [pregunta, otro] : [otro, juegos.find((s) => s !== otro && s.k !== otro?.k)];
+  const elegidas = new Set([portada, pista, ...dos].filter(Boolean));
+  return S.filter((s) => elegidas.has(s));
+}
+// Recorte de la vista previa hecho en el navegador (la demo con ?vista=previa); el servidor hace lo mismo.
 export function recortarVistaPrevia(c) {
   const v = JSON.parse(JSON.stringify({ version_formato: c.version_formato, plan: c.plan, bloques: [], calentamiento: [], reto_final: [] }));
   const b0 = c.bloques[0];
   if (b0) {
     const acts = b0.actividades;
     const juego = acts.filter((a) => a.tipo === "opcion_multiple" || a.tipo === "completar").slice(0, 6);
-    v.bloques.push({ id: b0.id, titulo: b0.titulo, pistas: b0.pistas.slice(0, 3), actividades: juego, mini_examen: [] });
+    const orden = Array.isArray(b0.orden) ? b0.orden : [];
+    const otros = [...new Set([...orden.filter((x) => OTROS_VP.includes(x)), ...OTROS_VP])].filter((k) => acts.some((a) => a.tipo === k)).slice(0, juego.length ? 1 : 2);
+    const extra = otros.flatMap((k) => k === "verdadero_falso" ? acts.filter((a) => a.tipo === k) : acts.filter((a) => a.tipo === k).slice(0, 1));
+    v.bloques.push({ id: b0.id, titulo: b0.titulo, pistas: b0.pistas.length ? [pistaDeUnaPagina(b0.pistas)] : [], actividades: [...juego, ...extra], mini_examen: [], orden: b0.orden, mecanica_quiz: b0.mecanica_quiz });
   }
   v.plan = { ...v.plan, presupuesto_slides: 40 };
   v.vista_previa = true;

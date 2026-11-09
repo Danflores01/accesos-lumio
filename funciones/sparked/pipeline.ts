@@ -1449,6 +1449,25 @@ async function imagenWikipedia(nombre: string, idioma: string): Promise<{ url: s
 
 // Vista previa: calentamiento y bloque 1 (pistas, sus preguntas de opción múltiple y otro formato: conceptos,
 // clasificar, verdadero o falso u ordenar), para que se vean al menos dos formatos distintos. Lo demás se bloquea.
+// Vista previa gratis (Daniel, 9 nov 2026): 4 slides — portada, UNA pista (una sola página de teoría) y DOS juegos de
+// formato distinto (el primer juego de preguntas, que el reproductor nunca pone como carrera, y otro: conceptos,
+// clasificar, verdadero o falso u ordenar). Sin tutorial ni calentamiento. Solo se manda lo que se muestra; el bloque 1
+// completo se sigue generando y guardando porque se reutiliza al pagar.
+const PESO_PISTA_UNA_PAGINA = 1300; // el mismo límite que usa el reproductor para que una pista quepa en una slide
+function pesoPista(p: any): number {
+  const l = (x: unknown) => String(x ?? "").length;
+  let n = 70 + l(p?.titulo);
+  n += (p?.ideas ?? []).reduce((a: number, x: unknown) => a + l(x) + 45, 0);
+  n += (p?.ideas_apoyo ?? []).reduce((a: number, x: unknown) => a + l(x) + 10, 0);
+  if (p?.ejemplo) n += l(p.ejemplo) + 45;
+  n += (p?.correcciones ?? []).reduce((a: number, cr: any) => a + l(cr?.dato_correcto ?? cr?.mensaje) + l(cr?.dato_apuntes) + 60, 0);
+  if (p?.clave) n += l(p.clave) + 60;
+  if (p?.conclusion) n += l(p.conclusion) + 60;
+  if (p?.dato_rapido) n += 90;
+  if ((p?.imagenes ?? []).some((x: any) => x?.url)) n += 240;
+  if (p?.esquema?.tipo) n += 140 + (p.esquema.elementos ?? []).reduce((a: number, e: any) => a + l(e?.nombre) + l(e?.detalle) + 35, 0);
+  return n;
+}
 export function recortarVistaPrevia(c: any): any {
   const bloques = (c.bloques ?? []).filter(Boolean);
   const b0 = bloques[0];
@@ -1462,18 +1481,48 @@ export function recortarVistaPrevia(c: any): any {
     const acts = (b0.actividades ?? []) as any[];
     const quiz = acts.filter((a: any) => a.tipo === "opcion_multiple" || a.tipo === "completar").slice(0, 6);
     const orden = (Array.isArray(b0.orden) ? b0.orden : []) as string[];
-    const otro = [...orden.filter((x) => VARIEDAD_B1.includes(x)), ...VARIEDAD_B1].find((k) => acts.some((a: any) => a.tipo === k));
-    const extra = !otro ? [] : otro === "verdadero_falso" ? acts.filter((a: any) => a.tipo === otro) : acts.filter((a: any) => a.tipo === otro).slice(0, 1);
+    // Otro formato (el que el plan pone primero); sin juego de preguntas en el bloque 1, dos formatos distintos.
+    const otros = [...new Set([...orden.filter((x) => VARIEDAD_B1.includes(x)), ...VARIEDAD_B1])].filter((k) => acts.some((a: any) => a.tipo === k)).slice(0, quiz.length ? 1 : 2);
+    const extra = otros.flatMap((otro) => otro === "verdadero_falso" ? acts.filter((a: any) => a.tipo === otro) : acts.filter((a: any) => a.tipo === otro).slice(0, 1));
     const actividades = [...quiz, ...extra];
+    const pistas = (b0.pistas ?? []) as any[];
+    const pista = pistas.find((p) => pesoPista(p) <= PESO_PISTA_UNA_PAGINA) ?? pistas[0];
     const tipos = new Set(actividades.map((a: any) => juegoDe(a.tipo)));
     const ordenVp = orden.filter((x) => tipos.has(x));
-    v.bloques.push({ id: b0.id, titulo: b0.titulo, pistas: (b0.pistas ?? []).slice(0, 3), actividades: actividades.sort((x: any, y: any) => ordenVp.indexOf(juegoDe(x.tipo)) - ordenVp.indexOf(juegoDe(y.tipo))), mini_examen: [], duelo: [], orden: ordenVp.length ? ordenVp : [...tipos], mecanica_quiz: b0.mecanica_quiz ?? null });
-    // Calentamiento: el del cartucho si sus preguntas están en la vista previa; si no, las de opción múltiple que sí van.
-    const ids = new Set(quiz.map((a: any) => a.id));
-    const cal = (c.calentamiento ?? []).filter((id: string) => ids.has(id));
-    const om = quiz.filter((a: any) => a.tipo === "opcion_multiple").map((a: any) => a.id);
-    v.calentamiento = cal.length >= MIN_PREGUNTAS ? cal : om.length >= MIN_PREGUNTAS ? om.slice(0, 6) : [];
-    if (c.primera_actividad && (c.primera_actividad === "calentamiento" || tipos.has(juegoDe(c.primera_actividad)))) v.primera_actividad = c.primera_actividad;
+    v.bloques.push({ id: b0.id, titulo: b0.titulo, pistas: pista ? [pista] : [], actividades: actividades.sort((x: any, y: any) => ordenVp.indexOf(juegoDe(x.tipo)) - ordenVp.indexOf(juegoDe(y.tipo))), mini_examen: [], duelo: [], orden: ordenVp.length ? ordenVp : [...tipos], mecanica_quiz: b0.mecanica_quiz ?? null });
+    // Sin calentamiento ni primera actividad especial en la vista previa (sí en la guía completa).
   }
   return v;
+}
+
+// ---------- Verificación final antes de entregar (Daniel, 9 nov 2026) ----------
+// La familia solo recibe su link cuando la guía está 100 % armada. Esta revisión, sin IA, mira el cartucho completo:
+// al menos un bloque; cada bloque con pistas y con juegos que cumplen los mínimos; solo tipos de actividad que el
+// reproductor conoce; total de slides dentro del tope y completo === true. Devuelve la lista de problemas (vacía = pasa).
+export const TIPOS_REPRODUCTOR = ["opcion_multiple", "completar", "verdadero_falso", "super_dato", "conceptos", "quien_es_quien", "ordenar", "clasificar", "duelo"];
+const TIPOS_PREGUNTA = ["opcion_multiple", "completar", "verdadero_falso"];
+export const TOPE_SLIDES_ENTREGA = TOPE_JUSTIFICADO + 2; // el tope más alto del plan, con margen para la cuenta del reproductor
+export function verificarCartucho(c: any): string[] {
+  const out: string[] = [];
+  if (!c || typeof c !== "object") return ["No hay cartucho"];
+  if (c.completo !== true) out.push("La guía no está marcada como completa");
+  if (c.vista_previa === true) out.push("Es una vista previa, no la guía completa");
+  const bloques = Array.isArray(c.bloques) ? c.bloques.filter(Boolean) : [];
+  if (!bloques.length) out.push("No tiene bloques");
+  for (const b of bloques) {
+    const id = String(b.id ?? "?");
+    const pistas = Array.isArray(b.pistas) ? b.pistas.filter((p: any) => p && (String(p.titulo ?? "").trim() || (p.ideas ?? []).length)) : [];
+    if (!pistas.length) out.push(`Bloque ${id}: no tiene pistas`);
+    const acts = Array.isArray(b.actividades) ? b.actividades : [];
+    for (const a of acts) if (!TIPOS_REPRODUCTOR.includes(a?.tipo)) out.push(`Bloque ${id}: tipo de actividad desconocido "${a?.tipo}"`);
+    for (const a of [...(b.mini_examen ?? []), ...(b.duelo ?? []).map((x: any) => ({ tipo: "opcion_multiple", ...x }))]) if (!TIPOS_PREGUNTA.includes(a?.tipo)) out.push(`Bloque ${id}: pregunta de tipo desconocido "${a?.tipo}"`);
+    if (juegosDelBloque(b) < 1) out.push(`Bloque ${id}: no tiene juegos`);
+    // Mínimos: los mismos del generador (el duelo ya vive en su lista propia).
+    const conDuelo = { ...b, actividades: [...acts, ...(b.duelo ?? []).map((x: any) => ({ ...x, tipo: "duelo" }))] };
+    for (const f of faltasDeBloque(conDuelo)) out.push(`Bloque ${id}: ${f.juego}${f.id ? " " + f.id : ""} tiene ${f.tiene} ${f.unidad} (mínimo ${f.minimo})`);
+  }
+  const slides = estimarSlides(bloques);
+  const tope = Math.max(TOPE_SLIDES_ENTREGA, ent(c.plan?.presupuesto_slides) + 2);
+  if (slides > tope) out.push(`Tiene ${slides} slides; el tope es ${tope}`);
+  return out;
 }

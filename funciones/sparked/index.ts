@@ -15,12 +15,12 @@
 // encienden solos cuando Daniel pone cada secreto en Supabase. Sin cobro en línea, el pago es manual desde el panel.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, type Trabajo } from "./pipeline.ts";
+import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, verificarCartucho, type Trabajo } from "./pipeline.ts";
 import type { CtxBase, CtxRutas } from "./tipos.ts";
 import { rutasExtras } from "./extras.ts";
 import { rutasWhatsApp, avisarPorWhatsApp, motorWhatsApp } from "./whatsapp.ts";
 
-const VERSION = "2026-11-08.3";
+const VERSION = "2026-11-09.1";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -81,7 +81,7 @@ const CONFIG_DEF: Record<string, string> = {
   sparked_correo_aviso: "",        // correo de Daniel para avisos de ventas
   sparked_correo_remitente: "SparkEd <onboarding@resend.dev>",
   sparked_correo_respuestas: "",   // buzón real al que llegan las respuestas de las familias (reply-to); vacío = sin reply-to
-  // "si" = mientras se termina una guía pagada (unos 4 minutos), el reproductor deja jugar los bloques de la vista previa.
+  // Ya no se usa (9 nov 2026): la familia recibe su link solo cuando la guía está completa y verificada.
   sparked_jugar_durante_generacion: "no",
   // Modelo (haiku | sonnet | opus) y esfuerzo (low | medium | high) de cada paso de la IA. El defecto es el de siempre.
   sparked_modelo_extraer: "haiku", sparked_esfuerzo_extraer: "medium",
@@ -213,19 +213,32 @@ async function alFinalizar(t: Trabajo) {
   }
   const guiaId = t.guia_id ?? borrador?.guia_id;
   if (!guiaId) throw new Error("No hay guía a la que pegar el cartucho");
+  // Verificación final (sin IA) antes de entregar: si no pasa, la guía se guarda como NO completa (nadie recibe el link),
+  // el trabajo queda en error y se avisa a Daniel y a la familia ("estamos revisando tu guía").
+  const problemas = verificarCartucho(cartucho);
+  if (problemas.length) { cartucho.completo = false; base.vista_previa = recortarVistaPrevia(cartucho); }
   const { data: g } = await supabase.from("guias").select("origen, reporte, costo_mxn, estado").eq("id", guiaId).maybeSingle();
   const costoPrevio = Number(g?.reporte?.costo_usd ?? 0);
   const cambios: Record<string, unknown> = {
     ...base, costo_mxn: (Number(g?.costo_mxn ?? 0) + costoMxn).toFixed(2),
     reporte: { etapa: "completa", costo_usd: costoPrevio + Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, verificacion: D.verificacion ?? [], huecos: D.huecos ?? [], fotos: D.fotos ?? [], tipo_material: D.tipo_material ?? [], imagenes: Object.keys(D.imagenes ?? {}).length, terminado_en: ahora(), metricas: D.metricas ?? [] },
   };
-  if (g?.origen === "personalizada") cambios.estado = "publicada";
+  if (g?.origen === "personalizada" && !problemas.length) cambios.estado = "publicada";
+  if (problemas.length) (cambios.reporte as any).verificacion_final = problemas;
   const { error: e2 } = await supabase.from("guias").update(cambios).eq("id", guiaId);
   if (e2) throw e2;
+  if (problemas.length) {
+    const msg = ("Verificación final: " + problemas.join(" · ")).slice(0, 500);
+    console.error("La guía no pasó la verificación final:", guiaId, msg);
+    await supabase.from("trabajos").update({ estado: "error", error: msg, progreso: { pct: 0, mensaje: MSG_REVISANDO, paso: t.paso }, actualizado_en: ahora() }).eq("id", t.id);
+    if (t.alcance === "resto") await avisarRestoFallido(t.id);
+    else await avisarRevisionDeGuia(guiaId, msg);
+    return;
+  }
   if (borrador) await supabase.from("borradores").update({ estado: borrador.estado === "pagado" ? "listo" : borrador.estado === "generando" ? "listo" : borrador.estado }).eq("id", borrador.id);
-  // Entrega en dos tiempos: la familia ya pagó y tiene su link; ahora le llega el correo de "guía completa" (una vez).
-  // Si el correo falla, el trabajo no se marca como fallido: la guía ya quedó completa.
-  if (t.alcance === "resto") { try { await avisarGuiaCompleta(guiaId); } catch (e) { console.error("No se pudo mandar el correo de guía completa:", (e as Error).message); } }
+  // La guía quedó completa y verificada: cada compra pagada que la esperaba recibe ahora su entrega (link, correo y
+  // WhatsApp, una sola vez). Si algo de la entrega falla, el trabajo no se marca como fallido: /pago/estado la reintenta.
+  try { await entregarPendientes(guiaId); } catch (e) { console.error("No se pudo entregar la guía completa:", (e as Error).message); }
 }
 
 // ---------- Archivos en el bucket privado ----------
@@ -579,8 +592,11 @@ async function confirmarPago(compraId: string, extra: { stripe_session_id?: stri
   return { compra, ...entrega };
 }
 
-// Crea (una sola vez) la clase y el acceso de 7 días y 2 aparatos para esa compra; manda el correo.
-async function entregar(compra: any): Promise<{ token: string; expira_en: string; link: string; lista: boolean }> {
+// Al confirmarse el pago: crea (una sola vez) la clase y el acceso de 7 días y 2 dispositivos para esa compra y lanza la
+// generación de lo que falta. El link NO se muestra ni se manda hasta que la guía está 100 % completa y verificada:
+// eso lo hace entregarGuiaLista() (aquí mismo si la guía ya estaba completa; si no, al terminar la generación).
+// lista = la compra ya recibió su entrega; recien = la entrega salió en esta llamada.
+async function entregar(compra: any): Promise<{ token: string; expira_en: string; link: string; lista: boolean; recien: boolean }> {
   const base = await sitio();
   await contarUsoCodigo(compra.id); // código de descuento en porcentaje: su uso se cuenta al quedar pagada (una vez)
   if (compra.acceso_id) {
@@ -589,7 +605,9 @@ async function entregar(compra: any): Promise<{ token: string; expira_en: string
       const { data: g } = await supabase.from("guias").select("origen, borrador_id, completo:cartucho->completo").eq("id", compra.guia_id).maybeSingle();
       // Si la primera entrega se cortó antes de lanzar el resto de la guía, se lanza ahora (lanzarResto no lo duplica).
       if (g && g.completo !== true && g.origen === "personalizada" && g.borrador_id) await lanzarResto(compra.guia_id, g.borrador_id).catch((e) => console.error("No se pudo lanzar el resto de la guía:", (e as Error).message));
-      return { token: a.token, expira_en: a.expira_en, link: linkDe(base, a.token), lista: g?.completo === true };
+      const r = g?.completo === true ? await entregarGuiaLista(compra.id) : { entregada: false, recien: false };
+      const a2 = r.recien ? (await supabase.from("accesos").select("token, expira_en").eq("id", compra.acceso_id).maybeSingle()).data ?? a : a;
+      return { token: a2.token, expira_en: a2.expira_en, link: linkDe(base, a2.token), lista: r.entregada, recien: r.recien };
     }
   }
   const { data: guia } = await supabase.from("guias").select("id, titulo, clase_id, origen, colegio_id, grado, materia, borrador_id, estado, completo:cartucho->completo").eq("id", compra.guia_id).maybeSingle();
@@ -619,22 +637,66 @@ async function entregar(compra: any): Promise<{ token: string; expira_en: string
     if (guia.borrador_id) {
       await supabase.from("borradores").update({ estado: "pagado", pagado_en: ahora(), nombre: compra.nombre, telefono: compra.telefono, correo: compra.correo, expira_en: enDias(DIAS_ACCESO + 1) }).eq("id", guia.borrador_id);
       if (guia.completo !== true) {
-        // Si no se puede lanzar, la familia ve "Estamos revisando tu guía" y Daniel recibe el aviso; el link y el
-        // correo salen de todos modos.
+        // Si no se puede lanzar, la familia ve "Estamos revisando tu guía" (y recibe ese correo) y Daniel recibe el aviso.
         try { await lanzarResto(guia.id, guia.borrador_id); }
         catch (e) {
           console.error("No se pudo lanzar el resto de la guía:", (e as Error).message);
           enSegundoPlano(avisarDaniel(`⚠️ SparkEd: una guía pagada no se pudo continuar (${guia.titulo ?? "guía"})`, `<p>La guía <b>${escHtml(guia.titulo)}</b> ya está pagada (folio ${escHtml(folioDe(compra.id))}), pero no se pudo lanzar la generación de los bloques que faltan: ${escHtml((e as Error).message)}</p><p>Revísala en el panel: Biblioteca → Personalizadas.</p>`));
+          enSegundoPlano(avisarRevision(compra.id));
         }
       }
     }
   }
-  const link = linkDe(base, acceso.token);
-  const lista = guia.completo === true;
-  // Guía completa desde el primer correo: el segundo ("tu guía completa está lista") ya no hace falta.
-  if (lista) await supabase.from("compras").update({ correo_lista_en: ahora() }).eq("id", compra.id).is("correo_lista_en", null);
-  enSegundoPlano(enviarCorreo(compra, guia.titulo ?? "Tu guía", link, expira, lista));
-  return { token: acceso.token, expira_en: expira, link, lista };
+  // Aviso a Daniel de la venta (o del acceso con código), una vez, al confirmarse el pago.
+  enSegundoPlano(avisarVenta(compra, guia.titulo ?? compra.titulo ?? "Tu guía"));
+  compra.acceso_id = acceso.id;
+  const r = guia.completo === true ? await entregarGuiaLista(compra.id) : { entregada: false, recien: false };
+  const a2 = r.recien ? (await supabase.from("accesos").select("token, expira_en").eq("id", acceso.id).maybeSingle()).data : null;
+  return { token: acceso.token, expira_en: a2?.expira_en ?? expira, link: linkDe(base, acceso.token), lista: r.entregada, recien: r.recien };
+}
+
+// Entrega de una compra pagada cuando su guía está 100 % completa y pasa la verificación final: marca entregada_en (una
+// sola vez, paso atómico), los 7 días empiezan a contar desde este momento (si el link no se ha abierto) y salen, cada
+// uno por su lado, el correo de entrega y el WhatsApp. Si la verificación final no pasa, no se entrega: se avisa.
+async function entregarGuiaLista(compraId: string): Promise<{ entregada: boolean; recien: boolean; problemas?: string[] }> {
+  const { data: c } = await supabase.from("compras").select("*").eq("id", compraId).maybeSingle();
+  if (!c || c.estado !== "pagada" || !c.acceso_id) return { entregada: false, recien: false };
+  if (c.entregada_en) return { entregada: true, recien: false };
+  const { data: g } = await supabase.from("guias").select("id, titulo, origen, borrador_id, cartucho").eq("id", c.guia_id).maybeSingle();
+  if (!g || (g.cartucho as any)?.completo !== true) return { entregada: false, recien: false };
+  const problemas = verificarCartucho(g.cartucho);
+  if (problemas.length) {
+    await avisarRevision(c.id, `La guía <b>${escHtml(g.titulo)}</b> está marcada como completa, pero no pasó la verificación final: ${escHtml(problemas.join(" · "))}. Corrígela (por ejemplo, subiendo el cartucho arreglado en el panel) y se entrega sola.`);
+    return { entregada: false, recien: false, problemas };
+  }
+  const momento = ahora();
+  const { data: ganada } = await supabase.from("compras").update({ entregada_en: momento, correo_lista_en: momento }).eq("id", c.id).is("entregada_en", null).select("id");
+  if (!ganada?.length) return { entregada: true, recien: false }; // otra ejecución ya la entregó
+  // Los 7 días cuentan desde la entrega (si el link todavía no se ha abierto).
+  await supabase.from("accesos").update({ expira_en: enDias(DIAS_ACCESO) }).eq("id", c.acceso_id).is("primer_uso_en", null);
+  if (g.origen === "personalizada") {
+    await supabase.from("guias").update({ borrar_en: enDias(DIAS_ACCESO + 1) }).eq("id", g.id);
+    if (g.borrador_id) await supabase.from("borradores").update({ expira_en: enDias(DIAS_ACCESO + 1) }).eq("id", g.borrador_id);
+  }
+  const { data: a } = await supabase.from("accesos").select("token, expira_en").eq("id", c.acceso_id).maybeSingle();
+  if (!a) return { entregada: true, recien: true };
+  const titulo = g.titulo ?? c.titulo ?? "Tu guía";
+  const link = linkDe(await sitio(), a.token);
+  // Correo y WhatsApp son independientes: que falle uno no impide el otro.
+  const [correo, whatsapp] = await Promise.allSettled([
+    enviarCorreo(c, titulo, link, a.expira_en),
+    avisarPorWhatsApp(ctxBase(), c, { titulo, link, expira_en: a.expira_en }),
+  ]);
+  console.log("Guía entregada", c.id, "correo:", correo.status === "fulfilled" ? "ok" : String((correo as PromiseRejectedResult).reason), "whatsapp:", whatsapp.status === "fulfilled" ? JSON.stringify(whatsapp.value) : String((whatsapp as PromiseRejectedResult).reason));
+  return { entregada: true, recien: true };
+}
+
+// Todas las compras pagadas de una guía que esperaban su entrega (al terminar la generación o al subir un cartucho).
+async function entregarPendientes(guiaId: string) {
+  const { data: compras } = await supabase.from("compras").select("id").eq("guia_id", guiaId).eq("estado", "pagada").not("acceso_id", "is", null).is("entregada_en", null);
+  for (const c of compras ?? []) {
+    try { await entregarGuiaLista(c.id); } catch (e) { console.error("No se pudo entregar la compra", c.id, (e as Error).message); }
+  }
 }
 
 // Después del pago de una guía personalizada: se generan los bloques que faltan a partir de la vista previa.
@@ -681,11 +743,10 @@ async function avisarDaniel(asunto: string, html: string) {
   if (esCorreo(cfg.sparked_correo_aviso)) await mandarCorreo(cfg.sparked_correo_aviso, asunto, html);
 }
 
-// Correo a la familia con su link. lista = la guía ya está completa. Si todavía no lo está (entrega en dos tiempos),
-// el correo lo dice tal cual y, al terminar la guía, sale el segundo correo (segundo = true, desde avisarGuiaCompleta).
-async function enviarCorreo(compra: any, titulo: string, link: string, expira: string, lista = true, segundo = false) {
+// Correo de entrega a la familia: sale una sola vez por compra, cuando la guía está 100 % completa y verificada (o cuando
+// Daniel lo reenvía desde el panel). Es el único correo del caso normal.
+async function enviarCorreo(compra: any, titulo: string, link: string, expira: string) {
   if (!Deno.env.get("RESEND_API_KEY") || !esCorreo(compra.correo)) return;
-  const cfg = await config();
   const esc = escHtml;
   const fecha = new Date(expira).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short", timeZone: "America/Mexico_City" });
   const conCodigo = compra.metodo_pago === "codigo";
@@ -693,12 +754,8 @@ async function enviarCorreo(compra: any, titulo: string, link: string, expira: s
   // banners ni botones grandes): así Gmail lo deja en la bandeja principal y no en "Notificaciones" o "Promociones".
   const nombre = String(compra.nombre ?? "").trim().split(/[ ]+/)[0] || "Hola";
   const saludo = nombre === "Hola" ? "Hola:" : `Hola, ${esc(nombre)}:`;
-  const primera = segundo
-    ? `Tu guía completa <b>${esc(titulo)}</b> ya está lista. Es el mismo link de siempre:`
-    : lista
-      ? `${conCodigo ? "Tu código se aplicó" : "Tu pago se confirmó"} y tu guía <b>${esc(titulo)}</b> ya está lista. Ábrela con este link:`
-      : `${conCodigo ? "Tu código se aplicó" : "Tu pago se confirmó"}. Tu guía <b>${esc(titulo)}</b> se está terminando: tarda unos 4 minutos y te vuelvo a escribir en cuanto esté completa. Este es tu link; guárdalo:`;
-  const nota = lista ? "" : `<p>${cfg.sparked_jugar_durante_generacion === "si" ? "Mientras se termina, ya puedes abrirla y jugar los primeros bloques." : "Se abre en cuanto la guía esté completa."}</p>`;
+  const primera = `${conCodigo ? "Tu código se aplicó" : "Tu pago se confirmó"} y tu guía <b>${esc(titulo)}</b> ya está lista. Ábrela con este link:`;
+  const nota = "";
   const pago = conCodigo ? `Acceso con código${compra.codigo ? " " + esc(compra.codigo) : ""}` : `$${esc(compra.monto_mxn)} MXN, IVA incluido`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#1b1b1f;max-width:560px;margin:auto">
     <p>${saludo}</p>
@@ -708,28 +765,47 @@ async function enviarCorreo(compra: any, titulo: string, link: string, expira: s
     <p>Si tienes cualquier duda, responde a este correo y te ayudo.</p>
     <p>Daniel, de SparkEd<br><span style="color:#777;font-size:13px">sparkeducation-mx.com · Folio ${esc(folioDe(compra.id))} · ${pago}</span></p>
   </div>`;
-  const asunto = segundo ? `${nombre === "Hola" ? "Tu" : nombre + ", tu"} guía completa ya está lista: ${titulo}` : lista ? `${nombre === "Hola" ? "Tu" : nombre + ", tu"} guía de SparkEd ya está lista: ${titulo}` : `${nombre === "Hola" ? "Tu" : nombre + ", tu"} guía de SparkEd se está terminando: ${titulo}`;
+  const asunto = `${nombre === "Hola" ? "Tu" : nombre + ", tu"} guía de SparkEd ya está lista: ${titulo}`;
   await mandarCorreo(compra.correo, asunto, html);
-  if (segundo) return;
-  // Aviso a Daniel: una venta, o un acceso con código gratis (que no es venta).
+}
+
+// Aviso a Daniel al confirmarse el pago: una venta, o un acceso con código gratis (que no es venta).
+async function avisarVenta(compra: any, titulo: string) {
+  const esc = escHtml;
+  const conCodigo = compra.metodo_pago === "codigo";
   const quien = `<p>${esc(compra.nombre)} · ${esc(compra.telefono)} · ${esc(compra.correo)}</p>`;
   if (conCodigo) await avisarDaniel(`Guía con código SparkEd: ${titulo}`, `<p>Acceso con el código <b>${esc(compra.codigo ?? "")}</b> (sin costo; no cuenta como venta): <b>${esc(titulo)}</b></p>${quien}<p>Folio ${esc(folioDe(compra.id))}</p>`);
   else await avisarDaniel(`Venta SparkEd: ${titulo}`, `<p>Compra pagada: <b>${esc(titulo)}</b></p>${quien}<p>Folio ${esc(folioDe(compra.id))} · $${esc(compra.monto_mxn)} MXN${compra.codigo ? ` (con el código ${esc(compra.codigo)})` : ""}</p>`);
 }
 
-// Entrega en dos tiempos: cuando el trabajo "resto" termina, cada compra pagada de esa guía recibe (una sola vez) el
-// correo "¡Tu guía completa está lista!" con el mismo link.
-async function avisarGuiaCompleta(guiaId: string) {
-  const { data: compras } = await supabase.from("compras").select("*").eq("guia_id", guiaId).eq("estado", "pagada").not("acceso_id", "is", null).is("correo_lista_en", null);
-  if (!compras?.length) return;
-  const base = await sitio();
-  const { data: g } = await supabase.from("guias").select("titulo").eq("id", guiaId).maybeSingle();
-  for (const c of compras) {
-    const { data: ganada } = await supabase.from("compras").update({ correo_lista_en: ahora() }).eq("id", c.id).is("correo_lista_en", null).select("id");
-    if (!ganada?.length) continue; // otra ejecución ya lo mandó
-    const { data: a } = await supabase.from("accesos").select("token, expira_en").eq("id", c.acceso_id).maybeSingle();
-    if (a) await enviarCorreo(c, g?.titulo ?? c.titulo ?? "Tu guía", linkDe(base, a.token), a.expira_en, true, true);
-  }
+// La guía de una compra pagada no se pudo terminar (falla definitiva o verificación final): la familia recibe UN correo,
+// una sola vez por compra, que dice que su pago llegó y que su guía está en revisión. Si se pasa avisoDaniel, Daniel
+// recibe también un aviso (una vez por compra). Cuando la guía queda lista, sale la entrega normal.
+async function avisarRevision(compraId: string, avisoDaniel?: string) {
+  const { data: ganada } = await supabase.from("compras").update({ aviso_revision_en: ahora() }).eq("id", compraId).eq("estado", "pagada").is("aviso_revision_en", null).is("entregada_en", null).select("*");
+  const c = ganada?.[0];
+  if (!c) return;
+  const esc = escHtml;
+  const titulo = c.titulo ?? "Tu guía";
+  if (avisoDaniel) await avisarDaniel(`⚠️ SparkEd: una guía pagada no se entregó (${titulo})`, `<p>${avisoDaniel}</p><p>${esc(c.nombre)} · ${esc(c.telefono)} · ${esc(c.correo)} · folio ${esc(folioDe(c.id))}</p><p>La familia ve: "${MSG_REVISANDO}"</p>`);
+  if (!Deno.env.get("RESEND_API_KEY") || !esCorreo(c.correo)) return;
+  const nombre = String(c.nombre ?? "").trim().split(/[ ]+/)[0] || "Hola";
+  const saludo = nombre === "Hola" ? "Hola:" : `Hola, ${esc(nombre)}:`;
+  const conCodigo = c.metodo_pago === "codigo";
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#1b1b1f;max-width:560px;margin:auto">
+    <p>${saludo}</p>
+    <p>${conCodigo ? "Tu código se aplicó" : "Recibimos tu pago"} (folio ${esc(folioDe(c.id))}). Estamos revisando tu guía <b>${esc(titulo)}</b> para que llegue completa y sin errores.</p>
+    <p>Te la mandamos a este correo en cuanto esté lista. No necesitas hacer nada más.</p>
+    <p>Si tienes cualquier duda, responde a este correo y te ayudo.</p>
+    <p>Daniel, de SparkEd<br><span style="color:#777;font-size:13px">sparkeducation-mx.com · Folio ${esc(folioDe(c.id))}</span></p>
+  </div>`;
+  await mandarCorreo(c.correo, `${nombre === "Hola" ? "Tu" : nombre + ", tu"} guía de SparkEd está en revisión: ${titulo}`, html);
+}
+// Todas las compras pagadas de una guía que no se pudo terminar y que no son de un trabajo "resto" (por ejemplo, una
+// regeneración desde el panel): aviso a Daniel y correo de revisión a cada familia que espera.
+async function avisarRevisionDeGuia(guiaId: string, motivo: string) {
+  const { data: compras } = await supabase.from("compras").select("id").eq("guia_id", guiaId).eq("estado", "pagada").is("entregada_en", null);
+  for (const c of compras ?? []) await avisarRevision(c.id, escHtml(motivo));
 }
 
 // El trabajo "resto" de una guía pagada falló después de sus reintentos: la familia ve "Estamos revisando tu guía"
@@ -745,11 +821,13 @@ async function avisarRestoFallido(trabajoId: string) {
   console.error("Guía pagada sin terminar (trabajo resto con error):", t.guia_id, t.error);
   const familias = (comp ?? []).map((c) => `${escHtml(c.nombre)} · ${escHtml(c.telefono)} · ${escHtml(c.correo)} · folio ${escHtml(folioDe(c.id))}`).join("<br>") || "Sin compra pagada.";
   await avisarDaniel(`⚠️ SparkEd: una guía pagada no se terminó (${g?.titulo ?? "guía"})`,
-    `<p>La guía <b>${escHtml(g?.titulo ?? "")}</b> ya está pagada, pero la IA no pudo terminar los bloques que faltan (paso ${escHtml(t.paso)}).</p><p style="color:#555">${escHtml(t.error ?? "")}</p><p>${familias}</p><p>La familia ve: "${MSG_REVISANDO}"</p><p>Para arreglarlo: en el panel, Biblioteca → Personalizadas → abre la guía → ↻ Reintentar. Al terminar, a la familia le llega sola el correo de que su guía completa está lista.</p>`);
+    `<p>La guía <b>${escHtml(g?.titulo ?? "")}</b> ya está pagada, pero la IA no pudo terminar los bloques que faltan o la guía no pasó la verificación final (paso ${escHtml(t.paso)}).</p><p style="color:#555">${escHtml(t.error ?? "")}</p><p>${familias}</p><p>La familia ve: "${MSG_REVISANDO}" y recibió un correo de que su guía está en revisión.</p><p>Para arreglarlo: en el panel, Biblioteca → Personalizadas → abre la guía → ↻ Reintentar. Al terminar, a la familia le llega sola su guía completa (correo y WhatsApp).</p>`);
+  // A cada familia que espera: un correo (una vez por compra) de que su pago llegó y su guía está en revisión.
+  for (const c of comp ?? []) { try { await avisarRevision(c.id); } catch (e) { console.error("No se pudo mandar el aviso de revisión:", (e as Error).message); } }
 }
 
 // Vista previa de una guía (si no está guardada, se recorta del cartucho).
-async function vistaPreviaDe(g: { vista_previa: any; cartucho: any }) { return g.vista_previa ?? (g.cartucho ? recortarVistaPrevia(g.cartucho) : null); }
+async function vistaPreviaDe(g: { vista_previa: any; cartucho: any }) { return g.cartucho ? recortarVistaPrevia(g.cartucho) : g.vista_previa ?? null; }
 
 // Normaliza un cartucho subido a mano (actividades agrupadas → lista con tipo).
 function normalizarCartucho(c: any) {
@@ -768,8 +846,7 @@ async function rutasAparte(req: Request, m: string, ruta: string[]): Promise<Res
   const c: CtxRutas = { ...ctxBase(), req, m, ruta, json, error, leerJson, esAdmin: () => autorizado(req), ip: ipDe(req) };
   return (await rutasExtras(c)) ?? (await rutasWhatsApp(c));
 }
-// avisarPorWhatsApp(ctxBase(), compra, { titulo, link, expira_en }) se llama al entregar una guía 100 % lista.
-void avisarPorWhatsApp;
+// avisarPorWhatsApp(ctxBase(), compra, { titulo, link, expira_en }) se llama en entregarGuiaLista(), junto con el correo.
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -959,7 +1036,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (r0 === "pago" && r1 === "estado" && esUuid(r2) && m === "GET") {
-      const columnas = "id, estado, titulo, correo, telefono, acceso_id, guia_id, pagada_en, monto_mxn, mp_preferencia_id, mp_estado, metodo_pago, mp_ficha_url, mp_vence_en";
+      const columnas = "id, estado, titulo, correo, telefono, acceso_id, guia_id, pagada_en, entregada_en, monto_mxn, mp_preferencia_id, mp_estado, metodo_pago, mp_ficha_url, mp_vence_en";
       let { data: c } = await supabase.from("compras").select(columnas).eq("id", r2).maybeSingle();
       if (!c) return error("Esa compra no existe", 404);
       // Mercado Pago: si su aviso todavía no llega, se le pregunta directo (máximo una vez cada 20 s por compra).
@@ -974,17 +1051,24 @@ Deno.serve(async (req: Request) => {
         let acceso = c.acceso_id ? (await supabase.from("accesos").select("token, expira_en").eq("id", c.acceso_id).maybeSingle()).data : null;
         // Si el link no existe (la entrega se interrumpió), se crea aquí. Se esperan 30 s desde el pago para no
         // duplicarlo mientras la entrega original (aviso de pago o panel) sigue en curso.
-        if (!acceso && Date.now() - new Date(c.pagada_en ?? 0).getTime() > 30_000) { const e = await entregar(c); acceso = { token: e.token, expira_en: e.expira_en }; }
-        if (acceso) {
-          out.link = linkDe(await sitio(), acceso.token); out.token = acceso.token; out.expira_en = acceso.expira_en;
+        let entregada = !!c.entregada_en, problemas = false;
+        if (!acceso && Date.now() - new Date(c.pagada_en ?? 0).getTime() > 30_000) { const e = await entregar(c); acceso = { token: e.token, expira_en: e.expira_en }; entregada = e.lista; }
+        if (acceso && !entregada) {
+          // La guía ya quedó completa pero la entrega no ha salido (por ejemplo, se interrumpió): se hace aquí.
           const { data: g } = await supabase.from("guias").select("completo:cartucho->completo").eq("id", c.guia_id).maybeSingle();
-          out.guia_lista = g?.completo === true;
-          if (!out.guia_lista) {
-            // Entrega en dos tiempos: avance del trabajo "resto"; si falló, "revisando" (Daniel ya recibió el aviso).
-            const av = await avanceDeGuia(c.guia_id, new Date(c.pagada_en ?? 0).getTime());
-            out.progreso = av.avance; out.revision = av.revision;
-            out.jugar = (await config()).sparked_jugar_durante_generacion === "si";
-          }
+          if (g?.completo === true) { const r = await entregarGuiaLista(c.id); entregada = r.entregada; problemas = !!r.problemas?.length; }
+        }
+        out.guia_lista = entregada;
+        if (acceso && entregada) {
+          // Solo con la guía 100 % completa y verificada: el link (la fecha de fin puede haber cambiado al entregar).
+          const a = (await supabase.from("accesos").select("token, expira_en").eq("id", c.acceso_id ?? "").maybeSingle()).data ?? acceso;
+          out.link = linkDe(await sitio(), a.token); out.token = a.token; out.expira_en = a.expira_en;
+        } else if (c.acceso_id || acceso) {
+          // Todavía no: avance y tiempo estimado; si la generación falló, "revisando" (Daniel ya recibió el aviso).
+          const av = await avanceDeGuia(c.guia_id, new Date(c.pagada_en ?? 0).getTime());
+          const pct = Math.max(0, Math.min(100, Number(av.avance?.pct ?? 42) || 42));
+          out.progreso = av.avance; out.revision = av.revision || problemas;
+          out.estimado_seg = out.revision ? null : Math.max(20, Math.round(((100 - pct) / 58) * 240));
         }
       }
       return json(out);
@@ -1040,14 +1124,10 @@ Deno.serve(async (req: Request) => {
       if (!cl || cl.tipo !== "guia") return json({ estado: "inexistente" }, 404);
       const { data: g } = await supabase.from("guias").select("id, titulo, estado, completo:cartucho->completo").eq("clase_id", cl.id).maybeSingle();
       if (!g) return json({ estado: "inexistente" }, 404);
-      // Guía pagada que todavía se está terminando: se muestra el avance, o "revisando" si el trabajo falló. Con el
-      // ajuste sparked_jugar_durante_generacion = "si", se juegan los bloques que ya existen (vista previa).
-      let parcial: { revision: boolean; avance: any } | null = null;
+      // Red de seguridad: el link solo se entrega con la guía completa, pero si alguien lo abre antes de tiempo ve el
+      // avance, o "revisando" si el trabajo falló. (El ajuste sparked_jugar_durante_generacion ya no se usa.)
       const enEspera = (p: { revision: boolean; avance: any }) => p.revision ? json({ estado: "revisando", titulo: g.titulo, avance: p.avance }) : json({ estado: "generando", progreso: p.avance, titulo: g.titulo }, 202);
-      if (g.completo !== true) {
-        parcial = await avanceDeGuia(g.id, new Date(a.creado_en).getTime());
-        if ((await config()).sparked_jugar_durante_generacion !== "si") return enEspera(parcial);
-      }
+      if (g.completo !== true) return enEspera(await avanceDeGuia(g.id, new Date(a.creado_en).getTime()));
       const dispositivo = esSecreto(b.dispositivo) ? b.dispositivo : nuevoToken(32);
       const { data: res, error: e } = await supabase.rpc("consumir_acceso", { p_token: r1, p_ip: ipDe(req), p_ua: (req.headers.get("user-agent") ?? "").slice(0, 300), p_dispositivo: dispositivo });
       if (e) throw e;
@@ -1057,8 +1137,7 @@ Deno.serve(async (req: Request) => {
         supabase.from("guias").select("cartucho").eq("id", g.id).maybeSingle(),
         supabase.from("progreso").select("datos").eq("acceso_id", a.id).eq("dispositivo_sha256", await sha256hex(dispositivo)).maybeSingle(),
       ]);
-      if (parcial && !(full?.cartucho as any)?.bloques?.length) return enEspera(parcial);
-      return json({ estado: "ok", cartucho: full?.cartucho, guia_id: g.id, dispositivo, progreso: prog?.datos ?? null, expira_en: a.expira_en, alumno: a.alumno && !/^#\d+$/.test(a.alumno) ? a.alumno : null, ...(parcial ? { parcial: true, revision: parcial.revision, avance: parcial.avance } : {}) });
+      return json({ estado: "ok", cartucho: full?.cartucho, guia_id: g.id, dispositivo, progreso: prog?.datos ?? null, expira_en: a.expira_en, alumno: a.alumno && !/^#\d+$/.test(a.alumno) ? a.alumno : null });
     }
 
     if (r0 === "progreso" && esToken(r1) && m === "POST") {
@@ -1199,7 +1278,9 @@ Deno.serve(async (req: Request) => {
         const cambios: Record<string, unknown> = { cartucho: c, vista_previa: recortarVistaPrevia(c), idioma: c.plan.idioma_guia ?? "es", perfil_edad: c.plan.perfil_edad ?? null, paleta: c.plan.identidad?.paleta ?? null, version: 1 };
         if (!g.titulo && c.plan.identidad?.titulo) cambios.titulo = texto(c.plan.identidad.titulo, 120);
         const { error: e } = await supabase.from("guias").update(cambios).eq("id", id); if (e) throw e;
-        return json({ ok: true, bloques: c.bloques.length });
+        // Si había compras pagadas esperando esta guía, se entregan ahora (si pasa la verificación final).
+        await entregarPendientes(id);
+        return json({ ok: true, bloques: c.bloques.length, problemas: verificarCartucho(c) });
       }
       if (rec === "guias" && esUuid(id) && (accion === "generar" || accion === "regenerar") && m === "POST") {
         const { data: g } = await supabase.from("guias").select("id, borrador_id, estado").eq("id", id).maybeSingle();
@@ -1283,8 +1364,12 @@ Deno.serve(async (req: Request) => {
         if (estado) q = q.eq("estado", estado);
         const { data, error: e } = await q; if (e) throw e;
         const ids = (data ?? []).map((c) => c.acceso_id).filter(Boolean);
-        const { data: acc } = ids.length ? await supabase.from("accesos_vista").select("id, token, estado, expira_en, usos").in("id", ids) : { data: [] };
-        return json((data ?? []).map((c) => { const a = (acc ?? []).find((x) => x.id === c.acceso_id); return { ...c, folio: String(c.id).slice(0, 8).toUpperCase(), link: a ? linkDe(base, a.token) : null, acceso: a ? { estado: a.estado, expira_en: a.expira_en, usos: a.usos } : null }; }));
+        const { data: acc } = ids.length ? await supabase.from("accesos_vista").select("id, token, estado, expira_en, usos, dispositivos, max_dispositivos, primer_uso_en, ultimo_uso_en").in("id", ids) : { data: [] };
+        const gids = [...new Set((data ?? []).map((c) => c.guia_id).filter(Boolean))];
+        const { data: gs } = gids.length ? await supabase.from("guias").select("id, completo:cartucho->completo").in("id", gids) : { data: [] as any[] };
+        const completas = new Set((gs ?? []).filter((g: any) => g.completo === true).map((g: any) => g.id));
+        // guia_lista = la guía está 100 % completa; entregada_en = cuándo se le mandó a la familia (link, correo y WhatsApp).
+        return json((data ?? []).map((c) => { const a = (acc ?? []).find((x) => x.id === c.acceso_id); return { ...c, folio: String(c.id).slice(0, 8).toUpperCase(), guia_lista: completas.has(c.guia_id), entregada_en: c.entregada_en ?? null, link: a ? linkDe(base, a.token) : null, acceso: a ? { estado: a.estado, expira_en: a.expira_en, usos: a.usos, dispositivos: a.dispositivos ?? 0, max_dispositivos: a.max_dispositivos ?? null, primer_uso_en: a.primer_uso_en ?? null, ultimo_uso_en: a.ultimo_uso_en ?? null } : null }; }));
       }
       if (rec === "compras" && esUuid(id) && accion === "pagar" && m === "POST") {
         const r = await confirmarPago(id, { manual: true });
@@ -1305,7 +1390,8 @@ Deno.serve(async (req: Request) => {
         const { data: c } = await supabase.from("compras").select("*").eq("id", id).maybeSingle();
         if (!c || c.estado !== "pagada") return error("La compra no está pagada");
         const e = await entregar(c);
-        await enviarCorreo(c, c.titulo ?? "Tu guía", e.link, e.expira_en, e.lista);
+        if (!e.lista) return error("La guía todavía no está completa y verificada. Se entrega sola (correo y WhatsApp) en cuanto lo esté.", 409);
+        if (!e.recien) await enviarCorreo(c, c.titulo ?? "Tu guía", e.link, e.expira_en);
         return json({ ok: true, link: e.link });
       }
 

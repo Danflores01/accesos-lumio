@@ -1,5 +1,5 @@
 // El reproductor: carga la guía (demo, vista previa o acceso con clave), arma el estante y navega como Lumio.
-import { normalizar, armarSlides, recortarVistaPrevia, dividirSlide, retitular, t as tx } from "./cartucho.js";
+import { normalizar, armarSlides, recortarVistaPrevia, prepararVistaPrevia, slidesVistaPrevia, dividirSlide, retitular, t as tx } from "./cartucho.js";
 import { portada, tutorial, teoria, resultados, candado, terminando, pantallaCarga, mensaje } from "./teoria.js";
 import * as J from "./juegos.js";
 import { h, esc, encajar, desborda, ajustarInicio } from "./ui.js";
@@ -88,7 +88,7 @@ function render() {
   escenario.appendChild(el);
   // Nada se desborda: la teoría se mide ya en pantalla; si ni con la letra mínima cabe, se divide aquí mismo.
   if (s.k === "teoria" && !encajarTeoria(el, s)) {
-    const partes = dividirSlide(s);
+    const partes = ctx.modo === "vista_previa" ? null : dividirSlide(s); // la vista previa siempre tiene 4 slides
     if (partes) { insertarPartes(cur, partes); return render(); }
     el.querySelector(".cuerpo")?.classList.add("con-desplazamiento");
   }
@@ -193,11 +193,15 @@ function aplicarPaleta() { document.documentElement.dataset.paleta = c.plan.iden
 async function montar(cartucho, modo, parcial = false) {
   ctx.modo = modo;
   c = normalizar(cartucho); aplicarPaleta();
+  // Vista previa gratis: portada, una pista (una sola página), dos juegos de formato distinto y el candado.
+  if (modo === "vista_previa") prepararVistaPrevia(c);
   S = armarSlides(c);
-  if (modo === "vista_previa") { S = S.filter((s) => s.k !== "resultados" && s.k !== "ruleta"); S.push({ k: "candado", t: ctx.t("desbloquea"), blk: -1 }); }
+  if (modo === "vista_previa") { S = slidesVistaPrevia(S); S.push({ k: "candado", t: ctx.t("desbloquea"), blk: -1 }); }
   // Guía pagada que todavía se está terminando: se juegan los bloques que ya existen y al final va un letrero.
   if (parcial) { S = S.filter((s) => s.k !== "resultados" && s.k !== "ruleta"); S.push({ k: "terminando", t: "Estamos terminando los demás bloques", blk: -1 }); }
   await prepararTeoria();
+  // Si la pista de la vista previa no cupo en una página, solo se muestra la primera (lo demás va en la guía completa).
+  if (modo === "vista_previa") { let una = false; S = S.filter((s) => s.k !== "teoria" || (!una && (una = true))); retitular(S, c.plan.idioma_guia); }
   return S;
 }
 

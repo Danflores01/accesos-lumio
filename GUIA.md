@@ -369,27 +369,37 @@ aquí"** del pago (en "Crear mi guía" y en la biblioteca). Se aceptan con mayú
   es válido". Cada intento queda en "Últimos intentos" y, con 5 intentos fallidos en una hora desde el mismo teléfono,
   correo o conexión, los siguientes se rechazan solos (aunque el código sea bueno) hasta que pase la hora.
 
-## Entrega en dos tiempos (la guía completa tarda unos 4 minutos)
+## Entrega de la guía: solo cuando está 100 % completa (desde el 9 nov 2026)
 
 La guía completa se genera **después** del pago (así no se gasta en guías que nadie paga) y tarda entre 3 y 6 minutos.
-Por eso, al pagar:
-1. La página dice "Tu pago se confirmó" (o "Tu código se aplicó") y "Tu guía completa se está terminando: tarda unos 4
-   minutos. Te avisamos por correo en cuanto esté lista", con una barra de avance y el tiempo estimado. Ya muestra el
-   link para copiarlo o mandarlo por WhatsApp. Cuando la guía queda completa, la misma página cambia a "¡Tu guía está
-   lista!".
-2. El primer correo dice lo mismo, con el link. Cuando la guía queda completa, llega un **segundo correo** (una sola
-   vez): "¡Tu guía completa está lista!", con el mismo link. Si la guía ya estaba completa al pagar (biblioteca), solo
-   sale un correo.
-3. Si la IA no logra terminar la guía después de sus reintentos, el link y la página dicen "Estamos revisando tu guía;
-   te avisamos por correo en cuanto esté lista" (ya no "generando" para siempre). Tú recibes un correo en la dirección
-   de Ajustes → "Correo donde quieres recibir aviso de cada venta" (si la pusiste) y el Resumen del panel muestra el
-   aviso en rojo con el botón "Abrir la guía". Ahí tocas **↻ Reintentar**; al terminar, a la familia le llega sola el
-   correo de que su guía completa está lista.
+La familia recibe el producto terminado: **nadie ve ni recibe el link hasta que la guía está completa y revisada**.
+Al pagar (tarjeta, OXXO, SPEI, código gratis o "Confirmar pago" en el panel):
+1. La página dice "Tu pago se confirmó" (o "Tu código se aplicó") y "Estamos terminando y revisando tu guía completa;
+   tarda unos 4 minutos. Cuando esté lista, aparece aquí y te la mandamos por correo", con una barra de avance y el
+   tiempo estimado. Todavía no hay link ni botones de copiar o WhatsApp.
+2. Cuando la guía queda completa, el servidor la revisa una última vez (sin IA, sin costo): que tenga sus bloques, que
+   cada bloque tenga pistas y juegos con el mínimo de preguntas, que todos los juegos existan en el reproductor y que no
+   pase del tope de slides. Si pasa, la página cambia a "¡Tu guía está lista!" con el link, el QR y los botones, y sale
+   **un solo correo**: "{Nombre}, tu guía de SparkEd ya está lista: {título}". Cuando WhatsApp esté encendido, sale
+   también el mensaje de WhatsApp en ese mismo momento. Si la guía ya estaba completa al pagar (biblioteca), todo sale
+   de inmediato.
+3. Los **7 días de acceso ilimitado a tu guía cuentan desde la entrega**, no desde el pago.
+4. Si la IA no logra terminar la guía después de sus reintentos, o la guía no pasa la revisión final, **no se entrega**.
+   La página dice "Estamos revisando tu guía; te avisamos por correo en cuanto esté lista" y a la familia le llega un
+   correo (una sola vez): "Recibimos tu pago (folio …). Estamos revisando tu guía… No necesitas hacer nada más". Tú
+   recibes un aviso en el correo de Ajustes → "Correo donde quieres recibir aviso de cada venta" y el Resumen del panel
+   lo muestra en rojo. Ahí tocas **↻ Reintentar** (o subes el cartucho corregido); cuando la guía queda bien, a la
+   familia le llega sola su entrega normal.
+5. El botón **Reenviar correo** del panel solo funciona con la guía completa y revisada.
+6. El aviso de cada venta te llega a ti en el momento del pago, como antes.
 
-**Ajuste "Mientras se termina una guía pagada"** (pestaña Ajustes): con "Mostrar el avance…" (lo de siempre) el link
-enseña el avance hasta que la guía esté completa. Con "Dejar jugar los bloques de la vista previa…" el alumno ya puede
-jugar los bloques que existen, con un letrero arriba de "Estamos terminando los demás bloques"; cuando la guía queda
-completa, el letrero ofrece abrirla.
+El ajuste "Mientras se termina una guía pagada" ya no se usa: si alguien abre un link antes de tiempo (por ejemplo, uno
+que tú copiaste del panel), ve la pantalla de avance hasta que la guía esté lista.
+El detalle técnico está en `docs/ENTREGA.md`.
+
+**Vista previa gratis (desde el 9 nov 2026).** Son 4 slides: la portada, una pista (una sola página de teoría) y dos
+juegos de formato distinto (el primer juego de preguntas y otro: conceptos, clasificar, verdadero o falso u ordenar).
+Después va el candado con lo que trae la guía completa. El tutorial y el calentamiento solo están en la guía completa.
 
 **Topes de compras.** Por seguridad hay un tope de 80 compras al día en todo el sitio y de 6 al día por familia
 (mismo teléfono o correo). Si necesitas probar más, súbelos en Ajustes → "Tope de compras por día (todo el sitio)" y
