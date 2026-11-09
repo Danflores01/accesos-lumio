@@ -12,6 +12,8 @@
 // Al cambiar de idioma se actualizan el atributo lang del documento y todos los [data-i18n] sin recargar, y se avisa
 // a quien se haya suscrito con alCambiarIdioma(fn) (por ejemplo, para volver a llenar un <select>).
 
+import { CONFIG } from "./config.js";
+
 const CLAVE_LS = "sparked_idioma";
 export const IDIOMAS = ["es", "en"];
 
@@ -33,6 +35,9 @@ const TEXTOS = {
   "hero.titulo": ["Convierte tu temario en una <em>guía de estudio interactiva</em>", "Turn your syllabus into an <em>interactive study guide</em>"],
   "hero.texto": ["Sube fotos de tu temario, de tu libro de texto o de tus apuntes, y Sparky arma tu guía: teoría a todo color y juegos que se califican solos. Estudia jugando en cualquier dispositivo que tengas.",
     "Upload photos of your syllabus, your textbook or your notes, and Sparky builds your guide: full-color lessons and games that grade themselves. Study by playing on any device you have."],
+  "hero.titulo2": ["Diferentes tipos de información requieren <em>diferentes métodos de estudio</em>", "Different types of information require <em>different study methods</em>"],
+  "hero.texto2": ["Por eso en SparkEd convertimos tu temario y tus apuntes en una guía interactiva, sin importar el grado o la materia que estés cursando.", "That is why at SparkEd we turn your syllabus and your notes into an interactive guide, no matter the grade or subject you are taking."],
+  "hero.texto3": ["Estudia jugando en cualquier dispositivo que tengas.", "Study by playing on any device you have."],
   "hero.demo": ["▶ Mira una guía real", "▶ See a real guide"],
   "chip.precio": ["Una guía: $100 MXN, IVA incluido", "One guide: $100 MXN, VAT included"],
   "chip.acceso": ["7 días de acceso ilimitado a tu guía", "7 days of unlimited access to your guide"],
@@ -58,17 +63,47 @@ const TEXTOS = {
   "precio.l2": ["Hasta 2 dispositivos por familia: por ejemplo, el celular de mamá y el iPad del alumno", "Up to 2 devices per family: for example, mom's phone and the student's iPad"],
   "precio.l3": ["Teoría visual, juegos, mini-exámenes y reto final", "Visual lessons, games, mini quizzes and a final challenge"],
   "precio.l4": ["Vista previa gratis antes de pagar", "Free preview before you pay"],
-  "precio.l5": ["Te la mandamos por correo (por WhatsApp, próximamente)", "We send it to you by email (WhatsApp coming soon)"],
+  "precio.l5": ["Te la mandamos por correo", "We send it to you by email"],
+  "precio.l5.wa": ["Te la mandamos por correo y por WhatsApp", "We send it to you by email and by WhatsApp"],
   "faq.titulo": ["Preguntas rápidas", "Quick questions"],
   "faq.p1": ["¿Cómo recibo la guía?", "How do I get the guide?"],
-  "faq.r1": ["Al pagar, el link de tu guía aparece en pantalla. Además, te la mandamos por correo con un código QR (el envío por WhatsApp llegará próximamente). El alumno la abre en su iPad, en la computadora o en el celular.",
-    "Once you pay, the link to your guide appears on screen. We also send it to you by email with a QR code (WhatsApp delivery is coming soon). The student opens it on an iPad, a computer or a phone."],
+  "faq.r1": ["Al pagar, el link de tu guía aparece en pantalla. Además, te la mandamos por correo con un código QR. El alumno la abre en su iPad, en la computadora o en el celular.",
+    "Once you pay, the link to your guide appears on screen. We also send it to you by email with a QR code. The student opens it on an iPad, a computer or a phone."],
+  "faq.r1.wa": ["Al pagar, el link de tu guía aparece en pantalla. Además, te la mandamos por correo con un código QR y por WhatsApp. El alumno la abre en su iPad, en la computadora o en el celular.",
+    "Once you pay, the link to your guide appears on screen. We also send it to you by email with a QR code and by WhatsApp. The student opens it on an iPad, a computer or a phone."],
   "faq.p2": ["¿Qué pasa si la abro en más de 2 dispositivos?", "What happens if I open it on more than 2 devices?"],
   "faq.r2": ["El tercer dispositivo ve el aviso «Acceso en uso en otros dispositivos». Cada link es de una sola familia.",
     "The third device sees the notice “Access in use on other devices.” Each link belongs to one family only."],
   "faq.p3": ["¿La información es correcta?", "Is the information correct?"],
   "faq.r3": ["Cada dato sale de los apuntes o del temario y se verifica contra fuentes confiables. Si tus apuntes traen un error, la guía lo señala con la corrección.",
     "Every fact comes from the notes or the syllabus and is checked against reliable sources. If your notes have a mistake, the guide points it out with the correction."],
+
+  // ---------- Caja de comentarios (portada) ----------
+  "com.titulo": ["Cuéntanos qué te pareció", "Tell us what you thought"],
+  "com.texto": ["Leemos todos los comentarios; nos ayudan a mejorar.", "We read every comment; they help us improve."],
+  "com.nombre": ["Tu nombre", "Your name"],
+  "com.soy": ["Soy… (opcional)", "I am… (optional)"],
+  "com.soy_elige": ["Elige una opción", "Choose an option"],
+  "com.soy_mama_papa": ["Mamá o papá", "A mom or dad"],
+  "com.soy_alumno": ["Alumno", "A student"],
+  "com.soy_docente": ["Docente", "A teacher"],
+  "com.soy_otro": ["Otro", "Other"],
+  "com.estrellas": ["Tu calificación", "Your rating"],
+  "com.estrella_n": ["{n} de 5 estrellas", "{n} out of 5 stars"],
+  "com.comentario": ["Tu comentario", "Your comment"],
+  "com.ph": ["¿Qué te gustó? ¿Qué podemos mejorar?", "What did you like? What can we improve?"],
+  "com.contador": ["{n} de 600 letras (mínimo 10)", "{n} of 600 characters (minimum 10)"],
+  "com.permiso": ["Pueden publicar mi comentario con mi nombre", "You may publish my comment with my name"],
+  "com.enviar": ["Enviar comentario", "Send comment"],
+  "com.enviando": ["Enviando…", "Sending…"],
+  "com.err_nombre": ["Escribe tu nombre.", "Enter your name."],
+  "com.err_texto": ["Escribe tu comentario (de 10 a 600 letras).", "Write your comment (10 to 600 characters)."],
+  "com.err_estrellas": ["Elige de 1 a 5 estrellas.", "Choose 1 to 5 stars."],
+  "com.err_limite": ["Ya recibimos varios comentarios desde este dispositivo. Inténtalo mañana.", "We already received several comments from this device. Please try again tomorrow."],
+  "com.err_guardar": ["No pudimos guardar tu comentario. Inténtalo más tarde.", "We couldn't save your comment. Please try again later."],
+  "com.gracias_t": ["¡Gracias por tu comentario!", "Thank you for your comment!"],
+  "com.gracias": ["Lo leeremos con mucho gusto. Gente como tú nos ayuda a hacer mejores guías.", "We will gladly read it. People like you help us make better guides."],
+  "com.otro": ["Enviar otro comentario", "Send another comment"],
 
   // ---------- Crear (crear.html) ----------
   "titulo.crear": ["SparkEd · Crea tu guía personalizada", "SparkEd · Create your custom guide"],
@@ -115,8 +150,17 @@ const TEXTOS = {
   "vp.pantalla": ["Ver en pantalla completa ↗", "See in full screen ↗"],
   "vp.marco": ["Vista previa de tu guía", "Preview of your guide"],
   "contacto.nombre": ["Nombre de quien pide la guía", "Name of the person ordering the guide"],
-  "contacto.telefono": ["Teléfono (WhatsApp, próximamente)", "Phone (WhatsApp, coming soon)"],
+  "contacto.telefono": ["Teléfono", "Phone"],
+  "contacto.telefono.wa": ["Teléfono (WhatsApp)", "Phone (WhatsApp)"],
+  "contacto.telefono2": ["Confirma tu teléfono", "Confirm your phone"],
   "contacto.correo": ["Correo", "Email"],
+  "contacto.correo2": ["Confirma tu correo", "Confirm your email"],
+  "contacto.lada": ["Lada del país", "Country code"],
+  "contacto.coinciden": ["Coinciden", "They match"],
+  "contacto.oxxo": ["Los pagos en OXXO pueden tardar varias horas o días en acreditarse. Si tienes que estudiar ahora, utiliza otro método de pago.", "OXXO payments can take several hours or days to clear. If you need to study now, use another payment method."],
+  "contacto.otra": ["¿Quieres generar otra guía?", "Want to create another guide?"],
+  "contacto.err_tel2": ["Los teléfonos no coinciden. Revísalos.", "The phone numbers don't match. Please check them."],
+  "contacto.err_correo2": ["Los correos no coinciden. Revísalos.", "The emails don't match. Please check them."],
   "contacto.pagar": ["🔓 Desbloquear la guía entera por ${precio}", "🔓 Unlock the full guide for ${precio} MXN"],
   "contacto.nota": ["7 días de acceso ilimitado a tu guía · 2 dispositivos por familia · IVA incluido", "7 days of unlimited access to your guide · 2 devices per family · VAT included"],
   "contacto.err_nombre": ["Escribe el nombre de quien pide la guía.", "Enter the name of the person ordering the guide."],
@@ -214,6 +258,11 @@ const SERVIDOR_EN = [
   [/generador todavía no está encendido/i, () => "The guide maker is not turned on yet. Let us know on WhatsApp and we will turn it on."],
   [/^No pudimos terminar tu guía/, () => "We couldn't finish your guide. Try again with clearer photos."],
   [/código no es válido/i, () => "That code is not valid."],
+  [/^Escribe tu nombre/, () => "Enter your name."],
+  [/^Escribe tu comentario/, () => "Write your comment (10 to 600 characters)."],
+  [/^Elige de 1 a 5 estrellas/, () => "Choose 1 to 5 stars."],
+  [/^Ya recibimos varios comentarios/, () => "We already received several comments from this device. Please try again tomorrow."],
+  [/^No pudimos guardar tu comentario/, () => "We couldn't save your comment. Please try again later."],
   [/borrador no existe o ya venció/i, () => "That draft doesn't exist or has expired. Please start your guide again."],
   [/No llegaron las páginas/i, () => "The pages didn't arrive. Try uploading them again."],
   [/compra no existe/i, () => "That purchase doesn't exist."],
@@ -247,10 +296,17 @@ function rellenar(plantilla, vars, escapar) {
     return escapar ? escHtml(v) : String(v ?? "");
   });
 }
+// WhatsApp según el servidor (GET /publico → { whatsapp: true|false }): si existe la clave "x.wa" y WhatsApp está
+// encendido, t(), th(), marca() y los [data-i18n] usan "x.wa"; si no, "x". Mientras el servidor no responda (o responda
+// 404) cuenta como apagado. El resultado se guarda en sessionStorage y, al llegar, se vuelve a pintar como al cambiar de idioma.
+let whatsapp = false;
+try { whatsapp = sessionStorage.getItem("sparked_wa") === "1"; } catch {}
+export const whatsappEncendido = () => whatsapp;
+const claveWa = (clave) => (whatsapp && TEXTOS[clave + ".wa"] ? clave + ".wa" : clave);
 // Texto plano (para textContent, alert, WhatsApp). Si la clave no existe, regresa la clave tal cual.
-export function t(clave, vars) { const par = TEXTOS[clave]; return par ? rellenar(par[actual === "en" ? 1 : 0] ?? par[0], vars, false) : clave; }
+export function t(clave, vars) { const par = TEXTOS[claveWa(clave)]; return par ? rellenar(par[actual === "en" ? 1 : 0] ?? par[0], vars, false) : clave; }
 // Texto para innerHTML: las variables se escapan (nombres, correos, folios); el texto fijo del diccionario puede traer <b>, <em>…
-export function th(clave, vars) { const par = TEXTOS[clave]; return par ? rellenar(par[actual === "en" ? 1 : 0] ?? par[0], vars, true) : escHtml(clave); }
+export function th(clave, vars) { const par = TEXTOS[claveWa(clave)]; return par ? rellenar(par[actual === "en" ? 1 : 0] ?? par[0], vars, true) : escHtml(clave); }
 // <span data-i18n> que se vuelve a traducir solo al cambiar de idioma.
 export function marca(clave, vars, etiqueta = "span", extra = "") {
   const v = vars ? ` data-i18n-vars="${escHtml(JSON.stringify(vars))}"` : "";
@@ -294,10 +350,24 @@ export function cambiarIdioma(nuevo) {
   oyentes.forEach((fn) => { try { fn(nuevo); } catch (e) { console.error(e); } });
 }
 
+async function consultarWhatsapp() {
+  let guardado = null;
+  try { guardado = sessionStorage.getItem("sparked_wa"); } catch {}
+  if (guardado !== null) return;
+  let nuevo = false;
+  try { const r = await fetch(`${CONFIG.api}/publico`); nuevo = r.ok && (await r.json().catch(() => ({}))).whatsapp === true; } catch { return; }
+  try { sessionStorage.setItem("sparked_wa", nuevo ? "1" : "0"); } catch {}
+  if (nuevo === whatsapp) return;
+  whatsapp = nuevo;
+  aplicar();
+  oyentes.forEach((fn) => { try { fn(actual); } catch (e) { console.error(e); } });
+}
+
 // Al cargar: traduce la página, conecta los botones «ES | EN» y quita el velo que evita ver el español un instante.
 function iniciar() {
   aplicar();
   document.addEventListener("click", (e) => { const b = e.target.closest?.("[data-idioma]"); if (b) { e.preventDefault(); cambiarIdioma(b.dataset.idioma); } });
   document.documentElement.classList.remove("i18n-cargando");
+  consultarWhatsapp();
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();

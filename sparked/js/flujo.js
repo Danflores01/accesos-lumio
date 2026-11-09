@@ -24,24 +24,52 @@ export async function cargarColegios(select, conOtro = true) {
 // Ladas (códigos de país) que ofrece el formulario de la compra; México va primero y es la de siempre. El teléfono se
 // guarda en formato internacional ("+52" + 10 dígitos) para que, cuando exista el envío por WhatsApp, llegue a cualquier país.
 export const LADAS = [["52", "México"], ["1", "Estados Unidos, Canadá y Caribe"], ["34", "España"], ["57", "Colombia"], ["54", "Argentina"], ["51", "Perú"], ["56", "Chile"], ["593", "Ecuador"], ["502", "Guatemala"], ["503", "El Salvador"], ["504", "Honduras"], ["505", "Nicaragua"], ["506", "Costa Rica"], ["507", "Panamá"], ["591", "Bolivia"], ["595", "Paraguay"], ["598", "Uruguay"], ["58", "Venezuela"]];
-// Los errores son claves del diccionario (se traducen al mostrarse).
+// Texto corto de cada lada para el selector («+52 México»); en inglés, el nombre en inglés. La lista LADAS conserva su forma de siempre.
+const PAIS_EN = { "52": "Mexico", "1": "US & Canada", "34": "Spain", "57": "Colombia", "54": "Argentina", "51": "Peru", "56": "Chile", "593": "Ecuador", "502": "Guatemala", "503": "El Salvador", "504": "Honduras", "505": "Nicaragua", "506": "Costa Rica", "507": "Panama", "591": "Bolivia", "595": "Paraguay", "598": "Uruguay", "58": "Venezuela" };
+export const ladaTexto = (lada, corto = false) => {
+  const par = LADAS.find((x) => x[0] === String(lada)); if (!par) return "+" + lada;
+  const en = idioma() === "en";
+  const CORTO = { "502": "Guatem.", "503": "El Salv.", "505": "Nicar.", "506": "C. Rica" }; // para el selector cerrado, que es angosto
+  const nombre = par[0] === "1" ? (en ? (corto ? "US" : "US & Canada") : (corto ? "EE. UU." : "EE. UU. y Canadá")) : corto && CORTO[par[0]] ? CORTO[par[0]] : en ? PAIS_EN[par[0]] || par[1] : par[1];
+  return "+" + par[0] + " " + nombre;
+};
+// Número sin lada: solo dígitos; si escribieron la lada también, se quita una sola vez.
+export function numeroSinLada(valor, lada) {
+  let numero = limpiarTel(valor);
+  if (lada === "52") { if (numero.length === 12 && numero.startsWith("52")) numero = numero.slice(2); if (numero.length === 13 && numero.startsWith("521")) numero = numero.slice(3); }
+  else if (numero.length > 7 && numero.startsWith(lada) && numero.length - lada.length >= 7) numero = numero.slice(lada.length);
+  return numero;
+}
+// Los errores son claves del diccionario (se traducen al mostrarse). Si el formulario trae los campos de confirmación
+// (telefono2, correo2), también se revisa que coincidan; "campo" dice cuál campo corregir primero.
 export function leerContacto(raiz) {
   const nombre = raiz.querySelector("[name=nombre]")?.value.trim() ?? "";
   const lada = String(raiz.querySelector("[name=lada]")?.value || "52").replace(/\D/g, "");
-  let numero = limpiarTel(raiz.querySelector("[name=telefono]")?.value);
-  // Si escriben la lada también en el número, se quita una sola vez.
-  if (lada === "52") { if (numero.length === 12 && numero.startsWith("52")) numero = numero.slice(2); if (numero.length === 13 && numero.startsWith("521")) numero = numero.slice(3); }
-  else if (numero.length > 7 && numero.startsWith(lada) && numero.length - lada.length >= 7) numero = numero.slice(lada.length);
+  const numero = numeroSinLada(raiz.querySelector("[name=telefono]")?.value, lada);
   const correo = raiz.querySelector("[name=correo]")?.value.trim() ?? "";
-  const errores = [];
-  if (nombre.length < 2) errores.push("contacto.err_nombre");
+  const errores = [], campos = [];
+  const mal = (clave, campo) => { errores.push(clave); campos.push(campo); };
+  if (nombre.length < 2) mal("contacto.err_nombre", "nombre");
   // México: 10 dígitos exactos; otros países: de 7 dígitos en adelante, sin pasar de 15 con todo y lada.
-  if (lada === "52" ? numero.length !== 10 : numero.length < 7 || (lada + numero).length > 15) errores.push("contacto.err_tel");
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) errores.push("contacto.err_correo");
-  return { nombre, lada, numero, telefono: `+${lada}${numero}`, correo, errores };
+  if (lada === "52" ? numero.length !== 10 : numero.length < 7 || (lada + numero).length > 15) mal("contacto.err_tel", "telefono");
+  else if (raiz.querySelector("[name=telefono2]") && numeroSinLada(raiz.querySelector("[name=telefono2]").value, lada) !== numero) mal("contacto.err_tel2", "telefono2");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) mal("contacto.err_correo", "correo");
+  else if (raiz.querySelector("[name=correo2]") && raiz.querySelector("[name=correo2]").value.trim().toLowerCase() !== correo.toLowerCase()) mal("contacto.err_correo2", "correo2");
+  return { nombre, lada, numero, telefono: `+${lada}${numero}`, correo, errores, campos };
 }
-export function guardarContacto(c) { try { localStorage.setItem("sparked_contacto", JSON.stringify(c)); } catch {} }
+export function guardarContacto(c) { try { const { errores, campos, ...limpio } = c; localStorage.setItem("sparked_contacto", JSON.stringify(limpio)); } catch {} }
 export function contactoGuardado() { try { return JSON.parse(localStorage.getItem("sparked_contacto") || "null"); } catch { return null; } }
+// Contacto guardado listo para rellenar el formulario: los guardados viejos traen solo "telefono" de 10 dígitos (sin lada ni numero).
+export function contactoParaFormulario() {
+  const c = contactoGuardado(); if (!c || typeof c !== "object") return null;
+  let lada = String(c.lada ?? "").replace(/\D/g, ""), numero = c.numero != null ? limpiarTel(c.numero) : "";
+  if (!numero && c.telefono) {
+    const crudo = String(c.telefono), d = limpiarTel(crudo);
+    if (crudo.trim().startsWith("+") && LADAS.some(([l]) => d.startsWith(l) && !lada)) { const l = LADAS.map((x) => x[0]).filter((x) => d.startsWith(x)).sort((a, b) => b.length - a.length)[0]; lada = l; numero = d.slice(l.length); }
+    else numero = d;
+  }
+  return { nombre: String(c.nombre ?? ""), lada: lada || "52", numero, correo: String(c.correo ?? "") };
+}
 
 // Vista previa dentro de la página (el reproductor en un marco) con el botón de pago debajo.
 export function marcoVistaPrevia(destino, src, titulo) {

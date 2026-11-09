@@ -43,7 +43,7 @@
 </div></main>
 
 <script type="module">
-import { api, esc, opciones, GRADOS, MATERIAS, leerContacto, LADAS, guardarContacto, contactoGuardado, marcoVistaPrevia, iniciarPago, pantallaEspera, CONFIG, pintarSprites, campoCodigo, leerCodigo, t, th, marca, poner, alCambiarIdioma, textoServidor, nombreGrado, nombreMateria, mensajeError } from "./js/flujo.js";
+import { api, esc, opciones, GRADOS, MATERIAS, leerContacto, LADAS, ladaTexto, numeroSinLada, guardarContacto, contactoParaFormulario, marcoVistaPrevia, iniciarPago, pantallaEspera, CONFIG, pintarSprites, campoCodigo, leerCodigo, t, th, marca, poner, alCambiarIdioma, textoServidor, nombreGrado, nombreMateria, mensajeError } from "./js/flujo.js";
 import { sparky } from "./js/arte.js";
 
 const $ = (s) => document.querySelector(s);
@@ -114,7 +114,7 @@ input.onchange = () => agregar([...input.files]);
 zona.addEventListener("drop", (e) => agregar([...e.dataTransfer.files]));
 
 // ---------- Crear: borrador → subir → generar → esperar la vista previa ----------
-let clave = null, esp = null, contacto = contactoGuardado();
+let clave = null, esp = null, contacto = contactoParaFormulario();
 const botonReintentar = (accion) => `<button class="boton linea" onclick="${accion}" data-i18n="boton.reintentar">${th("boton.reintentar")}</button>`;
 form.onsubmit = async (e) => {
   e.preventDefault();
@@ -161,22 +161,59 @@ function mostrarVistaPrevia(d) {
   pasos(3);
   const volver = location.pathname + "?clave=" + encodeURIComponent(clave) + "&paso=pagar";
   marcoVistaPrevia($("#p3"), `guia.html?clave=${encodeURIComponent(clave)}&volver=${encodeURIComponent(volver)}`, d.titulo ?? "");
+  const tel0 = esc(contacto?.numero ?? ""), mail0 = esc(contacto?.correo ?? "");
   $("#p3").insertAdjacentHTML("beforeend", `<form id="contacto" class="rejilla-campos" style="margin-top:14px">
-    <div class="campo">${marca("contacto.nombre", null, "label")}<input name="nombre" required value="${esc(contacto?.nombre ?? "")}"></div>
-    <div class="campo">${marca("contacto.telefono", null, "label")}<div class="tel"><select name="lada" aria-label="Lada del país">${LADAS.map(([lada, pais]) => `<option value="${lada}"${String(contacto?.lada ?? "52") === lada ? " selected" : ""}>+${lada} ${esc(pais)}</option>`).join("")}</select><input name="telefono" inputmode="numeric" required value="${esc(contacto?.numero ?? "")}"></div></div>
-    <div class="campo" style="grid-column:1/-1">${marca("contacto.correo", null, "label")}<input name="correo" type="email" required value="${esc(contacto?.correo ?? "")}"></div>
+    <div class="campo" style="grid-column:1/-1">${marca("contacto.nombre", null, "label", 'for="c-nombre"')}<input id="c-nombre" name="nombre" autocomplete="name" required value="${esc(contacto?.nombre ?? "")}"></div>
+    <div class="campo"><div class="etiqueta-fila">${marca("contacto.telefono", null, "label", 'for="c-tel"')}</div><div class="tel"><select name="lada" id="c-lada" aria-label="${esc(t("contacto.lada"))}" data-i18n-attr="aria-label:contacto.lada"></select><input id="c-tel" name="telefono" type="tel" inputmode="tel" autocomplete="tel-national" required value="${tel0}"></div></div>
+    <div class="campo"><div class="etiqueta-fila">${marca("contacto.telefono2", null, "label", 'for="c-tel2"')}<span class="coincide" id="ok-tel" hidden role="img" aria-label="${esc(t("contacto.coinciden"))}" data-i18n-attr="aria-label:contacto.coinciden">✓</span></div><input id="c-tel2" name="telefono2" type="tel" inputmode="tel" autocomplete="off" required value="${tel0}"></div>
+    <div class="campo"><div class="etiqueta-fila">${marca("contacto.correo", null, "label", 'for="c-correo"')}</div><input id="c-correo" name="correo" type="email" autocomplete="email" required value="${mail0}"></div>
+    <div class="campo"><div class="etiqueta-fila">${marca("contacto.correo2", null, "label", 'for="c-correo2"')}<span class="coincide" id="ok-correo" hidden role="img" aria-label="${esc(t("contacto.coinciden"))}" data-i18n-attr="aria-label:contacto.coinciden">✓</span></div><input id="c-correo2" name="correo2" type="email" autocomplete="off" required value="${mail0}"></div>
     ${campoCodigo()}
-    <div class="acciones" style="grid-column:1/-1">${marca("contacto.pagar", { precio: CONFIG.precio }, "button", 'class="boton" type="submit"')}${marca("contacto.nota", null, "span", 'class="ayuda"')}</div><div class="error" id="err3" style="grid-column:1/-1"></div></form>`);
+    <div class="aviso-oxxo" style="grid-column:1/-1"><span class="ico" aria-hidden="true">⏳</span>${marca("contacto.oxxo", null, "span")}</div>
+    <div class="acciones" style="grid-column:1/-1">${marca("contacto.pagar", { precio: CONFIG.precio }, "button", 'class="boton" type="submit"')}${marca("contacto.nota", null, "span", 'class="ayuda"')}</div><div class="error" id="err3" style="grid-column:1/-1"></div>
+    <div class="otra-guia" style="grid-column:1/-1">${marca("contacto.otra", null, "a", 'href="crear.html?nueva=1" id="otra-guia"')}</div></form>`);
+  // Lada: lista corta; con «+1» el texto cerrado se acorta para no cortarse en el ancho compacto, y se abre completo.
+  const selLada = $("#contacto [name=lada]"), ladaInicial = String(contacto?.lada ?? "52");
+  const acortarLada = () => { const o = selLada.selectedOptions[0]; if (o && document.activeElement !== selLada) o.textContent = ladaTexto(selLada.value, true); };
+  const completarLadas = () => { [...selLada.options].forEach((o) => { o.textContent = ladaTexto(o.value); }); };
+  const pintarLadas = (valor) => {
+    const v = valor ?? selLada.value ?? ladaInicial;
+    selLada.innerHTML = LADAS.map(([lada]) => `<option value="${lada}">${esc(ladaTexto(lada))}</option>`).join("");
+    selLada.value = LADAS.some(([l]) => l === v) ? v : "52"; acortarLada();
+  };
+  // Palomita discreta cuando el campo de confirmación coincide con el primero.
+  const revisarCoincidencias = () => {
+    const f = $("#contacto"); if (!f) return;
+    const n1 = numeroSinLada(f.telefono.value, selLada.value), n2 = numeroSinLada(f.telefono2.value, selLada.value);
+    const valido = selLada.value === "52" ? n1.length === 10 : n1.length >= 7 && (selLada.value + n1).length <= 15;
+    $("#ok-tel").hidden = !(valido && n1 === n2);
+    const c1 = f.correo.value.trim().toLowerCase(), c2 = f.correo2.value.trim().toLowerCase();
+    $("#ok-correo").hidden = !(c1 && c1 === c2 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c1));
+  };
+  selLada.addEventListener("focus", completarLadas); selLada.addEventListener("mousedown", completarLadas);
+  selLada.addEventListener("blur", () => { completarLadas(); acortarLada(); });
+  selLada.addEventListener("change", () => { if (document.activeElement !== selLada) acortarLada(); revisarCoincidencias(); });
+  pintarLadas(ladaInicial);
+  $("#contacto").addEventListener("input", revisarCoincidencias); revisarCoincidencias();
+  alCambiarIdioma(() => { if ($("#contacto")) { pintarLadas(); revisarCoincidencias(); } });
+  $("#otra-guia").onclick = () => { try { localStorage.removeItem("sparked_borrador"); } catch {} };
   $("#contacto").onsubmit = async (e) => {
-    e.preventDefault(); const c = leerContacto($("#contacto")); if (c.errores.length) { poner($("#err3"), c.errores[0]); return; }
+    e.preventDefault(); const c = leerContacto($("#contacto")); if (c.errores.length) { poner($("#err3"), c.errores[0]); $("#contacto [name=" + c.campos[0] + "]")?.focus(); return; }
     guardarContacto(c); $("#err3").textContent = ""; pasos(4); $("#p4").innerHTML = `${marca("pago.titulo", null, "h1")}<div id="pago"></div>`;
     // Si el código no sirve, se regresa al formulario con el mensaje para corregirlo o borrarlo.
-    await iniciarPago($("#pago"), { clave, ...c, codigo: leerCodigo($("#contacto")) }).catch((err) => { if (err.datos?.campo === "codigo") { pasos(3); const e3 = $("#err3"); delete e3.dataset.i18n; e3.dataset.i18nServidor = err.message; e3.textContent = mensajeError(err); $("#contacto [name=codigo]")?.focus(); } });
+    await iniciarPago($("#pago"), { clave, nombre: c.nombre, lada: c.lada, numero: c.numero, telefono: c.telefono, correo: c.correo, codigo: leerCodigo($("#contacto")) }).catch((err) => { if (err.datos?.campo === "codigo") { pasos(3); const e3 = $("#err3"); delete e3.dataset.i18n; e3.dataset.i18nServidor = err.message; e3.textContent = mensajeError(err); $("#contacto [name=codigo]")?.focus(); } });
   };
 }
 
 // Retomar un borrador de las últimas 24 h
-const claveGuardada = params.get("clave") || (() => { try { return localStorage.getItem("sparked_borrador"); } catch { return null; } })();
+// «¿Quieres generar otra guía?» (?nueva=1): se olvida el borrador guardado en este dispositivo y se muestra el paso 1.
+// (El borrador viejo sigue en el servidor; solo se deja de retomar.)
+const nueva = params.has("nueva");
+if (nueva) {
+  try { localStorage.removeItem("sparked_borrador"); } catch {}
+  try { const u = new URL(location.href); ["nueva", "clave", "paso"].forEach((k) => u.searchParams.delete(k)); history.replaceState(null, "", u); } catch {}
+}
+const claveGuardada = nueva ? null : params.get("clave") || (() => { try { return localStorage.getItem("sparked_borrador"); } catch { return null; } })();
 if (claveGuardada) {
   clave = claveGuardada;
   api.get(`/borrador/${encodeURIComponent(clave)}`).then((d) => {

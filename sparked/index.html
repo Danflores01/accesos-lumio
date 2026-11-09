@@ -21,8 +21,13 @@
 <section class="hero"><div class="contenedor">
   <div class="hero-texto">
     <span class="pildora-sello" data-i18n="hero.sello">Hecha con tus apuntes</span>
+    <!-- TEXTO ANTERIOR (para regresar: pega esto en lugar del h1 y los dos párrafos nuevos; las claves hero.titulo y hero.texto siguen en idioma.js):
     <h1 style="margin-top:14px" data-i18n="hero.titulo">Convierte tu temario en una <em>guía de estudio interactiva</em></h1>
     <p data-i18n="hero.texto">Sube fotos de tu temario, de tu libro de texto o de tus apuntes, y Sparky arma tu guía: teoría a todo color y juegos que se califican solos. Estudia jugando en cualquier dispositivo que tengas.</p>
+    -->
+    <h1 class="largo" style="margin-top:14px" data-i18n="hero.titulo2">Diferentes tipos de información requieren <em>diferentes métodos de estudio</em></h1>
+    <p class="hero-sub" data-i18n="hero.texto2">Por eso en SparkEd convertimos tu temario y tus apuntes en una guía interactiva, sin importar el grado o la materia que estés cursando.</p>
+    <p class="hero-lema" data-i18n="hero.texto3">Estudia jugando en cualquier dispositivo que tengas.</p>
     <div class="acciones al-bloque"><a class="boton" href="crear.html" data-i18n="nav.crear">Crear mi guía</a><a class="boton vidrio" href="#demo" data-i18n="hero.demo">▶ Mira una guía real</a></div>
     <div class="chips"><span data-i18n="chip.precio">Una guía: $100 MXN, IVA incluido</span><span data-i18n="chip.acceso">7 días de acceso ilimitado a tu guía</span><span data-i18n="chip.dispositivos">Hasta 2 dispositivos por familia</span></div>
   </div>
@@ -57,22 +62,40 @@
   <div class="precio">
     <div class="pildora" data-i18n="precio.pildora">Una guía</div>
     <div class="monto" style="margin-top:10px">$100<small data-i18n="precio.iva">MXN · IVA incluido</small></div>
-    <ul><li data-i18n="chip.acceso">7 días de acceso ilimitado a tu guía</li><li data-i18n="precio.l2">Hasta 2 dispositivos por familia: por ejemplo, el celular de mamá y el iPad del alumno</li><li data-i18n="precio.l3">Teoría visual, juegos, mini-exámenes y reto final</li><li data-i18n="precio.l4">Vista previa gratis antes de pagar</li><li data-i18n="precio.l5">Te la mandamos por correo (por WhatsApp, próximamente)</li></ul>
+    <ul><li data-i18n="chip.acceso">7 días de acceso ilimitado a tu guía</li><li data-i18n="precio.l2">Hasta 2 dispositivos por familia: por ejemplo, el celular de mamá y el iPad del alumno</li><li data-i18n="precio.l3">Teoría visual, juegos, mini-exámenes y reto final</li><li data-i18n="precio.l4">Vista previa gratis antes de pagar</li><li data-i18n="precio.l5">Te la mandamos por correo</li></ul>
   </div>
   <div class="faq">
     <h2 style="font-size:24px;margin-bottom:10px" data-i18n="faq.titulo">Preguntas rápidas</h2>
-    <details><summary data-i18n="faq.p1">¿Cómo recibo la guía?</summary><p data-i18n="faq.r1">Al pagar, el link de tu guía aparece en pantalla. Además, te la mandamos por correo con un código QR (el envío por WhatsApp llegará próximamente). El alumno la abre en su iPad, en la computadora o en el celular.</p></details>
+    <details><summary data-i18n="faq.p1">¿Cómo recibo la guía?</summary><p data-i18n="faq.r1">Al pagar, el link de tu guía aparece en pantalla. Además, te la mandamos por correo con un código QR. El alumno la abre en su iPad, en la computadora o en el celular.</p></details>
     <details><summary data-i18n="faq.p2">¿Qué pasa si la abro en más de 2 dispositivos?</summary><p data-i18n="faq.r2">El tercer dispositivo ve el aviso «Acceso en uso en otros dispositivos». Cada link es de una sola familia.</p></details>
     <details><summary data-i18n="faq.p3">¿La información es correcta?</summary><p data-i18n="faq.r3">Cada dato sale de los apuntes o del temario y se verifica contra fuentes confiables. Si tus apuntes traen un error, la guía lo señala con la corrección.</p></details>
   </div>
 </section>
 
+<section id="comentarios" class="contenedor caja-comentarios"><div class="comentarios">
+  <h2 data-i18n="com.titulo">Cuéntanos qué te pareció</h2>
+  <p data-i18n="com.texto">Leemos todos los comentarios; nos ayudan a mejorar.</p>
+  <form id="form-comentario" novalidate>
+    <div class="dos">
+      <div class="campo"><label for="com-nombre" data-i18n="com.nombre">Tu nombre</label><input id="com-nombre" name="nombre" maxlength="80" autocomplete="name"></div>
+      <div class="campo"><label for="com-soy" data-i18n="com.soy">Soy… (opcional)</label><select id="com-soy" name="relacion"><option value="" data-i18n="com.soy_elige">Elige una opción</option><option value="mama_papa" data-i18n="com.soy_mama_papa">Mamá o papá</option><option value="alumno" data-i18n="com.soy_alumno">Alumno</option><option value="docente" data-i18n="com.soy_docente">Docente</option><option value="otro" data-i18n="com.soy_otro">Otro</option></select></div>
+    </div>
+    <fieldset><legend data-i18n="com.estrellas">Tu calificación</legend><div class="estrellas" id="estrellas"></div></fieldset>
+    <div class="campo"><label for="com-texto" data-i18n="com.comentario">Tu comentario</label><textarea id="com-texto" name="texto" maxlength="600" rows="4" placeholder="¿Qué te gustó? ¿Qué podemos mejorar?" data-i18n-attr="placeholder:com.ph"></textarea><div class="contador" id="com-contador" aria-live="polite"></div></div>
+    <label class="permiso"><input type="checkbox" name="permiso_publicar"><span data-i18n="com.permiso">Pueden publicar mi comentario con mi nombre</span></label>
+    <div class="trampa" aria-hidden="true"><label>Sitio web<input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
+    <div class="acciones"><button class="boton" type="submit" id="com-enviar" data-i18n="com.enviar">Enviar comentario</button></div>
+    <div class="error" id="com-error" role="alert"></div>
+  </form>
+  <div class="gracias" id="com-gracias" hidden><div class="sk-anima" data-sprite="sparky:festejo" data-escala="6"></div><h3 data-i18n="com.gracias_t">¡Gracias por tu comentario!</h3><p data-i18n="com.gracias">Lo leeremos con mucho gusto. Gente como tú nos ayuda a hacer mejores guías.</p><button type="button" id="com-otro" data-i18n="com.otro">Enviar otro comentario</button></div>
+</div></section>
+
 <footer class="pie"><div class="contenedor" data-i18n="pie">SparkEd · Guías de estudio interactivas</div></footer>
 
 <script type="module">
-import { pintarSprites } from "./js/sitio.js";
+import { pintarSprites, api, esc } from "./js/sitio.js";
 import { sparkyVivo } from "./js/ui.js";
-import { t, idioma, alCambiarIdioma } from "./js/idioma.js";
+import { t, th, poner, idioma, alCambiarIdioma, textoServidor } from "./js/idioma.js";
 pintarSprites();
 // Sparky vivo: flota y parpadea; cada 8–15 s saluda, camina por su recuadro o escribe en la burbuja otro consejo
 // para subir las fotos, en primera persona (banco local datos/consejos.json, sin inteligencia artificial).
@@ -90,6 +113,41 @@ fetch("datos/consejos.json").then((r) => r.json()).then((d) => {
 }).catch(() => {});
 // Al cambiar de idioma, el consejo que se ve cambia al mismo consejo en el otro idioma.
 alCambiarIdioma(() => { if (ultimo) burbuja.textContent = texto(ultimo); });
+// ---------- Caja de comentarios ----------
+// POST {api}/comentarios { nombre, texto, estrellas, relacion, permiso_publicar, sitio_web, idioma }. Si la ruta aún no
+// existe (404) o falla, se muestra «No pudimos guardar tu comentario. Inténtalo más tarde.»
+const fc = document.getElementById("form-comentario"), errC = document.getElementById("com-error"), contC = document.getElementById("com-contador"), starsC = document.getElementById("estrellas");
+starsC.setAttribute("role", "radiogroup");
+starsC.innerHTML = [1, 2, 3, 4, 5].map((n) => `<input type="radio" name="estrellas" id="est${n}" value="${n}"><label for="est${n}" data-n="${n}" aria-label="${esc(t("com.estrella_n", { n }))}">★</label>`).join("");
+const estrellas = () => Number(fc.querySelector("[name=estrellas]:checked")?.value || 0);
+const pintarEstrellas = () => starsC.querySelectorAll("label").forEach((l) => l.classList.toggle("llena", Number(l.dataset.n) <= estrellas()));
+const largoTexto = () => [...fc.texto.value.trim()].length;
+const pintarContador = () => { const n = [...fc.texto.value].length; contC.textContent = t("com.contador", { n }); contC.classList.toggle("mal", n > 0 && largoTexto() < 10); };
+const errorC = (clave) => { if (clave) poner(errC, clave); else { delete errC.dataset.i18n; delete errC.dataset.i18nServidor; errC.textContent = ""; } };
+starsC.addEventListener("change", () => { pintarEstrellas(); errorC(null); });
+fc.texto.addEventListener("input", pintarContador);
+// aria-label de cada estrella lleva su número: se vuelve a escribir al cambiar de idioma.
+const rotularEstrellas = () => starsC.querySelectorAll("label").forEach((l) => l.setAttribute("aria-label", t("com.estrella_n", { n: l.dataset.n })));
+alCambiarIdioma(() => { pintarContador(); rotularEstrellas(); });
+pintarContador();
+fc.onsubmit = async (e) => {
+  e.preventDefault();
+  if (fc.sitio_web.value) return; // campo trampa: un robot lo llenó; no se envía nada
+  const nombre = fc.nombre.value.trim(), texto = fc.texto.value.trim(), n = largoTexto();
+  if (!nombre) { errorC("com.err_nombre"); fc.nombre.focus(); return; }
+  if (n < 10 || n > 600) { errorC("com.err_texto"); fc.texto.focus(); return; }
+  if (!estrellas()) { errorC("com.err_estrellas"); fc.querySelector("[name=estrellas]").focus(); return; }
+  errorC(null);
+  const boton = document.getElementById("com-enviar"); boton.disabled = true; poner(boton, "com.enviando");
+  try {
+    await api.post("/comentarios", { nombre, texto, estrellas: estrellas(), relacion: fc.relacion.value || null, permiso_publicar: fc.permiso_publicar.checked, sitio_web: fc.sitio_web.value, idioma: idioma() });
+    fc.reset(); pintarEstrellas(); pintarContador(); fc.hidden = true; document.getElementById("com-gracias").hidden = false;
+  } catch (err) {
+    const msg = err?.datos?.error;
+    if (msg) { delete errC.dataset.i18n; errC.dataset.i18nServidor = msg; errC.textContent = textoServidor(msg); } else errorC("com.err_guardar");
+  } finally { boton.disabled = false; poner(boton, "com.enviar"); }
+};
+document.getElementById("com-otro").onclick = () => { document.getElementById("com-gracias").hidden = true; fc.hidden = false; fc.nombre.focus(); };
 document.getElementById("abrir-demo").onclick = () => {
   // En pantallas angostas (teléfonos) la guía se abre en pantalla completa; dentro del marco quedaría diminuta.
   if (window.innerWidth < 700) { window.open("guia.html?demo=historia1", "_blank", "noopener"); return; }
