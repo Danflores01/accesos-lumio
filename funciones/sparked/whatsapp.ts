@@ -219,12 +219,26 @@ export async function resolverChat(intl: string): Promise<{ chat: string | null;
   try {
     for (const f of formas) {
       const r = await api("checkWhatsapp", { chatId: f });
-      if (r?.existsWhatsapp === true) return { chat: `${f}@c.us` };
+      if (r?.existsWhatsapp === true) return { chat: chatDeRespuesta(r, f) };
     }
     return { chat: null, nota: "el número no tiene WhatsApp" };
   } catch (e) {
     return { chat: `${formas[0]}@c.us`, nota: `sin comprobar: ${(e as Error).message}` };
   }
+}
+
+// A qué chat mandar cuando checkWhatsapp dice que la cuenta existe. Green API recomienda usar el identificador que
+// devuelve la consulta (el "lid" de la cuenta, campo chatId): así no importa si un celular de México vive como 52… o
+// 521… (mandar a la forma equivocada deja el mensaje atorado en la cola; ver su FAQ «features of the checkWhatsapp
+// method with some numbers» y «lid important differences»). Si no viene el lid, se usa el número real de la cuenta
+// (campo phoneNumber, "[5212291234567@c.us]") y, si tampoco viene, la forma que se preguntó.
+// deno-lint-ignore no-explicit-any
+export function chatDeRespuesta(r: any, pedido: string): string {
+  const lid = String(r?.chatId ?? "").trim();
+  if (/^\d{6,20}@lid$/.test(lid)) return lid;
+  const tel = String(r?.phoneNumber ?? "").match(/(\d{8,15})@c\.us/);
+  if (tel) return `${tel[1]}@c.us`;
+  return `${pedido}@c.us`;
 }
 
 async function estadoInstancia(): Promise<string> {

@@ -108,7 +108,7 @@ Código: `funciones/sparked/whatsapp.ts` (módulo aparte; `index.ts` lo llama). 
 
 ### Números de México
 
-Las compras guardan `+52` + 10 dígitos (las viejas, 10 dígitos sin lada: también son de México). En WhatsApp muchos celulares mexicanos existen como `521` + 10 dígitos. Antes de mandar se consulta `checkWhatsapp` con `52…` y, si no existe, con `521…`, y se usa la forma que exista (`…@c.us`). Si `checkWhatsapp` falla (red o límite del plan), se usa `52…@c.us`: según la FAQ de Green API, WhatsApp redirige al chat correcto con o sin el «1». Al recibir mensajes se comparan los últimos 10 dígitos.
+Las compras guardan `+52` + 10 dígitos (las viejas, 10 dígitos sin lada: también son de México). En WhatsApp muchos celulares mexicanos existen como `521` + 10 dígitos. Antes de mandar se consulta `checkWhatsapp` con `52…` y, si no existe, con `521…`. La respuesta trae el identificador real de la cuenta (campo `chatId`, un `…@lid`) y a ese identificador se manda el mensaje, como recomienda Green API: así no importa con cuál de las dos formas vive el número (mandar a la forma equivocada deja el mensaje atorado en la cola). Si la respuesta no trae el `lid`, se usa el número real que devuelve (`phoneNumber`, `…@c.us`) y, si tampoco, la forma que se preguntó. Si `checkWhatsapp` falla (red o límite del plan), se usa `52…@c.us`: según la FAQ de Green API, WhatsApp redirige al chat correcto con o sin el «1». Al recibir mensajes se comparan los últimos 10 dígitos.
 
 ### Idioma por lada
 
