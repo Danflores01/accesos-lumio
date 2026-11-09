@@ -228,7 +228,7 @@ const TEXTOS = {
   "listo.qr": ["El alumno puede escanear este código con su iPad.", "The student can scan this code with an iPad."],
   "listo.acceso_t": ["Cómo funciona tu acceso", "How your access works"],
   "listo.acceso1": ["Tienes <b>7 días de acceso ilimitado a tu guía</b>, desde hoy.", "You have <b>7 days of unlimited access to your guide</b>, starting today."],
-  "listo.acceso1_fecha": ["Tienes <b>7 días de acceso ilimitado a tu guía</b>, desde hoy hasta el <b>{fecha}</b>.", "You have <b>7 days of unlimited access to your guide</b>, from today until <b>{fecha}</b>."],
+  "listo.acceso1_fecha": ["Desde hoy y hasta el <b>{fecha}</b>, tienes <b>7 días de acceso ilimitado a tu guía</b>.", "From today until <b>{fecha}</b>, you have <b>7 days of unlimited access to your guide</b>."],
   "listo.acceso2": ["Se abre en <b>2 dispositivos</b>: por ejemplo, tu celular y el iPad del alumno. Al tercer dispositivo le aparece el aviso «Acceso en uso en otros dispositivos».", "It opens on <b>2 devices</b>: for example, your phone and the student's iPad. The third device sees the notice “Access in use on other devices.”"],
   "listo.acceso3": ["No compartas el link en otros chats: cada link es de una sola familia.", "Don't share the link in other chats: each link belongs to one family only."],
   "listo.acceso4": ["Guarda este link. También te mandamos tu guía por correo (a <b>{correo}</b>).", "Save this link. We also send you your guide by email (to <b>{correo}</b>)."],
