@@ -47,6 +47,29 @@
   td, th { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--borde); vertical-align: top; }
   .detalle pre { background: #f6f7fb; padding: 10px; border-radius: 10px; font-size: 12px; max-height: 240px; overflow: auto; white-space: pre-wrap; }
   @media (min-width: 760px) { .rejilla-campos { grid-template-columns: 1fr 1fr; } }
+  /* Comentarios */
+  .estado.leido { background: #e0f2fe; color: #075985; }
+  .estado.destacado { background: #fef9c3; color: #854d0e; }
+  .estado.oculto { background: #f3f4f6; color: #6b7280; }
+  .estrellas { color: #f59e0b; font-size: 18px; letter-spacing: 1px; }
+  .estrellas i { color: #d1d5db; font-style: normal; }
+  .texto-visitante { margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  /* Costos */
+  .grandes { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .grande { background: #fff; border-radius: 18px; box-shadow: var(--sombra); padding: 16px 18px; }
+  .grande span { display: block; color: var(--gris); font-size: 14px; font-weight: 700; }
+  .grande b { display: block; font-size: 34px; line-height: 1.15; margin: 4px 0 2px; }
+  .grande small { color: var(--gris); font-size: 13px; }
+  .tabla-mov { overflow-x: auto; -webkit-overflow-scrolling: touch; background: #fff; border-radius: 16px; box-shadow: var(--sombra); padding: 6px 10px; }
+  .tabla-mov table { min-width: 460px; }
+  .tabla-mov td.n, .tabla-mov th.n { text-align: right; white-space: nowrap; }
+  .balance { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; max-width: 460px; font-size: 16px; }
+  .balance .total { font-weight: 800; border-top: 2px solid var(--borde); padding-top: 6px; }
+  .servicio { display: grid; grid-template-columns: minmax(0, 2fr) minmax(70px, 1fr) 90px minmax(0, 2fr) 40px; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .servicio input, .servicio select { width: 100%; padding: 8px 10px; border: 2px solid var(--borde); border-radius: 10px; font: inherit; font-size: 14px; min-width: 0; }
+  @media (max-width: 620px) { .servicio { grid-template-columns: 1fr 1fr; } .servicio .s-nombre, .servicio .s-nota { grid-column: 1 / -1; } }
+  .compra-estado { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+  .compra-estado b { font-weight: 700; }
 </style>
 </head>
 <body class="sitio claro">
@@ -70,12 +93,15 @@
       <button data-tab="codigos">Códigos</button>
       <button data-tab="solicitudes" hidden>Pedidos sin guía <span class="n" id="nSolicitudes" hidden></span></button>
       <button data-tab="reportes">Reportes <span class="n" id="nReportes" hidden></span></button>
+      <button data-tab="comentarios">Comentarios <span class="n" id="nComentarios" hidden></span></button>
+      <button data-tab="costos">Costos</button>
       <button data-tab="colegios">Colegios</button>
       <button data-tab="ajustes">Ajustes</button>
     </div>
 
     <section data-panel="resumen">
       <div id="alertas"></div>
+      <div id="alertaComentarios"></div>
       <div class="numeros" id="numeros"></div>
       <h2 style="margin:22px 0 10px">Motores</h2>
       <div class="motores" id="motores"></div>
@@ -112,7 +138,11 @@
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
         <select id="filtroCompras" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="pendiente">Pendientes de pago</option><option value="pagada">Pagadas</option><option value="">Todas</option></select>
         <button class="boton linea chico" id="btnRefrescarCompras">⟳ Actualizar</button>
-        <span class="ayuda">Con Mercado Pago encendido, cada guía se activa sola al confirmarse el pago (tarjeta, OXXO o SPEI). Sin cobro en línea, aquí confirmas los pagos a mano: al marcar "Pagada" se crea el link y se manda el correo.</span>
+      </div>
+      <div class="caja-clave" style="margin-bottom:12px">
+        <b>Cómo funciona cada compra</b>
+        <p style="margin:6px 0 0">Cada compra tiene su propio link privado para esa familia, que se puede abrir en 2 dispositivos durante 7 días. La guía se envía (por correo y, si está conectado, por WhatsApp) solo cuando está 100 % lista. Estas guías ya no aparecen en la app de clases (fase 1).</p>
+        <p class="ayuda" style="margin:6px 0 0">Con Mercado Pago encendido, el pago se confirma solo (tarjeta, OXXO o SPEI). Sin cobro en línea, aquí confirmas los pagos a mano con "Marcar pagada".</p>
       </div>
       <div id="listaCompras"></div>
     </section>
@@ -139,6 +169,28 @@
 
     <section data-panel="solicitudes" hidden><p class="ayuda">Familias que buscaron una guía que todavía no existe. Cuando publiques esa guía, aquí aparecen marcadas para avisarles.</p><div id="listaSolicitudes"></div></section>
     <section data-panel="reportes" hidden><p class="ayuda">Lo que los alumnos reportaron desde la banderita 🚩 del reproductor.</p><div id="listaReportes"></div></section>
+
+    <section data-panel="comentarios" hidden>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <select id="filtroComentarios" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="todos">Todos (menos los ocultos)</option><option value="nuevo">Nuevos</option><option value="leido">Leídos</option><option value="destacado">Destacados</option><option value="oculto">Ocultos</option></select>
+        <button class="boton linea chico" id="btnRefrescarComentarios">⟳ Actualizar</button>
+      </div>
+      <p class="ayuda">Lo que las familias escriben en la caja de comentarios al final de la portada. "Destacar" sirve para apartar los que quieras publicar más adelante (solo si la persona dio permiso). Nada de esto se publica solo.</p>
+      <div id="listaComentarios"></div>
+    </section>
+
+    <section data-panel="costos" hidden>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <select id="diasCostos" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="7">Últimos 7 días</option><option value="30" selected>Últimos 30 días</option><option value="90">Últimos 90 días</option></select>
+        <button class="boton linea chico" id="btnRefrescarCostos">⟳ Actualizar</button>
+      </div>
+      <div id="costos"><p class="ayuda">Cargando…</p></div>
+      <div class="panel-paso" style="margin-top:18px"><h2 style="margin-top:0">Servicios que pagas cada mes</h2>
+        <p class="ayuda">Escribe lo que pagas al mes por cada servicio (si pagas al año, divide entre 12). Los que están en dólares se convierten con el tipo de cambio de hoy. Se restan en "Lo que queda".</p>
+        <div id="listaServicios"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"><button class="boton linea chico" type="button" id="btnAgregarServicio">＋ Agregar servicio</button><button class="boton chico" type="button" id="btnGuardarServicios">Guardar servicios</button></div>
+      </div>
+    </section>
     <section data-panel="colegios" hidden>
       <form id="formColegio" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><input name="nombre" placeholder="Nombre del colegio" required style="flex:1;min-width:220px;padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><button class="boton chico" type="submit">Agregar</button></form>
       <div id="listaColegios"></div>
@@ -150,14 +202,14 @@
           <div class="campo"><label>WhatsApp de SparkEd (10 dígitos) para confirmar pagos manuales</label><input name="sparked_whatsapp" inputmode="numeric" placeholder="Vacío = sin botón de WhatsApp"></div>
           <div class="campo"><label>Tope de compras por día (todo el sitio)</label><input name="sparked_tope_diario" inputmode="numeric"></div>
           <div class="campo"><label>Tope de compras por día por familia</label><input name="sparked_tope_familia" inputmode="numeric"></div>
-          <div class="campo"><label>Tipo de cambio (pesos por dólar, para la ficha de costos)</label><input name="sparked_tipo_cambio" inputmode="decimal"></div>
+          <div class="campo"><label>Tipo de cambio de respaldo (pesos por dólar; solo se usa si no se puede consultar el del DOF)</label><input name="sparked_tipo_cambio" inputmode="decimal"></div>
           <div class="campo"><label>Correo donde quieres recibir aviso de cada venta (y si una guía pagada no se termina)</label><input name="sparked_correo_aviso" type="email"></div>
-          <div class="campo" style="grid-column:1/-1"><label>Mientras se termina una guía pagada (unos 4 minutos)</label><select name="sparked_jugar_durante_generacion"><option value="no">Mostrar el avance hasta que la guía esté completa</option><option value="si">Dejar jugar los bloques de la vista previa, con el letrero "estamos terminando los demás bloques"</option></select></div>
           <div class="campo"><label>Remitente de los correos</label><input name="sparked_correo_remitente" placeholder="SparkEd <hola@tudominio.com>"></div>
           <div class="campo"><label>Dirección pública del sitio</label><input name="sparked_sitio"></div>
           <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="boton" type="submit">Guardar ajustes</button><button class="boton linea" type="button" id="btnLimpiar">🧹 Limpiar borradores vencidos</button></div>
         </form>
       </div>
+      <div class="panel-paso" style="margin-top:14px" id="tarjetaWhatsApp"><h2 style="margin-top:0">WhatsApp (Green API)</h2><div id="estadoWhatsApp"><p class="ayuda">Cargando…</p></div></div>
       <div class="caja-clave" style="margin-top:14px"><b>Cómo se encienden los motores</b><p style="margin:6px 0 0">Cada motor se enciende poniendo su llave en Supabase → Edge Functions → Secrets (nunca en el código ni en WhatsApp): <code>ANTHROPIC_API_KEY</code> (la IA que escribe las guías), <code>MP_ACCESS_TOKEN</code> y <code>MP_WEBHOOK_SECRET</code> (cobro en línea con Mercado Pago: tarjeta, OXXO y SPEI), <code>RESEND_API_KEY</code> (correos) y, opcional, <code>HELICONE_API_KEY</code> (medición de costos). Stripe (<code>STRIPE_SECRET_KEY</code> y <code>STRIPE_WEBHOOK_SECRET</code>) queda dormido: solo se usaría si Mercado Pago no estuviera puesto. Mientras un motor está apagado, el sitio sigue funcionando en modo manual. Los pasos para Mercado Pago están en GUIA.md.</p></div>
     </section>
   </div>
@@ -192,7 +244,7 @@ function salir(limpiar = true) { if (limpiar) { try { localStorage.removeItem(LS
 
 // ---------- Entrar ----------
 async function entrar() {
-  try { const p = await api("/ping"); $("#login").hidden = true; $("#app").hidden = false; $("#salir").hidden = false; pintarMotores(p); cargarTodo(); }
+  try { const p = await api("/ping"); precioGuia = Number(p.config?.sparked_precio) || 100; $("#login").hidden = true; $("#app").hidden = false; $("#salir").hidden = false; pintarMotores(p); cargarTodo(); }
   catch (e) { $("#errLogin").textContent = e.message; }
 }
 $("#formLogin").onsubmit = (e) => { e.preventDefault(); clave = $("#formLogin").clave.value.trim(); try { localStorage.setItem(LS, clave); } catch {} entrar(); };
@@ -205,7 +257,7 @@ function mostrarTab(t) {
   $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   $$("[data-panel]").forEach((s) => { s.hidden = s.dataset.panel !== t; });
   location.hash = t;
-  ({ resumen: cargarResumen, guias: cargarGuias, compras: cargarCompras, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, colegios: cargarColegios, ajustes: cargarAjustes })[t]?.();
+  ({ resumen: cargarResumen, guias: cargarGuias, compras: cargarCompras, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, comentarios: cargarComentarios, costos: cargarCostos, colegios: cargarColegios, ajustes: cargarAjustes })[t]?.();
 }
 async function cargarTodo() { await cargarColegios(true); mostrarTab(location.hash.replace("#", "") || "resumen"); }
 
@@ -224,6 +276,8 @@ async function cargarResumen() {
   $("#nSolicitudes").hidden = !r.solicitudes_sin_guia; $("#nSolicitudes").textContent = r.solicitudes_sin_guia;
   $("#nReportes").hidden = !r.reportes_nuevos; $("#nReportes").textContent = r.reportes_nuevos;
   $("#nGuias").hidden = !r.guias.borradores; $("#nGuias").textContent = r.guias.borradores;
+  // Comentarios nuevos de la portada (si la ruta todavía no existe, no se muestra nada).
+  api("/comentarios?estado=nuevo").then((c) => pintarNuevosComentarios(c.nuevos ?? 0)).catch(() => {});
 }
 function pintarMotores(p) {
   const m = p.motores ?? {};
@@ -388,21 +442,57 @@ async function cargarCompras() {
       <div class="ayuda">${esc(c.nombre ?? "")} · <a href="${esc(waLink(c.telefono ?? "", ""))}" target="_blank" rel="noopener">${esc(c.telefono ?? "")}</a> · <a href="mailto:${esc(c.correo ?? "")}">${esc(c.correo ?? "")}</a> · ${esc([c.colegio_texto, c.grado, c.materia].filter(Boolean).join(" · "))}</div>
       ${c.codigo ? `<div class="ayuda">🎟️ Código <b>${esc(c.codigo)}</b>${c.metodo_pago === "codigo" ? " · guía gratis (no cuenta como venta)" : ` · descuento de ${dinero(c.descuento_mxn)}`}</div>` : ""}
       ${c.mp_preferencia_id || c.mp_estado ? `<div class="ayuda">Mercado Pago: ${esc(METODOS_MP[c.metodo_pago] ?? c.metodo_pago ?? "todavía sin pago")}${c.mp_estado ? " · " + esc(ESTADOS_MP[c.mp_estado] ?? c.mp_estado) : ""}${c.mp_vence_en && c.estado === "pendiente" ? " · se puede pagar hasta el " + esc(fecha(c.mp_vence_en)) : ""}${c.mp_pago_id ? " · pago " + esc(c.mp_pago_id) : ""}${c.mp_ficha_url ? ` · <a href="${esc(c.mp_ficha_url)}" target="_blank" rel="noopener">ver ficha</a>` : ""}</div>` : ""}
-      ${c.link ? `<div class="link-caja" style="margin-top:6px">${esc(c.link)}</div><div class="ayuda">Acceso: ${esc(c.acceso?.estado ?? "")} · vence ${esc(fecha(c.acceso?.expira_en))} · ${c.acceso?.usos ?? 0} aperturas</div>` : ""}
+      ${c.estado === "pagada" ? estadoEntrega(c) : ""}
+      ${c.link ? `<div class="link-caja ayuda" style="margin-top:6px">${esc(c.link)}</div>` : ""}
     </div><div class="acciones">
       ${c.estado === "pendiente" && c.mp_preferencia_id ? `<button class="boton linea" data-act="revisar" data-id="${c.id}">🔄 Revisar en Mercado Pago</button>` : ""}
       ${c.estado === "pendiente" ? `<button class="boton" data-act="pagar" data-id="${c.id}">✅ Marcar pagada</button><button class="boton linea" data-act="cancelar" data-id="${c.id}">✖ Cancelar</button>` : ""}
       ${c.link ? `<button class="boton linea" data-act="copiar" data-link="${esc(c.link)}">📋 Copiar link</button><a class="boton linea" target="_blank" rel="noopener" href="${esc(waLink(c.telefono ?? "", mensajeWhatsApp(c.titulo ?? "Tu guía", c.link)))}">💬 WhatsApp</a><button class="boton linea" data-act="reenviar" data-id="${c.id}">✉️ Reenviar correo</button>` : ""}
+      ${c.estado === "pagada" && c.guia_lista === true ? `<button class="boton linea" data-act="wa-reenviar" data-id="${c.id}">📲 Reenviar por WhatsApp</button>` : ""}
     </div></div>`).join("") || "<p class='ayuda'>No hay compras en esta lista.</p>";
   $$("#listaCompras [data-act]").forEach((b) => b.onclick = async () => {
     try {
-      if (b.dataset.act === "pagar") { if (!confirm("¿Confirmas que esta compra ya se pagó? Se creará el link de 7 días y se enviará el correo.")) return; const r = await api(`/compras/${b.dataset.id}/pagar`, { method: "POST" }); aviso("Pago confirmado. Link creado."); cargarCompras(); cargarResumen(); modal(`<h2>Link listo 🎉</h2><div class="link-caja">${esc(r.link)}</div><p class="ayuda">${r.lista ? "La guía está completa." : "La IA sigue armando los bloques que faltan; el link ya funciona y mostrará el avance."}</p><a class="boton" target="_blank" rel="noopener" href="${esc(waLink(r.compra.telefono ?? "", mensajeWhatsApp(r.compra.titulo ?? "Tu guía", r.link)))}">💬 Mandar por WhatsApp</a>`); }
-      if (b.dataset.act === "revisar") { b.disabled = true; const r = await api(`/compras/${b.dataset.id}/revisar`, { method: "POST" }); aviso(r.compra?.estado === "pagada" ? "Pagada en Mercado Pago: guía activada y correo enviado." : r.resultado === "sin_pagos" ? "Mercado Pago todavía no tiene ningún pago de esta compra." : "Mercado Pago dice: " + (ESTADOS_MP[r.compra?.mp_estado] ?? r.resultado), false, 6000); cargarCompras(); cargarResumen(); }
+      if (b.dataset.act === "pagar") {
+        if (!confirm("¿Confirmas que esta compra ya se pagó? Se termina la guía y se envía sola cuando esté lista.")) return;
+        const r = await api(`/compras/${b.dataset.id}/pagar`, { method: "POST" }); aviso("Pago confirmado."); cargarCompras(); cargarResumen();
+        modal(r.lista
+          ? `<h2>Pago confirmado 🎉</h2><p>La guía ya está completa y se envió a la familia.</p>${r.link ? `<div class="link-caja ayuda">${esc(r.link)}</div><a class="boton" style="margin-top:10px" target="_blank" rel="noopener" href="${esc(waLink(r.compra?.telefono ?? "", mensajeWhatsApp(r.compra?.titulo ?? "Tu guía", r.link)))}">💬 Mandar también por WhatsApp</a>` : ""}`
+          : `<h2>Pago confirmado 🎉</h2><p>La IA está terminando la guía. Se envía sola a la familia cuando esté 100 % lista; no hace falta mandar nada a mano.</p><p class="ayuda">Puedes ver el avance aquí mismo, en Compras.</p>`);
+      }
+      if (b.dataset.act === "revisar") { b.disabled = true; const r = await api(`/compras/${b.dataset.id}/revisar`, { method: "POST" }); aviso(r.compra?.estado === "pagada" ? "Pagada en Mercado Pago: la guía se termina y se envía sola cuando esté lista." : r.resultado === "sin_pagos" ? "Mercado Pago todavía no tiene ningún pago de esta compra." : "Mercado Pago dice: " + (ESTADOS_MP[r.compra?.mp_estado] ?? r.resultado), false, 6000); cargarCompras(); cargarResumen(); }
       if (b.dataset.act === "cancelar") { if (!confirm("¿Cancelar esta compra pendiente?")) return; await api(`/compras/${b.dataset.id}/cancelar`, { method: "POST" }); cargarCompras(); }
       if (b.dataset.act === "copiar") { await navigator.clipboard.writeText(b.dataset.link); aviso("Link copiado"); }
       if (b.dataset.act === "reenviar") { await api(`/compras/${b.dataset.id}/reenviar`, { method: "POST" }); aviso("Correo reenviado (si el motor de correo está encendido)"); }
-    } catch (e) { aviso(e.message, true, 6000); }
+      if (b.dataset.act === "wa-reenviar") { if (!confirm("¿Reenviar la guía por WhatsApp a esta familia?")) return; b.disabled = true; await api("/whatsapp/reenviar", { method: "POST", body: { compra_id: b.dataset.id } }); aviso("Guía reenviada por WhatsApp"); cargarCompras(); }
+    } catch (e) { b.disabled = false; aviso(e.message, true, 6000); }
   });
+}
+// Estado de entrega y de acceso de una compra pagada, en palabras simples. Si un dato todavía no llega del servidor, no se muestra.
+const DIA_HORA = (s) => s ? new Date(s).toLocaleString("es-MX", { day: "numeric", month: "long", hour: "numeric", minute: "2-digit" }) : "";
+function estadoEntrega(c) {
+  const lineas = [];
+  if (c.guia_lista === false) lineas.push("⏳ <b>Terminando la guía…</b> Se envía sola cuando esté 100 % lista.");
+  else if (c.guia_lista === true || c.entregada_en) {
+    const medios = [];
+    if (c.entregada_en && c.correo) medios.push("correo");
+    if (c.wa_enviado_en) medios.push("WhatsApp");
+    const cuando = c.entregada_en || c.wa_enviado_en;
+    lineas.push(cuando ? `✅ <b>Entregada el ${esc(DIA_HORA(cuando))}</b>${medios.length ? ` (${esc(medios.join(" y "))})` : ""}` : "✅ <b>Guía lista</b>");
+    if (c.wa_estado && !c.wa_enviado_en && !["sin_motor", "apagado", "no_aplica"].includes(c.wa_estado)) lineas.push(`⚠️ WhatsApp: no se pudo enviar (${esc(c.wa_estado)})`);
+  }
+  const a = c.acceso;
+  if (a) {
+    const vence = a.expira_en ? new Date(a.expira_en) : null;
+    if (vence && vence > new Date() && a.estado !== "revocado") lineas.push(`🔓 Acceso vigente hasta el ${esc(DIA_HORA(a.expira_en))}`);
+    else if (vence) lineas.push(`🔒 El acceso terminó el ${esc(DIA_HORA(a.expira_en))}`);
+    const partes = [];
+    if (a.dispositivos !== undefined && a.dispositivos !== null) partes.push(`📱 Dispositivos: ${Number(a.dispositivos)} de ${Number(a.max_dispositivos ?? 2)}`);
+    if (a.usos !== undefined && a.usos !== null) partes.push(`${Number(a.usos)} ${Number(a.usos) === 1 ? "apertura" : "aperturas"}`);
+    if (a.ultimo_uso_en) partes.push(`última vez ${esc(DIA_HORA(a.ultimo_uso_en))}`);
+    else if (a.primer_uso_en === null) partes.push("todavía no la abren");
+    if (partes.length) lineas.push(partes.join(" · "));
+  }
+  return lineas.length ? `<div class="compra-estado">${lineas.map((l) => `<div>${l}</div>`).join("")}</div>` : "";
 }
 $("#filtroCompras").onchange = cargarCompras; $("#btnRefrescarCompras").onclick = cargarCompras;
 
@@ -450,9 +540,147 @@ async function cargarAjustes() {
   const p = await api("/ping"); pintarMotores(p);
   const f = $("#formAjustes");
   for (const [k, v] of Object.entries(p.config ?? {})) if (f[k]) f[k].value = v;
+  cargarWhatsApp();
 }
 $("#formAjustes").onsubmit = async (e) => { e.preventDefault(); const f = e.target; const body = {}; for (const el of f.elements) if (el.name) body[el.name] = el.value; try { await api("/config", { method: "POST", body }); aviso("Ajustes guardados"); } catch (err) { aviso(err.message, true); } };
 $("#btnLimpiar").onclick = async () => { try { const r = await api("/limpiar", { method: "POST" }); aviso(`Limpieza: ${r.borradores} borradores y ${r.guias} guías vencidas`); } catch (e) { aviso(e.message, true); } };
+// ---------- Comentarios de la portada ----------
+// Todo lo que escriben los visitantes se muestra con esc(): nunca como HTML.
+const RELACION = { mama_papa: "Mamá o papá", alumno: "Alumno", docente: "Docente", otro: "Otro" };
+const ESTADO_COM = { nuevo: "nuevo", leido: "leído", destacado: "destacado", oculto: "oculto" };
+let textosComentarios = {};
+function pintarNuevosComentarios(n) {
+  $("#nComentarios").hidden = !n; $("#nComentarios").textContent = n || "";
+  $("#alertaComentarios").innerHTML = n ? `<div class="caja-clave" style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b style="flex:1;min-width:200px">💬 ${n === 1 ? "Tienes 1 comentario nuevo" : `Tienes ${n} comentarios nuevos`} de la portada</b><button class="boton chico" id="irComentarios">Ver comentarios</button></div>` : "";
+  if (n) $("#irComentarios").onclick = () => { $("#filtroComentarios").value = "nuevo"; mostrarTab("comentarios"); };
+}
+async function cargarComentarios() {
+  const f = $("#filtroComentarios").value;
+  let r;
+  try { r = await api("/comentarios?estado=" + encodeURIComponent(f)); }
+  catch (e) { $("#listaComentarios").innerHTML = `<p class="ayuda">No se pudieron cargar los comentarios: ${esc(e.message)}</p>`; return; }
+  pintarNuevosComentarios(r.nuevos ?? 0);
+  let lista = r.comentarios ?? [];
+  if (f === "todos") lista = lista.filter((c) => c.estado !== "oculto");
+  textosComentarios = Object.fromEntries(lista.map((c) => [c.id, c.texto]));
+  const vacio = { todos: "Todavía no hay comentarios.", nuevo: "No hay comentarios nuevos.", leido: "No hay comentarios leídos.", destacado: "No has destacado ningún comentario.", oculto: "No hay comentarios ocultos." }[f];
+  $("#listaComentarios").innerHTML = lista.map((c) => {
+    const n = Math.max(0, Math.min(5, Number(c.estrellas) || 0));
+    const botones = [];
+    if (c.estado === "nuevo") botones.push(["leido", "✓ Marcar como leído", ""]);
+    botones.push(c.estado === "destacado" ? ["leido", "Quitar de destacados", "linea"] : ["destacado", "⭐ Destacar", "linea"]);
+    botones.push(c.estado === "oculto" ? ["leido", "👁 Mostrar", "linea"] : ["oculto", "🙈 Ocultar", "linea"]);
+    return `<div class="fila-g"><div class="info">
+      <div><span class="estrellas" aria-label="${n} de 5 estrellas">${"★".repeat(n)}<i>${"★".repeat(5 - n)}</i></span> <span class="estado ${esc(c.estado)}">${esc(ESTADO_COM[c.estado] ?? c.estado)}</span></div>
+      <div class="texto-visitante">${esc(c.texto)}</div>
+      <div class="ayuda" style="margin-top:6px"><b>${esc(c.nombre)}</b>${c.relacion ? " · " + esc(RELACION[c.relacion] ?? c.relacion) : ""} · ${esc(fecha(c.creado_en))}${c.idioma === "en" ? " · escrito en inglés" : ""}</div>
+      <div class="ayuda">${c.permiso_publicar ? "✅ Dio permiso de publicarlo" : "🚫 No dio permiso de publicarlo"}</div>
+    </div><div class="acciones">
+      ${botones.map(([estado, txt, cls]) => `<button class="boton ${cls}" data-estado="${estado}" data-id="${esc(c.id)}">${txt}</button>`).join("")}
+      <button class="boton linea" data-copiar="${esc(c.id)}">📋 Copiar el texto</button>
+      <button class="boton linea" data-borrar="${esc(c.id)}">🗑 Borrar</button>
+    </div></div>`;
+  }).join("") || `<p class="ayuda">${vacio}</p>`;
+  $$("#listaComentarios [data-estado]").forEach((b) => b.onclick = async () => { try { b.disabled = true; await api(`/comentarios/${b.dataset.id}`, { method: "PATCH", body: { estado: b.dataset.estado } }); aviso({ leido: "Marcado como leído", destacado: "Comentario destacado", oculto: "Comentario oculto" }[b.dataset.estado]); cargarComentarios(); } catch (e) { b.disabled = false; aviso(e.message, true); } });
+  $$("#listaComentarios [data-copiar]").forEach((b) => b.onclick = async () => { try { await navigator.clipboard.writeText(textosComentarios[b.dataset.copiar] ?? ""); aviso("Texto copiado"); } catch { aviso("No se pudo copiar", true); } });
+  $$("#listaComentarios [data-borrar]").forEach((b) => b.onclick = async () => { if (!confirm("¿Borrar este comentario? No se puede deshacer.")) return; try { await api(`/comentarios/${b.dataset.borrar}`, { method: "DELETE" }); aviso("Comentario borrado"); cargarComentarios(); } catch (e) { aviso(e.message, true); } });
+}
+$("#filtroComentarios").onchange = cargarComentarios; $("#btnRefrescarComentarios").onclick = cargarComentarios;
+
+// ---------- Costos en pesos ----------
+const pesos = (n) => "$" + Number(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const dolares = (n, d = 2) => "US$" + Number(n ?? 0).toFixed(d);
+const fechaLarga = (ymd) => ymd ? new Date(ymd + "T12:00:00Z").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "";
+const fechaCorta = (ymd) => new Date(ymd + "T12:00:00Z").toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const MODELO = (m) => ({ haiku: "Haiku", sonnet: "Sonnet", opus: "Opus" }[m] ?? m);
+let precioGuia = 100;
+async function cargarCostos() {
+  const caja = $("#costos");
+  let r;
+  try { r = await api("/costos?dias=" + $("#diasCostos").value); }
+  catch (e) { caja.innerHTML = `<p class="ayuda">No se pudieron cargar los costos: ${esc(e.message)}</p>`; return; }
+  const g = r.gasto_ia, tc = r.tipo_cambio, b = r.balance, p = r.promedios;
+  const grande = (titulo, x) => `<div class="grande"><span>${titulo}</span><b>${pesos(x.mxn)}</b><small>${dolares(x.usd)} · ${x.trabajos} ${x.trabajos === 1 ? "trabajo" : "trabajos"} de la IA</small></div>`;
+  const balance = (titulo, x, ventas) => `<div class="tarjeta"><h3 style="margin:0 0 10px">${titulo}</h3><div class="balance">
+      <span>Ventas (${ventas} ${ventas === 1 ? "guía" : "guías"})</span><span>${pesos(x.ingresos_mxn)}</span>
+      <span>Gasto de IA</span><span>− ${pesos(x.ia_mxn)}</span>
+      <span>Servicios fijos</span><span>− ${pesos(x.fijos_mxn)}</span>
+      <span class="total">Lo que queda</span><span class="total" style="color:${x.queda_mxn < 0 ? "#b91c1c" : "#15803d"}">${x.queda_mxn < 0 ? "− " + pesos(-x.queda_mxn) : pesos(x.queda_mxn)}</span></div></div>`;
+  const diasCon = r.por_dia.filter((d) => d.trabajos || d.ventas);
+  const totalPasos = r.por_paso.reduce((n, x) => n + x.usd, 0) || 1;
+  const quedaPorGuia = p.guia_completa.n ? precioGuia - p.guia_completa.mxn : null;
+  caja.innerHTML = `
+    <h2 style="margin:0 0 10px">Gasto en inteligencia artificial</h2>
+    <div class="grandes">${grande("Hoy", g.hoy)}${grande("Últimos 7 días", g.d7)}${grande("Este mes", g.mes)}</div>
+    <div class="caja-clave" style="margin-top:12px">
+      <b>Tipo de cambio: 1 dólar = ${pesos(tc.valor)} pesos</b> <span class="ayuda">(exacto: ${Number(tc.valor).toFixed(4)})</span>
+      <div style="margin-top:4px">${tc.fecha ? `Publicado en el Diario Oficial de la Federación el ${esc(fechaLarga(tc.fecha))}.` : ""} Fuente: ${esc(tc.fuente_texto ?? tc.fuente)}.</div>
+      ${tc.aviso ? `<div style="margin-top:4px;color:#b91c1c;font-weight:700">⚠️ ${esc(tc.aviso)}</div>` : ""}
+      <div class="ayuda" style="margin-top:4px">Es el tipo de cambio oficial «para solventar obligaciones en dólares». Cada gasto se convierte con el del día en que se hizo; los fines de semana y días festivos usan el último publicado.</div>
+    </div>
+    <h2 style="margin:22px 0 10px">Lo que entra y lo que sale</h2>
+    <div class="grandes" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">${balance("Este mes", b.mes, r.ingresos.mes.ventas)}${balance(`Últimos ${r.dias} días`, b.periodo, r.ingresos.periodo.ventas)}</div>
+    <p class="ayuda">Las guías con código gratis no son ventas${r.ingresos.periodo.con_codigo ? ` (en estos ${r.dias} días: ${r.ingresos.periodo.con_codigo})` : ""}. No incluye la comisión de Mercado Pago ni impuestos. En "Últimos ${r.dias} días", los servicios fijos son la parte proporcional de esos días.</p>
+    <h2 style="margin:22px 0 10px">Promedios</h2>
+    <div class="grandes">
+      <div class="grande"><span>Cada vista previa</span><b>${p.vista_previa.n ? pesos(p.vista_previa.mxn) : "—"}</b><small>${p.vista_previa.n ? `${dolares(p.vista_previa.usd, 3)} · promedio de ${p.vista_previa.n}` : "Sin vistas previas en estos días"}</small></div>
+      <div class="grande"><span>Cada guía completa</span><b>${p.guia_completa.n ? pesos(p.guia_completa.mxn) : "—"}</b><small>${p.guia_completa.n ? `${dolares(p.guia_completa.usd, 3)} · vista previa + resto · promedio de ${p.guia_completa.n}` : "Sin guías completas en estos días"}</small></div>
+      ${quedaPorGuia !== null ? `<div class="grande"><span>De cada guía vendida en ${pesos(precioGuia)}</span><b>${pesos(quedaPorGuia)}</b><small>quedan después de pagar la IA (antes de comisiones y servicios fijos)</small></div>` : ""}
+    </div>
+    <h2 style="margin:22px 0 10px">Día por día (últimos ${r.dias} días)</h2>
+    ${diasCon.length ? `<div class="tabla-mov"><table><thead><tr><th>Día</th><th class="n">Gasto IA</th><th class="n">Vistas previas</th><th class="n">Guías completas</th><th class="n">Ventas</th><th class="n">Tipo de cambio</th></tr></thead><tbody>
+      ${diasCon.map((d) => `<tr><td>${esc(fechaCorta(d.fecha))}</td><td class="n"><b>${pesos(d.mxn)}</b><br><small class="ayuda">${dolares(d.usd, 3)}</small></td><td class="n">${d.vistas_previas}</td><td class="n">${d.guias_completas}</td><td class="n">${d.ventas ? `${d.ventas} · ${pesos(d.ingresos_mxn)}` : "0"}</td><td class="n">${Number(d.tc).toFixed(4)}</td></tr>`).join("")}
+    </tbody></table></div><p class="ayuda">Los días sin gasto ni ventas no se muestran.</p>` : `<p class="ayuda">No hubo gasto de IA ni ventas en estos días.</p>`}
+    <h2 style="margin:22px 0 10px">En qué se gasta (últimos ${r.dias} días)</h2>
+    ${r.por_paso.length ? `<div class="tabla-mov"><table><thead><tr><th>Paso</th><th>Modelo</th><th class="n">Llamadas</th><th class="n">Gasto</th><th class="n">Parte del total</th></tr></thead><tbody>
+      ${r.por_paso.map((x) => `<tr><td>${esc(x.paso)}</td><td>${esc(MODELO(x.modelo))}</td><td class="n">${x.llamadas || "—"}</td><td class="n"><b>${pesos(x.mxn)}</b><br><small class="ayuda">${dolares(x.usd, 3)}</small></td><td class="n">${Math.round((x.usd / totalPasos) * 100)} %</td></tr>`).join("")}
+    </tbody></table></div>` : `<p class="ayuda">Sin gasto en estos días.</p>`}`;
+  pintarServicios(r.servicios_fijos ?? [], r.fijos_mes_mxn, tc.valor);
+}
+function filaServicio(s = { nombre: "", monto: 0, moneda: "USD", nota: "" }) {
+  return `<div class="servicio"><input class="s-nombre" data-k="nombre" maxlength="60" placeholder="Servicio" value="${esc(s.nombre)}"><input data-k="monto" inputmode="decimal" placeholder="0" value="${esc(s.monto)}"><select data-k="moneda"><option value="USD" ${s.moneda === "USD" ? "selected" : ""}>dólares</option><option value="MXN" ${s.moneda === "MXN" ? "selected" : ""}>pesos</option></select><input class="s-nota" data-k="nota" maxlength="120" placeholder="Nota" value="${esc(s.nota ?? "")}"><button class="boton linea chico" type="button" data-quitar title="Quitar">✕</button></div>`;
+}
+function pintarServicios(lista, totalMxn, tc) {
+  $("#listaServicios").innerHTML = lista.map(filaServicio).join("") + `<p class="ayuda" id="totalServicios" style="margin:8px 0 0">Total al mes: <b>${pesos(totalMxn)}</b> (dólares a ${Number(tc).toFixed(4)}).</p>`;
+  activarQuitar();
+}
+function activarQuitar() { $$("#listaServicios [data-quitar]").forEach((b) => b.onclick = () => b.closest(".servicio").remove()); }
+$("#btnAgregarServicio").onclick = () => { const t = $("#totalServicios"); const d = document.createElement("div"); d.innerHTML = filaServicio(); const fila = d.firstElementChild; if (t) t.before(fila); else $("#listaServicios").append(fila); activarQuitar(); fila.querySelector("input").focus(); };
+$("#btnGuardarServicios").onclick = async () => {
+  const servicios = $$("#listaServicios .servicio").map((f) => Object.fromEntries($$("[data-k]", f).map((el) => [el.dataset.k, el.value])));
+  try { await api("/costos/servicios", { method: "POST", body: { servicios } }); aviso("Servicios guardados"); cargarCostos(); } catch (e) { aviso(e.message, true); }
+};
+$("#diasCostos").onchange = cargarCostos; $("#btnRefrescarCostos").onclick = cargarCostos;
+
+// ---------- WhatsApp (Green API) ----------
+const INSTANCIA = { authorized: "Conectado ✅", notAuthorized: "Falta vincular el teléfono (escanear el código QR en Green API)", blocked: "Bloqueado por WhatsApp", sleepMode: "Teléfono sin conexión", starting: "Encendiendo…", yellowCard: "Con advertencia de WhatsApp (envía menos mensajes)" };
+async function cargarWhatsApp() {
+  const caja = $("#estadoWhatsApp");
+  let w = null;
+  try { w = await api("/whatsapp"); } catch { w = null; }
+  const apagado = !w || !w.motor || ["apagado", "sin_motor", "ninguno", "no"].includes(String(w.motor));
+  if (apagado) {
+    caja.innerHTML = `<p style="margin:0"><b>Todavía no hay WhatsApp conectado.</b></p><p class="ayuda" style="margin:6px 0 0">Mientras tanto, las guías se envían solo por correo. Los pasos para conectarlo están en la guía <a href="https://github.com/Danflores01/accesos-lumio/blob/main/docs/WHATSAPP.md" target="_blank" rel="noopener">docs/WHATSAPP.md</a>.</p>`;
+    return;
+  }
+  const dato = (t, v) => v === undefined || v === null || v === "" ? "" : `<div><span class="ayuda">${t}:</span> <b>${esc(v)}</b></div>`;
+  caja.innerHTML = `<div style="display:grid;gap:4px">
+      ${dato("Estado", INSTANCIA[w.estado_instancia] ?? w.estado_instancia ?? "desconocido")}
+      ${dato("Número", w.numero)}
+      ${dato("Guías enviadas (7 días)", w.enviados_7d)}
+      ${dato("Envíos que fallaron (7 días)", w.fallidos_7d)}
+      ${dato("Veces que compartieron (7 días)", w.compartir_7d)}
+      ${w.webhook_configurado !== undefined ? dato("Avisos de mensajes recibidos", w.webhook_configurado ? "configurados" : "sin configurar") : ""}
+      ${w.ultimo_error ? `<div style="color:#b91c1c"><span class="ayuda">Último error:</span> ${esc(typeof w.ultimo_error === "string" ? w.ultimo_error : JSON.stringify(w.ultimo_error))}</div>` : ""}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
+      <button class="boton chico" type="button" id="btnWaConectar">🔗 Conectar</button>
+      <input id="waTelPrueba" inputmode="tel" placeholder="Teléfono para la prueba (10 dígitos)" style="flex:1;min-width:200px;padding:9px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit">
+      <button class="boton linea chico" type="button" id="btnWaPrueba">Enviar mensaje de prueba</button>
+    </div>`;
+  $("#btnWaConectar").onclick = async (e) => { e.target.disabled = true; try { const r = await api("/whatsapp/configurar", { method: "POST" }); aviso(r.mensaje || "WhatsApp configurado", false, 6000); cargarWhatsApp(); } catch (err) { e.target.disabled = false; aviso(err.message, true, 6000); } };
+  $("#btnWaPrueba").onclick = async (e) => { const telefono = $("#waTelPrueba").value.trim(); if (!telefono) { aviso("Escribe el teléfono para la prueba", true); return; } e.target.disabled = true; try { const r = await api("/whatsapp/prueba", { method: "POST", body: { telefono } }); aviso(r.mensaje || "Mensaje de prueba enviado", false, 6000); } catch (err) { aviso(err.message, true, 6000); } e.target.disabled = false; };
+}
 </script>
 </body>
 </html>
