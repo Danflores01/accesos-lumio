@@ -215,3 +215,8 @@ body.sitio.claro header.cab nav .idioma button, body.sitio.claro header.cab nav 
 @media (max-width: 559px) { header.cab nav .idioma button { font-size: 13px; padding: 6px 5px; } }
 /* Mientras idioma.js traduce la página al inglés, no se muestra (evita ver el español un instante). */
 html.i18n-cargando body { visibility: hidden; }
+
+/* Teléfono con lada: el selector del país a la izquierda y el número a la derecha. */
+.tel { display: flex; gap: 8px; min-width: 0; }
+.tel select { flex: 0 1 auto; max-width: 48%; min-width: 0; }
+.tel input { flex: 1 1 auto; min-width: 0; }

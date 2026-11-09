@@ -21,16 +21,24 @@ export async function cargarColegios(select, conOtro = true) {
   return lista;
 }
 
+// Ladas (códigos de país) que ofrece el formulario de la compra; México va primero y es la de siempre. El teléfono se
+// guarda en formato internacional ("+52" + 10 dígitos) para que, cuando exista el envío por WhatsApp, llegue a cualquier país.
+export const LADAS = [["52", "México"], ["1", "Estados Unidos, Canadá y Caribe"], ["34", "España"], ["57", "Colombia"], ["54", "Argentina"], ["51", "Perú"], ["56", "Chile"], ["593", "Ecuador"], ["502", "Guatemala"], ["503", "El Salvador"], ["504", "Honduras"], ["505", "Nicaragua"], ["506", "Costa Rica"], ["507", "Panamá"], ["591", "Bolivia"], ["595", "Paraguay"], ["598", "Uruguay"], ["58", "Venezuela"]];
 // Los errores son claves del diccionario (se traducen al mostrarse).
 export function leerContacto(raiz) {
   const nombre = raiz.querySelector("[name=nombre]")?.value.trim() ?? "";
-  const telefono = limpiarTel(raiz.querySelector("[name=telefono]")?.value);
+  const lada = String(raiz.querySelector("[name=lada]")?.value || "52").replace(/\D/g, "");
+  let numero = limpiarTel(raiz.querySelector("[name=telefono]")?.value);
+  // Si escriben la lada también en el número, se quita una sola vez.
+  if (lada === "52") { if (numero.length === 12 && numero.startsWith("52")) numero = numero.slice(2); if (numero.length === 13 && numero.startsWith("521")) numero = numero.slice(3); }
+  else if (numero.length > 7 && numero.startsWith(lada) && numero.length - lada.length >= 7) numero = numero.slice(lada.length);
   const correo = raiz.querySelector("[name=correo]")?.value.trim() ?? "";
   const errores = [];
   if (nombre.length < 2) errores.push("contacto.err_nombre");
-  if (telefono.length < 10) errores.push("contacto.err_tel");
+  // México: 10 dígitos exactos; otros países: de 7 dígitos en adelante, sin pasar de 15 con todo y lada.
+  if (lada === "52" ? numero.length !== 10 : numero.length < 7 || (lada + numero).length > 15) errores.push("contacto.err_tel");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) errores.push("contacto.err_correo");
-  return { nombre, telefono, correo, errores };
+  return { nombre, lada, numero, telefono: `+${lada}${numero}`, correo, errores };
 }
 export function guardarContacto(c) { try { localStorage.setItem("sparked_contacto", JSON.stringify(c)); } catch {} }
 export function contactoGuardado() { try { return JSON.parse(localStorage.getItem("sparked_contacto") || "null"); } catch { return null; } }

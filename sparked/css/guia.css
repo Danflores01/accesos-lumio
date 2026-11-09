@@ -519,3 +519,8 @@ button.rep-ficha:hover { border-color: var(--c); background: #f6f7fb; }
   .rep-bloque, .rep-papas, .rep-resumen { break-inside: avoid; box-shadow: none !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Botón "Salir de pantalla completa" (solo cuando la guía se abre a página entera desde la vista previa o la demo). */
+.salir { position: fixed; top: 10px; left: 10px; z-index: 55; border: 0; border-radius: 999px; padding: 8px 14px; font: 800 14px var(--titulos, inherit); color: #fff; background: rgba(20, 16, 40, .72); cursor: pointer; backdrop-filter: blur(4px); box-shadow: 0 4px 14px rgba(0, 0, 0, .25); }
+.salir:hover, .salir:focus-visible { background: rgba(20, 16, 40, .92); outline: none; }
+@media (max-width: 699px) { .salir { top: 6px; left: 6px; padding: 6px 11px; font-size: 12px; } }

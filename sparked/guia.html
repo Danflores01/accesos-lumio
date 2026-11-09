@@ -23,6 +23,7 @@
 </head>
 <body class="reproductor">
 <div id="vp"><div id="escenario"></div></div>
+<button id="salir" class="salir" hidden>✕ Salir de pantalla completa</button>
 <aside id="barra" aria-label="Barra de herramientas">
   <button id="arriba" title="Slide anterior (↑)" aria-label="Slide anterior">↑</button>
   <div class="pg" id="pg">…</div>
@@ -33,5 +34,6 @@
 </aside>
 <div id="miniaturas" class="oculto"><div class="panel"><h2>Todas las slides</h2><div id="lista-mini"></div></div></div>
 <script type="module" src="js/reproductor.js"></script>
+<script type="module" src="js/sin-internet.js"></script>
 </body>
 </html>

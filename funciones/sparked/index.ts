@@ -16,8 +16,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, type Trabajo } from "./pipeline.ts";
+import type { CtxBase, CtxRutas } from "./tipos.ts";
+import { rutasExtras } from "./extras.ts";
+import { rutasWhatsApp, avisarPorWhatsApp, motorWhatsApp } from "./whatsapp.ts";
 
-const VERSION = "2026-11-08.2";
+const VERSION = "2026-11-08.3";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -44,7 +47,16 @@ const esToken = (t: unknown): t is string => typeof t === "string" && /^[A-Za-z0
 const esSecreto = (s: unknown): s is string => typeof s === "string" && /^[A-Za-z0-9]{16,64}$/.test(s);
 const esClave = (c: unknown): c is string => typeof c === "string" && /^[A-Za-z0-9]{16,40}$/.test(c);
 const esCorreo = (c: unknown): c is string => typeof c === "string" && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c) && c.length <= 120;
-function limpiarTel(t: unknown): string { let d = String(t ?? "").replace(/\D/g, ""); if (d.length === 12 && d.startsWith("52")) d = d.slice(2); if (d.length === 13 && d.startsWith("521")) d = d.slice(3); return d; }
+// Teléfono en formato internacional: "+" + lada + número ("+52" + 10 dígitos para México). Lo de antes (10 dígitos, o
+// 52/521 + 10) se normaliza a +52. Devuelve "" si no es válido (de 8 a 15 dígitos en total).
+function limpiarTel(t: unknown): string {
+  const s = String(t ?? "").trim(); const d = s.replace(/\D/g, "");
+  if (s.startsWith("+") && !d.startsWith("52")) return d.length >= 8 && d.length <= 15 ? "+" + d : "";
+  let n = d; if (s.startsWith("+") || n.length === 12 || n.length === 13) { if (n.startsWith("52")) n = n.slice(2); if (n.length === 11 && n.startsWith("1")) n = n.slice(1); }
+  return n.length === 10 ? "+52" + n : "";
+}
+// Para la fase 1 (accesos a clases) el teléfono de México se guarda como antes: 10 dígitos sin lada.
+function telLocal(t: unknown): string | null { const s = String(t ?? "").trim(); return !s ? null : s.startsWith("+52") ? s.slice(3) : s; }
 const texto = (v: unknown, max = 120) => String(v ?? "").replace(/[\x00-\x1f\x7f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 const ipDe = (req: Request) => (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || (req.headers.get("cf-connecting-ip") ?? "") || null;
 const ahora = () => new Date().toISOString();
@@ -595,7 +607,7 @@ async function entregar(compra: any): Promise<{ token: string; expira_en: string
   }
   const expira = enDias(DIAS_ACCESO);
   const { data: acceso, error: ea } = await supabase.from("accesos").insert({
-    token: nuevoToken(), clase_id: claseId, alumno: texto(compra.nombre, 60) || "Familia", telefono: compra.telefono || null,
+    token: nuevoToken(), clase_id: claseId, alumno: texto(compra.nombre, 60) || "Familia", telefono: telLocal(compra.telefono),
     nota: `SparkEd · folio ${String(compra.id).slice(0, 8).toUpperCase()}`, expira_en: expira, minutos_tras_apertura: DIAS_ACCESO * 24 * 60, max_usos: 1000000, enviado_en: ahora(),
   }).select("id, token").single();
   if (ea) throw ea;
@@ -749,6 +761,16 @@ function normalizarCartucho(c: any) {
 }
 
 // ---------- Servidor ----------
+// ---------- Módulos aparte: comentarios y costos (extras.ts) y WhatsApp (whatsapp.ts) ----------
+// Cada módulo recibe este contexto (tipos.ts) y decide si la ruta es suya; si no, devuelve null.
+const ctxBase = (): CtxBase => ({ supabase, config, sitio, ahora, mandarCorreo, avisarDaniel, enSegundoPlano });
+async function rutasAparte(req: Request, m: string, ruta: string[]): Promise<Response | null> {
+  const c: CtxRutas = { ...ctxBase(), req, m, ruta, json, error, leerJson, esAdmin: () => autorizado(req), ip: ipDe(req) };
+  return (await rutasExtras(c)) ?? (await rutasWhatsApp(c));
+}
+// avisarPorWhatsApp(ctxBase(), compra, { titulo, link, expira_en }) se llama al entregar una guía 100 % lista.
+void avisarPorWhatsApp;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   const url = new URL(req.url);
@@ -766,6 +788,10 @@ Deno.serve(async (req: Request) => {
       enSegundoPlano(correrPaso(r1));
       return json({ ok: true, aceptado: true }, 202);
     }
+
+    // ---------- Módulos aparte (extras.ts, whatsapp.ts) ----------
+    const aparte = await rutasAparte(req, m, ruta);
+    if (aparte) return aparte;
 
     // ---------- Público ----------
     if (r0 === "colegios" && m === "GET") {
@@ -860,7 +886,7 @@ Deno.serve(async (req: Request) => {
       const b = await leerJson(req);
       const nombre = texto(b.nombre, 80), telefono = limpiarTel(b.telefono), correo = esCorreo(b.correo) ? String(b.correo).trim().toLowerCase() : "";
       if (nombre.length < 2) return error("Escribe el nombre de quien pide la guía.");
-      if (telefono.length !== 10) return error("Escribe un WhatsApp de 10 dígitos.");
+      if (!telefono) return error("Escribe un teléfono válido (en México, 10 dígitos).");
       if (!correo) return error("Escribe un correo válido.");
       const cfg = await config();
       const precio = Number(cfg.sparked_precio) || 85;
@@ -1072,7 +1098,7 @@ Deno.serve(async (req: Request) => {
 
       if (rec === "ping") {
         const cfg = await config();
-        return json({ ok: true, version: VERSION, sitio: base, motores: { ia: !!Deno.env.get("ANTHROPIC_API_KEY"), mercadopago: !!Deno.env.get("MP_ACCESS_TOKEN"), mercadopago_webhook: !!Deno.env.get("MP_WEBHOOK_SECRET"), mercadopago_prueba: mpPrueba(), stripe: !!Deno.env.get("STRIPE_SECRET_KEY"), webhook: !!Deno.env.get("STRIPE_WEBHOOK_SECRET"), correo: !!Deno.env.get("RESEND_API_KEY"), helicone: !!Deno.env.get("HELICONE_API_KEY") }, config: cfg });
+        return json({ ok: true, version: VERSION, sitio: base, motores: { ia: !!Deno.env.get("ANTHROPIC_API_KEY"), whatsapp: motorWhatsApp(), mercadopago: !!Deno.env.get("MP_ACCESS_TOKEN"), mercadopago_webhook: !!Deno.env.get("MP_WEBHOOK_SECRET"), mercadopago_prueba: mpPrueba(), stripe: !!Deno.env.get("STRIPE_SECRET_KEY"), webhook: !!Deno.env.get("STRIPE_WEBHOOK_SECRET"), correo: !!Deno.env.get("RESEND_API_KEY"), helicone: !!Deno.env.get("HELICONE_API_KEY") }, config: cfg });
       }
       if (rec === "config" && m === "POST") {
         const b = await leerJson(req);

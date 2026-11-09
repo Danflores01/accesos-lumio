@@ -595,3 +595,21 @@ corren naves, caballos o dragones.
   5. Si algo se arma con JavaScript y no cabe en una marca (por ejemplo, el link de WhatsApp), suscríbete con `alCambiarIdioma(fn)` y rehazlo ahí.
 - **Antes de publicar:** abrir las tres páginas con `?lang=en` y revisar que no quede nada en español (y al revés).
 - **Pendiente del servidor:** los correos, los mensajes de WhatsApp que manda el servidor y la página de Mercado Pago siguen en español.
+
+## 26. Salir de pantalla completa, teléfono con lada y WhatsApp «próximamente» (Daniel, 8 de noviembre de 2026, tarde)
+
+- **Salir de pantalla completa.** La "pantalla completa" de la guía es `guia.html` abierto a página entera (desde la
+  vista previa de `crear.html`, que manda `volver=…`, o desde la demo de la portada). Antes no había cómo regresar a la
+  compra sin cerrar la pestaña. Ahora, cuando la guía NO está dentro de un marco y trae `volver` o es la demo, aparece
+  arriba a la izquierda el botón «✕ Salir de pantalla completa» (en el idioma de la guía: es, en, fr), que regresa a la
+  compra (`volver`) o a la portada. Dentro del marco de escritorio no se muestra.
+- **Teléfono con lada.** En el formulario de la compra, junto al número hay un selector de país: +52 México (por
+  defecto), +1 Estados Unidos, Canadá y Caribe, +34 España y el resto de Hispanoamérica. El teléfono se guarda en formato
+  internacional: `+52` y 10 dígitos para México; otros países, de 7 dígitos en adelante y nunca más de 15 con todo y
+  lada. El servidor valida igual y, para la fase 1 (accesos a clases), el teléfono de México se guarda como siempre (10
+  dígitos sin lada). Los links de WhatsApp del panel ya entienden el formato nuevo.
+- **WhatsApp, próximamente.** SparkEd todavía no manda mensajes por WhatsApp: la etiqueta del campo dice «Teléfono
+  (WhatsApp, próximamente)» y ningún texto del sitio promete el envío por WhatsApp; solo por correo. Criterio para cuando
+  llegue: usar el teléfono guardado con lada (formato internacional) para que el mensaje llegue a cualquier país, y en
+  ese momento volver a decir «por correo y por WhatsApp» en los textos (`idioma.js`: precio.l5, faq.r1, pago.guardalo,
+  listo.sin_compra, listo.esperando_nota, listo.acceso4; e `index.html`).

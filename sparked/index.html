@@ -57,11 +57,11 @@
   <div class="precio">
     <div class="pildora" data-i18n="precio.pildora">Una guía</div>
     <div class="monto" style="margin-top:10px">$100<small data-i18n="precio.iva">MXN · IVA incluido</small></div>
-    <ul><li data-i18n="chip.acceso">7 días de acceso ilimitado a tu guía</li><li data-i18n="precio.l2">Hasta 2 dispositivos por familia: por ejemplo, el celular de mamá y el iPad del alumno</li><li data-i18n="precio.l3">Teoría visual, juegos, mini-exámenes y reto final</li><li data-i18n="precio.l4">Vista previa gratis antes de pagar</li><li data-i18n="precio.l5">Te la mandamos por correo y por WhatsApp</li></ul>
+    <ul><li data-i18n="chip.acceso">7 días de acceso ilimitado a tu guía</li><li data-i18n="precio.l2">Hasta 2 dispositivos por familia: por ejemplo, el celular de mamá y el iPad del alumno</li><li data-i18n="precio.l3">Teoría visual, juegos, mini-exámenes y reto final</li><li data-i18n="precio.l4">Vista previa gratis antes de pagar</li><li data-i18n="precio.l5">Te la mandamos por correo (por WhatsApp, próximamente)</li></ul>
   </div>
   <div class="faq">
     <h2 style="font-size:24px;margin-bottom:10px" data-i18n="faq.titulo">Preguntas rápidas</h2>
-    <details><summary data-i18n="faq.p1">¿Cómo recibo la guía?</summary><p data-i18n="faq.r1">Al pagar, el link de tu guía aparece en pantalla. Además, te la mandamos por correo y por WhatsApp; el correo trae un código QR. El alumno la abre en su iPad, en la computadora o en el celular.</p></details>
+    <details><summary data-i18n="faq.p1">¿Cómo recibo la guía?</summary><p data-i18n="faq.r1">Al pagar, el link de tu guía aparece en pantalla. Además, te la mandamos por correo con un código QR (el envío por WhatsApp llegará próximamente). El alumno la abre en su iPad, en la computadora o en el celular.</p></details>
     <details><summary data-i18n="faq.p2">¿Qué pasa si la abro en más de 2 dispositivos?</summary><p data-i18n="faq.r2">El tercer dispositivo ve el aviso «Acceso en uso en otros dispositivos». Cada link es de una sola familia.</p></details>
     <details><summary data-i18n="faq.p3">¿La información es correcta?</summary><p data-i18n="faq.r3">Cada dato sale de los apuntes o del temario y se verifica contra fuentes confiables. Si tus apuntes traen un error, la guía lo señala con la corrección.</p></details>
   </div>
@@ -97,5 +97,6 @@ document.getElementById("abrir-demo").onclick = () => {
   m.innerHTML = `<iframe src="guia.html?demo=historia1" title="${t("demo.marco")}" data-i18n-attr="title:demo.marco" allow="autoplay"></iframe>`;
 };
 </script>
+<script type="module" src="js/sin-internet.js"></script>
 </body>
 </html>

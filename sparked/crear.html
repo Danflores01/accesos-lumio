@@ -43,7 +43,7 @@
 </div></main>
 
 <script type="module">
-import { api, esc, opciones, GRADOS, MATERIAS, leerContacto, guardarContacto, contactoGuardado, marcoVistaPrevia, iniciarPago, pantallaEspera, CONFIG, pintarSprites, campoCodigo, leerCodigo, t, th, marca, poner, alCambiarIdioma, textoServidor, nombreGrado, nombreMateria, mensajeError } from "./js/flujo.js";
+import { api, esc, opciones, GRADOS, MATERIAS, leerContacto, LADAS, guardarContacto, contactoGuardado, marcoVistaPrevia, iniciarPago, pantallaEspera, CONFIG, pintarSprites, campoCodigo, leerCodigo, t, th, marca, poner, alCambiarIdioma, textoServidor, nombreGrado, nombreMateria, mensajeError } from "./js/flujo.js";
 import { sparky } from "./js/arte.js";
 
 const $ = (s) => document.querySelector(s);
@@ -163,7 +163,7 @@ function mostrarVistaPrevia(d) {
   marcoVistaPrevia($("#p3"), `guia.html?clave=${encodeURIComponent(clave)}&volver=${encodeURIComponent(volver)}`, d.titulo ?? "");
   $("#p3").insertAdjacentHTML("beforeend", `<form id="contacto" class="rejilla-campos" style="margin-top:14px">
     <div class="campo">${marca("contacto.nombre", null, "label")}<input name="nombre" required value="${esc(contacto?.nombre ?? "")}"></div>
-    <div class="campo">${marca("contacto.telefono", null, "label")}<input name="telefono" inputmode="numeric" required value="${esc(contacto?.telefono ?? "")}"></div>
+    <div class="campo">${marca("contacto.telefono", null, "label")}<div class="tel"><select name="lada" aria-label="Lada del país">${LADAS.map(([lada, pais]) => `<option value="${lada}"${String(contacto?.lada ?? "52") === lada ? " selected" : ""}>+${lada} ${esc(pais)}</option>`).join("")}</select><input name="telefono" inputmode="numeric" required value="${esc(contacto?.numero ?? "")}"></div></div>
     <div class="campo" style="grid-column:1/-1">${marca("contacto.correo", null, "label")}<input name="correo" type="email" required value="${esc(contacto?.correo ?? "")}"></div>
     ${campoCodigo()}
     <div class="acciones" style="grid-column:1/-1">${marca("contacto.pagar", { precio: CONFIG.precio }, "button", 'class="boton" type="submit"')}${marca("contacto.nota", null, "span", 'class="ayuda"')}</div><div class="error" id="err3" style="grid-column:1/-1"></div></form>`);
@@ -190,5 +190,6 @@ if (claveGuardada) {
   }).catch(() => {});
 }
 </script>
+<script type="module" src="js/sin-internet.js"></script>
 </body>
 </html>

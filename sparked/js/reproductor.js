@@ -10,6 +10,18 @@ const escenario = document.getElementById("escenario");
 const params = new URLSearchParams(location.search);
 const token = (location.hash || "").replace(/^#/, "").trim();
 const esToken = /^[A-Za-z0-9]{8,64}$/.test(token);
+// Botón "Salir de pantalla completa" (Daniel, 8 nov 2026): la guía abierta a página entera desde el sitio (vista previa
+// con "volver", o la demo de la portada) no tenía cómo regresar a la compra. Dentro de un marco no hace falta.
+// "volver" llega en el link: solo se acepta si apunta a este mismo sitio (nunca a otro dominio ni a "javascript:").
+const volverA = (() => { const v = params.get("volver"); if (!v) return null; try { const u = new URL(v, location.href); return u.origin === location.origin && /^https?:$/.test(u.protocol) ? u.href : null; } catch { return null; } })();
+// El botón es del sitio, no de la guía: va en el idioma del sitio (selector ES | EN), no en el de la guía.
+const idiomaSitio = (() => { try { return localStorage.getItem("sparked_idioma") === "en" ? "en" : "es"; } catch { return "es"; } })();
+const botonSalir = document.getElementById("salir");
+if (botonSalir && window.top === window && (volverA || params.has("demo"))) {
+  botonSalir.hidden = false;
+  botonSalir.textContent = `✕ ${tx(idiomaSitio, "salir_pantalla")}`;
+  botonSalir.onclick = () => { location.href = volverA || "index.html"; };
+}
 // Si en la misma pestaña se abre otro link (cambia lo que va después de #), se vuelve a cargar la guía correcta.
 window.addEventListener("hashchange", () => location.reload());
 
@@ -30,7 +42,7 @@ const ctx = {
   slideDePista: (pid) => S.findIndex((s) => s.k === "teoria" && (s.pistas ?? []).some((p) => p.id === pid)),
   coche: () => { try { return localStorage.getItem("sparked_coche"); } catch { return null; } },
   setCoche: (v) => { try { localStorage.setItem("sparked_coche", v); } catch {} },
-  desbloquear: () => { const volver = params.get("volver"); if (volver) location.href = volver; else if (ctx.guiaId) location.href = `biblioteca.html?guia=${encodeURIComponent(ctx.guiaId)}&paso=pagar`; else location.href = "index.html"; },
+  desbloquear: () => { const volver = volverA; if (volver) location.href = volver; else if (ctx.guiaId) location.href = `biblioteca.html?guia=${encodeURIComponent(ctx.guiaId)}&paso=pagar`; else location.href = "index.html"; },
 };
 
 const R = { portada, tutorial, teoria, resultados, candado, terminando, carrera: J.carrera, puertas: J.enemigos, enemigos: J.enemigos, montana: J.montana, castillo: J.castillo, pinguino: J.pinguino, perro: J.perro, swipe: J.swipe, superdato: J.superdato, match: J.match, sort: J.sort, rank: J.rank, ruleta: J.ruleta, quiz: J.quiz, duelo: J.duelo };
