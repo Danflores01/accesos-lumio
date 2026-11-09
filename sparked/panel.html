@@ -65,9 +65,11 @@
   .tabla-mov td.n, .tabla-mov th.n { text-align: right; white-space: nowrap; }
   .balance { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; max-width: 460px; font-size: 16px; }
   .balance .total { font-weight: 800; border-top: 2px solid var(--borde); padding-top: 6px; }
-  .servicio { display: grid; grid-template-columns: minmax(0, 2fr) minmax(70px, 1fr) 90px minmax(0, 2fr) 40px; gap: 6px; margin-bottom: 6px; align-items: center; }
-  .servicio input, .servicio select { width: 100%; padding: 8px 10px; border: 2px solid var(--borde); border-radius: 10px; font: inherit; font-size: 14px; min-width: 0; }
-  @media (max-width: 620px) { .servicio { grid-template-columns: 1fr 1fr; } .servicio .s-nombre, .servicio .s-nota { grid-column: 1 / -1; } }
+  .fila-servicio { display: grid; grid-template-columns: minmax(0, 2fr) minmax(70px, 1fr) 100px minmax(0, 2fr) 44px; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .fila-servicio .boton { padding: 6px; min-height: 38px; }
+  .fila-servicio input, .fila-servicio select { width: 100%; padding: 8px 10px; border: 2px solid var(--borde); border-radius: 10px; font: inherit; font-size: 14px; min-width: 0; }
+  @media (max-width: 620px) { .fila-servicio { grid-template-columns: 1fr 1fr 44px; padding-bottom: 10px; border-bottom: 1px solid var(--borde); margin-bottom: 10px; } .fila-servicio .s-nombre, .fila-servicio .s-nota { grid-column: 1 / -1; } .fila-servicio .s-nota { order: 5; } }
+  .tabla-mov td:first-child { white-space: nowrap; }
   .compra-estado { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
   .compra-estado b { font-weight: 700; }
 </style>
@@ -613,8 +615,8 @@ async function cargarCostos() {
     <h2 style="margin:0 0 10px">Gasto en inteligencia artificial</h2>
     <div class="grandes">${grande("Hoy", g.hoy)}${grande("Últimos 7 días", g.d7)}${grande("Este mes", g.mes)}</div>
     <div class="caja-clave" style="margin-top:12px">
-      <b>Tipo de cambio: 1 dólar = ${pesos(tc.valor)} pesos</b> <span class="ayuda">(exacto: ${Number(tc.valor).toFixed(4)})</span>
-      <div style="margin-top:4px">${tc.fecha ? `Publicado en el Diario Oficial de la Federación el ${esc(fechaLarga(tc.fecha))}.` : ""} Fuente: ${esc(tc.fuente_texto ?? tc.fuente)}.</div>
+      <b>Tipo de cambio: 1 dólar = ${Number(tc.valor).toFixed(2)} pesos</b> <span class="ayuda">(exacto: ${Number(tc.valor).toFixed(4)})</span>
+      <div style="margin-top:4px">${tc.fecha ? `Publicado el ${esc(fechaLarga(tc.fecha))}. ` : ""}Fuente: ${esc(tc.fuente_texto ?? tc.fuente)}.</div>
       ${tc.aviso ? `<div style="margin-top:4px;color:#b91c1c;font-weight:700">⚠️ ${esc(tc.aviso)}</div>` : ""}
       <div class="ayuda" style="margin-top:4px">Es el tipo de cambio oficial «para solventar obligaciones en dólares». Cada gasto se convierte con el del día en que se hizo; los fines de semana y días festivos usan el último publicado.</div>
     </div>
@@ -638,16 +640,16 @@ async function cargarCostos() {
   pintarServicios(r.servicios_fijos ?? [], r.fijos_mes_mxn, tc.valor);
 }
 function filaServicio(s = { nombre: "", monto: 0, moneda: "USD", nota: "" }) {
-  return `<div class="servicio"><input class="s-nombre" data-k="nombre" maxlength="60" placeholder="Servicio" value="${esc(s.nombre)}"><input data-k="monto" inputmode="decimal" placeholder="0" value="${esc(s.monto)}"><select data-k="moneda"><option value="USD" ${s.moneda === "USD" ? "selected" : ""}>dólares</option><option value="MXN" ${s.moneda === "MXN" ? "selected" : ""}>pesos</option></select><input class="s-nota" data-k="nota" maxlength="120" placeholder="Nota" value="${esc(s.nota ?? "")}"><button class="boton linea chico" type="button" data-quitar title="Quitar">✕</button></div>`;
+  return `<div class="fila-servicio"><input class="s-nombre" data-k="nombre" maxlength="60" placeholder="Servicio" value="${esc(s.nombre)}"><input data-k="monto" inputmode="decimal" placeholder="0" value="${esc(s.monto)}"><select data-k="moneda"><option value="USD" ${s.moneda === "USD" ? "selected" : ""}>dólares</option><option value="MXN" ${s.moneda === "MXN" ? "selected" : ""}>pesos</option></select><input class="s-nota" data-k="nota" maxlength="120" placeholder="Nota" value="${esc(s.nota ?? "")}"><button class="boton linea chico" type="button" data-quitar title="Quitar">✕</button></div>`;
 }
 function pintarServicios(lista, totalMxn, tc) {
   $("#listaServicios").innerHTML = lista.map(filaServicio).join("") + `<p class="ayuda" id="totalServicios" style="margin:8px 0 0">Total al mes: <b>${pesos(totalMxn)}</b> (dólares a ${Number(tc).toFixed(4)}).</p>`;
   activarQuitar();
 }
-function activarQuitar() { $$("#listaServicios [data-quitar]").forEach((b) => b.onclick = () => b.closest(".servicio").remove()); }
+function activarQuitar() { $$("#listaServicios [data-quitar]").forEach((b) => b.onclick = () => b.closest(".fila-servicio").remove()); }
 $("#btnAgregarServicio").onclick = () => { const t = $("#totalServicios"); const d = document.createElement("div"); d.innerHTML = filaServicio(); const fila = d.firstElementChild; if (t) t.before(fila); else $("#listaServicios").append(fila); activarQuitar(); fila.querySelector("input").focus(); };
 $("#btnGuardarServicios").onclick = async () => {
-  const servicios = $$("#listaServicios .servicio").map((f) => Object.fromEntries($$("[data-k]", f).map((el) => [el.dataset.k, el.value])));
+  const servicios = $$("#listaServicios .fila-servicio").map((f) => Object.fromEntries($$("[data-k]", f).map((el) => [el.dataset.k, el.value])));
   try { await api("/costos/servicios", { method: "POST", body: { servicios } }); aviso("Servicios guardados"); cargarCostos(); } catch (e) { aviso(e.message, true); }
 };
 $("#diasCostos").onchange = cargarCostos; $("#btnRefrescarCostos").onclick = cargarCostos;
