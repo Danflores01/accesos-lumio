@@ -12,6 +12,9 @@
 <title>SparkEd · Panel de guías</title>
 <style>
   .flujo .contenedor { max-width: 1100px; }
+  /* Cabecera en teléfono: el rótulo «Panel de guías» no se parte en tres renglones y el menú no se apelmaza. */
+  header.cab .marca small { white-space: nowrap; }
+  @media (max-width: 560px) { header.cab .marca small { display: none; } header.cab nav { flex-wrap: nowrap; white-space: nowrap; } }
   .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
   .tabs button { font: 700 15px var(--texto); padding: 10px 14px; border-radius: 999px; border: 2px solid var(--borde); background: #fff; cursor: pointer; color: var(--tinta); }
   .tabs button.on { background: var(--tinta); color: #fff; border-color: var(--tinta); }
