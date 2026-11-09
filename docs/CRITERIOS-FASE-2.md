@@ -613,3 +613,34 @@ corren naves, caballos o dragones.
   llegue: usar el teléfono guardado con lada (formato internacional) para que el mensaje llegue a cualquier país, y en
   ese momento volver a decir «por correo y por WhatsApp» en los textos (`idioma.js`: precio.l5, faq.r1, pago.guardalo,
   listo.sin_compra, listo.esperando_nota, listo.acceso4; e `index.html`).
+
+## 27. Entrega, privacidad, vista previa, WhatsApp, comentarios y costos (Daniel, 9 de noviembre de 2026)
+
+Cada punto tiene su documento con el detalle; aquí queda el criterio.
+
+- **Entrega solo de guías 100 % completas.** A la familia no se le manda ni se le muestra el link hasta que la guía está
+  completa y pasó la verificación final del cartucho. Un solo correo por compra (el de entrega) y, si WhatsApp está
+  conectado, el mensaje en ese mismo momento. Los 7 días de acceso cuentan desde la entrega. Si la generación falla, la
+  familia recibe un correo de que la estamos revisando y Daniel un aviso. Detalle: `docs/ENTREGA.md`.
+- **Accesos privados.** Cada compra tiene su propio link para esa familia y sus 2 dispositivos. Las guías vendidas ya no
+  aparecen en la app de clases de la fase 1 (ahí se podían cancelar por error); se ven en el panel de SparkEd, pestaña
+  Compras, con su fecha de entrega y la vigencia del acceso.
+- **Vista previa de 4 slides.** Portada, una pista (una página de teoría) y dos juegos de formato distinto; luego el
+  candado. Sin tutorial ni calentamiento. Lo que se genera no cambia (el bloque 1 se reutiliza al pagar), así que el
+  costo de la vista previa es el mismo: lo caro es el plan. El candado es texto de venta y va en el idioma del sitio.
+- **Formulario de la compra.** El teléfono y el correo se escriben dos veces y deben coincidir; lada por país; aviso de
+  que OXXO puede tardar horas o días; link «¿Quieres generar otra guía?» debajo del botón de pago.
+- **WhatsApp (Green API).** Es un sistema de entrega, no un chatbot: el número no contesta nada, salvo el comando
+  «compartir» (o «share»), que devuelve el link de la portada para reenviar. Solo a quien compró y máximo 2 veces al día.
+  Idioma por lada: +52 y países de habla hispana en español (también Puerto Rico y República Dominicana); +1 y el resto
+  en inglés. Mientras no esté conectado, el sitio dice «WhatsApp, próximamente»; al conectarlo, cambia solo a «por correo
+  y por WhatsApp» (claves `.wa` de `idioma.js`, según `GET /publico`). Esto sustituye el último punto de la sección 26.
+  Detalle y pasos para encenderlo: `docs/WHATSAPP.md`.
+- **Comentarios y costos.** Caja de comentarios al final de la portada, con bandeja en el panel. Costos de IA en pesos
+  con el tipo de cambio oficial del Diario Oficial de la Federación del día de cada gasto. Detalle:
+  `docs/COMENTARIOS-Y-COSTOS.md`.
+- **Sin internet.** Pantalla de Sparky reparando el router cuando el sitio no carga (solo para quien ya lo visitó antes).
+  Detalle: `docs/SIN-INTERNET.md`.
+- **Portada.** Título de prueba «Diferentes tipos de información requieren diferentes métodos de estudio» (el anterior
+  quedó en un comentario de `index.html` y en las claves `hero.titulo` y `hero.texto`). Sparky también da consejos de
+  estudio: tener pluma y libreta a la mano, y tomar descansos.
