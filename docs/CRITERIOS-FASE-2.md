@@ -753,3 +753,12 @@ Con la app lista para lanzar, Daniel pidió que su panel (`sparked/panel.html`) 
   misma conexión frenan la entrada 15 minutos. La clave de administrador de siempre queda como respaldo.
 - **Estilo.** Limpio, ordenado y minimalista. Se le enseñaron tres opciones de diseño y cuatro de letra
   (`muestras/panel-opciones/`); el estilo se cambia cuando elija.
+- **Estilo elegido (10 nov, mediodía):** opción B «Noche arriba» con la letra Inter. Barra y menú en morado noche
+  (#1B1340) con acento amarillo; contenido claro (#F5F3FA) con tarjetas blancas sin borde, sombra suave y esquinas
+  amplias; botones en píldora (principal amarillo, secundario lila, peligro rosa). Vive solo en `sparked/panel.html`
+  (clase `panel` en el `<body>`); no toca las hojas de estilo del sitio público.
+- **Impuestos (estimación).** En Costos, debajo de «Servicios que pagas cada mes», una tarjeta dice cuánto IVA e ISR
+  lleva una guía, lo que va del mes y el mes anterior completo, y cuánto conviene apartar. El IVA va incluido en el
+  precio (16 % por defecto). El ISR se calcula sobre lo cobrado sin IVA: por defecto con la tabla mensual de RESICO
+  para personas físicas (1 % a 2.5 %), o con el porcentaje fijo que Daniel escriba. Las guías con código gratis no
+  cuentan. Siempre se presenta como estimación: no resta el IVA de los gastos ni sustituye al contador.
