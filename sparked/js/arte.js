@@ -75,13 +75,24 @@ const brazo = (x, y, rot, reloj) => `<g transform="rotate(${rot} ${x + 1.15} ${y
   ${reloj ? `<rect x="${x + .35}" y="${y + 3.55}" width="1.6" height=".8" rx=".22" fill="${S.grisOscuro}" ${o(.3)}/><rect x="${x + .65}" y="${y + 3.78}" width="1" height=".35" fill="${S.led}"/>` : ""}
   <circle cx="${x + 1.15}" cy="${y + 5.1}" r="1.15" fill="${S.naranja}" ${o(.45)}/><ellipse cx="${x + .8}" cy="${y + 4.7}" rx=".4" ry=".25" fill="#fff" opacity=".5"/>
 </g>`;
+// Botas (Daniel, 9 nov 2026): el lado interior de cada bota, el que mira a la otra, va recto y con esquinas cuadradas,
+// y las dos comparten una sola línea en el centro del cuerpo (x = 8). Antes cada bota era una píldora y las dos esquinas
+// redondas juntas formaban un pico entre los pies. El lado de afuera sigue redondo, igual que siempre.
+const medioRedondo = (x, y, w, h, r, rectoDerecha) => rectoDerecha
+  ? `M${r2(x + r)} ${y} H${r2(x + w)} V${r2(y + h)} H${r2(x + r)} a${r} ${r} 0 0 1 ${-r} ${-r} V${r2(y + r)} a${r} ${r} 0 0 1 ${r} ${-r} z`
+  : `M${x} ${y} H${r2(x + w - r)} a${r} ${r} 0 0 1 ${r} ${r} V${r2(y + h - r)} a${r} ${r} 0 0 1 ${-r} ${r} H${x} z`;
+const bota = (x) => {
+  const izquierda = x < 8, bx = izquierda ? r2(x - .4) : 8, bw = izquierda ? r2(8 - bx) : r2(x + 3.2 - 8);
+  const forma = (y, h, r) => medioRedondo(bx, y, bw, h, r, izquierda);
+  return `<path d="${forma(17.9, 1.4, .65)}" fill="${S.luz}"/>
+    <path d="${forma(18.75, .55, .27)}" fill="${S.grisOscuro}"/>
+    <path d="${forma(17.9, 1.4, .65)}" fill="none" stroke="${C.linea}" stroke-width=".45" stroke-linejoin="miter" stroke-linecap="butt"/>`;
+};
 const pierna = (x) => `
     <rect x="${x}" y="16" width="2.8" height="2.6" rx="1.1" fill="${S.luz}" ${o(.5)}/>
     <rect x="${x}" y="16.6" width="2.8" height=".7" fill="${S.naranja}" ${o(.3)}/>
     <line x1="${x + .5}" y1="17.75" x2="${x + 2.3}" y2="17.75" stroke="${S.costura}" stroke-width=".22"/><line x1="${x + .5}" y1="18.1" x2="${x + 2.3}" y2="18.1" stroke="${S.costura}" stroke-width=".22"/>
-    <rect x="${x - .4}" y="17.9" width="3.6" height="1.4" rx=".65" fill="${S.luz}"/>
-    <rect x="${x - .4}" y="18.75" width="3.6" height=".55" rx=".27" fill="${S.grisOscuro}"/>
-    <rect x="${x - .4}" y="17.9" width="3.6" height="1.4" rx=".65" fill="none" ${o(.45)}/>
+    ${bota(x)}
     <rect x="${x + .7}" y="18.15" width=".9" height=".45" rx=".15" fill="${S.gris}" ${o(.25)}/>`;
 // Piernas en grupos (para caminar o patalear en el aire); "sk-arriba" hace que giren desde la cadera.
 const piernasAnimadas = () => `<g class="sk-arriba sk-pierna sk-pierna-a">${pierna(4.6)}</g><g class="sk-arriba sk-pierna sk-pierna-b">${pierna(8.6)}</g>`;

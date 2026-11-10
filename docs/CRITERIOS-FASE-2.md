@@ -644,3 +644,12 @@ Cada punto tiene su documento con el detalle; aquí queda el criterio.
 - **Portada.** Título de prueba «Diferentes tipos de información requieren diferentes métodos de estudio» (el anterior
   quedó en un comentario de `index.html` y en las claves `hero.titulo` y `hero.texto`). Sparky también da consejos de
   estudio: tener pluma y libreta a la mano, y tomar descansos.
+
+## 28. Sparky: botas con el interior recto (Daniel, 9 de noviembre de 2026)
+
+A Daniel le molestaba el pico que formaban, entre los pies, las esquinas redondas de las dos botas. Criterio aprobado
+con muestra (opción 1): el lado interior de cada bota, el que mira a la otra, es recto y con esquinas cuadradas, y las
+dos botas comparten una sola línea en el centro, del mismo grosor que el resto del contorno. El lado de afuera de cada
+bota sigue redondo y todo lo demás de Sparky queda igual. Está en `sparked/js/arte.js` (`bota()` y `medioRedondo()`),
+de donde lo heredan todas las poses, el Sparky chico de los juegos y el del duelo. La pantalla sin internet lleva una
+copia del dibujo: al cambiar a Sparky hay que regenerarla y subir la versión de la caché en `sparked/sw.js`.

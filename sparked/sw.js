@@ -3,7 +3,7 @@
 // así que nadie ve versiones viejas del sitio. No intercepta scripts, imágenes ni llamadas al servidor (Supabase).
 // Para quitarlo si diera problemas, ver docs/SIN-INTERNET.md (publicar un sw.js que se desregistre).
 const PREFIJO = "sparked-sin-internet-";
-const CACHE = PREFIJO + "v1";
+const CACHE = PREFIJO + "v2";
 const PAGINA = new URL("sin-internet.html", self.registration.scope).href;
 
 self.addEventListener("install", (evento) => {
