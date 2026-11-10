@@ -361,6 +361,40 @@ export function calcularCostos(e: {
   };
 }
 
+// ---------- Impuestos estimados: IVA e ISR (pedido de Daniel, 10 nov 2026) ----------
+// Una ESTIMACIÓN para que Daniel aparte lo que le toca al SAT; no sustituye a su contador ni a su declaración.
+//   IVA: el precio de la guía ya lo incluye. De lo cobrado, IVA = cobrado × tasa / (100 + tasa). No se resta el IVA
+//        que él paga en sus gastos con factura (eso lo acredita su contador), así que es el tope de lo que entrega.
+//   ISR: sobre lo cobrado SIN IVA. Modo "resico" (por defecto) = tabla mensual del Régimen Simplificado de Confianza
+//        para personas físicas (art. 113-E de la Ley del ISR): la tasa depende del ingreso del mes y se aplica a todo
+//        ese ingreso. Modo "fijo" = el porcentaje que Daniel escriba en el panel (el que le dé su contador).
+// Ajustes (tabla config): sparked_iva_tasa (16), sparked_isr_modo ("resico" | "fijo"), sparked_isr_tasa (porcentaje).
+export const TABLA_RESICO: [number, number][] = [[25000, 1], [50000, 1.1], [83333.33, 1.5], [208333.33, 2], [3500000, 2.5]];
+export type AjusteImpuestos = { iva: number; isrModo: "resico" | "fijo"; isrTasa: number };
+export function leerAjusteImpuestos(cfg: Record<string, string>): AjusteImpuestos {
+  const num = (v: unknown, def: number) => { const t = String(v ?? "").trim().replace(",", "."); const n = Number(t); return t !== "" && Number.isFinite(n) && n >= 0 && n <= 50 ? n : def; };
+  return { iva: num(cfg.sparked_iva_tasa, 16), isrModo: cfg.sparked_isr_modo === "fijo" ? "fijo" : "resico", isrTasa: num(cfg.sparked_isr_tasa, 0) };
+}
+// Tasa de ISR (en %) para un mes, según lo cobrado sin IVA en ese mes.
+export function tasaIsr(a: AjusteImpuestos, sinIvaMes: number): number {
+  if (a.isrModo === "fijo") return a.isrTasa;
+  for (const [tope, tasa] of TABLA_RESICO) if (sinIvaMes <= tope) return tasa;
+  return TABLA_RESICO[TABLA_RESICO.length - 1][1];
+}
+function partirImpuestos(a: AjusteImpuestos, cobrado: number, tasa: number) {
+  const sinIva = cobrado / (1 + a.iva / 100), iva = cobrado - sinIva, isr = sinIva * tasa / 100;
+  return { cobrado_mxn: r2(cobrado), sin_iva_mxn: r2(sinIva), iva_mxn: r2(iva), isr_mxn: r2(isr), impuestos_mxn: r2(iva + isr), queda_mxn: r2(cobrado - iva - isr) };
+}
+// Impuestos de un mes: lo cobrado (con IVA) en ventas pagadas con dinero; las guías con código gratis no cuentan.
+export function impuestosDelMes(a: AjusteImpuestos, cobrado: number, ventas: number) {
+  const tasa = tasaIsr(a, cobrado / (1 + a.iva / 100));
+  return { ventas, isr_tasa: tasa, ...partirImpuestos(a, cobrado, tasa) };
+}
+// Lo que lleva de impuestos UNA guía al precio de hoy, con la tasa de ISR que corresponde al mes en curso.
+export function calcularImpuestos(a: AjusteImpuestos, cobradoMes: number, ventasMes: number, precio: number) {
+  const mes = impuestosDelMes(a, cobradoMes, ventasMes);
+  return { iva_tasa: a.iva, isr_modo: a.isrModo, isr_tasa_fija: a.isrTasa, tabla_resico: TABLA_RESICO, mes, por_guia: { precio_mxn: r2(precio), isr_tasa: mes.isr_tasa, ...partirImpuestos(a, precio, mes.isr_tasa) } };
+}
 const CLAVE_SERVICIOS = "sparked_servicios_fijos";
 async function leerServicios(c: CtxRutas): Promise<{ servicios: Servicio[]; guardados: boolean }> {
   const { data } = await c.supabase.from("config").select("valor").eq("clave", CLAVE_SERVICIOS).maybeSingle();
@@ -482,7 +516,15 @@ async function adminCostos(c: CtxRutas): Promise<Response> {
   else if (consulta === "fallo") aviso = `No se pudo consultar el DOF en este momento; se usa el último tipo de cambio guardado (publicado el ${fecha(tc.fecha)}).`;
   const fuenteTexto: Record<string, string> = { DOF: "Diario Oficial de la Federación (API abierta del DOF)", Banxico: "Banco de México (API SIE, mismo dato que publica el DOF)", ajuste: "Ajustes del panel (no es el tipo de cambio oficial)" };
   const fuente = tc ? tc.fuente : "ajuste";
+  // Impuestos estimados: lo que va del mes y el mes anterior completo (el que toca declarar).
+  const inicioMes = hoy.slice(0, 8) + "01", finAnterior = sumarDias(inicioMes, -1), inicioAnterior = finAnterior.slice(0, 8) + "01";
+  const ant = await c.supabase.from("compras").select("monto_mxn, metodo_pago").eq("estado", "pagada").gte("pagada_en", inicioDiaIso(inicioAnterior)).lt("pagada_en", inicioDiaIso(inicioMes)).limit(5000);
+  let cobradoAnt = 0, ventasAnt = 0;
+  for (const x of (ant.data ?? []) as any[]) { const m = x.metodo_pago === "codigo" ? 0 : Number(x.monto_mxn ?? 0) || 0; if (m > 0) { cobradoAnt += m; ventasAnt++; } }
+  const ajusteImp = leerAjusteImpuestos(cfg);
+  const impuestos = { ...calcularImpuestos(ajusteImp, r.ingresos.mes.mxn, r.ingresos.mes.ventas, Number(cfg.sparked_precio) || 100), mes_desde: inicioMes, mes_anterior: { desde: inicioAnterior, hasta: finAnterior, ...impuestosDelMes(ajusteImp, cobradoAnt, ventasAnt) } };
   return c.json({
+    impuestos,
     tipo_cambio: {
       valor: tc ? tc.valor : ajusteTc, fecha: tc?.fecha ?? null, fuente, fuente_texto: fuenteTexto[fuente] ?? fuente,
       consulta, aviso, publicado_hoy: tc?.fecha === hoy, dias_guardados: tipos.length,

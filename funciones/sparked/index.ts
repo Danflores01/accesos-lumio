@@ -23,7 +23,7 @@ import { imagenEntrega, imagenCompartir } from "./imagen-wa.ts";
 import { matrizQr } from "./qr.ts";
 import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 
-const VERSION = "2026-11-10.3";
+const VERSION = "2026-11-10.4";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -87,6 +87,8 @@ const CONFIG_DEF: Record<string, string> = {
   // Mensajes de WhatsApp que se mandan solos (whatsapp.ts). Vacío = el texto original. Se editan en Ajustes → WhatsApp.
   sparked_wa_entrega_es: "", sparked_wa_entrega_en: "", sparked_wa_compartir_es: "", sparked_wa_compartir_en: "",
   sparked_wa_imagenes: "si", // "no" = los mensajes de WhatsApp salen solo con texto (sin la imagen de Sparky)
+  // Impuestos estimados de la pestaña Costos (extras.ts): IVA incluido en el precio y cómo se calcula el ISR.
+  sparked_iva_tasa: "16", sparked_isr_modo: "resico", sparked_isr_tasa: "",
   // Ya no se usa (9 nov 2026): la familia recibe su link solo cuando la guía está completa y verificada.
   sparked_jugar_durante_generacion: "no",
   // Modelo (haiku | sonnet | opus) y esfuerzo (low | medium | high) de cada paso de la IA. El defecto es el de siempre.
