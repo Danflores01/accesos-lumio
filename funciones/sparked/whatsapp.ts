@@ -2,9 +2,10 @@
 // Módulo aparte: entrega de guías por WhatsApp (Green API) y comando "compartir".
 // index.ts llama a rutasWhatsApp() en cada petición y a avisarPorWhatsApp() cuando una guía pagada queda 100 % lista.
 //
-// Es un sistema de ENTREGA, no un chatbot: el número de SparkEd no contesta nada, salvo el comando "compartir"
-// (o "share"), y solo a chats individuales cuyo número coincide con una compra pagada (máximo 2 respuestas por chat
-// cada 24 horas). Documentación: docs/WHATSAPP.md.
+// Es un sistema de ENTREGA, no un chatbot: el número de SparkEd no contesta nada por su cuenta, salvo el comando
+// "compartir" (o "share"), y solo a chats individuales cuyo número coincide con una compra pagada (máximo 2 respuestas
+// por chat cada 24 horas). Desde el 10 nov 2026 Daniel también puede leer los chats y contestar a mano desde su panel
+// (sección «Chats en el panel», más abajo). Documentación: docs/WHATSAPP.md.
 //
 // Secretos (Supabase → Edge Functions → Secrets):
 //   GREEN_API_ID_INSTANCE · GREEN_API_TOKEN_INSTANCE · GREEN_API_URL (opcional, la "apiUrl" de la instancia).
@@ -17,8 +18,12 @@
 //   GET  {apiUrl}/waInstance{id}/getStateInstance/{token} → { stateInstance }
 //   GET  {apiUrl}/waInstance{id}/getSettings/{token}     → { wid, webhookUrl, webhookUrlToken, ... }
 //   POST {apiUrl}/waInstance{id}/setSettings/{token}     { webhookUrl, webhookUrlToken, incomingWebhook, ... } → { saveSettings }
+//   GET  {apiUrl}/waInstance{id}/lastIncomingMessages/{token}?minutes=N → mensajes recibidos (historial de Green API)
+//   GET  {apiUrl}/waInstance{id}/lastOutgoingMessages/{token}?minutes=N → mensajes enviados
+//   POST {apiUrl}/waInstance{id}/getChatHistory/{token}  { chatId, count } → mensajes de un chat, del más nuevo al más viejo
 // Avisos que llegan al webhook: incomingMessageReceived (textMessage, extendedTextMessage, quotedMessage),
-// stateInstanceChanged, quotaExceeded y outgoingMessageStatus (noAccount y failed llegan siempre).
+// stateInstanceChanged, quotaExceeded y outgoingMessageStatus (noAccount y failed llegan siempre). Con los chats del
+// panel también llegan outgoingMessageReceived (lo escrito en el teléfono) y los demás estados de envío: se ignoran.
 import type { CtxBase, CtxRutas, Entrega } from "./tipos.ts";
 
 
@@ -68,11 +73,12 @@ export function motivoDeError(txt: string): string {
   return sinLlave(motivo).replace(/\s+/g, " ").trim().slice(0, 200);
 }
 
-async function api(metodo: string, cuerpo?: Record<string, unknown>): Promise<any> {
+// consulta (opcional): parámetros de la dirección, por ejemplo "minutes=10080"; van después de la llave.
+async function api(metodo: string, cuerpo?: Record<string, unknown>, consulta = ""): Promise<any> {
   const k = llaves();
   let r: Response;
   try {
-    r = await fetch(`${k.url}/waInstance${k.id}/${metodo}/${k.token}`, {
+    r = await fetch(`${k.url}/waInstance${k.id}/${metodo}/${k.token}${consulta ? "?" + consulta : ""}`, {
       method: cuerpo ? "POST" : "GET",
       headers: cuerpo ? { "content-type": "application/json" } : {},
       body: cuerpo ? JSON.stringify(cuerpo) : undefined,
@@ -624,6 +630,208 @@ async function tokenValido(req: Request): Promise<boolean> {
   return dif === 0;
 }
 
+// ---------- Chats en el panel (10 nov 2026) ----------
+// Daniel lee los chats de WhatsApp y contesta a mano desde el Resumen de su panel. La lista y los mensajes salen del
+// historial que guarda Green API; aquí NO se guarda ningún texto (la bitácora wa_mensajes solo anota que salió un
+// mensaje de tipo "chat"). La llave de la instancia nunca sale del servidor: por eso el panel no incrusta la pantalla
+// de chats de Green API (chats.green-api.com), que exige poner la llave en la dirección de la página.
+// Límite de Green API: una llamada por segundo a cada método del historial; el panel pregunta cada 15–30 segundos.
+// Para que el historial traiga también lo que Daniel escribe en su teléfono hace falta el ajuste
+// outgoingMessageWebhook (lo deja puesto /admin/whatsapp/configurar).
+const DIAS_CHATS = 7;                // la lista muestra los chats con mensajes en estos días
+const MAX_CHATS = 80;
+const MENSAJES_POR_CHAT = 60;        // mensajes que se piden al abrir un chat
+const MAX_MENSAJES_CHAT = 200;
+export const MAX_TEXTO_CHAT = 4000;  // lo más que se manda en un mensaje escrito desde el panel
+const MAX_MINIATURA = 60000;         // tope de la vista previa de una foto (caracteres en base64)
+
+const TIPOS_CHAT: Record<string, string> = {
+  textMessage: "texto", extendedTextMessage: "texto", quotedMessage: "texto",
+  imageMessage: "foto", videoMessage: "video", audioMessage: "audio", documentMessage: "documento", stickerMessage: "sticker",
+  locationMessage: "ubicacion", contactMessage: "contacto", contactsArrayMessage: "contacto", pollMessage: "encuesta",
+};
+const SIN_BURBUJA = new Set(["reactionMessage", "pollUpdateMessage"]);   // reacciones y votos: no son mensajes para leer
+
+export type MensajeChat = {
+  id: string; mio: boolean; hora: number;            // hora: segundos desde 1970 (como la da Green API)
+  tipo: string;                                      // texto · foto · video · audio · documento · sticker · ubicacion · contacto · encuesta · eliminado · otro
+  texto: string;
+  archivo?: { url: string; nombre: string; mime: string };
+  miniatura?: string;                                // vista previa en base64 (JPEG), solo fotos, videos y stickers
+  estado?: string;                                   // solo los míos: pending · sent · delivered · read · failed…
+  detalle?: string;                                  // motivo, cuando el envío falló
+};
+
+const textoLimpio = (v: unknown, n = 8000) => String(v ?? "").replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "").slice(0, n);
+
+// Convierte un mensaje del historial de Green API en lo mínimo que el panel necesita. null = no se muestra.
+export function resumirMensaje(m: any): MensajeChat | null {
+  const tm = String(m?.typeMessage ?? ""), id = String(m?.idMessage ?? ""), hora = Number(m?.timestamp) || 0;
+  if (!id || !hora || SIN_BURBUJA.has(tm)) return null;
+  const mio = m.type === "outgoing";
+  const r: MensajeChat = { id, mio, hora, tipo: TIPOS_CHAT[tm] ?? "otro", texto: "" };
+  if (mio && m.statusMessage) r.estado = String(m.statusMessage).slice(0, 20);
+  if (mio && m.statusMessage === "failed" && m.description) r.detalle = recorte(sinLlave(m.description), 160);
+  if (m.isDeleted === true || tm === "deletedMessage") { r.tipo = "eliminado"; return r; }
+  if (r.tipo === "texto") r.texto = textoLimpio(m.textMessage || m.extendedTextMessage?.text || "");
+  else if (r.tipo === "ubicacion") {
+    r.texto = textoLimpio([m.location?.nameLocation, m.location?.address].filter(Boolean).join(" · "), 300);
+    const lat = Number(m.location?.latitude), lon = Number(m.location?.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lon) && (lat || lon)) r.archivo = { url: `https://maps.google.com/?q=${lat},${lon}`, nombre: "", mime: "" };
+  } else if (r.tipo === "contacto") r.texto = textoLimpio(m.contact?.displayName ?? "", 200);
+  else if (r.tipo === "encuesta") r.texto = textoLimpio(m.pollMessageData?.name ?? "", 300);
+  else if (r.tipo !== "otro") {
+    // Foto, video, audio, documento o sticker: pie de foto, link para abrirlo y, si viene, la vista previa.
+    r.texto = textoLimpio(m.caption ?? "");
+    const url = String(m.downloadUrl ?? "");
+    if (/^https:\/\/[^\s"'<>]+$/.test(url)) r.archivo = { url, nombre: textoLimpio(m.fileName ?? "", 120), mime: textoLimpio(m.mimeType ?? "", 80) };
+    const mini = String(m.jpegThumbnail ?? "");
+    if ((r.tipo === "foto" || r.tipo === "video" || r.tipo === "sticker") && mini.length > 100 && mini.length <= MAX_MINIATURA && /^[A-Za-z0-9+/]+=*$/.test(mini)) r.miniatura = mini;
+  }
+  return r;
+}
+
+// "5212291234567" → "+52 229 123 4567" (México, con o sin el 1); cualquier otro país: "+" y los dígitos.
+export function telefonoBonito(digitos: unknown): string {
+  let d = String(digitos ?? "").replace(/\D/g, "");
+  if (d.startsWith("521") && d.length === 13) d = "52" + d.slice(3);
+  if (d.startsWith("52") && d.length === 12) return `+52 ${d.slice(2, 5)} ${d.slice(5, 8)} ${d.slice(8)}`;
+  return d ? "+" + d : "";
+}
+
+// Junta los mensajes recibidos y los enviados en una lista de chats (solo chats individuales: sin grupos, estados ni
+// canales), del más reciente al más viejo. sin_responder = mensajes del cliente que llegaron después de la última
+// respuesta. contacto = nombre guardado en la agenda del teléfono; perfil = nombre que la persona se puso en WhatsApp.
+export function armarChats(entrantes: unknown, salientes: unknown): Array<{ chat: string; contacto: string; perfil: string; ultimo: MensajeChat; sin_responder: number }> {
+  const grupos = new Map<string, { chat: string; contacto: string; perfil: string; horaNombre: number; ultimo: MensajeChat; ultimaSalida: number; entradas: number[] }>();
+  const meter = (lista: unknown, mio: boolean) => {
+    for (const m of Array.isArray(lista) ? lista : []) {
+      const chat = String(m?.chatId ?? "");
+      if (!esChatIndividual(chat)) continue;
+      const r = resumirMensaje({ ...m, type: mio ? "outgoing" : "incoming" });
+      if (!r) continue;
+      let g = grupos.get(chat);
+      if (!g) { g = { chat, contacto: "", perfil: "", horaNombre: 0, ultimo: r, ultimaSalida: 0, entradas: [] }; grupos.set(chat, g); }
+      if (r.hora > g.ultimo.hora) g.ultimo = r;
+      if (mio) g.ultimaSalida = Math.max(g.ultimaSalida, r.hora);
+      else {
+        g.entradas.push(r.hora);
+        if (r.hora >= g.horaNombre) {
+          g.horaNombre = r.hora;
+          g.contacto = sinFormato(m.senderContactName).slice(0, 80) || g.contacto;
+          g.perfil = sinFormato(m.senderName).slice(0, 80) || g.perfil;
+        }
+      }
+    }
+  };
+  meter(entrantes, false);
+  meter(salientes, true);
+  return [...grupos.values()]
+    .map((g) => ({ chat: g.chat, contacto: g.contacto, perfil: g.perfil, ultimo: g.ultimo, sin_responder: g.entradas.filter((h) => h > g.ultimaSalida).length }))
+    .sort((a, b) => b.ultimo.hora - a.ultimo.hora)
+    .slice(0, MAX_CHATS);
+}
+
+// A qué compra corresponde cada chat, para decirle a Daniel con quién habla: por los últimos 10 dígitos del teléfono o,
+// si el chat es un @lid (WhatsApp oculta el número), por una entrega anterior a ese mismo chat. De varias compras del
+// mismo teléfono gana la más nueva, y una pagada le gana a una pendiente.
+async function clientesDeChats(c: CtxBase, chats: string[]): Promise<Map<string, { nombre: string; guia: string; estado: string; telefono: string }>> {
+  const mapa = new Map<string, { nombre: string; guia: string; estado: string; telefono: string }>();
+  if (!chats.length) return mapa;
+  try {
+    const { data: compras } = await c.supabase.from("compras").select("id, nombre, telefono, titulo, estado, creada_en").order("creada_en", { ascending: false }).limit(500);
+    const porTelefono = new Map<string, any>(), porId = new Map<string, any>();
+    for (const cp of compras ?? []) {
+      porId.set(String(cp.id), cp);
+      const k = ultimos(telefonoInternacional(cp.telefono));
+      if (k.length < 8) continue;
+      const ya = porTelefono.get(k);
+      if (!ya || (ya.estado !== "pagada" && cp.estado === "pagada")) porTelefono.set(k, cp);
+    }
+    const lids = chats.filter((ch) => ch.endsWith("@lid")), porLid = new Map<string, any>();
+    if (lids.length) {
+      const { data: envios } = await c.supabase.from("wa_mensajes").select("chat, compra_id, creado_en").eq("direccion", "salida").eq("tipo", "entrega").in("chat", lids).not("compra_id", "is", null).order("creado_en", { ascending: false }).limit(500);
+      for (const e of envios ?? []) if (!porLid.has(String(e.chat)) && porId.has(String(e.compra_id))) porLid.set(String(e.chat), porId.get(String(e.compra_id)));
+    }
+    for (const ch of chats) {
+      const cp = ch.endsWith("@lid") ? porLid.get(ch) : porTelefono.get(ultimos(ch.split("@")[0]));
+      if (cp) mapa.set(ch, { nombre: sinFormato(cp.nombre).slice(0, 80), guia: sinFormato(cp.titulo).slice(0, 120), estado: String(cp.estado ?? ""), telefono: telefonoInternacional(cp.telefono) });
+    }
+  } catch (e) { console.warn("Chats de WhatsApp, compras:", (e as Error).message); }
+  return mapa;
+}
+
+// Rutas /admin/whatsapp/chats… (ya se comprobó que quien pide es el administrador).
+async function rutasChats(c: CtxRutas): Promise<Response> {
+  const r3 = c.ruta[3], q = new URL(c.req.url).searchParams;
+  if (c.ruta.length > 4) return c.error("Ruta no encontrada", 404);
+  if (!motorWhatsApp()) return c.error("WhatsApp no está conectado.", 400);
+
+  // Lista de chats con mensajes en los últimos días.
+  if (!r3 && c.m === "GET") {
+    const minutos = `minutes=${DIAS_CHATS * 1440}`;
+    let entrantes: unknown, salientes: unknown;
+    try {
+      [entrantes, salientes] = await Promise.all([api("lastIncomingMessages", undefined, minutos), api("lastOutgoingMessages", undefined, minutos)]);
+    } catch (e) {
+      return c.error(`No se pudieron leer los chats: ${recorte((e as Error).message, 200)}`, 502);
+    }
+    const grupos = armarChats(entrantes, salientes);
+    const clientes = await clientesDeChats(c, grupos.map((g) => g.chat));
+    const chats = grupos.map((g) => {
+      const cl = clientes.get(g.chat) ?? null;
+      const telefono = telefonoBonito(g.chat.endsWith("@c.us") ? g.chat.split("@")[0] : cl?.telefono ?? "");
+      return {
+        chat: g.chat,
+        nombre: g.contacto || cl?.nombre || g.perfil || telefono || "Sin nombre",
+        telefono,
+        cliente: cl ? { nombre: cl.nombre, guia: cl.guia, estado: cl.estado } : null,
+        ultimo: { texto: g.ultimo.texto.replace(/\s+/g, " ").trim().slice(0, 140), hora: g.ultimo.hora, mio: g.ultimo.mio, tipo: g.ultimo.tipo, estado: g.ultimo.estado ?? null },
+        sin_responder: g.sin_responder,
+      };
+    });
+    return c.json({ chats, dias: DIAS_CHATS });
+  }
+
+  // Mensajes de un chat, del más viejo al más nuevo: ?chat=<id del chat>&cuantos=60
+  if (r3 === "mensajes" && c.m === "GET") {
+    const chat = String(q.get("chat") ?? "");
+    if (!esChatIndividual(chat)) return c.error("Chat no válido.");
+    const cuantos = Math.min(MAX_MENSAJES_CHAT, Math.max(1, Math.floor(Number(q.get("cuantos")) || MENSAJES_POR_CHAT)));
+    let historial: unknown;
+    try {
+      historial = await api("getChatHistory", { chatId: chat, count: cuantos });
+    } catch (e) {
+      return c.error(`No se pudo leer la conversación: ${recorte((e as Error).message, 200)}`, 502);
+    }
+    const mensajes = (Array.isArray(historial) ? historial : []).map(resumirMensaje).filter((x): x is MensajeChat => !!x).reverse().sort((a, b) => a.hora - b.hora);
+    return c.json({ chat, mensajes });
+  }
+
+  // Manda un mensaje de texto escrito por Daniel en el panel: { chat, texto }.
+  if (r3 === "enviar" && c.m === "POST") {
+    const body = await c.leerJson(c.req);
+    const chat = String(body.chat ?? "");
+    if (!esChatIndividual(chat)) return c.error("Chat no válido.");
+    const texto = textoLimpio(body.texto, MAX_TEXTO_CHAT + 1).trim();
+    if (!texto) return c.error("Escribe un mensaje.");
+    if (texto.length > MAX_TEXTO_CHAT) return c.error(`El mensaje es muy largo (máximo ${MAX_TEXTO_CHAT} caracteres).`);
+    // Con el teléfono desconectado Green API guardaría el mensaje y lo mandaría horas después: mejor avisar y no mandar.
+    const estado = await estadoInstancia();
+    if (ESTADOS_MALOS[estado] || estado === "starting") return c.error(`No se mandó: ${ESTADOS_MALOS[estado] ?? "WhatsApp está arrancando; inténtalo de nuevo en un minuto"}.`, 409);
+    try {
+      const id = await enviarTexto(chat, texto);
+      await anotar(c, { direccion: "salida", tipo: "chat", chat, estado: "enviado", id_mensaje: id });
+      return c.json({ ok: true, id_mensaje: id, hora: Math.floor(Date.now() / 1000) });
+    } catch (e) {
+      await anotar(c, { direccion: "salida", tipo: "chat", chat, estado: "fallido", detalle: (e as Error).message });
+      return c.error(`No se pudo mandar: ${recorte((e as Error).message, 200)}`, 502);
+    }
+  }
+
+  return c.error("Ruta no encontrada", 404);
+}
+
 // ---------- Rutas ----------
 export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
   const [r0, r1, r2] = c.ruta;
@@ -645,10 +853,16 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
   if (r0 !== "admin") return null;
   if (!(await c.esAdmin())) return c.error("No autorizado", 401);
 
+  // Chats para el panel: lista, mensajes de un chat y enviar.
+  if (r2 === "chats") return await rutasChats(c);
+
   // Estado para el panel.
   if (!r2 && c.m === "GET") {
     const motor = motorWhatsApp();
     let estado_instancia: string | null = null, numero: string | null = null, webhook_configurado = false;
+    // historial_del_telefono: null = no se pudo preguntar; false = lo que Daniel escribe en su teléfono no aparece en
+    // los chats del panel hasta que pulse «Conectar» (ajuste outgoingMessageWebhook).
+    let historial_del_telefono: boolean | null = null;
     if (motor) {
       estado_instancia = await estadoInstancia();
       try {
@@ -657,6 +871,7 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
         if (numero) numero = "+" + numero;
         const tok = await tokenWebhook();
         webhook_configurado = s?.webhookUrl === urlWebhook() && String(s?.webhookUrlToken ?? "").replace(/^Bearer\s+/i, "") === tok && s?.incomingWebhook === "yes";
+        historial_del_telefono = s?.outgoingMessageWebhook === "yes";
       } catch { /* se queda en null / false */ }
     }
     const desde = new Date(Date.now() - 7 * 86400_000).toISOString();
@@ -671,7 +886,7 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
     const cfg = await ajustesDe(c);
     const mensajes = Object.fromEntries((Object.keys(PLANTILLAS_ORIGINALES) as ClavePlantilla[]).map((k) => [k, { ...plantillaVigente(k, cfg), clave: CLAVES_PLANTILLA[k] }]));
     const ejemplo = { ...EJEMPLO, link: `${await c.sitio()}guia.html#ejemplo`, portada: PORTADA, maximo: MAX_PLANTILLA };
-    return c.json({ motor, estado_instancia, numero, enviados_7d, fallidos_7d, compartir_7d, ultimo_error, webhook_configurado, mensajes, ejemplo });
+    return c.json({ motor, estado_instancia, numero, enviados_7d, fallidos_7d, compartir_7d, ultimo_error, webhook_configurado, historial_del_telefono, mensajes, ejemplo });
   }
 
   // Vista de la imagen que acompaña a un mensaje (PNG): ?tipo=entrega|compartir&idioma=es|en. La de entrega sale con
@@ -693,15 +908,17 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
   if (c.m !== "POST") return c.error("Ruta no encontrada", 404);
   if (!motorWhatsApp()) return c.error("WhatsApp no está conectado: faltan las llaves de Green API en los secretos de Supabase (GREEN_API_ID_INSTANCE y GREEN_API_TOKEN_INSTANCE).", 400);
 
-  // Deja la instancia lista: webhook con su token, avisos entrantes y de estado encendidos, lo demás apagado.
+  // Deja la instancia lista: webhook con su token y avisos entrantes y de estado encendidos. Para los chats del panel
+  // también se encienden outgoingMessageWebhook (lo que Daniel escribe en su teléfono queda en el historial) y
+  // outgoingWebhook (enviado, entregado y leído de cada mensaje). Lo demás, apagado.
   if (r2 === "configurar") {
     const ajustes = {
       webhookUrl: urlWebhook(),
       webhookUrlToken: await tokenWebhook(),
       incomingWebhook: "yes",
       stateWebhook: "yes",
-      outgoingWebhook: "no",
-      outgoingMessageWebhook: "no",
+      outgoingWebhook: "yes",
+      outgoingMessageWebhook: "yes",
       outgoingAPIMessageWebhook: "no",
       incomingCallWebhook: "no",
       pollMessageWebhook: "no",
