@@ -1,0 +1,5 @@
+{
+  "nota": "Dónde dibuja el servidor el código QR en las plantillas de entrega (funciones/sparked/imagen-wa.ts). La zona es un cuadrado de blanco puro: x, y = esquina superior izquierda; lado en píxeles.",
+  "entrega-es": { "ancho": 1080, "alto": 1350, "zona": { "x": 190, "y": 562, "lado": 700 } },
+  "entrega-en": { "ancho": 1080, "alto": 1350, "zona": { "x": 190, "y": 562, "lado": 700 } }
+}
