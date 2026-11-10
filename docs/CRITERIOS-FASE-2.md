@@ -727,3 +727,29 @@ Primera entrega real por WhatsApp (al segundo número de Daniel) y lo que pidió
   número cuenta como un chat. Para vender hace falta una instancia en plan Business (12 dólares al mes). En la consola,
   la instancia gratis no ofrece cambio de plan: se compra una instancia Business nueva («Create an instance»), se
   enlaza el mismo número con su código QR y se cambian las tres llaves en Supabase.
+
+## 31. Panel de administración: qué se ve, menú y entrada con correo (Daniel, 10 de noviembre de 2026)
+
+Con la app lista para lanzar, Daniel pidió que su panel (`sparked/panel.html`) sirva para rastrear el negocio y nada más.
+
+- **Privacidad de las familias.** En el panel no se muestra quién generó cada guía ni cómo se llama; tampoco hay «ver
+  como profesor», «editar detalles» ni creación de guías. Las guías se siguen guardando en la base de datos.
+- **«Guías» son números.** Cuántas guías completas y vistas previas se generaron, el costo promedio de IA de cada una
+  y la lista de las últimas con fecha, tipo y costo, con la explicación de cómo se calcula y qué no incluye. Sale de
+  `GET /admin/costos/guias`, que no devuelve títulos, nombres ni identificadores.
+- **«Compras» son clientes.** Nombre del cliente en negritas, folio, teléfono y correo, para revisar en Mercado Pago
+  y marcar pagada; sin la materia ni el título de la guía.
+- **Códigos.** Además de copiar y encender o apagar, se pueden borrar. Borrar es definitivo para quien lo usa (deja de
+  valer al momento y ya no aparece), pero el historial se conserva (`codigos.borrado_en`).
+- **Sin colegios.** Se quitó el rubro del panel y el campo «Colegio (opcional)» del formulario. No se borraron tablas
+  ni columnas.
+- **Lo que no se consulta a diario va plegado.** «Motores» en Resumen y «WhatsApp (Green API)» en Ajustes se abren y
+  se cierran, con un renglón que resume su estado aunque estén cerrados.
+- **Menú de hamburguesa en cualquier dispositivo.** Las secciones viven en un menú lateral; la cabecera dice en qué
+  sección se está.
+- **Entrada con correo y contraseña.** La contraseña la crea Daniel en Ajustes; se guarda cifrada en el servicio de
+  cuentas de Supabase y nadie puede verla. Reglas: mínimo 10 caracteres; solo entra la cuenta que este servidor marcó
+  como administrador; crear o cambiar la contraseña exige la clave de administrador; 8 intentos fallidos desde una
+  misma conexión frenan la entrada 15 minutos. La clave de administrador de siempre queda como respaldo.
+- **Estilo.** Limpio, ordenado y minimalista. Se le enseñaron tres opciones de diseño y cuatro de letra
+  (`muestras/panel-opciones/`); el estilo se cambia cuando elija.
