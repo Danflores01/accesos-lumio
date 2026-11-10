@@ -21,8 +21,9 @@ import { rutasExtras, codigoBorrado } from "./extras.ts";
 import { rutasWhatsApp, avisarPorWhatsApp, motorWhatsApp } from "./whatsapp.ts";
 import { imagenEntrega, imagenCompartir } from "./imagen-wa.ts";
 import { matrizQr } from "./qr.ts";
+import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 
-const VERSION = "2026-11-10.2";
+const VERSION = "2026-11-10.3";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -34,7 +35,7 @@ const APARATOS = 2;
 
 const CORS = {
   "access-control-allow-origin": "*",
-  "access-control-allow-headers": "content-type, x-admin-key, x-interno",
+  "access-control-allow-headers": "content-type, x-admin-key, x-interno, authorization",
   "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -111,7 +112,8 @@ const linkDe = (base: string, token: string) => `${base}guia.html#${token}`;
 const CLAVES_CONFIG = ["admin_key_sha256", "recovery_key_sha256"];
 let hashes: string[] | null = null;
 async function cargarHashes(): Promise<string[]> { const { data } = await supabase.from("config").select("valor").in("clave", CLAVES_CONFIG); return (data ?? []).map((r) => r.valor); }
-async function autorizado(req: Request): Promise<boolean> {
+// Administrador con la clave de siempre (cabecera x-admin-key).
+async function autorizadoConClave(req: Request): Promise<boolean> {
   const clave = req.headers.get("x-admin-key") ?? ""; if (!clave) return false;
   const h = await sha256hex(clave);
   if (!hashes) hashes = await cargarHashes();
@@ -845,7 +847,12 @@ function normalizarCartucho(c: any) {
 }
 
 // ---------- Servidor ----------
-// ---------- Módulos aparte: comentarios y costos (extras.ts) y WhatsApp (whatsapp.ts) ----------
+// Administrador: con la clave de siempre o con una sesión de correo y contraseña (acceso.ts).
+async function autorizado(req: Request): Promise<boolean> {
+  return (await autorizadoConClave(req)) || !!(await sesionAdmin(ctxBase(), req));
+}
+
+// ---------- Módulos aparte: entrada con correo y contraseña (acceso.ts), comentarios y costos (extras.ts) y WhatsApp (whatsapp.ts) ----------
 // Cada módulo recibe este contexto (tipos.ts) y decide si la ruta es suya; si no, devuelve null.
 // Imagen de cada mensaje de WhatsApp: la entrega lleva el QR del link de esa guía; «compartir» es una imagen fija.
 const imagenWhatsApp = async (tipo: "entrega" | "compartir", idioma: "es" | "en", link?: string): Promise<Uint8Array | null> =>
@@ -853,7 +860,7 @@ const imagenWhatsApp = async (tipo: "entrega" | "compartir", idioma: "es" | "en"
 const ctxBase = (): CtxBase => ({ supabase, config, sitio, ahora, mandarCorreo, avisarDaniel, enSegundoPlano, imagenWhatsApp });
 async function rutasAparte(req: Request, m: string, ruta: string[]): Promise<Response | null> {
   const c: CtxRutas = { ...ctxBase(), req, m, ruta, json, error, leerJson, esAdmin: () => autorizado(req), ip: ipDe(req) };
-  return (await rutasExtras(c)) ?? (await rutasWhatsApp(c));
+  return (await rutasAcceso({ ...c, conClave: () => autorizadoConClave(req) })) ?? (await rutasExtras(c)) ?? (await rutasWhatsApp(c));
 }
 // avisarPorWhatsApp(ctxBase(), compra, { titulo, link, expira_en }) se llama en entregarGuiaLista(), junto con el correo.
 

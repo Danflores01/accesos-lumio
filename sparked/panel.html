@@ -107,33 +107,64 @@
   /* Guías: tabla corta de 3 columnas; cabe en el celular sin moverla de lado */
   .tabla-guias table { min-width: 0; }
   .tabla-guias td:first-child { white-space: normal; }
+  /* Menú de hamburguesa (visible en cualquier dispositivo) y entrada con correo y contraseña */
+  header.cab .contenedor { gap: 10px; }
+  .hamb { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; border: 2px solid var(--borde); background: #fff; cursor: pointer; flex: 0 0 auto; color: var(--tinta); }
+  .hamb[hidden] { display: none; }
+  .hamb svg { width: 22px; height: 22px; }
+  .seccion-actual { font-weight: 800; color: var(--tinta); margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .velo { position: fixed; inset: 0; background: rgba(18,24,38,.45); z-index: 60; }
+  .menu { position: fixed; top: 0; left: 0; bottom: 0; width: min(320px, 86vw); background: #fff; z-index: 61; display: flex; flex-direction: column; padding: 14px; gap: 10px; box-shadow: 8px 0 30px rgba(18,24,38,.18); overflow-y: auto; }
+  .menu[hidden], .velo[hidden] { display: none; }
+  .menu-cab { display: flex; align-items: center; justify-content: space-between; font-size: 18px; }
+  .menu-cab button { width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--borde); background: #fff; font-size: 18px; cursor: pointer; color: var(--tinta); }
+  .menu-quien { margin: 0; font-size: 13px; color: var(--gris); word-break: break-all; }
+  .menu .tabs { flex-direction: column; flex-wrap: nowrap; gap: 4px; margin: 0; }
+  .menu .tabs button { text-align: left; border-radius: 12px; border-color: transparent; display: flex; align-items: center; justify-content: space-between; }
+  .menu .tabs button[hidden] { display: none; }
+  .menu-pie { margin-top: auto; display: flex; flex-direction: column; gap: 4px; border-top: 2px solid var(--borde); padding-top: 10px; }
+  .menu-pie a { padding: 10px 14px; border-radius: 12px; font-weight: 700; color: var(--tinta); text-decoration: none; }
+  .menu-pie a:hover { background: var(--gris-suave); }
+  .entrada-clave { margin-top: 16px; }
+  .entrada-clave > summary { cursor: pointer; font-weight: 700; color: var(--gris); }
 </style>
 </head>
 <body class="sitio claro">
 <header class="cab"><div class="contenedor">
+  <button class="hamb" id="abrirMenu" type="button" aria-label="Abrir el menú" aria-expanded="false" aria-controls="menu" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <a class="marca" href="panel.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span>&nbsp;<small style="font-weight:600;color:var(--gris)">Panel de guías</small></a>
-  <nav><a href="index.html" target="_blank" rel="noopener">Ver el sitio ↗</a><a href="../accesos/">Accesos Lumio</a><a href="#" id="salir" hidden>Salir</a></nav>
+  <span class="seccion-actual" id="seccionActual"></span>
 </div></header>
+<div class="velo" id="velo" hidden></div>
+<aside class="menu" id="menu" aria-label="Menú del panel" hidden>
+  <div class="menu-cab"><b>Menú</b><button type="button" id="cerrarMenu" aria-label="Cerrar el menú">✕</button></div>
+  <p class="menu-quien" id="menuQuien"></p>
+  <div class="tabs" id="tabs">
+    <button data-tab="resumen" class="on">Resumen</button>
+    <button data-tab="guias">Guías</button>
+    <button data-tab="compras">Compras <span class="n" id="nCompras" hidden></span></button>
+    <button data-tab="codigos">Códigos</button>
+    <button data-tab="solicitudes" hidden>Pedidos sin guía <span class="n" id="nSolicitudes" hidden></span></button>
+    <button data-tab="reportes">Reportes <span class="n" id="nReportes" hidden></span></button>
+    <button data-tab="comentarios">Comentarios <span class="n" id="nComentarios" hidden></span></button>
+    <button data-tab="costos">Costos</button>
+    <button data-tab="ajustes">Ajustes</button>
+  </div>
+  <div class="menu-pie"><a href="index.html" target="_blank" rel="noopener">Ver el sitio ↗</a><a href="../accesos/">Accesos Lumio (clases)</a><a href="#" id="salir">Cerrar sesión</a></div>
+</aside>
 
 <main class="flujo"><div class="contenedor">
   <section class="panel-paso" id="login">
-    <h1>Panel SparkEd</h1>
-    <p class="ayuda">Entra con la misma contraseña de administrador de Accesos Lumio.</p>
-    <form id="formLogin" class="rejilla-campos"><div class="campo"><label>Contraseña</label><input name="clave" type="password" autocomplete="current-password" required></div><div style="align-self:end"><button class="boton" type="submit">Entrar</button></div><div class="error" id="errLogin" style="grid-column:1/-1"></div></form>
+    <h1>Entra a tu panel</h1>
+    <p class="ayuda">Escribe tu correo y tu contraseña.</p>
+    <form id="formSesion" class="rejilla-campos"><div class="campo"><label for="sCorreo">Correo</label><input id="sCorreo" name="correo" type="email" autocomplete="username" required></div><div class="campo"><label for="sContra">Contraseña</label><input id="sContra" name="contrasena" type="password" autocomplete="current-password" required></div><div style="align-self:end"><button class="boton" type="submit">Entrar</button></div><div class="error" id="errSesion" style="grid-column:1/-1"></div></form>
+    <details class="entrada-clave" id="entradaClave"><summary>Entrar con la clave de administrador</summary>
+      <p class="ayuda">Es la clave de siempre (la misma de Accesos Lumio). Úsala la primera vez, para crear tu contraseña en Ajustes, o si la olvidaste.</p>
+      <form id="formLogin" class="rejilla-campos"><div class="campo"><label>Clave de administrador</label><input name="clave" type="password" autocomplete="off" required></div><div style="align-self:end"><button class="boton linea" type="submit">Entrar con la clave</button></div><div class="error" id="errLogin" style="grid-column:1/-1"></div></form>
+    </details>
   </section>
 
   <div id="app" hidden>
-    <div class="tabs" id="tabs">
-      <button data-tab="resumen" class="on">Resumen</button>
-      <button data-tab="guias">Guías</button>
-      <button data-tab="compras">Compras <span class="n" id="nCompras" hidden></span></button>
-      <button data-tab="codigos">Códigos</button>
-      <button data-tab="solicitudes" hidden>Pedidos sin guía <span class="n" id="nSolicitudes" hidden></span></button>
-      <button data-tab="reportes">Reportes <span class="n" id="nReportes" hidden></span></button>
-      <button data-tab="comentarios">Comentarios <span class="n" id="nComentarios" hidden></span></button>
-      <button data-tab="costos">Costos</button>
-      <button data-tab="ajustes">Ajustes</button>
-    </div>
 
     <section data-panel="resumen">
       <div id="alertas"></div>
@@ -234,6 +265,20 @@
           <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="boton" type="submit">Guardar ajustes</button><button class="boton linea" type="button" id="btnLimpiar">🧹 Limpiar borradores vencidos</button></div>
         </form>
       </div>
+      <details class="plegable" style="margin-top:14px" id="plegAcceso">
+        <summary><span class="pleg-titulo">Entrada con correo y contraseña</span><span class="pleg-resumen" id="resumenAcceso">Revisando…</span></summary>
+        <div class="panel-paso">
+          <p class="ayuda" style="margin-top:0">Con esto entras al panel con tu correo y una contraseña que solo tú conoces. La contraseña se guarda cifrada; nadie puede verla. Tu clave de administrador sigue sirviendo como respaldo.</p>
+          <form id="formAcceso" class="rejilla-campos" autocomplete="off">
+            <div class="campo"><label for="aCorreo">Tu correo</label><input id="aCorreo" name="correo" type="email" autocomplete="username" required></div>
+            <div class="campo"><label for="aContra">Contraseña nueva (al menos 10 caracteres)</label><input id="aContra" name="contrasena" type="password" autocomplete="new-password" minlength="10" required></div>
+            <div class="campo"><label for="aContra2">Repite la contraseña</label><input id="aContra2" name="contrasena2" type="password" autocomplete="new-password" minlength="10" required></div>
+            <div class="campo" id="campoClaveAcceso"><label for="aClave">Clave de administrador (para confirmar que eres tú)</label><input id="aClave" name="clave" type="password" autocomplete="off"></div>
+            <div style="align-self:end"><button class="boton" type="submit">Guardar contraseña</button></div>
+            <div class="error" id="errAcceso" style="grid-column:1/-1"></div>
+          </form>
+        </div>
+      </details>
       <details class="plegable" style="margin-top:14px" id="plegWhatsApp">
         <summary><span class="pleg-titulo">WhatsApp (Green API)</span><span class="pleg-resumen" id="resumenWhatsApp">Revisando…</span></summary>
         <div class="panel-paso" id="tarjetaWhatsApp"><div id="estadoWhatsApp"><p class="ayuda">Cargando…</p></div></div>
@@ -254,12 +299,40 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const LS = "al_clave"; // la misma llave que guarda la app de accesos (mismo dominio)
 let clave = ""; try { clave = localStorage.getItem(LS) || ""; } catch {}
+// Sesión con correo y contraseña: el servidor entrega un pase de una hora (acceso) y otro para renovarlo (renovar).
+const LS_SESION = "sparked_sesion";
+let sesion = null; try { sesion = JSON.parse(localStorage.getItem(LS_SESION) || "null"); } catch {}
+function guardarSesion(nueva) { sesion = nueva; try { if (nueva) localStorage.setItem(LS_SESION, JSON.stringify(nueva)); else localStorage.removeItem(LS_SESION); } catch {} }
+let renovando = null;
+// Pase vigente para la siguiente petición; si está por vencer, primero se renueva (una sola renovación a la vez).
+async function paseVigente() {
+  if (!sesion) return "";
+  if (sesion.expira_en - 60 > Date.now() / 1000) return sesion.acceso;
+  renovando ??= (async () => {
+    try {
+      const r = await fetch(`${CONFIG.api}/acceso/renovar`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ renovar: sesion.renovar }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.acceso) guardarSesion({ acceso: d.acceso, renovar: d.renovar, expira_en: d.expira_en, correo: d.correo });
+      else if (r.status === 401) guardarSesion(null);
+    } catch { /* sin internet: se intenta con el pase que hay */ }
+    finally { renovando = null; }
+  })();
+  await renovando;
+  return sesion?.acceso ?? "";
+}
+// Cabeceras de cada petición: el pase de la sesión si la hay; si no, la clave de administrador.
+async function cabeceras() {
+  const h = { "content-type": "application/json" };
+  const pase = await paseVigente();
+  if (pase) h.authorization = "Bearer " + pase; else if (clave) h["x-admin-key"] = clave;
+  return h;
+}
 
 function aviso(texto, mal = false, ms = 3500) { const m = $("#msg"); m.textContent = texto; m.className = "msg on" + (mal ? " mal" : ""); clearTimeout(aviso.t); aviso.t = setTimeout(() => m.classList.remove("on"), ms); }
 async function api(ruta, { method = "GET", body } = {}) {
-  const r = await fetch(`${CONFIG.api}/admin${ruta}`, { method, headers: { "content-type": "application/json", "x-admin-key": clave }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const r = await fetch(`${CONFIG.api}/admin${ruta}`, { method, headers: await cabeceras(), body: body === undefined ? undefined : JSON.stringify(body) });
   const d = await r.json().catch(() => ({}));
-  if (r.status === 401) { salir(false); throw new Error("Contraseña incorrecta"); }
+  if (r.status === 401) { const conSesion = !!sesion; salir(false); throw new Error(conSesion ? "Tu sesión terminó. Vuelve a entrar." : "Clave incorrecta"); }
   if (!r.ok) throw new Error(d.error || "Error del servidor");
   return d;
 }
@@ -267,16 +340,50 @@ const fecha = (s) => s ? new Date(s).toLocaleString("es-MX", { dateStyle: "mediu
 const dinero = (n) => "$" + Number(n ?? 0).toFixed(0);
 const chip = (e) => `<span class="estado ${esc(e)}">${esc(String(e).replace("_", " "))}</span>`;
 function modal(html) { const d = $("#dlg"); d.innerHTML = html + `<div style="margin-top:14px;text-align:right"><button class="boton linea chico" id="cerrarDlg">Cerrar</button></div>`; d.showModal(); $("#cerrarDlg").onclick = () => d.close(); return d; }
-function salir(limpiar = true) { if (limpiar) { try { localStorage.removeItem(LS); } catch {} } clave = ""; $("#app").hidden = true; $("#login").hidden = false; $("#salir").hidden = true; }
+function salir(limpiar = true) {
+  // Al cerrar sesión a propósito se avisa al servidor para que el pase deje de servir.
+  if (limpiar && sesion?.acceso) fetch(`${CONFIG.api}/acceso/salir`, { method: "POST", headers: { authorization: "Bearer " + sesion.acceso } }).catch(() => {});
+  if (limpiar) { try { localStorage.removeItem(LS); } catch {} }
+  guardarSesion(null); clave = "";
+  cerrarMenu(); $("#app").hidden = true; $("#login").hidden = false; $("#abrirMenu").hidden = true; $("#seccionActual").textContent = "";
+}
+// ---------- Menú de hamburguesa ----------
+function abrirMenu() { $("#menu").hidden = false; $("#velo").hidden = false; $("#abrirMenu").setAttribute("aria-expanded", "true"); $("#cerrarMenu").focus(); }
+function cerrarMenu() { if ($("#menu").hidden) return; $("#menu").hidden = true; $("#velo").hidden = true; $("#abrirMenu").setAttribute("aria-expanded", "false"); }
+$("#abrirMenu").onclick = abrirMenu; $("#cerrarMenu").onclick = cerrarMenu; $("#velo").onclick = cerrarMenu;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarMenu(); });
 
 // ---------- Entrar ----------
 async function entrar() {
-  try { const p = await api("/ping"); precioGuia = Number(p.config?.sparked_precio) || 100; $("#login").hidden = true; $("#app").hidden = false; $("#salir").hidden = false; pintarMotores(p); cargarTodo(); }
-  catch (e) { $("#errLogin").textContent = e.message; }
+  const conSesion = !!sesion;
+  try {
+    const p = await api("/ping"); precioGuia = Number(p.config?.sparked_precio) || 100;
+    $("#login").hidden = true; $("#app").hidden = false; $("#abrirMenu").hidden = false;
+    $("#menuQuien").textContent = sesion?.correo ? "Sesión: " + sesion.correo : "Entraste con la clave de administrador";
+    $("#errSesion").textContent = ""; $("#errLogin").textContent = "";
+    pintarMotores(p); cargarTodo();
+  } catch (e) { $(conSesion ? "#errSesion" : "#errLogin").textContent = e.message; if (!conSesion) $("#entradaClave").open = true; }
 }
-$("#formLogin").onsubmit = (e) => { e.preventDefault(); clave = $("#formLogin").clave.value.trim(); try { localStorage.setItem(LS, clave); } catch {} entrar(); };
+// Entrar con correo y contraseña.
+$("#formSesion").onsubmit = async (e) => {
+  e.preventDefault();
+  const f = e.target, boton = f.querySelector("button"), err = $("#errSesion");
+  err.textContent = ""; boton.disabled = true;
+  try {
+    const r = await fetch(`${CONFIG.api}/acceso/entrar`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ correo: f.correo.value.trim(), contrasena: f.contrasena.value }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.acceso) throw new Error(d.error || "No se pudo entrar. Inténtalo de nuevo.");
+    clave = ""; try { localStorage.removeItem(LS); } catch {}
+    guardarSesion({ acceso: d.acceso, renovar: d.renovar, expira_en: d.expira_en, correo: d.correo });
+    f.contrasena.value = "";
+    await entrar();
+  } catch (x) { err.textContent = x.message === "Failed to fetch" ? "No hay conexión. Revisa tu internet." : x.message; }
+  finally { boton.disabled = false; }
+};
+// Entrar con la clave de administrador (respaldo).
+$("#formLogin").onsubmit = (e) => { e.preventDefault(); guardarSesion(null); clave = $("#formLogin").clave.value.trim(); try { localStorage.setItem(LS, clave); } catch {} $("#formLogin").clave.value = ""; entrar(); };
 $("#salir").onclick = (e) => { e.preventDefault(); salir(); };
-if (clave) entrar();
+if (sesion || clave) entrar();
 
 // ---------- Pestañas ----------
 $("#tabs").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; mostrarTab(b.dataset.tab); };
@@ -285,6 +392,8 @@ function mostrarTab(t) {
   $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   $$("[data-panel]").forEach((s) => { s.hidden = s.dataset.panel !== t; });
   location.hash = t;
+  $("#seccionActual").textContent = $$("#tabs button").find((b) => b.dataset.tab === t)?.firstChild?.textContent?.trim() ?? "";
+  cerrarMenu();
   ({ resumen: cargarResumen, guias: cargarCostosGuias, compras: cargarCompras, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, comentarios: cargarComentarios, costos: cargarCostos, ajustes: cargarAjustes })[t]?.();
 }
 function cargarTodo() { mostrarTab(location.hash.replace("#", "") || "resumen"); }
@@ -501,7 +610,30 @@ async function cargarReportes() {
 }
 
 // ---------- Ajustes ----------
+// Entrada con correo y contraseña: qué correos tienen cuenta y el formulario para crearla o cambiarla. El servidor
+// solo acepta el cambio con la clave de administrador, así que se pide si se entró con correo.
+async function cargarAcceso() {
+  $("#campoClaveAcceso").hidden = !!clave; $("#aClave").required = !clave;
+  try { const r = await api("/acceso"); const n = r.correos?.length ?? 0; $("#resumenAcceso").textContent = n ? "Lista para " + r.correos.join(", ") : "Todavía sin contraseña"; if (n === 1 && !$("#aCorreo").value) $("#aCorreo").value = r.correos[0]; }
+  catch { $("#resumenAcceso").textContent = "No se pudo revisar"; }
+}
+$("#formAcceso").onsubmit = async (e) => {
+  e.preventDefault();
+  const f = e.target, err = $("#errAcceso"), boton = f.querySelector("button");
+  err.textContent = "";
+  if (f.contrasena.value !== f.contrasena2.value) { err.textContent = "Las dos contraseñas no coinciden."; return; }
+  boton.disabled = true;
+  try {
+    const r = await fetch(`${CONFIG.api}/admin/acceso`, { method: "POST", headers: { "content-type": "application/json", "x-admin-key": clave || f.clave.value.trim() }, body: JSON.stringify({ correo: f.correo.value.trim(), contrasena: f.contrasena.value }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(r.status === 401 ? "La clave de administrador no es correcta." : d.error || "No se pudo guardar.");
+    f.contrasena.value = ""; f.contrasena2.value = ""; f.clave.value = "";
+    aviso("Listo. Ya puedes entrar con tu correo y tu contraseña.", false, 6000); cargarAcceso();
+  } catch (x) { err.textContent = x.message === "Failed to fetch" ? "No hay conexión. Revisa tu internet." : x.message; }
+  finally { boton.disabled = false; }
+};
 async function cargarAjustes() {
+  cargarAcceso();
   const p = await api("/ping"); pintarMotores(p);
   const f = $("#formAjustes");
   for (const [k, v] of Object.entries(p.config ?? {})) if (f[k]) f[k].value = v;
