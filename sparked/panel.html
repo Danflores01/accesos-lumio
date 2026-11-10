@@ -797,7 +797,7 @@ async function pintarMotorWhatsApp() {
     estadoMotores.whatsapp = bien ? "ok" : "con un problema"; pintarResumenMotores();
     caja.querySelector("b").textContent = `${bien ? "🟢" : "🟡"} WhatsApp (Green API)`;
     caja.querySelector("div").innerHTML = bien
-      ? `<b>Encendido</b>${w.numero ? " · número " + esc(w.numero) : ""}${w.webhook_configurado ? "" : " · falta pulsar «Conectar» en Ajustes"}`
+      ? `<b>Encendido</b>${w.numero ? "&nbsp;· número " + esc(w.numero) : ""}${w.webhook_configurado ? "" : " · falta pulsar «Conectar» en Ajustes"}`
       : `Llaves puestas, pero ${esc(ESTADOS[w.estado_instancia] ?? "la instancia está en «" + (w.estado_instancia ?? "desconocido") + "»")}`;
   } catch { /* si no se pudo preguntar, se queda con lo que dice el servidor: llaves configuradas */ }
 }
@@ -807,7 +807,7 @@ async function pintarMotorWhatsApp() {
 // navegador y el panel no guarda nada. Mientras el Resumen está a la vista se pregunta cada 30 segundos por la lista y
 // cada 12 por el chat abierto. Un mensaje recién enviado puede tardar hasta 2 minutos en salir en ese historial; por
 // eso se muestra de inmediato (CHATS.propios) y deja de ser «propio» cuando el historial ya lo trae.
-const CHATS = { motor: false, lista: null, dias: 7, listaEn: 0, abierto: null, mensajes: [], firma: "", propios: new Map(), borradores: new Map(), pidiendoLista: false, pidiendoConv: null, enviando: false };
+const CHATS = { motor: false, lista: null, dias: 7, listaEn: 0, abierto: null, mensajes: [], firma: "", firmaLista: "", propios: new Map(), borradores: new Map(), pidiendoLista: false, pidiendoConv: null, enviando: false };
 const TIPO_CHAT = { foto: "Foto", video: "Video", audio: "Audio", documento: "Documento", sticker: "Sticker", ubicacion: "Ubicación", contacto: "Contacto", encuesta: "Encuesta", eliminado: "Mensaje eliminado", otro: "Mensaje que no se puede mostrar aquí" };
 const ESTADO_ENVIO = { sent: "Enviado", delivered: "Entregado", read: "Leído", failed: "No se envió", noAccount: "No se envió: el número no tiene WhatsApp", yellowCard: "WhatsApp detuvo el envío" };
 const punteroFino = () => matchMedia("(pointer: fine)").matches;
@@ -840,7 +840,7 @@ function iniciarChats(p) {
 }
 // Al cerrar sesión no queda ninguna conversación en la pantalla ni en la memoria de la página.
 function limpiarChats() {
-  Object.assign(CHATS, { lista: null, listaEn: 0, abierto: null, mensajes: [], firma: "" });
+  Object.assign(CHATS, { lista: null, listaEn: 0, abierto: null, mensajes: [], firma: "", firmaLista: "" });
   CHATS.propios.clear(); CHATS.borradores.clear();
   $("#chatsLista").innerHTML = `<p class="chats-aviso">Cargando los chats…</p>`; $("#convMensajes").innerHTML = ""; $("#convTexto").value = "";
   $("#conv").hidden = true; $("#chatsVacio").hidden = false; $("#chatsCuerpo").classList.remove("abierto"); $("#chatsEstado").textContent = "";
@@ -866,6 +866,10 @@ async function cargarChats() {
 function pintarListaChats() {
   if (!CHATS.lista) return;
   const lista = CHATS.lista.map(chatAlDia).sort((a, b) => b.ultimo.hora - a.ultimo.hora);
+  // Solo se vuelve a dibujar cuando algo cambió: así no se pierde un toque que cae justo cuando la lista se actualiza.
+  const firma = [CHATS.abierto, new Date().toDateString(), ...lista.map((c) => [c.chat, c.nombre, c.ultimo.hora, c.ultimo.tipo, c.ultimo.estado ?? "", c.ultimo.mio, c.ultimo.texto.length, c.sin_responder].join(":"))].join("|");
+  if (firma === CHATS.firmaLista) return;
+  CHATS.firmaLista = firma;
   $("#chatsLista").innerHTML = lista.length ? lista.map((c) => {
     const u = c.ultimo, abierto = c.chat === CHATS.abierto;
     const previo = (u.mio ? "Tú: " : "") + (u.tipo === "texto" ? u.texto : (TIPO_CHAT[u.tipo] ?? "Mensaje") + (u.texto ? ": " + u.texto : ""));
