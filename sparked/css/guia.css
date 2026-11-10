@@ -520,7 +520,89 @@ button.rep-ficha:hover { border-color: var(--c); background: #f6f7fb; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
+/* ===== Todo cabe, todo alineado y las fotos completas (Daniel, 9 nov 2026) =====
+   Criterio para la demo y para toda guía generada: nada se sale de la slide ni de su caja, nada se encima, y ninguna
+   foto se recorta para llenar un espacio. Cada foto se ve ENTERA y con su forma real: --r (ancho / alto) lo pone el
+   reproductor al medir las fotos antes de mostrar la guía (data-forma). Si la forma no se conoce, la foto se ve completa
+   dentro de su caja (contain). Los marcos de color son anillos (box-shadow) para no cambiar la forma de la foto. */
+.cabeza .pildora, .portada .texto .pildora { align-self: flex-start; max-width: 100%; }
+.teoria-sl { --alto-foto: 150px; --alto-retrato: min(124px, calc(var(--alto-foto) * .72)); --alto-lado: calc(var(--alto-foto) * 1.5); }
+/* Foto dentro de una tarjeta: centrada, con su forma, del alto que eligió el reproductor. */
+.tcard .img { overflow: visible; border-radius: 0; display: flex; justify-content: center; align-items: flex-end; }
+.tcard .img img { width: 100%; height: var(--alto-foto); object-fit: contain; border-radius: 12px; }
+.tcard .img img[data-forma] { width: min(100%, calc(var(--alto-foto) * var(--r))); height: auto; aspect-ratio: var(--r); }
+.tcard .pie { text-align: center; }
+/* Pintura o mapa a un lado de las tarjetas. */
+.lado-img .cuadro { overflow: visible; padding: 10px 10px 0; display: flex; flex-direction: column; align-items: center; }
+.lado-img .cuadro img { width: 100%; height: var(--alto-lado); object-fit: contain; border-radius: 10px; }
+.lado-img .cuadro img[data-forma] { width: min(100%, calc(var(--alto-lado) * var(--r))); height: auto; aspect-ratio: var(--r); }
+.lado-img .cuadro .pie { align-self: stretch; text-align: center; }
+/* Retratos de la columna izquierda: rectángulo con la foto entera (el círculo cortaba cabezas y esquinas). */
+/* Cada retrato ocupa todo el ancho de su columna: así el tamaño de la foto no depende de que ya haya bajado (si la
+   caja se ajustara a la foto, se mediría chica antes de cargar y crecería después). */
+.retrato-col .r { align-self: stretch; }
+.retrato-col .r img { width: min(calc(100% - 8px), calc(var(--alto-retrato) * .8)); height: var(--alto-retrato); border: 0; border-radius: 14px; object-fit: contain; background: #fff; box-shadow: 0 0 0 4px var(--c, var(--p)); margin: 4px; }
+.retrato-col .r img[data-forma] { width: min(calc(100% - 8px), calc(var(--alto-retrato) * var(--r))); height: auto; aspect-ratio: var(--r); }
+.retrato-col .r .ph { width: var(--alto-retrato); height: var(--alto-retrato); }
+/* Retratos de la portada: la foto entera, todas apoyadas en la misma línea para que los nombres queden alineados. */
+.portada { --alto-portada: 124px; }
+.portada .retratos { align-items: end; }
+.portada .retrato { display: grid; grid-template-rows: calc(var(--alto-portada) + 10px) auto; justify-items: center; align-items: end; gap: 6px; }
+.portada .retrato img { width: calc(var(--alto-portada) * .8); height: var(--alto-portada); border: 0; border-radius: 16px; object-fit: contain; background: #fff; box-shadow: 0 0 0 5px var(--p); margin: 5px; }
+.portada .retrato img[data-forma] { width: min(180px, calc(var(--alto-portada) * var(--r))); height: auto; aspect-ratio: var(--r); }
+/* Fotos chicas de la línea del tiempo y del juego "¿Quién es quién?". */
+.linea-tiempo .hito img { width: 54px; height: 54px; border: 0; border-radius: 10px; object-fit: contain; background: #fff; box-shadow: 0 0 0 3px #fff; margin: 3px auto 8px; display: block; }
+.linea-tiempo .hito img[data-forma] { width: min(100%, calc(54px * var(--r))); height: auto; aspect-ratio: var(--r); }
+.retrato-chico { width: 56px; height: 56px; border: 0; border-radius: 10px; object-fit: contain; background: #fff; box-shadow: 0 0 0 3px var(--p); margin: 3px; }
+.retrato-chico[data-forma] { width: min(96px, calc(56px * var(--r))); height: auto; aspect-ratio: var(--r); }
+
+/* Juegos cuyo cuerpo es la cuadrícula: el cuerpo mide lo que deja la slide (de 128 px arriba a 34 px abajo). Con
+   height: 100 % medían 720 px y la última fila o el fondo de los grupos quedaban fuera de la slide. */
+.cuerpo.match, .cuerpo.sort, .cuerpo.rank, .cuerpo.quiz { height: auto; }
+.sort .grupos { min-height: 0; }
+/* Letra de los juegos y del tutorial: sale de --fj (de 1 a 0.7). El reproductor la baja hasta que todo quepa. */
+.sl .qcard .q { font-size: calc(23px * var(--fj, 1)); }
+.sl .qcard .apoyo { font-size: calc(15px * var(--fj, 1)) !important; }
+.sl .opt { font-size: calc(19px * var(--fj, 1)); min-height: calc(52px * var(--fj, 1)); padding: calc(13px * var(--fj, 1)) 16px; }
+.sl .card-d { font-size: calc(19px * var(--fj, 1)); }
+.sl .carta-swipe .afirmacion { font-size: calc(28px * var(--fj, 1)); }
+.sl .carta-swipe .em { font-size: calc(60px * var(--fj, 1)); }
+.sl .superdato-texto { font-size: calc(24px * var(--fj, 1)); }
+.sl .hueco { min-height: calc(44px * var(--fj, 1)); min-width: calc(150px * var(--fj, 1)); }
+.sl .match .der .def { font-size: calc(19px * var(--fj, 1)); }
+.sl .match .der .drop { min-height: calc(50px * var(--fj, 1)); }
+.sl .sort .grupo h3 { font-size: calc(24px * var(--fj, 1)); }
+.sl .rank .casilla b { font-size: calc(28px * var(--fj, 1)); }
+.sl .rank .casilla .drop { min-height: calc(56px * var(--fj, 1)); }
+.sl .retro { font-size: calc(18px * var(--fj, 1)); }
+.sl .perro-carta .afirmacion { font-size: calc(22px * var(--fj, 1)); }
+.sl .tc h2 { font-size: calc(25px * var(--fj, 1)); }
+.sl .tc .it { font-size: calc(19px * var(--fj, 1)); }
+.sl .tut-pasos div { font-size: calc(16px * var(--fj, 1)); }
+/* Palabras largas (una dirección, una palabra técnica): se parten antes de salirse de su caja. */
+.sl .tcard, .sl .qcard, .sl .opt, .sl .card-d, .sl .carta-swipe, .sl .def, .sl .cat, .sl .hito, .sl .comparacion .col, .sl .ojo,
+.sl .caja-clave, .sl .banda, .sl .objetivos div, .sl .bloques div, .sl .cabeza h1, .portada h1 { overflow-wrap: anywhere; }
+/* Resultados: la columna de la calificación cabe completa; si no hay sitio, Sparky se esconde (reproductor.js). */
+#escenario.fluido .rep-resumen.compacto .rep-sparky { display: none; }
+#escenario.fluido .rep-resumen.compacto { gap: 10px; }
+
 /* Botón "Salir de pantalla completa" (solo cuando la guía se abre a página entera desde la vista previa o la demo). */
 .salir { position: fixed; top: 10px; left: 10px; z-index: 55; border: 0; border-radius: 999px; padding: 8px 14px; font: 800 14px var(--titulos, inherit); color: #fff; background: rgba(20, 16, 40, .72); cursor: pointer; backdrop-filter: blur(4px); box-shadow: 0 4px 14px rgba(0, 0, 0, .25); }
 .salir:hover, .salir:focus-visible { background: rgba(20, 16, 40, .92); outline: none; }
 @media (max-width: 699px) { .salir { top: 6px; left: 6px; padding: 6px 11px; font-size: 12px; } }
+/* Desde el 9 nov 2026 el botón va en la barra de herramientas: flotando sobre la slide tapaba la etiqueta del título.
+   En horizontal es el primer botón de la barra; en vertical flota justo arriba de la barra de abajo, fuera de la slide. */
+#barra .salir { position: static; flex: none; width: 52px; height: 52px; padding: 0; margin: 0 0 6px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font: 800 18px/1 var(--titulos, inherit); color: #fff; background: rgba(255,255,255,.14); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+#barra .salir small { font: 800 10px/1 var(--titulos, inherit); letter-spacing: .2px; }
+#barra .salir[hidden] { display: none; }
+@media (orientation: portrait) {
+  #barra .salir { position: absolute; left: 10px; bottom: calc(100% + 10px); width: auto; height: auto; margin: 0; flex-direction: row; gap: 6px; padding: 8px 14px; border-radius: 999px; background: rgba(20, 16, 40, .78); }
+  #barra .salir small { font-size: 13px; }
+}
+/* Teléfono acostado (poca altura): botones un poco más chicos para que la barra quepa completa. */
+@media (orientation: landscape) and (max-height: 430px) {
+  #barra { gap: 6px; }
+  #barra button { width: 44px; height: 44px; font-size: 20px; }
+  #barra .chico { width: 38px; height: 38px; font-size: 16px; }
+  #barra .salir { width: 44px; height: 44px; font-size: 15px; }
+}

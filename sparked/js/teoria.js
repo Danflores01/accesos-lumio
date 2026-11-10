@@ -1,6 +1,6 @@
 // Slides que no son juego: portada, tutorial, teoría (formato de la lección "Historia de México 2"),
 // resultados, candado de la vista previa, pantalla de carga y mensajes de acceso.
-import { esc, h, idea, toast } from "./ui.js";
+import { esc, h, idea, toast, attrsFoto } from "./ui.js";
 import { sparky, icono } from "./arte.js";
 import { formatoDePista } from "./cartucho.js";
 
@@ -22,7 +22,7 @@ export function portada(s, ctx) {
   const tituloHtml = `${esc(palabras.slice(0, corte).join(" "))} <em>${esc(palabras.slice(corte).join(" "))}</em>`;
   const retratos = (I.retratos_portada ?? []).filter((r) => r?.url).slice(0, 4);
   const derecha = retratos.length >= 2
-    ? `<div class="retratos">${retratos.map((r) => `<div class="retrato"><img src="${esc(r.url)}" alt="${esc(r.nombre ?? "")}" loading="lazy">${esc(r.nombre ?? "")}</div>`).join("")}</div>`
+    ? `<div class="retratos">${retratos.map((r) => `<div class="retrato"><img src="${esc(r.url)}" alt="${esc(r.nombre ?? "")}"${attrsFoto(r.url)}>${esc(r.nombre ?? "")}</div>`).join("")}</div>`
     : `<div class="mosaicos">${(I.emojis_portada ?? []).slice(0, 4).map((e, i) => `<div class="m" style="background:${["#fff", "var(--b1)", "var(--b3)", "var(--p-suave)"][i]}">${esc(e)}</div>`).join("")}</div>`;
   const pildora = [c.plan.materia, c.plan.grado, ctx.t("portada_tag")].filter(Boolean).join(" · ");
   const el = h(`<div class="sl portada"><div class="texto"><span class="pildora">${esc(pildora)}</span><h1>${tituloHtml}</h1><div class="sub">${esc(I.subtitulo ?? "")}</div></div>
@@ -30,7 +30,7 @@ export function portada(s, ctx) {
     <div class="aprender">${esc(ctx.t("aprender"))}</div>
     <div class="objetivos">${(I.objetivos ?? []).slice(0, 3).map((o, i) => `<div><b>${i + 1}</b>${esc(o)}</div>`).join("")}</div>
     <div class="bloques">${c.bloques.map((b, i) => `<div style="background:var(--b${(i % 5) + 1})">${esc(ctx.t("bloque"))} ${i + 1} · ${esc(b.titulo)}</div>`).join("")}</div></div>`);
-  if (ctx.modo === "vista_previa") el.appendChild(h(`<div class="pildora" style="position:absolute;right:24px;top:22px;background:var(--oro);color:#111">${esc(ctx.t("vista_previa"))}</div>`));
+  if (ctx.modo === "vista_previa") el.appendChild(h(`<div class="pildora sello-vp" style="position:absolute;right:24px;top:22px;background:var(--oro);color:#111">${esc(ctx.t("vista_previa"))}</div>`));
   return el;
 }
 
@@ -55,7 +55,7 @@ function tarjeta(p, i, ctx, opciones = {}) {
   const ej = p.ejemplo ? `<div class="caja-ej"><b>${esc(ctx.t("ejemplo"))}</b> ${esc(p.ejemplo)}</div>` : "";
   const corr = (p.correcciones ?? []).map((cr) => `<div class="caja-corregido"><b>${esc(ctx.t("corregido"))}</b> ${esc(cr.dato_correcto ?? cr.mensaje ?? "")}${cr.dato_apuntes ? ` <span style="color:var(--gris)">(${esc(ctx.t("de_tus_notas"))}: “${esc(cr.dato_apuntes)}”)</span>` : ""}</div>`).join("");
   const img = opciones.conImagen && p.imagenes?.find((x) => x.tipo !== "retrato" && x.url);
-  const imgHtml = img ? `<div class="img"><img src="${esc(img.url)}" alt="${esc(img.pie ?? "")}" loading="lazy"></div><div class="pie">${esc(img.pie ?? img.credito ?? "")}</div>` : "";
+  const imgHtml = img ? `<div class="img"><img src="${esc(img.url)}" alt="${esc(img.pie ?? "")}"${attrsFoto(img.url)}></div><div class="pie">${esc(img.pie ?? img.credito ?? "")}</div>` : "";
   const rapido = p.dato_rapido ? `<div class="dato-rapido" style="--c:${col}">${esc(p.dato_rapido.titulo ?? "")}<b>${esc(p.dato_rapido.valor ?? "")}</b></div>` : "";
   return `<div class="tcard" style="--c:${col}"><div class="th"><span class="em">${esc(p.emoji ?? "💡")}</span>${esc(p.titulo ?? "")}</div>${ideas ? `<ul>${ideas}</ul>` : ""}${apoyo}${ej}${corr}${rapido}${imgHtml}</div>`;
 }
@@ -63,7 +63,7 @@ function tarjeta(p, i, ctx, opciones = {}) {
 function esquemaHtml(e, col, ctx) {
   if (!e?.tipo) return "";
   const els = e.elementos ?? [];
-  if (e.tipo === "linea_tiempo") return `<div class="linea-tiempo">${els.map((x, i) => `${i ? '<span class="fl">→</span>' : ""}<div class="hito" style="background:${TONOS[i % TONOS.length]}">${x.imagen ? `<img src="${esc(x.imagen)}" alt="">` : ""}<b>${esc(x.nombre ?? "")}</b><small>${esc(x.detalle ?? "")}${x.emoji ? " " + esc(x.emoji) : ""}</small></div>`).join("")}</div>`;
+  if (e.tipo === "linea_tiempo") return `<div class="linea-tiempo">${els.map((x, i) => `${i ? '<span class="fl">→</span>' : ""}<div class="hito" style="background:${TONOS[i % TONOS.length]}">${x.imagen ? `<img src="${esc(x.imagen)}" alt=""${attrsFoto(x.imagen)}>` : ""}<b>${esc(x.nombre ?? "")}</b><small>${esc(x.detalle ?? "")}${x.emoji ? " " + esc(x.emoji) : ""}</small></div>`).join("")}</div>`;
   if (e.tipo === "comparacion") return `<div class="comparacion" style="--cols:${Math.min(3, Math.max(2, els.length))}">${els.map((x, i) => `<div class="col" style="--c:${TONOS[i % TONOS.length]}"><h3>${esc(x.emoji ?? "")} ${esc(x.nombre ?? "")}</h3><ul style="margin:0;padding-left:20px">${String(x.detalle ?? "").split(/\s*[;·|]\s*/).filter(Boolean).map((d) => `<li>${idea(d)}</li>`).join("")}</ul></div>`).join("")}</div>`;
   if (e.tipo === "ciclo") return `<div class="ciclo">${els.map((x, i) => `${i ? '<span class="fl">→</span>' : ""}<div class="paso" style="background:${TONOS[i % TONOS.length]}">${esc(x.emoji ?? "")} ${esc(x.nombre ?? "")}</div>`).join("")}<span class="fl">↻</span></div>`;
   if (e.tipo === "causa_efecto") return `<div class="lista-iconos">${els.map((x) => `<div class="fila"><div class="ic">${esc(x.emoji ?? "➡️")}</div><div><b>${esc(x.nombre ?? "")}</b> ${esc(x.detalle ?? "")}</div></div>`).join("")}</div>`;
@@ -89,17 +89,19 @@ export function teoria(s, ctx) {
   const clave = pistas.map((p) => p.clave).find(Boolean);
   const concl = pistas.map((p) => p.conclusion).find(Boolean);
   // Si debajo de las tarjetas viene algo más (esquema, clave o banda), la cuadrícula no debe ocupar toda la altura,
-  // porque lo que sigue quedaría fuera de la slide.
-  const altura = (conEsquema || clave || concl) ? "auto" : "100%";
+  // porque lo que sigue quedaría fuera de la slide. Tampoco si abajo a la derecha va el botón "¡A jugar!": las
+  // tarjetas estiradas hasta abajo quedarían debajo del botón (Daniel, 9 nov 2026: nada se encima).
+  const sig = ctx.siguienteTitulo();
+  const altura = (conEsquema || clave || concl || sig) ? "auto" : "100%";
 
   let cuerpoHtml = "";
   if (retratos.length && formato === "retratos" || (retratos.length && !conEsquema)) {
     // Retratos a la izquierda, tarjetas al centro, pintura o mapa a la derecha
     const lateral = otrasImgs[0];
     cuerpoHtml = `<div style="display:grid;grid-template-columns:150px 1fr ${lateral ? "300px" : ""};gap:20px;height:${altura}">
-      <div class="retrato-col">${retratos.slice(0, 3).map((r, i) => `<div class="r" style="--c:${TONOS[i % TONOS.length]}"><img src="${esc(r.url)}" alt="${esc(r.nombre ?? "")}" loading="lazy">${esc(r.nombre ?? "")}</div>`).join("")}</div>
+      <div class="retrato-col">${retratos.slice(0, 3).map((r, i) => `<div class="r" style="--c:${TONOS[i % TONOS.length]}"><img src="${esc(r.url)}" alt="${esc(r.nombre ?? "")}"${attrsFoto(r.url)}>${esc(r.nombre ?? "")}</div>`).join("")}</div>
       <div class="tarjetas" style="grid-template-columns:1fr">${pistas.map((p, i) => tarjeta(p, i, ctx, { desfase })).join("")}</div>
-      ${lateral ? `<div class="lado-img"><div class="cuadro"><img src="${esc(lateral.url)}" alt="${esc(lateral.pie ?? "")}" loading="lazy"><div class="pie">${esc(lateral.pie ?? lateral.credito ?? "")}</div></div></div>` : ""}</div>`;
+      ${lateral ? `<div class="lado-img"><div class="cuadro"><img src="${esc(lateral.url)}" alt="${esc(lateral.pie ?? "")}"${attrsFoto(lateral.url)}><div class="pie">${esc(lateral.pie ?? lateral.credito ?? "")}</div></div></div>` : ""}</div>`;
   } else if (defin) {
     cuerpoHtml = `<div class="definiciones">${pistas.map((p, i) => `<div class="tcard" style="--c:${TONOS[(i + desfase) % TONOS.length]}"><div class="em-grande">${esc(p.emoji ?? "💡")}</div><div class="th">${esc(p.titulo ?? "")}</div><ul style="padding:0;list-style:none;text-align:center">${(p.ideas ?? []).map((x) => `<li>${idea(x)}</li>`).join("")}</ul>${p.ejemplo ? `<div class="caja-ej"><b>${esc(ctx.t("ejemplo"))}</b> ${esc(p.ejemplo)}</div>` : ""}${(p.correcciones ?? []).map((cr) => `<div class="caja-corregido"><b>${esc(ctx.t("corregido"))}</b> ${esc(cr.dato_correcto ?? "")}</div>`).join("")}</div>`).join("")}</div>`;
   } else {
@@ -108,8 +110,8 @@ export function teoria(s, ctx) {
     cuerpoHtml = `<div class="tarjetas" style="grid-template-columns:repeat(${cols},1fr)${conImagen ? ";grid-auto-rows:1fr" : ""};height:${altura}">${pistas.map((p, i) => tarjeta(p, i, ctx, { desfase, conImagen })).join("")}</div>`;
     if (conEsquema) cuerpoHtml += esquemaHtml(conEsquema.esquema, TONOS[(idx + desfase) % TONOS.length], ctx);
   }
-  // En la última slide antes de un juego, el botón "¡A jugar!" ocupa la esquina inferior derecha: la caja clave o la banda le dejan sitio.
-  const sig = ctx.siguienteTitulo();
+  // En la última slide antes de un juego, el botón "¡A jugar!" ocupa la esquina inferior derecha: la caja clave o la
+  // banda le dejan sitio (el reproductor ajusta el margen al ancho real del botón).
   const sangria = sig ? ' style="margin-right:380px"' : "";
   if (clave) cuerpoHtml += `<div class="caja-clave fila-clave"${sangria}>🔑 ${idea(clave)}</div>`;
   if (concl) cuerpoHtml += `<div class="banda fila-clave"${sangria}>${idea(concl)}</div>`;

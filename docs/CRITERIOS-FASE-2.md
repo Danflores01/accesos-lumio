@@ -653,3 +653,48 @@ dos botas comparten una sola línea en el centro, del mismo grosor que el resto 
 bota sigue redondo y todo lo demás de Sparky queda igual. Está en `sparked/js/arte.js` (`bota()` y `medioRedondo()`),
 de donde lo heredan todas las poses, el Sparky chico de los juegos y el del duelo. La pantalla sin internet lleva una
 copia del dibujo: al cambiar a Sparky hay que regenerarla y subir la versión de la caché en `sparked/sw.js`.
+
+## 29. Todo cabe, todo alineado y las fotos completas (Daniel, 9 de noviembre de 2026)
+
+Criterio para la guía de ejemplo de la portada y para **todas** las guías que se generen: toda la información de una
+slide se ve completa, ordenada y alineada. Nada se sale de la slide ni de su caja, nada se encima con otra cosa y
+**ninguna fotografía se recorta para llenar un espacio** (antes salían cabezas cortadas por los círculos y fotos
+reducidas a una tira).
+
+- **Fotos completas.** Cada foto se ve entera y con su forma real (vertical, horizontal o cuadrada). Antes de mostrar la
+  guía, el reproductor mide la forma de cada foto (`precargarFotos` y `attrsFoto` en `sparked/js/ui.js`; variable CSS
+  `--r`) y la acomoda con ese tamaño. Si una foto tarda en bajar, se ve completa dentro de su caja (`object-fit:
+  contain`), nunca cortada. Los retratos ya no son círculos: son rectángulos redondeados con un marco de color, y en la
+  portada sus nombres quedan en la misma línea.
+- **Teoría.** El reproductor prueba, de mayor a menor, el alto de las fotos (190 a 84 px) y la letra (22 a 18 px) hasta
+  que todo quepa; con fotos prefiere la foto grande con letra de 20 px o más. Si ni así cabe, divide la slide en (1/2),
+  (2/2). Ninguna tarjeta queda debajo del botón «¡A jugar!»: la caja clave y la banda le dejan el ancho real del botón
+  y, cuando el botón está, las tarjetas ya no se estiran hasta abajo. Un título muy largo baja hasta 28 px y, si aun así
+  llega al cuerpo, el cuerpo empieza más abajo.
+- **Portada.** El título baja de 74 a 44 px si es largo; los objetivos (17 a 14 px) y la barra de bloques (14 a 11 px)
+  bajan su letra y nunca se enciman con lo de arriba ni con la marca SparkEd. Los retratos se achican si llegarían a
+  los objetivos, y bajan si el sello «Vista previa» los tapa.
+- **Juegos.** El área de juego mide lo que deja la slide: en Mix & match, Super sort, Rank order y el mini-examen medía
+  720 px y la última fila o el fondo de los grupos quedaban fuera. La letra de preguntas, opciones y tarjetas (`--fj`)
+  baja hasta 70 % cuando algo no cabe y se revisa otra vez con cada pregunta nueva; no vuelve a subir dentro del mismo
+  juego, para que no cambie de tamaño entre preguntas. Las palabras muy largas se parten antes de salirse de su caja.
+- **Botón «Salir de pantalla completa».** Ya no flota sobre la slide (tapaba la etiqueta del título): en horizontal es
+  el primer botón de la barra («✕ Salir»); en vertical flota justo arriba de la barra de abajo, fuera de la slide.
+  Actualiza la sección 26.
+- **Etiqueta del título.** La píldora de cada slide abraza su texto; ya no se estira a todo lo ancho.
+- **Resultados.** La columna de la calificación cabe completa (si no hay sitio, Sparky se esconde). La lista «Qué te
+  conviene repasar» se desplaza cuando la guía tiene muchos bloques.
+- **Generador.** El planificador escribe un título de máx. 7 palabras, subtítulo y objetivos de máx. 14 palabras y
+  títulos de bloque de máx. 6. El generador (regla 12): opciones de máx. 6 palabras, afirmaciones de máx. 18,
+  enunciados de completar de máx. 20, de 4 a 7 parejas, de 6 a 10 tarjetas de clasificar de máx. 5 palabras y de 3 a 6
+  pasos de ordenar de máx. 10 palabras. Función `sparked` versión 2026-11-09.7.
+- **Pistas que ya no se pueden partir por viñetas.** Si la parte final de una pista (ejemplo, datos corregidos, esquema,
+  clave) tampoco cabe, se reparte en dos slides: el ejemplo y los datos corregidos en una; el esquema, la clave y la
+  conclusión en otra (`partirCola` en `sparked/js/cartucho.js`). Nunca queda una slide con barra para desplazarse.
+- **Cómo se revisa.** Un revisor automático abre cada slide en Edge sin ventana (escenario de 1280 × 720), entra a cada
+  juego y reporta: texto fuera de la slide o de su caja, cajas encimadas, contenido cortado o con barra de
+  desplazamiento y fotos recortadas (con el porcentaje visible). Una guía está bien cuando todo sale en cero:
+  `node herramientas/revisar-slides.mjs historia1 ruta/cartucho.json` (con `:previa` revisa la vista previa gratis).
+  Resultado del 9 nov: la demo historia1 y 5 guías generadas (Química 6° y 3°, Inglés, Matemáticas y Materia 1°), más
+  dos vistas previas, salen en cero; las 19 fotos de la demo se ven al 100 % (antes, 19 de 19 recortadas). Las 257
+  preguntas y tarjetas de esas guías caben en su juego (la letra baja como mucho al 88 %).

@@ -17,6 +17,70 @@ export function encajar(el, caja = el, max = 22, min = 18) {
   for (let px = max; px >= min; px--) { el.style.setProperty("--letra", px + "px"); if (!desborda(caja)) return px; }
   return null;
 }
+// ---------- Todo cabe y las fotos van completas (Daniel, 9 nov 2026) ----------
+// Ninguna foto se recorta para llenar un espacio: cada <img> lleva su forma real (--r = ancho / alto) y se dibuja entera,
+// con esa forma. Las formas se miden una sola vez al abrir la guía (precargarFotos), antes de medir las slides, así que
+// el lugar de cada foto ya es el correcto aunque la foto todavía no termine de bajar. Si una forma no se conoce, la foto
+// se ve completa dentro de su caja (object-fit: contain), nunca cortada.
+const FORMAS = new Map();
+export function precargarFotos(urls, ms = 7000) {
+  const lista = [...new Set(urls.filter((u) => typeof u === "string" && u))].filter((u) => !FORMAS.has(u));
+  const una = (u) => new Promise((ok) => {
+    const im = new Image();
+    im.onload = () => { if (im.naturalWidth && im.naturalHeight) FORMAS.set(u, im.naturalWidth / im.naturalHeight); ok(); };
+    im.onerror = () => ok();
+    im.src = u;
+  });
+  return Promise.race([Promise.all(lista.map(una)), new Promise((ok) => setTimeout(ok, ms))]);
+}
+export const formaDe = (url) => FORMAS.get(url);
+// Atributos de una foto: su forma (si se conoce) para que el CSS le dé el tamaño exacto.
+export const attrsFoto = (url) => { const r = FORMAS.get(url); return r ? ` style="--r:${Math.max(.2, Math.min(5, r)).toFixed(4)}" data-forma="1"` : ""; };
+// Caja de un elemento en píxeles de la slide (1280 x 720), sin contar animaciones (transform): una tarjeta que se
+// arrastra o que sale volando no cuenta como desborde.
+export function cajaEn(e, sl) {
+  let x = 0, y = 0, n = e;
+  while (n && n !== sl) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+  return n === sl ? { x, y, d: x + e.offsetWidth, a: y + e.offsetHeight } : null;
+}
+// ¿Algún elemento de la lista se sale de su propia caja (texto que no cupo) o de la slide?
+export function algoSeSale(sl, selector, margen = 2) {
+  for (const e of sl.querySelectorAll(selector)) {
+    if (!e.offsetParent) continue;
+    if (desborda(e)) return e;
+    const c = cajaEn(e, sl);
+    if (c && (c.a > sl.offsetHeight - margen || c.d > sl.offsetWidth - margen || c.x < 0 || c.y < 0)) return e;
+  }
+  return null;
+}
+// ¿Dos cajas se enciman? (en píxeles de la slide; la tolerancia evita falsos avisos por redondeos)
+export function seEnciman(a, b, sl, tol = 1) {
+  const r = a && cajaEn(a, sl), q = b && cajaEn(b, sl);
+  return !!(r && q) && Math.min(r.d, q.d) - Math.max(r.x, q.x) > tol && Math.min(r.a, q.a) - Math.max(r.y, q.y) > tol;
+}
+
+// Juegos y tutorial: la letra de las preguntas, opciones y tarjetas sale de --fj (escala de 1 a 0.7). encajarJuego la
+// baja hasta que todo quepa; nunca la vuelve a subir dentro del mismo juego, para que la letra no cambie de tamaño
+// entre una pregunta y otra.
+const CAJAS_JUEGO = ".cuerpo, .juego, .panel-q, #qbox, .qcard, .opt, .card-d, .carta-swipe, .mazo, .superdato-texto, .banco, .match .izq, .match .der, .match .fila, .sort .pila, .sort .grupos, .sort .grupo, .rank .casillas, .rank .pool, .quiz .marcador, .perro-carta, .tc, .tut-pasos, .tut-banda";
+export function encajarJuego(sl) {
+  if (!sl?.isConnected || sl.querySelector(".fin, .victoria, .gameover")) return null;
+  let fj = parseFloat(sl.style.getPropertyValue("--fj")) || 1;
+  while (algoSeSale(sl, CAJAS_JUEGO) && fj > 0.7) { fj = Math.round((fj - 0.04) * 100) / 100; sl.style.setProperty("--fj", String(fj)); }
+  return fj;
+}
+// Vuelve a encajar el juego cada vez que cambia su contenido (pregunta nueva, tarjeta nueva, retroalimentación). Los
+// relojes, marcadores, avisos y escenas cambian a cada rato y no mueven el contenido: esos cambios no cuentan.
+const NO_MUEVE = ".hud-pill, .reloj, .barra-tiempo, .toast, .confeti, svg, canvas, .escena, .escena-caja, .juego-aviso, .duelo-cartel, .duelo-combo, .ping-cartel";
+const importa = (r) => { const t = r.target.nodeType === 1 ? r.target : r.target.parentElement; return !!t && !t.closest(NO_MUEVE); };
+export function vigilarJuego(sl) {
+  let pendiente = false;
+  const obs = new MutationObserver((cambios) => { if (pendiente || !cambios.some(importa)) return; pendiente = true; requestAnimationFrame(() => { pendiente = false; if (!sl.isConnected) { obs.disconnect(); return; } encajarJuego(sl); }); });
+  obs.observe(sl, { childList: true, subtree: true, characterData: true });
+  encajarJuego(sl);
+  return obs;
+}
+
 // Tarjeta de instrucciones de un juego: la letra se ajusta (22 a 17 px) para que quepa con 16 px de margen; si aun
 // así no cabe, la tarjeta se desplaza por dentro en vez de cortarse.
 export function ajustarInicio(o) {

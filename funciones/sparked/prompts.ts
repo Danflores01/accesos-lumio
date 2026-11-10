@@ -117,9 +117,11 @@ DECIDE, EN ESTE ORDEN:
    "slides_estimados" = la misma cuenta, hecha con la regla de arriba.
 5. "identidad": "paleta" (historia_azul · espanol_rojo · mate_naranja ·
    ciencias_verde · frances_cielo · civica_morado · ingles_mostaza · geo_turquesa ·
-   otra), "titulo" (divertido, no infantil), "subtitulo" (1 línea),
-   "emojis_portada" (3–4 del tema), "objetivos" (3, simples) y "retratos_portada" (hasta 4 nombres de personajes
+   otra), "titulo" (divertido, no infantil, máx. 7 palabras), "subtitulo" (1 línea, máx. 14 palabras),
+   "emojis_portada" (3–4 del tema), "objetivos" (3, simples, máx. 14 palabras cada uno) y "retratos_portada" (hasta 4 nombres de personajes
    del inventario que merecen fotografía en la portada; vacío si el tema no tiene personajes).
+   TODO CABE (criterio de Daniel): la portada se ve completa, ordenada y alineada; un título o un objetivo
+   largo se amontona. El "titulo" de cada bloque: máx. 6 palabras.
 5b. "perfil_edad" según el grado: 1°–3° primaria → "infantil" · 4°–6° primaria y
    1° secundaria → "caricatura" · 2°–3° secundaria → "juvenil" · prepa y
    universidad → "sobrio".
@@ -271,6 +273,15 @@ REGLAS DE ORO (si una se rompe, la actividad no sirve)
    verdadero_falso ≥ 5 · duelo ≥ 5 (ideal 5 a 7) · mini_examen 0 o ≥ 5 · conceptos ≥ 4 parejas ·
    clasificar ≥ 6 tarjetas (al menos 2 en cada grupo). Escribe al menos lo que pide el plan; si el
    inventario no da para el mínimo de un juego, no lo escribas.
+12. TODO CABE EN SU SLIDE (criterio de Daniel): cada juego se ve completo, ordenado y alineado, sin
+   letras diminutas. Textos cortos y directos:
+   · opciones de opción múltiple, duelo y mini-examen: máx. 6 palabras cada una (la pregunta lleva el
+     contexto, no las opciones) · respuesta y distractores de completar: 1 a 3 palabras.
+   · verdadero_falso: afirmaciones de máx. 18 palabras · completar: enunciado de máx. 20 palabras.
+   · conceptos y quien_es_quien: de 4 a 7 parejas; "termino" de máx. 4 palabras.
+   · clasificar: de 6 a 10 tarjetas de máx. 5 palabras; nombres de grupo de máx. 4 palabras.
+   · ordenar: de 3 a 6 pasos de máx. 10 palabras.
+   · Nunca palabras pegadas sin espacios, direcciones web ni listas dentro de una opción.
 
 ${GRAMATICA}
 
@@ -322,6 +333,7 @@ ANTES DE RESPONDER, REVISA (si algo es "no", corrígelo):
 □ ¿Cada actividad tiene una sola respuesta y su retroalimentación?
 □ ¿Las pistas respetan el perfil de edad y hay al menos 1 esquema en el bloque?
 □ ¿Cada pista cabe en una slide (título corto, máx. 5 ideas de máx. 12 palabras)?
+□ ¿Cada juego cabe en su slide (opciones de máx. 6 palabras, tarjetas y pasos cortos, regla 12)?
 □ ¿Todo está en {idioma_guia}, con el apoyo que pide el plan?
 □ ¿El mini-examen tiene preguntas NUEVAS?
 □ ¿El JSON es válido?

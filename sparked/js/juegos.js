@@ -3,7 +3,7 @@
 // retroalimentación al instante. Versión "videojuego actual" (6 nov 2026): movimiento continuo, motor que acelera,
 // saltos, flechas en arco, parejas que se juntan con animación y todo se puede jugar tocando o arrastrando.
 // Cada actividad tiene plantillas distintas (vehículos, escenarios, colores) para que ninguna guía repita la misma.
-import { esc, h, mezclar, toast, inicio, fin, gameOver, arrastrable, panelPregunta, temporizador, personaje, selectorPersonaje, conectarSelector } from "./ui.js";
+import { esc, h, mezclar, toast, inicio, fin, gameOver, arrastrable, panelPregunta, temporizador, personaje, selectorPersonaje, conectarSelector, attrsFoto } from "./ui.js";
 import { marco } from "./teoria.js";
 import { sonido } from "./sonido.js";
 import { escenaCiudad, escenaMontana, escenaCastillo, escenaPlaneta, escenaSvg, capaVehiculo, vehiculo, capaEscalador, capaSoldado, capaArquero, capaIcono, capaSparky, icono, COLORES_DE_COCHE, escenaDuelo, capaDragonDuelo, capaHeroe, capaEscaladorDe, capaArqueroDe, escenaEnemigos, capaEnemigo, ENEMIGOS, escenaPinguino, capaPinguino, capaJuez, escenaPerro, capaPerro, capaPlato } from "./arte.js";
@@ -657,8 +657,8 @@ export function match(s, ctx) {
     if (zona.dataset.k === c.dataset.k) { juntar(c, zona); zona.style.borderStyle = "solid"; toast(el, true, `${p.termino} = ${p.definicion}`, 1600); if (!--faltan) { ctx.registrar(a.id, fallos === 0); ctx.luego(() => fin(el, ctx, "🧩 Mix & match", fallos ? `${fallos} ✗` : T("perfecto"), "", () => ctx.go(ctx.cur), fallos === 0), 800); } return true; }
     fallos++; toast(el, false, `${p.termino} = ${p.definicion}`, 2800); return false;
   };
-  mezclar(pares).forEach((p) => { const fila = h(`<div class="fila"><div class="drop" data-k="${esc(p.termino)}"></div>${p.imagen && !s.retratos ? `<img class="retrato-chico" src="${esc(p.imagen)}" alt="">` : ""}<div class="def">${esc(p.definicion)}</div></div>`); body.querySelector("#R").appendChild(fila); const z = fila.querySelector(".drop"); z.addEventListener("click", () => sel.enZona(z, soltar)); });
-  mezclar(pares).forEach((p) => { const c = h(p.imagen && s.retratos ? `<div style="display:flex;align-items:center;gap:8px"><img class="retrato-chico" src="${esc(p.imagen)}" alt="">${esc(p.termino)}</div>` : `<div>${esc(p.termino)}</div>`); c.dataset.k = p.termino;
+  mezclar(pares).forEach((p) => { const fila = h(`<div class="fila"><div class="drop" data-k="${esc(p.termino)}"></div>${p.imagen && !s.retratos ? `<img class="retrato-chico" src="${esc(p.imagen)}" alt=""${attrsFoto(p.imagen)}>` : ""}<div class="def">${esc(p.definicion)}</div></div>`); body.querySelector("#R").appendChild(fila); const z = fila.querySelector(".drop"); z.addEventListener("click", () => sel.enZona(z, soltar)); });
+  mezclar(pares).forEach((p) => { const c = h(p.imagen && s.retratos ? `<div style="display:flex;align-items:center;gap:8px"><img class="retrato-chico" src="${esc(p.imagen)}" alt=""${attrsFoto(p.imagen)}>${esc(p.termino)}</div>` : `<div>${esc(p.termino)}</div>`); c.dataset.k = p.termino;
     arrastrable(c, ctx, soltar, (c2) => sel.elegir(c2));
     body.querySelector("#L").appendChild(c); });
   arranque(el, T, "match", () => {});

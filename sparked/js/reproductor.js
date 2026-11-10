@@ -2,7 +2,7 @@
 import { normalizar, armarSlides, recortarVistaPrevia, prepararVistaPrevia, slidesVistaPrevia, dividirSlide, retitular, t as tx } from "./cartucho.js";
 import { portada, tutorial, teoria, resultados, candado, terminando, pantallaCarga, mensaje } from "./teoria.js";
 import * as J from "./juegos.js";
-import { h, esc, encajar, desborda, ajustarInicio } from "./ui.js";
+import { h, esc, desborda, ajustarInicio, precargarFotos, vigilarJuego, encajarJuego, algoSeSale, seEnciman } from "./ui.js";
 import { sonido } from "./sonido.js";
 import { CONFIG } from "./config.js";
 
@@ -16,16 +16,20 @@ const esToken = /^[A-Za-z0-9]{8,64}$/.test(token);
 const volverA = (() => { const v = params.get("volver"); if (!v) return null; try { const u = new URL(v, location.href); return u.origin === location.origin && /^https?:$/.test(u.protocol) ? u.href : null; } catch { return null; } })();
 // El botón es del sitio, no de la guía: va en el idioma del sitio (selector ES | EN), no en el de la guía.
 const idiomaSitio = (() => { try { return localStorage.getItem("sparked_idioma") === "en" ? "en" : "es"; } catch { return "es"; } })();
+// Va en la barra de herramientas (Daniel, 9 nov 2026: nada se encima): flotando arriba a la izquierda tapaba la
+// etiqueta del título de cada slide. En vertical flota justo arriba de la barra de abajo, fuera de la slide.
 const botonSalir = document.getElementById("salir");
 if (botonSalir && window.top === window && (volverA || params.has("demo"))) {
   botonSalir.hidden = false;
-  botonSalir.textContent = `✕ ${tx(idiomaSitio, "salir_pantalla")}`;
+  const largo = tx(idiomaSitio, "salir_pantalla");
+  botonSalir.innerHTML = `<span aria-hidden="true">✕</span><small>${esc(idiomaSitio === "en" ? "Exit" : "Salir")}</small>`;
+  botonSalir.title = largo; botonSalir.setAttribute("aria-label", largo);
   botonSalir.onclick = () => { location.href = volverA || "index.html"; };
 }
 // Si en la misma pestaña se abre otro link (cambia lo que va después de #), se vuelve a cargar la guía correcta.
 window.addEventListener("hashchange", () => location.reload());
 
-let c = null, S = [], cur = 0, escala = 1, timers = [], rafs = [];
+let c = null, S = [], cur = 0, escala = 1, timers = [], rafs = [], vigia = null;
 const ctx = {
   get c() { return c; }, get S() { return S; }, get cur() { return cur; },
   modo: "demo", precio: CONFIG.precio, resultados: {}, minis: {}, reto: null, guiaId: null,
@@ -47,7 +51,7 @@ const ctx = {
 
 const R = { portada, tutorial, teoria, resultados, candado, terminando, carrera: J.carrera, puertas: J.enemigos, enemigos: J.enemigos, montana: J.montana, castillo: J.castillo, pinguino: J.pinguino, perro: J.perro, swipe: J.swipe, superdato: J.superdato, match: J.match, sort: J.sort, rank: J.rank, ruleta: J.ruleta, quiz: J.quiz, duelo: J.duelo };
 
-function limpiar() { timers.forEach(clearTimeout); timers = []; rafs.forEach(cancelAnimationFrame); rafs = []; }
+function limpiar() { timers.forEach(clearTimeout); timers = []; rafs.forEach(cancelAnimationFrame); rafs = []; vigia?.disconnect(); vigia = null; }
 // El escenario mide 1280 x 720 y se escala a la pantalla. El reporte final es "fluido": toma la forma de la pantalla
 // (vertical en teléfono) y nunca se dibuja más chico que su tamaño real, para que sus letras se lean en iPad y teléfono.
 function ajustar() {
@@ -60,6 +64,7 @@ function ajustar() {
   escenario.classList.toggle("angosto", fluido && w < 760);
   escala = Math.min(vp.width / w, vp.height / h) * 0.985;
   escenario.style.transform = `scale(${escala})`;
+  if (fluido) encajarResultados(escenario.querySelector(".reporte"));
 }
 addEventListener("resize", ajustar);
 // El sonido se queda dentro de su slide: si la pestaña se oculta (otra app, otra pestaña, pantalla apagada), se apaga.
@@ -92,6 +97,13 @@ function render() {
     if (partes) { insertarPartes(cur, partes); return render(); }
     el.querySelector(".cuerpo")?.classList.add("con-desplazamiento");
   }
+  // La portada acomoda su título, objetivos y bloques; los juegos y el tutorial bajan su letra hasta que todo quepa
+  // (y la vuelven a revisar cada vez que cambia la pregunta o la tarjeta).
+  if (s.k === "portada") encajarPortada(el);
+  else if (s.k !== "teoria" && s.k !== "resultados") vigia = vigilarJuego(el);
+  // Red de seguridad: si una foto o una letra llega tarde y algo deja de caber, la slide se vuelve a acomodar.
+  const pendientes = [...el.querySelectorAll("img")].filter((im) => !im.complete);
+  if (pendientes.length) Promise.all(pendientes.map((im) => new Promise((ok) => { im.addEventListener("load", ok, { once: true }); im.addEventListener("error", ok, { once: true }); }))).then(() => reacomodar(el, s));
   el.querySelectorAll(".inicio").forEach(ajustarInicio);
   document.getElementById("pg").textContent = `${cur + 1}/${S.length}`;
   ajustar(); guardar();
@@ -103,16 +115,88 @@ const medidor = document.createElement("div");
 medidor.id = "medidor"; medidor.setAttribute("aria-hidden", "true");
 medidor.style.cssText = "position:fixed;left:-40000px;top:0;width:1280px;height:720px;visibility:hidden;pointer-events:none;overflow:hidden";
 document.body.appendChild(medidor);
-// Elige la letra de una slide de teoría ya dibujada (de 22 a 18 px) y achica el título si se monta sobre el cuerpo.
-// Devuelve false si ni con 18 px cabe.
+// Elige la letra (de 22 a 18 px) y el alto de las fotos de una slide de teoría ya dibujada, achica el título si se
+// monta sobre el cuerpo y deja libre el botón "¡A jugar!". Cabe = nada se sale del cuerpo, ninguna caja se desborda
+// por dentro y ninguna caja queda debajo del botón (Daniel, 9 nov 2026). Devuelve false si ni con lo más chico cabe
+// (entonces la slide se divide). Con fotos se prefiere la foto grande y la letra de 20 px o más; luego se achica todo.
+const HOJAS_TEORIA = ".tcard, .ojo, .claves, .caja-clave, .banda, .dato-rapido, .cat, .lista-iconos .fila, .hito, .comparacion .col, .ciclo .paso, .retrato-col .r, .cuadro, .linea-tiempo";
+const COMBOS_TEXTO = [[22, 0], [21, 0], [20, 0], [19, 0], [18, 0]];
+const COMBOS_FOTO = [[22, 190], [21, 190], [20, 190], [22, 165], [21, 165], [20, 165], [21, 140], [20, 140], [19, 140], [20, 120], [19, 120], [18, 120], [18, 100], [18, 84]];
 function encajarTeoria(el, s) {
   const cuerpo = el.querySelector(".cuerpo"), h1 = el.querySelector(".cabeza h1"), cabeza = el.querySelector(".cabeza");
   if (!cuerpo) return true;
-  if (s.tituloPx) h1.style.fontSize = s.tituloPx + "px";
-  for (const px of [34, 30]) { if (cabeza.offsetTop + cabeza.offsetHeight <= cuerpo.offsetTop - 4) break; h1.style.fontSize = px + "px"; s.tituloPx = px; }
-  const letra = encajar(el, cuerpo, 22, 18);
-  s.letra = letra ?? 18; el.style.setProperty("--letra", s.letra + "px");
-  return letra != null || !desborda(cuerpo);
+  // Título: de 40 a 28 px; si aun así llega al cuerpo, el cuerpo empieza más abajo.
+  h1.style.fontSize = ""; cuerpo.style.top = "";
+  for (const px of [36, 32, 30, 28]) { if (cabeza.offsetTop + cabeza.offsetHeight <= cuerpo.offsetTop - 6) break; h1.style.fontSize = px + "px"; }
+  const bajo = cabeza.offsetTop + cabeza.offsetHeight + 8;
+  if (bajo > cuerpo.offsetTop) cuerpo.style.top = bajo + "px";
+  // Botón "¡A jugar!": la caja clave y la banda le dejan su ancho real.
+  const boton = el.querySelector(".a-jugar");
+  if (boton) cuerpo.querySelectorAll(".fila-clave").forEach((f) => { f.style.marginRight = (boton.offsetWidth + 24) + "px"; });
+  const hojas = [...cuerpo.querySelectorAll(HOJAS_TEORIA)];
+  const cabe = () => !desborda(cuerpo) && !algoSeSale(el, HOJAS_TEORIA) && !(boton && hojas.some((x) => seEnciman(x, boton, el, 0)));
+  for (const [letra, foto] of (cuerpo.querySelector("img") ? COMBOS_FOTO : COMBOS_TEXTO)) {
+    el.style.setProperty("--letra", letra + "px");
+    if (foto) el.style.setProperty("--alto-foto", foto + "px");
+    if (cabe()) { s.letra = letra; return true; }
+  }
+  s.letra = 18;
+  return false;
+}
+// Portada: el título, el subtítulo, los objetivos, los retratos y la barra de bloques nunca se enciman ni se salen.
+// Los títulos largos bajan de tamaño; si aun así no caben, lo de abajo se recorre (nunca queda encima).
+function encajarPortada(el) {
+  const $ = (q) => el.querySelector(q);
+  const texto = $(".texto"), h1 = $(".texto h1"), sub = $(".texto .sub"), aprender = $(".aprender"), objs = $(".objetivos"), bloques = $(".bloques"), derecha = $(".retratos, .mosaicos"), sello = $(".sello-vp");
+  if (!texto || !h1 || !aprender || !objs || !bloques) return;
+  const fin = (e) => e.offsetTop + e.offsetHeight;
+  for (const px of [74, 68, 62, 56, 52, 48, 44]) { h1.style.fontSize = px + "px"; if (fin(texto) <= 396) break; }
+  if (sub) for (const px of [20, 18]) { if (fin(texto) <= 396) break; sub.style.fontSize = px + "px"; }
+  const arriba = Math.max(410, fin(texto) + 14);
+  aprender.style.top = arriba + "px"; objs.style.top = (arriba + 36) + "px";
+  const limite = el.offsetHeight - 34; // la marca SparkEd va abajo a la izquierda
+  afuera: for (const po of [17, 16, 15, 14]) {
+    objs.querySelectorAll(":scope > div").forEach((d) => { d.style.fontSize = po + "px"; });
+    for (const pb of [14, 13, 12, 11]) {
+      bloques.querySelectorAll(":scope > div").forEach((d) => { d.style.fontSize = pb + "px"; });
+      bloques.style.top = Math.max(622, fin(objs) + 14) + "px";
+      if (fin(bloques) <= limite) break afuera;
+    }
+  }
+  if (derecha) {
+    if (sello && seEnciman(sello, derecha, el)) derecha.style.top = (fin(sello) + 10) + "px";
+    for (const px of [124, 112, 100, 90, 80]) { el.style.setProperty("--alto-portada", px + "px"); if (fin(derecha) <= objs.offsetTop - 12) break; }
+  }
+}
+// Vuelve a acomodar la slide que está en pantalla (llegó tarde una foto o una letra). Si la teoría ya no cabe, se
+// redibuja para que se divida; la portada y los juegos se reacomodan ahí mismo.
+function reacomodar(el, s) {
+  if (S[cur] !== s || !el.isConnected) return;
+  if (s.k === "teoria") {
+    if (encajarTeoria(el, s)) return;
+    const partes = ctx.modo === "vista_previa" ? null : dividirSlide(s);
+    if (partes) { insertarPartes(cur, partes); render(); } else el.querySelector(".cuerpo")?.classList.add("con-desplazamiento");
+  }
+  else if (s.k === "portada") encajarPortada(el);
+  else if (s.k === "resultados") encajarResultados(el);
+  else encajarJuego(el);
+}
+try { document.fonts?.addEventListener?.("loadingdone", () => { const el = escenario.firstElementChild; if (el && S[cur]) reacomodar(el, S[cur]); }); } catch {}
+// Resultados: la columna de la calificación cabe completa; si no hay sitio, Sparky se esconde.
+function encajarResultados(el) {
+  const res = el?.querySelector(".rep-resumen"); if (!res) return;
+  res.classList.remove("compacto");
+  if (!escenario.classList.contains("angosto") && desborda(res)) res.classList.add("compacto");
+}
+// Todas las fotos de la guía (portada, pistas, esquemas y juegos): se mide su forma antes de acomodar las slides.
+function fotosDe(c) {
+  const urls = [];
+  (c.plan?.identidad?.retratos_portada ?? []).forEach((r) => urls.push(r?.url));
+  (c.bloques ?? []).forEach((b) => {
+    (b.pistas ?? []).forEach((p) => { (p.imagenes ?? []).forEach((x) => urls.push(x?.url)); (p.esquema?.elementos ?? []).forEach((e) => urls.push(e?.imagen)); });
+    [...(b.actividades ?? []), ...(b.mini_examen ?? []), ...(b.duelo ?? [])].forEach((a) => (a?.pares ?? []).forEach((p) => urls.push(p?.imagen)));
+  });
+  return urls.filter((u) => typeof u === "string" && /^https?:\/\//.test(u));
 }
 // Cambia la slide i por sus partes y recorre lo que depende del número de slide (calificaciones de los mini-exámenes).
 function insertarPartes(i, partes) {
@@ -189,7 +273,7 @@ function leerSecreto() { try { return localStorage.getItem(CLAVE_DISP) || ""; } 
 function guardarSecreto(s) { try { if (s) localStorage.setItem(CLAVE_DISP, s); } catch {} }
 
 // ---------- Arranque ----------
-function aplicarPaleta() { document.documentElement.dataset.paleta = c.plan.identidad.paleta; document.title = `${c.plan.identidad.titulo} · SparkEd`; }
+function aplicarPaleta() { document.documentElement.dataset.paleta = c.plan.identidad.paleta; document.documentElement.lang = c.plan.idioma_guia || "es"; document.title = `${c.plan.identidad.titulo} · SparkEd`; }
 async function montar(cartucho, modo, parcial = false) {
   ctx.modo = modo;
   c = normalizar(cartucho); aplicarPaleta();
@@ -199,6 +283,8 @@ async function montar(cartucho, modo, parcial = false) {
   if (modo === "vista_previa") { S = slidesVistaPrevia(S); S.push({ k: "candado", t: ctx.t("desbloquea"), blk: -1 }); }
   // Guía pagada que todavía se está terminando: se juegan los bloques que ya existen y al final va un letrero.
   if (parcial) { S = S.filter((s) => s.k !== "resultados" && s.k !== "ruleta"); S.push({ k: "terminando", t: "Estamos terminando los demás bloques", blk: -1 }); }
+  // Fotos completas (Daniel, 9 nov 2026): primero se mide la forma de cada foto, para acomodarla entera y sin recortes.
+  await precargarFotos(fotosDe(c));
   await prepararTeoria();
   // Si la pista de la vista previa no cupo en una página, solo se muestra la primera (lo demás va en la guía completa).
   if (modo === "vista_previa") { let una = false; S = S.filter((s) => s.k !== "teoria" || (!una && (una = true))); retitular(S, c.plan.idioma_guia); }

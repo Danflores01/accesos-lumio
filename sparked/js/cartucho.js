@@ -477,8 +477,25 @@ export function dividirSlide(s) {
     a = parteDe(p, ideas.slice(0, corte), true, false); b = parteDe(p, ideas.slice(corte), false, true);
   } else if (tieneCola(p) && ideas.length) {
     a = parteDe(p, ideas, true, false); b = parteDe(p, [], false, true);
-  } else return null;
+  } else {
+    const dos = partirCola(p);
+    if (!dos) return null;
+    [a, b] = dos;
+  }
   return [{ ...s, pistas: [a] }, { ...s, pistas: [b] }];
+}
+// Una parte sin viñetas que aún no cabe (Daniel, 9 nov 2026: todo cabe): el ejemplo y los datos corregidos van en una
+// slide, y el esquema, la clave y la conclusión en otra; si solo son datos corregidos, la mitad en cada slide.
+function partirCola(p) {
+  const sin = (q, ks) => { const r = { ...q, ideas: [], partida: true }; ks.forEach((k) => delete r[k]); return r; };
+  const corr = p.correcciones ?? [];
+  const cajas = !!p.ejemplo || corr.length > 0, resto = !!(p.esquema?.tipo || p.clave || p.conclusion);
+  if (cajas && resto) return [sin(p, ["esquema", "clave", "conclusion"]), sin(p, ["ejemplo", "correcciones", ...CABEZA])];
+  if (corr.length >= 2) {
+    const m = Math.ceil(corr.length / 2);
+    return [{ ...sin(p, ["esquema", "clave", "conclusion"]), correcciones: corr.slice(0, m) }, { ...sin(p, ["ejemplo", ...CABEZA]), correcciones: corr.slice(m) }];
+  }
+  return null;
 }
 // Títulos, numeración y marcas de las slides de teoría después de repartir: las slides de una misma serie (una pista o
 // un grupo que no cupo en una) llevan (1/2), (2/2); "parte" da los colores y "ultima" pone "Ojo con esto" y "Palabras
