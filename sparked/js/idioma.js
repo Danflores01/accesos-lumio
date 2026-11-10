@@ -4,7 +4,7 @@
 //
 // Cómo se usa (ver docs/CRITERIOS-FASE-2.md, sección 24):
 //  - HTML fijo:  <h2 data-i18n="como.titulo">Así se hace tu guía</h2>
-//                <input data-i18n-attr="placeholder:crear.colegio_ph">   (varios: "title:clave1;alt:clave2")
+//                <select data-i18n-attr="aria-label:contacto.lada"> (varios: "title:clave1;alt:clave2")
 //                <span data-i18n="crear.conteo" data-i18n-vars='{"n":3,"max":25}'></span>
 //  - JavaScript: t("clave", { n: 3 }) da el texto plano en el idioma activo; th(...) lo da con las variables escapadas
 //                para HTML; marca("clave", vars) da un <span data-i18n> que se traduce solo al cambiar de idioma.
@@ -111,8 +111,6 @@ const TEXTOS = {
   "crear.titulo": ["Arrastra tu contenido para hacer tu guía", "Drop in your content to make your guide"],
   "crear.grado": ["Grado", "Grade"],
   "crear.materia": ["Materia", "Subject"],
-  "crear.colegio": ["Colegio (opcional)", "School (optional)"],
-  "crear.colegio_ph": ["Para identificar tu guía", "To identify your guide"],
   "crear.zona": ["<b>Toca para elegir fotos o PDF</b>, o arrástralos aquí", "<b>Tap to choose photos or PDFs</b>, or drag them here"],
   "crear.zona_ayuda": ["Hasta 25 páginas · fotos del temario, del libro de texto o de tus apuntes. Mientras más claras, mejor.", "Up to 25 pages · photos of your syllabus, your textbook or your notes. The clearer, the better."],
   "crear.boton": ["✨ Crear mi guía", "✨ Create my guide"],

@@ -8,7 +8,6 @@
 <link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/sitio.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs" type="module"></script>
 <title>SparkEd · Panel de guías</title>
 <style>
   .flujo .contenedor { max-width: 1100px; }
@@ -92,6 +91,22 @@
   .wa-alerta { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; background: #fef3c7; color: #92400e; font-size: 14px; font-weight: 700; }
   .wa-burbuja { background: #dcf8c6; border-radius: 4px 14px 14px 14px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.45; color: #111b21; box-shadow: 0 1px 1px rgba(0,0,0,.12); }
   .wa-botones { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  /* Bloques que se abren y se cierran (Motores, WhatsApp): el renglón resumen se ve aun cerrado */
+  details.plegable > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 14px; background: #fff; border: 2px solid var(--borde); border-radius: 14px; }
+  details.plegable > summary::-webkit-details-marker { display: none; }
+  details.plegable > summary::after { content: "▾"; margin-left: auto; font-size: 18px; color: var(--gris); transition: transform .2s; }
+  details.plegable[open] > summary::after { transform: rotate(180deg); }
+  details.plegable > summary .pleg-titulo { font-weight: 800; font-size: 18px; }
+  details.plegable[open] > summary { margin-bottom: 12px; }
+  .pleg-resumen { font-weight: 700; font-size: 14px; padding: 4px 10px; border-radius: 999px; background: #eef0f6; color: #444; }
+  .pleg-resumen.verde { background: #dcfce7; color: #166534; }
+  .pleg-resumen.amarillo { background: #fef3c7; color: #92400e; }
+  .pleg-resumen.rojo { background: #fee2e2; color: #991b1b; }
+  /* Compras: el nombre del cliente va primero y en negritas */
+  .fila-g .info b.cliente { font-size: 18px; }
+  /* Guías: tabla corta de 3 columnas; cabe en el celular sin moverla de lado */
+  .tabla-guias table { min-width: 0; }
+  .tabla-guias td:first-child { white-space: normal; }
 </style>
 </head>
 <body class="sitio claro">
@@ -110,14 +125,13 @@
   <div id="app" hidden>
     <div class="tabs" id="tabs">
       <button data-tab="resumen" class="on">Resumen</button>
-      <button data-tab="guias">Guías <span class="n" id="nGuias" hidden></span></button>
+      <button data-tab="guias">Guías</button>
       <button data-tab="compras">Compras <span class="n" id="nCompras" hidden></span></button>
       <button data-tab="codigos">Códigos</button>
       <button data-tab="solicitudes" hidden>Pedidos sin guía <span class="n" id="nSolicitudes" hidden></span></button>
       <button data-tab="reportes">Reportes <span class="n" id="nReportes" hidden></span></button>
       <button data-tab="comentarios">Comentarios <span class="n" id="nComentarios" hidden></span></button>
       <button data-tab="costos">Costos</button>
-      <button data-tab="colegios">Colegios</button>
       <button data-tab="ajustes">Ajustes</button>
     </div>
 
@@ -125,35 +139,28 @@
       <div id="alertas"></div>
       <div id="alertaComentarios"></div>
       <div class="numeros" id="numeros"></div>
-      <h2 style="margin:22px 0 10px">Motores</h2>
-      <div class="motores" id="motores"></div>
+      <details class="plegable" id="plegMotores" style="margin-top:22px">
+        <summary><span class="pleg-titulo">Motores</span><span class="pleg-resumen" id="resumenMotores">Revisando…</span></summary>
+        <div class="motores" id="motores"></div>
+      </details>
     </section>
 
     <section data-panel="guias" hidden>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-        <button class="boton" id="btnNueva">＋ Nueva guía</button>
-        <select id="filtroGuias" class="campo" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="">Todas</option><option value="borrador">Borradores (por revisar)</option><option value="publicada">Publicadas</option><option value="personalizada">Personalizadas</option><option value="archivada">Archivadas</option></select>
+        <select id="diasGuias" aria-label="Periodo de la lista" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="30">Lista: últimos 30 días</option><option value="90" selected>Lista: últimos 90 días</option><option value="365">Lista: último año</option></select>
         <button class="boton linea chico" id="btnRefrescarGuias">⟳ Actualizar</button>
       </div>
-      <section class="panel-paso" id="nueva" hidden>
-        <h2 style="margin-top:0">Nueva guía</h2>
-        <form id="formNueva" class="rejilla-campos">
-          <div class="campo" style="grid-column:1/-1"><label>Título (si lo dejas vacío, lo pone la IA)</label><input name="titulo" placeholder="Ej. Historia de México 2 · El encuentro de dos mundos"></div>
-          <div class="campo"><label>Colegio</label><select name="colegio_id"></select></div>
-          <div class="campo"><label>Grado</label><select name="grado" required></select></div>
-          <div class="campo"><label>Materia</label><select name="materia" required></select></div>
-          <div class="campo"><label>Examen (opcional)</label><input name="examen" placeholder="Ej. Examen bimestral 2"></div>
-          <div class="campo"><label>Fecha del examen (opcional)</label><input name="fecha_examen" type="date"></div>
-          <div class="campo" style="grid-column:1/-1"><label>Material de estudio: fotos o PDF (hasta 25 páginas)</label>
-            <div class="zona-carga" id="zona"><div>📷 Arrastra aquí las fotos o el PDF, o toca para elegir</div><input id="archivos" type="file" accept="image/*,application/pdf" multiple hidden></div>
-            <div class="miniaturas" id="minis"></div><div class="ayuda" id="conteo"></div></div>
-          <div class="campo" style="grid-column:1/-1"><label>O sube un cartucho ya hecho (archivo .json)</label><input name="cartucho" type="file" accept="application/json,.json"></div>
-          <label style="grid-column:1/-1;display:flex;gap:8px;align-items:center"><input type="checkbox" name="generar" checked> Generar la guía con la IA en cuanto terminen de subir las páginas</label>
-          <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap"><button class="boton" type="submit" id="btnCrear">Crear guía</button><button class="boton linea" type="button" id="btnCancelarNueva">Cancelar</button></div>
-          <div class="error" id="errNueva" style="grid-column:1/-1"></div>
-        </form>
-      </section>
-      <div id="listaGuias"></div>
+      <div id="costosGuias"><p class="ayuda">Cargando…</p></div>
+      <div class="caja-clave" style="margin-top:18px">
+        <b>¿De dónde sale el costo de cada guía?</b>
+        <p style="margin:6px 0 0">1. Cada vez que el servidor le pide algo a la inteligencia artificial (Claude, de la empresa Anthropic), Anthropic responde cuánto leyó y cuánto escribió. Eso se mide en «tokens» (pedacitos de texto y de imagen).</p>
+        <p style="margin:6px 0 0">2. El servidor multiplica esos tokens por el precio de cada modelo, en dólares. Esa lista de precios está escrita en el código del servidor. Cada búsqueda en internet que hace la IA suma 1 centavo de dólar.</p>
+        <p style="margin:6px 0 0">3. El total en dólares se pasa a pesos con el tipo de cambio oficial del Diario Oficial de la Federación (DOF) del día en que se generó. Si ese día no hubo publicación, se usa la última.</p>
+        <p style="margin:6px 0 0">Una guía completa incluye el costo de su vista previa, porque al pagar se aprovecha lo que ya se hizo en la vista previa.</p>
+        <b style="display:block;margin-top:10px">¿Qué tan exacto es?</b>
+        <p style="margin:6px 0 0">Es una estimación muy cercana, pero no es la factura. El consumo es el que reporta Anthropic en cada respuesta; los precios son los que están escritos en el código, así que si Anthropic cambia sus precios hay que actualizarlos.</p>
+        <p style="margin:6px 0 0"><b>No incluye:</b> las llamadas a la IA que se cortaron por tardar demasiado o que se interrumpieron antes de anotarse (Anthropic pudo cobrarlas); la comisión o los impuestos de tu banco por pagar en dólares; la comisión de Mercado Pago; ni los servicios fijos (Supabase, correo, WhatsApp, dominio). Para comparar con lo que de verdad pagas, revisa el consumo en la consola de Anthropic.</p>
+      </div>
     </section>
 
     <section data-panel="compras" hidden>
@@ -213,10 +220,6 @@
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"><button class="boton linea chico" type="button" id="btnAgregarServicio">＋ Agregar servicio</button><button class="boton chico" type="button" id="btnGuardarServicios">Guardar servicios</button></div>
       </div>
     </section>
-    <section data-panel="colegios" hidden>
-      <form id="formColegio" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><input name="nombre" placeholder="Nombre del colegio" required style="flex:1;min-width:220px;padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><button class="boton chico" type="submit">Agregar</button></form>
-      <div id="listaColegios"></div>
-    </section>
     <section data-panel="ajustes" hidden>
       <div class="panel-paso"><h2 style="margin-top:0">Ajustes del sitio</h2>
         <form id="formAjustes" class="rejilla-campos">
@@ -231,7 +234,10 @@
           <div style="grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="boton" type="submit">Guardar ajustes</button><button class="boton linea" type="button" id="btnLimpiar">🧹 Limpiar borradores vencidos</button></div>
         </form>
       </div>
-      <div class="panel-paso" style="margin-top:14px" id="tarjetaWhatsApp"><h2 style="margin-top:0">WhatsApp (Green API)</h2><div id="estadoWhatsApp"><p class="ayuda">Cargando…</p></div></div>
+      <details class="plegable" style="margin-top:14px" id="plegWhatsApp">
+        <summary><span class="pleg-titulo">WhatsApp (Green API)</span><span class="pleg-resumen" id="resumenWhatsApp">Revisando…</span></summary>
+        <div class="panel-paso" id="tarjetaWhatsApp"><div id="estadoWhatsApp"><p class="ayuda">Cargando…</p></div></div>
+      </details>
       <div class="caja-clave" style="margin-top:14px"><b>Cómo se encienden los motores</b><p style="margin:6px 0 0">Cada motor se enciende poniendo su llave en Supabase → Edge Functions → Secrets (nunca en el código ni en WhatsApp): <code>ANTHROPIC_API_KEY</code> (la IA que escribe las guías), <code>MP_ACCESS_TOKEN</code> y <code>MP_WEBHOOK_SECRET</code> (cobro en línea con Mercado Pago: tarjeta, OXXO y SPEI), <code>RESEND_API_KEY</code> (correos) y, opcional, <code>HELICONE_API_KEY</code> (medición de costos). Stripe (<code>STRIPE_SECRET_KEY</code> y <code>STRIPE_WEBHOOK_SECRET</code>) queda dormido: solo se usaría si Mercado Pago no estuviera puesto. Mientras un motor está apagado, el sitio sigue funcionando en modo manual. Los pasos para Mercado Pago están en GUIA.md.</p></div>
     </section>
   </div>
@@ -240,7 +246,7 @@
 <div class="msg" id="msg"></div>
 
 <script type="module">
-import { esc, opciones, GRADOS, MATERIAS, waLink } from "./js/sitio.js";
+import { esc, waLink } from "./js/sitio.js";
 import { CONFIG } from "./js/config.js";
 import { mensajeWhatsApp } from "./js/flujo.js";
 
@@ -248,7 +254,6 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const LS = "al_clave"; // la misma llave que guarda la app de accesos (mismo dominio)
 let clave = ""; try { clave = localStorage.getItem(LS) || ""; } catch {}
-let colegios = [], timerGuias = null;
 
 function aviso(texto, mal = false, ms = 3500) { const m = $("#msg"); m.textContent = texto; m.className = "msg on" + (mal ? " mal" : ""); clearTimeout(aviso.t); aviso.t = setTimeout(() => m.classList.remove("on"), ms); }
 async function api(ruta, { method = "GET", body } = {}) {
@@ -276,12 +281,20 @@ if (clave) entrar();
 // ---------- Pestañas ----------
 $("#tabs").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; mostrarTab(b.dataset.tab); };
 function mostrarTab(t) {
+  if (!$$("#tabs button").some((b) => b.dataset.tab === t)) t = "resumen";
   $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   $$("[data-panel]").forEach((s) => { s.hidden = s.dataset.panel !== t; });
   location.hash = t;
-  ({ resumen: cargarResumen, guias: cargarGuias, compras: cargarCompras, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, comentarios: cargarComentarios, costos: cargarCostos, colegios: cargarColegios, ajustes: cargarAjustes })[t]?.();
+  ({ resumen: cargarResumen, guias: cargarCostosGuias, compras: cargarCompras, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, comentarios: cargarComentarios, costos: cargarCostos, ajustes: cargarAjustes })[t]?.();
 }
-async function cargarTodo() { await cargarColegios(true); mostrarTab(location.hash.replace("#", "") || "resumen"); }
+function cargarTodo() { mostrarTab(location.hash.replace("#", "") || "resumen"); }
+
+// Bloques que se abren y se cierran: recuerdan si los dejaste abiertos (cerrados la primera vez).
+for (const d of $$("details.plegable")) {
+  const k = "sparked_panel_abierto_" + d.id;
+  try { d.open = localStorage.getItem(k) === "1"; } catch {}
+  d.addEventListener("toggle", () => { try { localStorage.setItem(k, d.open ? "1" : "0"); } catch {} });
+}
 
 // ---------- Resumen ----------
 async function cargarResumen() {
@@ -292,20 +305,32 @@ async function cargarResumen() {
     [r.reportes_nuevos, "reportes nuevos"], [r.ia.corriendo, "generaciones en curso"], ["US$" + r.ia.costo_usd_mes.toFixed(2), "gasto de IA este mes"],
   ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
   // Guías pagadas que la IA no pudo terminar: la familia ve "Estamos revisando tu guía" hasta que se reintente.
-  $("#alertas").innerHTML = (r.entregas_con_error ?? []).map((x) => `<div class="caja-clave" style="border-left-color:#dc2626;margin-bottom:12px"><b>⚠️ Guía pagada sin terminar: ${esc(x.titulo ?? "Guía")}</b><div class="ayuda" style="margin:4px 0 8px">La IA no pudo terminar los bloques que faltan (paso ${esc(x.paso ?? "")}, ${esc(fecha(x.desde))}). La familia ve "Estamos revisando tu guía; te avisamos por correo en cuanto esté lista". Abre la guía y toca ↻ Reintentar; al terminar, a la familia le llega sola el correo.</div><button class="boton chico" data-guia="${esc(x.guia_id)}">Abrir la guía</button></div>`).join("");
-  $$("#alertas [data-guia]").forEach((b) => b.onclick = () => detalleGuia(b.dataset.guia));
+  $("#alertas").innerHTML = (r.entregas_con_error ?? []).map((x) => `<div class="caja-clave" style="border-left-color:#dc2626;margin-bottom:12px"><b>⚠️ Una guía pagada no se terminó</b><div class="ayuda" style="margin:4px 0 8px">La IA no pudo terminar los bloques que faltan (paso ${esc(x.paso ?? "")}, ${esc(fecha(x.desde))}). La familia ve "Estamos revisando tu guía; te avisamos por correo en cuanto esté lista". Toca ↻ Reintentar; al terminar, a la familia le llega sola su guía.</div><button class="boton chico" data-reintentar="${esc(x.trabajo_id)}">↻ Reintentar</button></div>`).join("");
+  $$("#alertas [data-reintentar]").forEach((b) => b.onclick = async () => { b.disabled = true; try { await api(`/trabajos/${b.dataset.reintentar}/reintentar`, { method: "POST" }); aviso("Reintentando… la guía se envía sola cuando esté lista", false, 6000); cargarResumen(); } catch (e) { b.disabled = false; aviso(e.message, true, 6000); } });
   $("#nCompras").hidden = !r.compras.pendientes; $("#nCompras").textContent = r.compras.pendientes;
   $("#nSolicitudes").hidden = !r.solicitudes_sin_guia; $("#nSolicitudes").textContent = r.solicitudes_sin_guia;
   $("#nReportes").hidden = !r.reportes_nuevos; $("#nReportes").textContent = r.reportes_nuevos;
-  $("#nGuias").hidden = !r.guias.borradores; $("#nGuias").textContent = r.guias.borradores;
   // Comentarios nuevos de la portada (si la ruta todavía no existe, no se muestra nada).
   api("/comentarios?estado=nuevo").then((c) => pintarNuevosComentarios(c.nuevos ?? 0)).catch(() => {});
 }
 function pintarMotores(p) {
   const m = p.motores ?? {};
   const lista = [["ia", "Inteligencia artificial", "ANTHROPIC_API_KEY", "Escribe las guías"], ["mercadopago", "Cobro en línea (Mercado Pago)", "MP_ACCESS_TOKEN", m.mercadopago_prueba ? "MODO DE PRUEBA: no cobra de verdad. Al terminar las pruebas pon la llave de producción" : "Tarjeta, OXXO y SPEI. Apagado = las compras se confirman a mano aquí"], ["mercadopago_webhook", "Aviso de pago de Mercado Pago", "MP_WEBHOOK_SECRET", "Activa la guía sola en cuanto Mercado Pago confirma el pago"], ["correo", "Correos (Resend)", "RESEND_API_KEY", "Manda el link y el QR al correo del cliente"], ["whatsapp", "WhatsApp (Green API)", "GREEN_API_TOKEN_INSTANCE", "Manda la guía por WhatsApp, con Sparky y su código QR"],["stripe", "Stripe (dormido)", "STRIPE_SECRET_KEY", "No se usa: el cobro en línea es con Mercado Pago"], ["webhook", "Aviso de pago de Stripe", "STRIPE_WEBHOOK_SECRET", "Solo si algún día se usa Stripe"], ["helicone", "Medición de costos (Helicone)", "HELICONE_API_KEY", "Opcional: cuánto cuesta cada guía"]];
+  // Los 5 motores que hacen funcionar la venta; Stripe (dormido) y Helicone (opcional) no cuentan en el resumen.
+  estadoMotores = Object.fromEntries(MOTORES_CLAVE.map(([k]) => [k, !m[k] ? "apagado" : k === "mercadopago" && m.mercadopago_prueba ? "en modo de prueba" : "ok"]));
+  pintarResumenMotores();
   $("#motores").innerHTML = lista.map(([k, nombre, sec, desc]) => `<div class="motor ${m[k] ? "on" : ""}" data-motor="${k}"><b>${m[k] ? (k === "mercadopago" && m.mercadopago_prueba ? "🟡" : "🟢") : "⚪"} ${esc(nombre)}</b><span class="ayuda">${esc(desc)}</span><div style="margin-top:6px"><code>${esc(sec)}</code> ${m[k] ? "configurada" : "sin configurar"}</div></div>`).join("");
   if (m.whatsapp) pintarMotorWhatsApp();
+}
+const MOTORES_CLAVE = [["ia", "Inteligencia artificial"], ["mercadopago", "Mercado Pago"], ["mercadopago_webhook", "Aviso de pago"], ["correo", "Correos"], ["whatsapp", "WhatsApp"]];
+let estadoMotores = {};
+function pintarResumenMotores() {
+  const el = $("#resumenMotores"); if (!el) return;
+  const bien = MOTORES_CLAVE.filter(([k]) => estadoMotores[k] === "ok").length;
+  const apagados = MOTORES_CLAVE.filter(([k]) => estadoMotores[k] === "apagado").map(([, n]) => n);
+  const avisos = MOTORES_CLAVE.filter(([k]) => !["ok", "apagado", undefined].includes(estadoMotores[k])).map(([k, n]) => `${n}: ${estadoMotores[k]}`);
+  el.className = "pleg-resumen " + (apagados.length ? "rojo" : avisos.length ? "amarillo" : "verde");
+  el.textContent = `${bien} de ${MOTORES_CLAVE.length} encendidos` + (apagados.length ? ` · apagado: ${apagados.join(", ")}` : "") + (avisos.length ? ` · ${avisos.join(" · ")}` : "");
 }
 // WhatsApp está encendido de verdad cuando, además de tener las llaves, el teléfono sigue enlazado en Green API:
 // se le pregunta el estado y la tarjeta lo dice con palabras (verde = entrega mensajes; amarillo = hay algo que arreglar).
@@ -317,6 +342,7 @@ async function pintarMotorWhatsApp() {
     const w = await api("/whatsapp");
     const bien = w.estado_instancia === "authorized";
     caja.classList.toggle("on", bien);
+    estadoMotores.whatsapp = bien ? "ok" : "con un problema (ábrelo para ver)"; pintarResumenMotores();
     caja.querySelector("b").textContent = `${bien ? "🟢" : "🟡"} WhatsApp (Green API)`;
     caja.querySelector("div").innerHTML = bien
       ? `<b>Encendido</b>${w.numero ? " · número " + esc(w.numero) : ""}${w.webhook_configurado ? "" : " · falta pulsar «Conectar» en Ajustes"}`
@@ -324,151 +350,44 @@ async function pintarMotorWhatsApp() {
   } catch { /* si no se pudo preguntar, se queda con lo que dice el servidor: llaves configuradas */ }
 }
 
-// ---------- Guías ----------
-async function cargarColegios(solo = false) {
-  colegios = await api("/colegios");
-  const f = $("#formNueva");
-  opciones(f.colegio_id, [{ valor: "", texto: "Sin colegio (sirve para todos)" }, ...colegios.filter((c) => c.activo).map((c) => ({ valor: c.id, texto: c.nombre }))], null);
-  if (!f.grado.options.length) { opciones(f.grado, GRADOS, "Elige el grado"); opciones(f.materia, MATERIAS, "Elige la materia"); }
-  if (solo) return;
-  $("#listaColegios").innerHTML = colegios.map((c) => `<div class="fila-g"><div class="info"><b>${esc(c.nombre)}</b> ${chip(c.activo ? "activo" : "inactivo")}</div><div class="acciones"><button class="boton linea" data-act="toggle" data-id="${c.id}" data-on="${c.activo}">${c.activo ? "Ocultar del sitio" : "Mostrar en el sitio"}</button></div></div>`).join("") || "<p class='ayuda'>Sin colegios.</p>";
-  $$("#listaColegios [data-act=toggle]").forEach((b) => b.onclick = async () => { await api(`/colegios/${b.dataset.id}`, { method: "PATCH", body: { activo: b.dataset.on !== "true" } }); cargarColegios(); });
-}
-$("#formColegio").onsubmit = async (e) => { e.preventDefault(); try { await api("/colegios", { method: "POST", body: { nombre: $("#formColegio").nombre.value } }); $("#formColegio").reset(); cargarColegios(); aviso("Colegio agregado"); } catch (err) { aviso(err.message, true); } };
-
-async function cargarGuias() {
-  const filtro = $("#filtroGuias").value;
-  let lista = await api("/guias" + (filtro && filtro !== "personalizada" ? `?estado=${filtro}` : ""));
-  if (filtro === "personalizada") lista = lista.filter((g) => g.origen === "personalizada");
-  else if (!filtro) lista = lista.filter((g) => g.origen === "biblioteca" || g.estado !== "archivada");
-  $("#listaGuias").innerHTML = lista.map(filaGuia).join("") || `<p class="ayuda">No hay guías aquí todavía. Crea la primera con "＋ Nueva guía".</p>`;
-  $$("#listaGuias [data-act]").forEach((b) => b.onclick = () => accionGuia(b.dataset.act, b.dataset.id, b));
-  clearTimeout(timerGuias);
-  if (lista.some((g) => g.trabajo && ["pendiente", "corriendo"].includes(g.trabajo.estado)) && !$("[data-panel=guias]").hidden) timerGuias = setTimeout(cargarGuias, 5000);
-}
-function filaGuia(g) {
-  const t = g.trabajo; const corriendo = t && ["pendiente", "corriendo"].includes(t.estado);
-  const meta = [g.colegio ?? "Todos los colegios", g.grado, g.materia, g.examen, g.fecha_examen ? "examen " + g.fecha_examen : ""].filter(Boolean).join(" · ");
-  const acciones = [];
-  if (g.completo) acciones.push(["ver", "👁 Ver como profesor", "linea"]);
-  if (g.origen === "biblioteca" && !corriendo) { acciones.push(["paginas", g.completo ? "📷 Cambiar páginas" : "📷 Subir páginas", "linea"]); acciones.push(["generar", g.completo ? "🤖 Regenerar con IA" : "🤖 Generar con IA", "linea"]); acciones.push(["cartucho", "📄 Subir cartucho", "linea"]); }
-  if (g.completo && g.estado !== "publicada") acciones.push(["publicar", "✅ Publicar", ""]);
-  if (g.estado === "publicada" && g.origen === "biblioteca") acciones.push(["archivar", "📦 Archivar", "linea"]);
-  acciones.push(["editar", "✏️ Editar", "linea"], ["detalle", "ℹ️ Detalle", "linea"]);
-  if (!g.compras_pagadas && !g.compras_codigo) acciones.push(["borrar", "🗑 Borrar", "linea"]);
-  return `<div class="fila-g"><div class="info"><b>${esc(g.titulo ?? "(sin título)")}</b>${chip(g.estado)}${g.origen === "personalizada" ? chip("personalizada") : ""}
-    <div class="ayuda">${esc(meta)}</div>
-    <div class="ayuda">${g.completo ? "Cartucho completo" : "Sin cartucho completo"} · ${g.compras_pagadas} vendidas${g.compras_codigo ? ` · ${g.compras_codigo} con código gratis` : ""}${g.compras_pendientes ? ` · ${g.compras_pendientes} pendientes` : ""} · costo IA ${dinero(g.costo_mxn)} · creada ${esc(fecha(g.creada_en))}${g.borrar_en ? " · se borra " + esc(fecha(g.borrar_en)) : ""}</div>
-    ${t ? `<div class="ayuda" style="margin-top:6px">${chip(t.estado)} ${esc(t.progreso?.mensaje ?? "")}${t.estado === "error" ? " · revisa el detalle" : ""}</div>${corriendo ? `<div class="prog"><i style="width:${t.progreso?.pct ?? 0}%"></i></div>` : ""}` : ""}
-  </div><div class="acciones">${acciones.map(([a, txt, cls]) => `<button class="boton ${cls}" data-act="${a}" data-id="${g.id}">${txt}</button>`).join("")}</div></div>`;
-}
-async function accionGuia(act, id, btn) {
-  try {
-    if (act === "ver") { const { cartucho } = await api(`/guias/${id}/cartucho`); localStorage.setItem("sparked_cartucho_" + id, JSON.stringify(cartucho)); window.open(`guia.html?local=${id}`, "_blank"); }
-    if (act === "publicar") { await api(`/guias/${id}/publicar`, { method: "POST" }); aviso("Guía publicada"); cargarGuias(); }
-    if (act === "archivar") { if (!confirm("¿Archivar esta guía? Las familias que ya la compraron siguen entrando.")) return; await api(`/guias/${id}/archivar`, { method: "POST" }); cargarGuias(); }
-    if (act === "borrar") { if (!confirm("¿Borrar esta guía y sus materiales? No se puede deshacer.")) return; await api(`/guias/${id}`, { method: "DELETE" }); aviso("Guía borrada"); cargarGuias(); cargarResumen(); }
-    if (act === "generar") { if (!confirm("La IA leerá las páginas subidas y escribirá la guía completa (tarda unos minutos y tiene costo). ¿Continuar?")) return; await api(`/guias/${id}/generar`, { method: "POST" }); aviso("Generando… la lista se actualiza sola"); cargarGuias(); }
-    if (act === "cartucho") { elegirArchivo(".json,application/json", false, async ([f]) => { const cartucho = JSON.parse(await f.text()); const r = await api(`/guias/${id}/cartucho`, { method: "POST", body: { cartucho } }); aviso(`Cartucho cargado: ${r.bloques} bloques`); cargarGuias(); }); }
-    if (act === "paginas") { elegirArchivo("image/*,application/pdf", true, async (files) => { btn.disabled = true; const pags = await convertir(files); const { subidas } = await api(`/guias/${id}/materiales`, { method: "POST", body: { paginas: pags.map((p) => ({ nombre: p.nombre, tipo: "image/jpeg", tamano: p.blob.size })) } }); await subir(subidas, pags, (n, t) => aviso(`Subiendo ${n} de ${t}…`, false, 1500)); aviso("Páginas subidas. Ahora puedes generar con la IA."); cargarGuias(); }); }
-    if (act === "editar") editarGuia(id);
-    if (act === "detalle") detalleGuia(id);
-  } catch (e) { aviso(e.message, true, 6000); }
-}
-function elegirArchivo(accept, multiple, fn) { const i = document.createElement("input"); i.type = "file"; i.accept = accept; i.multiple = multiple; i.onchange = () => { if (i.files.length) fn([...i.files]).catch((e) => aviso(e.message, true, 6000)); }; i.click(); }
-async function editarGuia(id) {
-  const g = await api(`/guias/${id}`);
-  const d = modal(`<h2>Editar guía</h2><form id="fEd" class="rejilla-campos">
-    <div class="campo" style="grid-column:1/-1"><label>Título</label><input name="titulo" value="${esc(g.titulo ?? "")}"></div>
-    <div class="campo"><label>Colegio</label><select name="colegio_id">${[{ id: "", nombre: "Sin colegio (sirve para todos)" }, ...colegios].map((c) => `<option value="${c.id}" ${c.id === (g.colegio_id ?? "") ? "selected" : ""}>${esc(c.nombre)}</option>`).join("")}</select></div>
-    <div class="campo"><label>Grado</label><select name="grado">${GRADOS.map((x) => `<option ${x === g.grado ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></div>
-    <div class="campo"><label>Materia</label><select name="materia">${MATERIAS.map((x) => `<option ${x === g.materia ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></div>
-    <div class="campo"><label>Examen</label><input name="examen" value="${esc(g.examen ?? "")}"></div>
-    <div class="campo"><label>Fecha del examen</label><input name="fecha_examen" type="date" value="${esc(g.fecha_examen ?? "")}"></div>
-    <div style="grid-column:1/-1"><button class="boton" type="submit">Guardar</button></div></form>`);
-  $("#fEd").onsubmit = async (e) => { e.preventDefault(); const f = e.target; try { await api(`/guias/${id}`, { method: "PATCH", body: { titulo: f.titulo.value, colegio_id: f.colegio_id.value || null, grado: f.grado.value, materia: f.materia.value, examen: f.examen.value, fecha_examen: f.fecha_examen.value || null } }); d.close(); aviso("Guardado"); cargarGuias(); } catch (err) { aviso(err.message, true); } };
-}
-async function detalleGuia(id) {
-  const g = await api(`/guias/${id}`);
-  const rep = g.reporte ?? {};
-  modal(`<h2>${esc(g.titulo ?? "Guía")}</h2><div class="ayuda">${esc([g.colegio ?? "Todos los colegios", g.grado, g.materia].join(" · "))} · ${g.completo ? `${g.bloques} bloques · ${g.actividades} actividades` : "sin cartucho completo"} · costo IA ${dinero(g.costo_mxn)}</div>
-    <div class="detalle">
-    <h3>Trabajos de la IA</h3>${(g.trabajos ?? []).map((t) => `<div style="margin-bottom:6px">${chip(t.estado)} <b>${esc(t.alcance)}</b> · paso ${esc(t.paso)} · ${esc(t.progreso?.mensaje ?? "")} · US$${Number(t.costo_usd).toFixed(3)} · ${esc(fecha(t.actualizado_en))}${t.error ? `<div class="error">${esc(t.error)}</div><button class="boton chico linea" data-reintentar="${t.id}">↻ Reintentar</button>` : ""}</div>`).join("") || "<p class='ayuda'>Ninguno (cartucho subido a mano).</p>"}
-    <h3>Verificación de datos</h3>${rep.verificacion?.length ? `<pre>${esc(JSON.stringify(rep.verificacion, null, 1))}</pre>` : "<p class='ayuda'>Sin correcciones registradas.</p>"}
-    ${rep.huecos?.length ? `<h3>Huecos detectados</h3><pre>${esc(rep.huecos.join("\n"))}</pre>` : ""}
-    <h3>Compras</h3>${(g.compras ?? []).map((c) => `<div>${chip(c.estado)} ${esc(c.nombre)} · ${esc(c.telefono)} · ${esc(fecha(c.creada_en))}${c.metodo_pago === "codigo" ? ` · 🎟️ código ${esc(c.codigo ?? "")} (gratis, no es venta)` : c.codigo ? ` · 🎟️ código ${esc(c.codigo)} · ${dinero(c.monto_mxn)}` : ""}</div>`).join("") || "<p class='ayuda'>Ninguna.</p>"}
-    ${g.borrador ? `<h3>Material</h3><div class="ayuda">${g.borrador.paginas} página(s) subidas · estado ${esc(g.borrador.estado)}</div>` : ""}</div>`);
-  $$("#dlg [data-reintentar]").forEach((b) => b.onclick = async () => { await api(`/trabajos/${b.dataset.reintentar}/reintentar`, { method: "POST" }); $("#dlg").close(); aviso("Reintentando…"); cargarGuias(); });
-}
-
-// Nueva guía
-let paginas = [];
-$("#btnNueva").onclick = () => { $("#nueva").hidden = false; $("#nueva").scrollIntoView({ behavior: "smooth" }); };
-$("#btnCancelarNueva").onclick = () => { $("#nueva").hidden = true; };
-const zona = $("#zona"), input = $("#archivos"), minis = $("#minis");
-zona.onclick = () => input.click();
-input.onchange = () => agregar([...input.files]);
-["dragenter", "dragover"].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.add("sobre"); }));
-["dragleave", "drop"].forEach((ev) => zona.addEventListener(ev, (e) => { e.preventDefault(); zona.classList.remove("sobre"); }));
-zona.addEventListener("drop", (e) => agregar([...e.dataTransfer.files]));
-async function agregar(files) { paginas = paginas.concat(await convertir(files, 15 - paginas.length)).slice(0, 15); pintarMinis(); }
-function pintarMinis() {
-  minis.innerHTML = paginas.map((p, i) => `<div class="mini"><img src="${p.url}" alt=""><button type="button" data-i="${i}" aria-label="Quitar">✕</button></div>`).join("");
-  $$("button", minis).forEach((b) => b.onclick = () => { paginas.splice(+b.dataset.i, 1); pintarMinis(); });
-  $("#conteo").textContent = paginas.length ? `${paginas.length} de 25 páginas` : "";
-}
-async function convertir(files, max = 15) {
-  const out = [];
-  for (const f of files) {
-    if (out.length >= max) break;
-    if (f.type === "application/pdf") out.push(...(await paginasDePdf(f, max - out.length)));
-    else if (f.type.startsWith("image/")) { const r = await reducir(f, f.name); if (r) out.push(r); }
+// ---------- Guías: solo números (sin títulos ni datos de quién la generó) ----------
+// GET /admin/costos/guias devuelve conteos, promedios y una lista de { fecha, tipo, usd, mxn }; nada personal.
+const TIPO_GUIA = { vista_previa: "Vista previa", guia_completa: "Guía completa" };
+async function cargarCostosGuias() {
+  const caja = $("#costosGuias");
+  let r;
+  try { r = await api("/costos/guias?dias=" + $("#diasGuias").value); }
+  catch (e) {
+    caja.innerHTML = /ruta no encontrada/i.test(e.message)
+      ? `<p class="ayuda">Este reporte aparece cuando se publique la versión 2026-11-10.2 del servidor.</p>`
+      : `<p class="ayuda">No se pudo cargar el reporte: ${esc(e.message)}</p>`;
+    return;
   }
-  return out;
+  const c = r.conteo, p = r.promedio, p30 = r.promedio_30;
+  const cuantas = (n, una, varias) => `${n} ${n === 1 ? una : varias}`;
+  const promedio = (titulo, x, x30, nota) => `<div class="grande"><span>${titulo}</span><b>${x.n ? pesos(x.mxn) : "—"}</b><small>${x.n
+    ? `${dolares(x.usd, 3)} · promedio de ${cuantas(x.n, "guía", "guías")}${nota}${x30.n ? `<br>Últimos 30 días: ${pesos(x30.mxn)} (${x30.n})` : ""}`
+    : "Todavía no hay ninguna"}</small></div>`;
+  caja.innerHTML = `
+    <h2 style="margin:0 0 10px">Guías generadas</h2>
+    <div class="grandes">
+      <div class="grande"><span>Guías completas</span><b>${c.guias_completas.total}</b><small>En total, desde el inicio · últimos 30 días: ${c.guias_completas.d30}</small></div>
+      <div class="grande"><span>Vistas previas</span><b>${c.vistas_previas.total}</b><small>En total, desde el inicio · últimos 30 días: ${c.vistas_previas.d30}</small></div>
+    </div>
+    <h2 style="margin:22px 0 10px">Costo promedio de IA</h2>
+    <div class="grandes">
+      ${promedio("Cada guía completa", p.guia_completa, p30.guia_completa, " (incluye su vista previa)")}
+      ${promedio("Cada vista previa", p.vista_previa, p30.vista_previa, "")}
+    </div>
+    ${c.sin_terminar.total ? `<p class="ayuda">Además, ${cuantas(c.sin_terminar.total, "generación no se terminó", "generaciones no se terminaron")} (${c.sin_terminar.d30} en los últimos 30 días). En total gastaron ${pesos(c.sin_terminar.mxn_total)}; no entran en estos promedios, pero sí en la pestaña Costos.</p>` : ""}
+    <h2 style="margin:22px 0 10px">Últimas guías (${{ 30: "últimos 30 días", 90: "últimos 90 días", 365: "último año" }[r.dias] ?? `últimos ${r.dias} días`})</h2>
+    ${r.ultimas.length ? `<div class="tabla-mov tabla-guias"><table><thead><tr><th>Fecha</th><th>Tipo</th><th class="n">Costo de IA</th></tr></thead><tbody>
+      ${r.ultimas.map((f) => `<tr><td>${esc(fecha(f.fecha))}</td><td>${esc(TIPO_GUIA[f.tipo] ?? f.tipo)}</td><td class="n"><b>${pesos(f.mxn)}</b><br><small class="ayuda">${dolares(f.usd, 3)}</small></td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="ayuda">Cuando una familia paga, su guía aparece dos veces: como vista previa (el día que la pidió) y como guía completa (el día que se terminó); el costo de la guía completa ya incluye el de su vista previa. Tipo de cambio de hoy: ${Number(r.tipo_cambio?.valor ?? 0).toFixed(4)} pesos por dólar.</p>`
+    : `<p class="ayuda">No se generó ninguna guía en estos días.</p>`}`;
 }
-async function reducir(blob, nombre) {
-  const img = await createImageBitmap(blob).catch(() => null); if (!img) return null;
-  const k = Math.min(1, 1568 / Math.max(img.width, img.height));
-  const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-  const out = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.86));
-  return { nombre: nombre.replace(/\.[^.]+$/, "") + ".jpg", blob: out, url: URL.createObjectURL(out) };
-}
-async function paginasDePdf(file, max) {
-  const pdfjs = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs");
-  pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
-  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-  const out = [];
-  for (let p = 1; p <= doc.numPages && out.length < max; p++) {
-    const page = await doc.getPage(p); const vp = page.getViewport({ scale: 1 });
-    const k = Math.min(2, 1568 / Math.max(vp.width, vp.height)); const v2 = page.getViewport({ scale: k });
-    const c = document.createElement("canvas"); c.width = Math.round(v2.width); c.height = Math.round(v2.height);
-    await page.render({ canvasContext: c.getContext("2d"), viewport: v2 }).promise;
-    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.86));
-    out.push({ nombre: `${file.name.replace(/\.pdf$/i, "")}-p${p}.jpg`, blob, url: URL.createObjectURL(blob) });
-  }
-  return out;
-}
-async function subir(subidas, pags, cb) {
-  let n = 0;
-  for (const s of subidas) { const p = pags.find((x) => x.nombre === s.nombre); if (!p) continue; const r = await fetch(s.url, { method: "PUT", headers: { "content-type": "image/jpeg", "x-upsert": "true" }, body: p.blob }); if (!r.ok) throw new Error("No se pudo subir " + s.nombre); cb?.(++n, subidas.length); }
-}
-$("#formNueva").onsubmit = async (e) => {
-  e.preventDefault(); const f = e.target; $("#errNueva").textContent = "";
-  if (!f.grado.value || !f.materia.value) { $("#errNueva").textContent = "Elige grado y materia."; return; }
-  const archivoCartucho = f.cartucho.files[0];
-  if (!paginas.length && !archivoCartucho) { $("#errNueva").textContent = "Sube páginas o un cartucho."; return; }
-  $("#btnCrear").disabled = true;
-  try {
-    const r = await api("/guias", { method: "POST", body: { titulo: f.titulo.value, colegio_id: f.colegio_id.value || null, grado: f.grado.value, materia: f.materia.value, examen: f.examen.value, fecha_examen: f.fecha_examen.value || null, paginas: paginas.map((p) => ({ nombre: p.nombre, tipo: "image/jpeg", tamano: p.blob.size })) } });
-    if (paginas.length) await subir(r.subidas, paginas, (n, t) => aviso(`Subiendo página ${n} de ${t}…`, false, 1500));
-    if (archivoCartucho) { const cartucho = JSON.parse(await archivoCartucho.text()); await api(`/guias/${r.guia_id}/cartucho`, { method: "POST", body: { cartucho } }); }
-    else if (paginas.length && f.generar.checked) await api(`/guias/${r.guia_id}/generar`, { method: "POST" });
-    aviso("Guía creada"); f.reset(); paginas = []; pintarMinis(); $("#nueva").hidden = true; cargarGuias(); cargarResumen();
-  } catch (err) { $("#errNueva").textContent = err.message; }
-  $("#btnCrear").disabled = false;
-};
-$("#filtroGuias").onchange = cargarGuias; $("#btnRefrescarGuias").onclick = cargarGuias;
+$("#diasGuias").onchange = cargarCostosGuias; $("#btnRefrescarGuias").onclick = cargarCostosGuias;
 
 // ---------- Compras ----------
 const METODOS_MP = { tarjeta: "tarjeta", oxxo: "OXXO", spei: "SPEI", mercadopago: "saldo de Mercado Pago", efectivo: "efectivo" };
@@ -476,9 +395,9 @@ const ESTADOS_MP = { approved: "aprobado", pending: "esperando el pago", in_proc
 async function cargarCompras() {
   const f = $("#filtroCompras").value;
   const lista = await api("/compras" + (f ? `?estado=${f}` : ""));
-  $("#listaCompras").innerHTML = lista.map((c) => `<div class="fila-g"><div class="info"><b>${esc(c.titulo ?? "Guía")}</b>${chip(c.estado)}
+  $("#listaCompras").innerHTML = lista.map((c) => `<div class="fila-g"><div class="info"><b class="cliente">${esc(c.nombre || "Sin nombre")}</b>${chip(c.estado)}
       <div class="ayuda">Folio <b>${esc(c.folio)}</b> · ${esc(fecha(c.creada_en))} · ${dinero(c.monto_mxn)} MXN${c.pagada_en ? " · pagada " + esc(fecha(c.pagada_en)) : ""}</div>
-      <div class="ayuda">${esc(c.nombre ?? "")} · <a href="${esc(waLink(c.telefono ?? "", ""))}" target="_blank" rel="noopener">${esc(c.telefono ?? "")}</a> · <a href="mailto:${esc(c.correo ?? "")}">${esc(c.correo ?? "")}</a> · ${esc([c.colegio_texto, c.grado, c.materia].filter(Boolean).join(" · "))}</div>
+      <div class="ayuda">📞 <a href="${esc(waLink(c.telefono ?? "", ""))}" target="_blank" rel="noopener">${esc(c.telefono ?? "")}</a> · ✉️ <a href="mailto:${esc(c.correo ?? "")}">${esc(c.correo ?? "")}</a></div>
       ${c.codigo ? `<div class="ayuda">🎟️ Código <b>${esc(c.codigo)}</b>${c.metodo_pago === "codigo" ? " · guía gratis (no cuenta como venta)" : ` · descuento de ${dinero(c.descuento_mxn)}`}</div>` : ""}
       ${c.mp_preferencia_id || c.mp_estado ? `<div class="ayuda">Mercado Pago: ${esc(METODOS_MP[c.metodo_pago] ?? c.metodo_pago ?? "todavía sin pago")}${c.mp_estado ? " · " + esc(ESTADOS_MP[c.mp_estado] ?? c.mp_estado) : ""}${c.mp_vence_en && c.estado === "pendiente" ? " · se puede pagar hasta el " + esc(fecha(c.mp_vence_en)) : ""}${c.mp_pago_id ? " · pago " + esc(c.mp_pago_id) : ""}${c.mp_ficha_url ? ` · <a href="${esc(c.mp_ficha_url)}" target="_blank" rel="noopener">ver ficha</a>` : ""}</div>` : ""}
       ${c.estado === "pagada" ? estadoEntrega(c) : ""}
@@ -536,16 +455,23 @@ function estadoEntrega(c) {
 $("#filtroCompras").onchange = cargarCompras; $("#btnRefrescarCompras").onclick = cargarCompras;
 
 // ---------- Códigos de descuento ----------
-const RESULTADOS = { ok: "✅ aplicado", no_existe: "no existe", apagado: "estaba apagado", vencido: "ya había caducado", agotado: "ya no tenía usos", bloqueado: "⛔ bloqueado (demasiados intentos)" };
+const RESULTADOS = { ok: "✅ aplicado", no_existe: "no existe", borrado: "estaba borrado", apagado: "estaba apagado", vencido: "ya había caducado", agotado: "ya no tenía usos", bloqueado: "⛔ bloqueado (demasiados intentos)" };
 const estadoCodigo = (c) => !c.activo ? "apagado" : c.expira_en && new Date(c.expira_en) <= new Date() ? "vencido" : c.usos_max !== null && c.usos >= c.usos_max ? "agotado" : "activo";
 async function cargarCodigos() {
   const r = await api("/codigos");
   $("#listaCodigos").innerHTML = r.codigos.map((c) => `<div class="fila-g"><div class="info"><b style="font-family:monospace;font-size:19px">${esc(c.codigo)}</b>${chip(estadoCodigo(c))}
       <div class="ayuda">${c.tipo === "gratis" ? "Guía gratis" : `Descuento de ${Number(c.valor)} %`} · usado ${c.usos} ${c.usos_max ? `de ${c.usos_max} ${c.usos_max === 1 ? "vez" : "veces"}` : "veces (sin límite)"} · ${c.expira_en ? "caduca el " + esc(fecha(c.expira_en)) : "no caduca"} · creado ${esc(fecha(c.creado_en))}</div>
       ${c.nota ? `<div class="ayuda">📝 ${esc(c.nota)}</div>` : ""}</div>
-    <div class="acciones"><button class="boton linea" data-copiar="${esc(c.codigo)}">📋 Copiar</button>${c.activo ? `<button class="boton linea" data-activo="false" data-id="${c.id}">⏸ Apagar</button>` : `<button class="boton linea" data-activo="true" data-id="${c.id}">▶ Encender</button>`}</div></div>`).join("") || "<p class='ayuda'>Todavía no hay códigos.</p>";
+    <div class="acciones"><button class="boton linea" data-copiar="${esc(c.codigo)}">📋 Copiar</button>${c.activo ? `<button class="boton linea" data-activo="false" data-id="${c.id}">⏸ Apagar</button>` : `<button class="boton linea" data-activo="true" data-id="${c.id}">▶ Encender</button>`}<button class="boton linea" data-borrar="${esc(c.id)}" data-codigo="${esc(c.codigo)}">🗑 Borrar</button></div></div>`).join("") || "<p class='ayuda'>Todavía no hay códigos.</p>";
   $("#listaIntentos").innerHTML = r.intentos.length ? `<table><tr><th>Fecha</th><th>Código escrito</th><th>Resultado</th><th>Quién</th></tr>${r.intentos.map((i) => `<tr><td>${esc(fecha(i.creado_en))}</td><td style="font-family:monospace">${esc(i.codigo ?? "")}</td><td>${esc(RESULTADOS[i.resultado] ?? i.resultado)}</td><td>${esc([i.telefono, i.correo, i.ip].filter(Boolean).join(" · "))}</td></tr>`).join("")}</table>` : "<p class='ayuda'>Nadie ha escrito un código todavía.</p>";
   $$("#listaCodigos [data-copiar]").forEach((b) => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copiar); aviso("Código copiado"); } catch {} });
+  $$("#listaCodigos [data-borrar]").forEach((b) => b.onclick = async () => {
+    if (!confirm(`¿Borrar el código ${b.dataset.codigo}? Dejará de funcionar y no se puede deshacer.`)) return;
+    b.disabled = true;
+    try { await api(`/codigos/${b.dataset.borrar}`, { method: "DELETE" }); aviso(`Código ${b.dataset.codigo} borrado`); }
+    catch (e) { aviso(e.message, true, 9000); }
+    cargarCodigos();
+  });
   $$("#listaCodigos [data-activo]").forEach((b) => b.onclick = async () => { try { await api(`/codigos/${b.dataset.id}`, { method: "PATCH", body: { activo: b.dataset.activo === "true" } }); aviso(b.dataset.activo === "true" ? "Código encendido" : "Código apagado"); cargarCodigos(); } catch (e) { aviso(e.message, true); } });
 }
 const fCod = $("#formCodigo");
@@ -730,6 +656,9 @@ async function cargarWhatsApp() {
   try { w = await api("/whatsapp"); } catch { w = null; }
   waDatos = w;
   const apagado = !w || !w.motor || ["apagado", "sin_motor", "ninguno", "no"].includes(String(w.motor));
+  const res = $("#resumenWhatsApp");
+  if (apagado) { res.className = "pleg-resumen"; res.textContent = "Apagado · las guías se envían solo por correo"; }
+  else { const ok = w.estado_instancia === "authorized"; res.className = "pleg-resumen " + (ok ? "verde" : "amarillo"); res.textContent = (ok ? "Encendido" : "Con un problema: " + (INSTANCIA[w.estado_instancia] ?? w.estado_instancia ?? "estado desconocido")) + (w.numero ? " · número " + w.numero : ""); }
   let html;
   if (apagado) {
     html = `<p style="margin:0"><b>Todavía no hay WhatsApp conectado.</b></p><p class="ayuda" style="margin:6px 0 0">Mientras tanto, las guías se envían solo por correo. Los pasos para conectarlo están en la guía <a href="https://github.com/Danflores01/accesos-lumio/blob/main/docs/WHATSAPP.md" target="_blank" rel="noopener">docs/WHATSAPP.md</a>.</p>`;

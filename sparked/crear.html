@@ -32,7 +32,6 @@
     <form id="form" class="rejilla-campos">
       <div class="campo"><label data-i18n="crear.grado">Grado</label><select name="grado" required></select></div>
       <div class="campo"><label data-i18n="crear.materia">Materia</label><select name="materia" required></select></div>
-      <div class="campo" style="grid-column:1/-1"><label data-i18n="crear.colegio">Colegio (opcional)</label><input name="colegio_texto" placeholder="Para identificar tu guía" data-i18n-attr="placeholder:crear.colegio_ph"></div>
       <div style="grid-column:1/-1">
         <div class="zona-carga" id="zona">📸 <span data-i18n="crear.zona"><b>Toca para elegir fotos o PDF</b>, o arrástralos aquí</span><br><span class="ayuda" data-i18n="crear.zona_ayuda">Hasta 25 páginas · fotos del temario, del libro de texto o de tus apuntes. Mientras más claras, mejor.</span><input type="file" id="archivos" accept="image/*,application/pdf" multiple hidden></div>
         <div class="miniaturas" id="minis" style="margin-top:10px"></div>
@@ -68,7 +67,6 @@ alCambiarIdioma(() => { llenarListas(); pintar(); });
 const params = new URLSearchParams(location.search);
 if (params.get("grado")) form.grado.value = params.get("grado");
 if (params.get("materia")) form.materia.value = params.get("materia");
-if (params.get("colegio")) form.colegio_texto.value = params.get("colegio");
 // Mensaje de error del primer paso (clave del diccionario: se traduce solo si cambian de idioma).
 const error1 = (clave, vars) => { if (clave) poner($("#err1"), clave, vars); else { delete $("#err1").dataset.i18n; $("#err1").textContent = ""; } };
 
@@ -130,7 +128,7 @@ form.onsubmit = async (e) => {
   esp = pantallaEspera($("#p2"), "espera.generando", { paginas: paginas.length });
   try {
     esp.actualizar(5, () => t("espera.preparando"));
-    const b = await api.post("/borrador", { grado: form.grado.value, materia: form.materia.value, colegio_texto: form.colegio_texto.value.trim(), paginas: paginas.map((p) => ({ nombre: p.nombre, tipo: "image/jpeg", tamano: p.blob.size })) });
+    const b = await api.post("/borrador", { grado: form.grado.value, materia: form.materia.value, paginas: paginas.map((p) => ({ nombre: p.nombre, tipo: "image/jpeg", tamano: p.blob.size })) });
     clave = b.clave; try { localStorage.setItem("sparked_borrador", clave); } catch {}
     let n = 0;
     for (const s of b.subidas) {

@@ -12,15 +12,6 @@ export { t, th, marca, poner, idioma, alCambiarIdioma, textoServidor, nombreGrad
 // Mensaje de un error para la familia: el del servidor en español; en inglés, su traducción (o uno general).
 export const mensajeError = (err) => (err?.datos?.campo === "codigo" && idioma() === "en" ? t("codigo.error") : textoServidor(err?.message || t("error.servidor")));
 
-export async function cargarColegios(select, conOtro = true) {
-  let lista = [];
-  try { lista = (await api.get("/colegios")).colegios ?? []; } catch { lista = []; }
-  const ops = lista.map((c) => ({ valor: c.id, texto: c.nombre }));
-  if (conOtro) ops.push({ valor: "otro", texto: "Otro colegio" });
-  opciones(select, ops, "Elige el colegio");
-  return lista;
-}
-
 // Ladas (códigos de país) que ofrece el formulario de la compra; México va primero y es la de siempre. El teléfono se
 // guarda en formato internacional ("+52" + 10 dígitos) para que, cuando exista el envío por WhatsApp, llegue a cualquier país.
 export const LADAS = [["52", "México"], ["1", "Estados Unidos, Canadá y Caribe"], ["34", "España"], ["57", "Colombia"], ["54", "Argentina"], ["51", "Perú"], ["56", "Chile"], ["593", "Ecuador"], ["502", "Guatemala"], ["503", "El Salvador"], ["504", "Honduras"], ["505", "Nicaragua"], ["506", "Costa Rica"], ["507", "Panamá"], ["591", "Bolivia"], ["595", "Paraguay"], ["598", "Uruguay"], ["58", "Venezuela"]];
