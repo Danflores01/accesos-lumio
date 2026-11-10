@@ -698,3 +698,32 @@ reducidas a una tira).
   Resultado del 9 nov: la demo historia1 y 5 guías generadas (Química 6° y 3°, Inglés, Matemáticas y Materia 1°), más
   dos vistas previas, salen en cero; las 19 fotos de la demo se ven al 100 % (antes, 19 de 19 recortadas). Las 257
   preguntas y tarjetas de esas guías caben en su juego (la letra baja como mucho al 88 %).
+
+## 30. WhatsApp real: números de México, imágenes con Sparky y motor en el panel (Daniel, 9 y 10 de noviembre de 2026)
+
+Primera entrega real por WhatsApp (al segundo número de Daniel) y lo que pidió después. Detalle técnico en `docs/WHATSAPP.md`.
+
+- **«Que no le pase a nadie lo que pasó con mi número.»** La primera entrega terminó en «la cuenta no existe»: su celular
+  vive en WhatsApp con un «1» extra (521…), como casi todos los de México, y la consulta previa a Green API iba mal
+  escrita. Criterio: una entrega nunca depende de cómo escribió su número la familia. El servidor pregunta a Green API
+  cuál es la cuenta exacta y manda ahí; si la consulta falla la repite; si aun así WhatsApp responde «no existe»,
+  reintenta solo, una vez, con la otra forma del número; y el formulario guarda siempre los 10 dígitos aunque se
+  escriban con 52, 521, 1, 044, 045 o 01. Argentina (549/54) recibe el mismo trato.
+- **Los errores no enseñan llaves.** Green API repite la llave de la instancia en sus mensajes de error. Ningún error
+  se guarda, se muestra en el panel ni se manda por correo sin limpiarlo antes.
+- **«Quiero que la gente conozca a Sparky.»** Los mensajes de WhatsApp salen como imagen con el texto de pie de foto:
+  - Entrega: Sparky sujetando una tarjeta con el **código QR propio de esa guía** («¡Tu guía está lista!», «Escanea
+    este código con la cámara para abrir tu guía»), para abrirla con el link o enseñando el teléfono al alumno. Sparky
+    lleva los ojos «> <» (cara de risa): así lo pidió Daniel al ver la muestra.
+  - «Compartir»: Sparky saludando con «Convierte tu temario en una guía de estudio interactiva» y el texto de cómo
+    usar SparkEd.
+  - Regla: la imagen nunca deja a una familia sin mensaje; si algo falla, sale el texto de siempre.
+- **Sparky en lugar del rayo.** Al pegar un link del sitio (portada, crear, guía) la vista previa muestra a Sparky
+  (`sparked/img/og-sparky.png`), no el ícono del rayo.
+- **Motor de WhatsApp a la vista.** En el panel, «Motores» dice si WhatsApp (Green API) está encendido: verde con el
+  número cuando el teléfono está enlazado; amarillo con el motivo cuando hay llaves pero el número no entrega
+  (desenlazado, bloqueado, sin internet); blanco cuando faltan las llaves.
+- **Plan de Green API.** El plan gratis (Developer) solo sirve para probar: 3 chats al mes, y cada forma del mismo
+  número cuenta como un chat. Para vender hace falta una instancia en plan Business (12 dólares al mes). En la consola,
+  la instancia gratis no ofrece cambio de plan: se compra una instancia Business nueva («Create an instance»), se
+  enlaza el mismo número con su código QR y se cambian las tres llaves en Supabase.
