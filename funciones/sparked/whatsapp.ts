@@ -373,31 +373,48 @@ async function enviarTexto(chat: string, texto: string): Promise<string> {
   return String(r.idMessage);
 }
 
-// Los archivos se suben a otro servidor de Green API (su "mediaUrl"): el mismo de la apiUrl cambiando "api" por
-// "media" (https://7107.api.greenapi.com → https://7107.media.greenapi.com). GREEN_API_MEDIA_URL lo puede fijar a mano.
-function urlMedios(): string {
-  return (env("GREEN_API_MEDIA_URL") || llaves().url.replace(/\/\/(\d+\.)?api\./, "//$1media.")).replace(/\/+$/, "");
+// A qué servidor de Green API se suben los archivos (su "mediaUrl", que la consola muestra junto a la apiUrl). Depende
+// del grupo de la instancia, así que se prueban en orden las direcciones posibles:
+//   - instancias con número de grupo (https://7107.api.greenapi.com): la MISMA apiUrl (así lo muestra la consola; con
+//     "7107.media.greenapi.com" la primera prueba real falló por DNS, 10 nov 2026) y, de respaldo, la variante "media";
+//   - dirección general (https://api.green-api.com): primero https://media.green-api.com, como dice su documentación.
+// El secreto opcional GREEN_API_MEDIA_URL fija una sola dirección a mano.
+export function urlsMedios(): string[] {
+  const fija = env("GREEN_API_MEDIA_URL").replace(/\/+$/, "");
+  if (fija) return [fija];
+  const api = llaves().url, media = api.replace(/\/\/(\d+\.)?api\./, "//$1media.");
+  const orden = /\/\/\d+\.api\./.test(api) ? [api, media] : [media, api];
+  return orden.filter((u, i) => orden.indexOf(u) === i);
 }
 // Manda una imagen PNG con su pie de foto (sendFileByUpload, formulario). Devuelve el idMessage, o lanza error.
+// Solo pasa a la siguiente dirección cuando la anterior no existe o no atiende esta ruta (error de conexión, 404 o
+// 405); cualquier otra respuesta de Green API es definitiva.
 async function enviarImagen(chat: string, bytes: Uint8Array, nombre: string, pie: string): Promise<string> {
   const k = llaves();
-  const f = new FormData();
-  f.append("chatId", chat);
-  f.append("caption", pie);
-  f.append("fileName", nombre);
-  f.append("file", new Blob([bytes as any], { type: "image/png" }), nombre);
-  let r: Response;
-  try {
-    r = await fetch(`${urlMedios()}/waInstance${k.id}/sendFileByUpload/${k.token}`, { method: "POST", body: f, signal: AbortSignal.timeout(ESPERA_MEDIOS_MS) });
-  } catch (e) {
-    throw new Error(`Green API sendFileByUpload: ${sinLlave((e as Error).message).replace(/\s+/g, " ").slice(0, 160)}`);
+  let ultimo = new Error("Green API sendFileByUpload: sin dirección de medios");
+  for (const base of urlsMedios()) {
+    const f = new FormData();
+    f.append("chatId", chat);
+    f.append("caption", pie);
+    f.append("fileName", nombre);
+    f.append("file", new Blob([bytes as any], { type: "image/png" }), nombre);
+    let r: Response;
+    try {
+      r = await fetch(`${base}/waInstance${k.id}/sendFileByUpload/${k.token}`, { method: "POST", body: f, signal: AbortSignal.timeout(ESPERA_MEDIOS_MS) });
+    } catch (e) {
+      ultimo = new Error(`Green API sendFileByUpload: ${sinLlave((e as Error).message).replace(/\s+/g, " ").slice(0, 160)}`);
+      if ((e as Error).name === "TimeoutError") throw ultimo;   // quizá sí la recibió: no se repite en otra dirección
+      continue;
+    }
+    const txt = await r.text();
+    if (r.status === 404 || r.status === 405) { ultimo = new Error(`Green API sendFileByUpload: HTTP ${r.status} ${motivoDeError(txt)}`); continue; }
+    if (!r.ok) throw new Error(`Green API sendFileByUpload: HTTP ${r.status} ${motivoDeError(txt)}`);
+    let j: any = null;
+    try { j = JSON.parse(txt); } catch { /* respuesta sin JSON */ }
+    if (!j?.idMessage) throw new Error("Green API sendFileByUpload no devolvió idMessage");
+    return String(j.idMessage);
   }
-  const txt = await r.text();
-  if (!r.ok) throw new Error(`Green API sendFileByUpload: HTTP ${r.status} ${motivoDeError(txt)}`);
-  let j: any = null;
-  try { j = JSON.parse(txt); } catch { /* respuesta sin JSON */ }
-  if (!j?.idMessage) throw new Error("Green API sendFileByUpload no devolvió idMessage");
-  return String(j.idMessage);
+  throw ultimo;
 }
 
 // Manda un mensaje con su imagen (el texto va como pie de foto) y, si no se puede, el texto solo. La imagen nunca deja
