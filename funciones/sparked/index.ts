@@ -20,7 +20,7 @@ import type { CtxBase, CtxRutas } from "./tipos.ts";
 import { rutasExtras } from "./extras.ts";
 import { rutasWhatsApp, avisarPorWhatsApp, motorWhatsApp } from "./whatsapp.ts";
 
-const VERSION = "2026-11-09.4";
+const VERSION = "2026-11-09.5";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });

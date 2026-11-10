@@ -34,9 +34,16 @@ export const ladaTexto = (lada, corto = false) => {
   return "+" + par[0] + " " + nombre;
 };
 // Número sin lada: solo dígitos; si escribieron la lada también, se quita una sola vez.
+// México: el número que se guarda son siempre los 10 dígitos. Se aceptan las maneras en que la gente lo escribe por
+// costumbre: con "52" o "521" delante, con el "1" que WhatsApp muestra en los celulares (11 dígitos) y con los prefijos
+// viejos "044", "045" y "01". El servidor se encarga después de encontrar la forma con la que el número vive en WhatsApp.
 export function numeroSinLada(valor, lada) {
   let numero = limpiarTel(valor);
-  if (lada === "52") { if (numero.length === 12 && numero.startsWith("52")) numero = numero.slice(2); if (numero.length === 13 && numero.startsWith("521")) numero = numero.slice(3); }
+  if (lada === "52") {
+    if (numero.length === 13 && /^(521|044|045)/.test(numero)) numero = numero.slice(3);
+    else if (numero.length === 12 && /^(52|01)/.test(numero)) numero = numero.slice(2);
+    else if (numero.length === 11 && numero.startsWith("1")) numero = numero.slice(1);
+  }
   else if (numero.length > 7 && numero.startsWith(lada) && numero.length - lada.length >= 7) numero = numero.slice(lada.length);
   return numero;
 }

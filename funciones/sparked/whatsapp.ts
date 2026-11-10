@@ -13,7 +13,7 @@
 //
 // API de Green API usada (https://green-api.com/en/docs/api/):
 //   POST {apiUrl}/waInstance{id}/sendMessage/{token}    { chatId, message, linkPreview } → { idMessage }
-//   POST {apiUrl}/waInstance{id}/checkWhatsapp/{token}  { chatId } → { existsWhatsapp }
+//   POST {apiUrl}/waInstance{id}/checkWhatsapp/{token}  { chatId: "521…@c.us" } → { existsWhatsapp, chatId (lid), phoneNumber }
 //   GET  {apiUrl}/waInstance{id}/getStateInstance/{token} → { stateInstance }
 //   GET  {apiUrl}/waInstance{id}/getSettings/{token}     → { wid, webhookUrl, webhookUrlToken, ... }
 //   POST {apiUrl}/waInstance{id}/setSettings/{token}     { webhookUrl, webhookUrlToken, incomingWebhook, ... } → { saveSettings }
@@ -107,10 +107,16 @@ export function telefonoInternacional(t: unknown): string {
   return d.length >= 8 && d.length <= 15 ? d : "";
 }
 
-// Formas de chat a probar, en orden. En WhatsApp muchos celulares de México viven como "521" + 10 dígitos; la guía de
-// Green API (FAQ «features of sending and receiving messages from different countries») acepta "52…@c.us" y "521…@c.us".
+// Formas de chat a probar, de la más probable a la menos probable. El mismo teléfono puede vivir en WhatsApp con dígitos
+// distintos de los que escribe la familia:
+//   México: casi todos los celulares son "521" + 10 dígitos (por eso va primero: lo normal es acertar con una sola
+//           consulta) y unos pocos "52" + 10 dígitos; ver el FAQ de Green API «features of the CheckWhatsapp method
+//           with numbers of some countries».
+//   Argentina: los celulares son "549" + 10 dígitos, y la gente suele escribirlos sin el "9".
 export function chatsPosibles(intl: string): string[] {
-  if (intl.startsWith("52") && intl.length === 12) return [intl, "521" + intl.slice(2)];
+  if (intl.startsWith("52") && intl.length === 12) return ["521" + intl.slice(2), intl];
+  if (intl.startsWith("549") && intl.length === 13) return [intl, "54" + intl.slice(3)];
+  if (intl.startsWith("54") && intl.length === 12) return ["549" + intl.slice(2), intl];
   return intl ? [intl] : [];
 }
 
@@ -292,22 +298,27 @@ async function marcarCompra(c: CtxBase, id: string, cambios: Record<string, unkn
 }
 
 // ---------- Envío ----------
-// Pregunta a Green API si un número tiene WhatsApp. La API actual recibe { chatId }; hay instancias que solo aceptan la
-// forma anterior, { phoneNumber } (entero), y responden HTTP 400 a la nueva: en ese caso se reintenta así.
+// Pregunta a Green API si un número tiene WhatsApp. La API actual recibe { chatId: "5212291234567@c.us" } (con el
+// "@c.us": solo dígitos responde HTTP 400 «'chatId' must be one of the next formats…», comprobado el 9 nov 2026); si
+// una instancia con la versión anterior la rechaza, se reintenta con la forma vieja, { phoneNumber } (entero).
+// Responde { existsWhatsapp, chatId: "<lid>@lid", phoneNumber: "5212291234567@c.us", fromCache }.
 export async function consultarNumero(digitos: string): Promise<any> {
+  const pedir = () => api("checkWhatsapp", { chatId: `${digitos}@c.us` });
   try {
-    return await api("checkWhatsapp", { chatId: digitos });
+    return await pedir();
   } catch (e) {
-    if (!/HTTP 400/.test((e as Error).message)) throw e;
-    return await api("checkWhatsapp", { phoneNumber: Number(digitos) });
+    const msg = (e as Error).message;
+    if (/HTTP 400/.test(msg)) return await api("checkWhatsapp", { phoneNumber: Number(digitos) });
+    if (/HTTP 4\d\d/.test(msg)) throw e;   // llave mala o límite del plan (466): repetir no ayuda
+    return await pedir();                  // red caída, tiempo agotado o error de su servidor: un intento más
   }
 }
 
-// Forma del número a la que se manda cuando Green API no dice cuál es la buena. En México casi todos los celulares
-// viven en WhatsApp como "521" + 10 dígitos (así aparece también el número de SparkEd), aunque checkWhatsapp conteste
-// «existe» para las dos formas; mandar a la equivocada termina en «noAccount» (primera entrega real, 9 nov 2026).
+// Forma del número a la que se manda cuando Green API no dice cuál es la buena: la primera de chatsPosibles(), que ya
+// viene ordenada (México "521…", Argentina "549…"). checkWhatsapp puede contestar «existe» para las dos formas, y
+// mandar a la equivocada termina en «noAccount» (así falló la primera entrega real, el 9 nov 2026).
 export function formaPreferida(formas: string[]): string {
-  return formas.find((f) => f.startsWith("521") && f.length === 13) ?? formas[0] ?? "";
+  return formas[0] ?? "";
 }
 
 // Busca a qué chat mandar. null = el número no tiene WhatsApp. Orden: (1) el identificador que devuelve Green API (lid
@@ -365,7 +376,8 @@ type Resultado = { ok: boolean; estado: string };
 // Manda la guía lista por WhatsApp. Nunca lanza errores: devuelve qué pasó y deja el estado en la compra
 // (compras.wa_estado: enviado · en_cola · sin_whatsapp · sin_telefono · sin_motor · fallido).
 // Idempotente: solo manda si la compra no tiene wa_estado todavía; { forzar: true } (reenvío desde el panel) manda otra vez.
-export async function avisarPorWhatsApp(c: CtxBase, compra: any, entrega: Entrega, opciones: { forzar?: boolean } = {}): Promise<Resultado> {
+// opciones.chat (uso interno): manda directo a ese chat sin consultar; lo usa el reintento con la otra forma del número.
+export async function avisarPorWhatsApp(c: CtxBase, compra: any, entrega: Entrega, opciones: { forzar?: boolean; chat?: string; nota?: string } = {}): Promise<Resultado> {
   try {
     if (!compra?.id) return { ok: false, estado: "sin_compra" };
     const marcarSiVacio = async (estado: string, detalle: string) => {
@@ -389,7 +401,7 @@ export async function avisarPorWhatsApp(c: CtxBase, compra: any, entrega: Entreg
       return { ok: false, estado: "fallido" };
     }
 
-    const { chat, nota } = await resolverChat(intl);
+    const { chat, nota } = opciones.chat ? { chat: opciones.chat, nota: opciones.nota } : await resolverChat(intl);
     if (!chat) {
       await marcarCompra(c, compra.id, { wa_estado: "sin_whatsapp", wa_detalle: nota ?? "" });
       await anotar(c, { direccion: "salida", tipo: "entrega", compra_id: compra.id, chat: `${intl}`, estado: "sin_whatsapp", detalle: nota });
@@ -418,6 +430,33 @@ export async function avisarPorWhatsApp(c: CtxBase, compra: any, entrega: Entreg
   } catch (e) {
     console.error("avisarPorWhatsApp:", (e as Error).message);
     return { ok: false, estado: "error" };
+  }
+}
+
+// Red de seguridad de la entrega: Green API avisó «noAccount» para un mensaje mandado a "<número>@c.us". Si el teléfono
+// de la compra tiene otra forma posible que todavía no se ha probado, se manda ahí la misma entrega. Como cada intento
+// queda anotado en wa_mensajes, a lo mucho hay un reintento por cada forma (hoy, uno) y nunca se entra en un ciclo.
+async function reintentarOtraForma(c: CtxBase, compraId: string, chatFallido: string): Promise<boolean> {
+  try {
+    const fallido = chatFallido.match(/^(\d{8,15})@c\.us$/);
+    if (!fallido) return false;                               // un "lid" es la cuenta misma: no tiene otra forma
+    const { data: compra } = await c.supabase.from("compras").select("*").eq("id", compraId).maybeSingle();
+    if (!compra || compra.estado !== "pagada" || !compra.acceso_id || !compra.guia_id) return false;
+    const formas = chatsPosibles(telefonoInternacional(compra.telefono));
+    if (!formas.includes(fallido[1])) return false;
+    const { data: previas } = await c.supabase.from("wa_mensajes").select("chat").eq("direccion", "salida").eq("tipo", "entrega").eq("compra_id", compraId);
+    const usados = new Set((previas ?? []).map((p: any) => String(p.chat ?? "")));
+    const otra = formas.find((f) => !usados.has(`${f}@c.us`));
+    if (!otra) return false;
+    const { data: g } = await c.supabase.from("guias").select("titulo").eq("id", compra.guia_id).maybeSingle();
+    const { data: a } = await c.supabase.from("accesos").select("token, expira_en").eq("id", compra.acceso_id).maybeSingle();
+    if (!a?.token) return false;
+    const entrega = { titulo: g?.titulo ?? compra.titulo ?? "", link: `${await c.sitio()}guia.html#${a.token}`, expira_en: a.expira_en };
+    const r = await avisarPorWhatsApp(c, compra, entrega, { forzar: true, chat: `${otra}@c.us`, nota: "segundo intento, con la otra forma del número" });
+    return r.ok;
+  } catch (e) {
+    console.warn("Reintento de WhatsApp:", sinLlave((e as Error).message));
+    return false;
   }
 }
 
@@ -464,9 +503,14 @@ export async function procesarAviso(c: CtxBase, b: any): Promise<string> {
       if (st !== "failed" && st !== "noAccount") return "estado_salida";
       const id = String(b.idMessage ?? "");
       if (!id) return "estado_salida";
-      const { data } = await c.supabase.from("wa_mensajes").update({ estado: st === "noAccount" ? "sin_whatsapp" : "fallido", detalle: recorte(b.description ?? st) }).eq("direccion", "salida").eq("id_mensaje", id).select("compra_id, tipo");
+      const { data } = await c.supabase.from("wa_mensajes").update({ estado: st === "noAccount" ? "sin_whatsapp" : "fallido", detalle: recorte(b.description ?? st) }).eq("direccion", "salida").eq("id_mensaje", id).select("compra_id, tipo, chat");
       const fila = data?.[0];
-      if (fila?.tipo === "entrega" && fila.compra_id) await marcarCompra(c, fila.compra_id, { wa_estado: st === "noAccount" ? "sin_whatsapp" : "fallido", wa_detalle: recorte(b.description ?? st) });
+      if (fila?.tipo === "entrega" && fila.compra_id) {
+        await marcarCompra(c, fila.compra_id, { wa_estado: st === "noAccount" ? "sin_whatsapp" : "fallido", wa_detalle: recorte(b.description ?? st) });
+        // «No existe esa cuenta» puede ser solo la forma equivocada del número (México 521/52, Argentina 549/54):
+        // se manda una vez más, a la forma que falta por probar.
+        if (st === "noAccount" && await reintentarOtraForma(c, String(fila.compra_id), String(fila.chat ?? ""))) return "reintento";
+      }
       return "estado_salida";
     }
     if (tipo !== "incomingMessageReceived") return "ignorado";
@@ -617,9 +661,9 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
     };
     const formas: any[] = [];
     for (const f of chatsPosibles(intl)) {
-      formas.push({ pedido: f, con: "chatId", ...(await intentar({ chatId: f })) });
-      if (body.forzar === true) formas.push({ pedido: f, con: "chatId y force", ...(await intentar({ chatId: f, force: true })) });
-      formas.push({ pedido: f, con: "phoneNumber", ...(await intentar({ phoneNumber: Number(f) })) });
+      formas.push({ pedido: f, con: "chatId", ...(await intentar({ chatId: `${f}@c.us` })) });
+      if (body.forzar === true) formas.push({ pedido: f, con: "chatId y force", ...(await intentar({ chatId: `${f}@c.us`, force: true })) });
+      if (body.vieja === true) formas.push({ pedido: f, con: "phoneNumber", ...(await intentar({ phoneNumber: Number(f) })) });
     }
     return c.json({ ok: true, formas, se_mandaria_a: await resolverChat(intl), estado_instancia: await estadoInstancia() });
   }

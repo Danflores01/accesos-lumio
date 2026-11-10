@@ -102,7 +102,7 @@ Código: `funciones/sparked/whatsapp.ts` (módulo aparte; `index.ts` lo llama). 
 
 ### Métodos de Green API usados
 
-`sendMessage` (`chatId`, `message`, `linkPreview` → `idMessage`), `checkWhatsapp` (`chatId` → `existsWhatsapp`), `getStateInstance` (→ `stateInstance`), `getSettings` (`wid`, `webhookUrl`, `webhookUrlToken`, `incomingWebhook`) y `setSettings` (→ `saveSettings`). Formato: `{apiUrl}/waInstance{idInstance}/{método}/{apiTokenInstance}`.
+`sendMessage` (`chatId`, `message`, `linkPreview` → `idMessage`), `checkWhatsapp` (`chatId` con `@c.us` → `existsWhatsapp`, `chatId` = lid, `phoneNumber`), `getStateInstance` (→ `stateInstance`), `getSettings` (`wid`, `webhookUrl`, `webhookUrlToken`, `incomingWebhook`) y `setSettings` (→ `saveSettings`). Formato: `{apiUrl}/waInstance{idInstance}/{método}/{apiTokenInstance}`.
 
 ### Rutas
 
@@ -113,6 +113,7 @@ Código: `funciones/sparked/whatsapp.ts` (módulo aparte; `index.ts` lo llama). 
 | `GET /admin/whatsapp` | admin | `{ motor, estado_instancia, numero, enviados_7d, fallidos_7d, compartir_7d, ultimo_error, webhook_configurado }` |
 | `POST /admin/whatsapp/configurar` | admin | `setSettings`: `webhookUrl` = `…/functions/v1/sparked/whatsapp/webhook`, `webhookUrlToken`, `incomingWebhook` y `stateWebhook` en `yes`; avisos de salida, llamadas, encuestas, ediciones, borrados y acuses en `no`; `markIncomingMessagesReaded` `no`; `linkPreview` `yes`; `delaySendMessagesMilliseconds` 15000. Green API reinicia la instancia y aplica en unos 5 minutos. |
 | `POST /admin/whatsapp/prueba { telefono }` | admin | Manda un mensaje de prueba. |
+| `POST /admin/whatsapp/verificar { telefono }` | admin | No manda nada: muestra la respuesta de `checkWhatsapp` para cada forma del número y el chat que se usaría. |
 | `POST /admin/whatsapp/reenviar { compra_id }` | admin | Reenvía la entrega de una compra pagada con guía completa (`guias.reporte.etapa = 'completa'`); link = `<sitio>guia.html#<accesos.token>`. |
 
 ### Entrega: `avisarPorWhatsApp(c, compra, { titulo, link, expira_en }, { forzar? })`
@@ -131,7 +132,30 @@ Código: `funciones/sparked/whatsapp.ts` (módulo aparte; `index.ts` lo llama). 
 
 ### Números de México
 
-Las compras guardan `+52` + 10 dígitos (las viejas, 10 dígitos sin lada: también son de México). En WhatsApp muchos celulares mexicanos existen como `521` + 10 dígitos. Antes de mandar se consulta `checkWhatsapp` con `52…` y, si no existe, con `521…`. La respuesta trae el identificador real de la cuenta (campo `chatId`, un `…@lid`) y a ese identificador se manda el mensaje, como recomienda Green API: así no importa con cuál de las dos formas vive el número (mandar a la forma equivocada deja el mensaje atorado en la cola). Si la respuesta no trae el `lid`, se usa el número real que devuelve (`phoneNumber`, `…@c.us`) y, si tampoco, la forma que se preguntó. Si `checkWhatsapp` falla (red o límite del plan), se usa `52…@c.us`: según la FAQ de Green API, WhatsApp redirige al chat correcto con o sin el «1». Al recibir mensajes se comparan los últimos 10 dígitos.
+Las compras guardan `+52` + 10 dígitos (las viejas, 10 dígitos sin lada: también son de México). En WhatsApp casi todos los celulares mexicanos existen como `521` + 10 dígitos (así aparece también el número de SparkEd) y unos pocos como `52` + 10 dígitos.
+
+Antes de mandar, `resolverChat()` consulta `checkWhatsapp` con `521…@c.us` y, si no existe, con `52…@c.us`. El `chatId` de la consulta debe llevar el `@c.us`: con solo dígitos Green API responde HTTP 400 («'chatId' must be one of the next formats: 'phone_number@c.us' or 'chat_id@lid'»); si una instancia con la versión anterior rechaza `chatId`, `consultarNumero()` reintenta con `{ phoneNumber }` (entero). La respuesta trae `existsWhatsapp`, el identificador de la cuenta (`chatId`, un `…@lid`) y su número real (`phoneNumber`, `521…@c.us`). Orden para decidir a qué chat se manda:
+
+1. El identificador que devuelve Green API (primero el `lid`, luego el número real), como recomienda su FAQ «lid important differences».
+2. Si no viene identificador y solo una forma existe, esa forma.
+3. Si las dos «existen» (la FAQ avisa de ese falso positivo) o la consulta falla (red, límite del plan), `521…@c.us`, con la nota «sin comprobar» cuando no se pudo consultar.
+
+Mandar a la forma equivocada no sirve: Green API acepta el mensaje y después avisa `noAccount`. Así falló la primera entrega real (9 nov 2026): la consulta salía con solo dígitos, respondía 400 y el mensaje se fue a `52…@c.us`. Con el arreglo (código 2026-11-09.4 y .5) la entrega llegó al `lid`, la familia respondió «compartir» desde `521…@c.us` y recibió la respuesta.
+
+Redes de seguridad para que no vuelva a pasar con ningún cliente:
+
+- **En el formulario** (`numeroSinLada()` en `sparked/js/flujo.js`): con la lada +52 siempre se guardan los 10 dígitos, aunque la familia escriba el número con `52`, `521`, el `1` que muestra WhatsApp, o los prefijos viejos `044`, `045` y `01`. Pruebas: `prueba-formulario.mjs`.
+- **Consulta que falla por algo pasajero** (red, tiempo agotado, error de su servidor): `consultarNumero()` la repite una vez. Un 4xx (llave mala, límite del plan 466) no se repite.
+- **`noAccount` después de enviar**: si la entrega salió a `<número>@c.us` y el teléfono de la compra tiene otra forma sin probar, `reintentarOtraForma()` manda la misma entrega a esa otra forma, una sola vez (cada intento queda en `wa_mensajes`, así que no hay ciclos). Una entrega mandada a un `lid` no se reintenta.
+- **Argentina** (la otra lada del formulario con este problema): se prueba `549…` y luego `54…`.
+
+Al recibir mensajes se comparan los últimos 10 dígitos (chats `@c.us`) o se busca una entrega anterior al mismo chat (chats `@lid`).
+
+`POST /admin/whatsapp/verificar { telefono, forzar?, vieja? }` muestra qué responde Green API para cada forma del número y a qué chat se mandaría, **sin mandar nada** (útil para entender un `noAccount`; cada consulta gasta una de las comprobaciones del plan).
+
+### Errores sin la llave
+
+Green API lleva la llave de la instancia en la dirección de cada llamada y la repite en el campo `path` de sus errores; los errores de red de Deno también traen la dirección completa. `api()` nunca deja pasar esos textos: `motivoDeError()` se queda solo con el motivo (`message`) y `sinLlave()` borra la llave y cualquier dirección. Importa porque esos textos se guardan en `wa_mensajes.detalle` y `compras.wa_detalle`, se ven en el panel y viajan en los correos de aviso.
 
 ### Idioma por lada
 
