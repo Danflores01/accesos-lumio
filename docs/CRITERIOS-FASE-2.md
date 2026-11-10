@@ -762,3 +762,10 @@ Con la app lista para lanzar, Daniel pidió que su panel (`sparked/panel.html`) 
   precio (16 % por defecto). El ISR se calcula sobre lo cobrado sin IVA: por defecto con la tabla mensual de RESICO
   para personas físicas (1 % a 2.5 %), o con el porcentaje fijo que Daniel escriba. Las guías con código gratis no
   cuentan. Siempre se presenta como estimación: no resta el IVA de los gastos ni sustituye al contador.
+- **Resumen sin lo que ya no existe (10 nov).** Se quitaron «guías publicadas», «borradores por revisar» y
+  «generaciones en curso»: SparkEd ya no publica guías ni revisa borradores; cada familia genera y paga la suya por
+  su cuenta. Quedan siete cifras: guías personalizadas vivas, compras pendientes de pago, ventas de hoy, ventas del
+  mes, guías con código gratis del mes, reportes nuevos y gasto de IA del mes. Van en cuatro columnas (dos en
+  celular) y, cuando son un número impar, la última ocupa dos lugares para que el bloque cierre parejo. Solo cambió
+  lo que se muestra: el servidor y la base de datos quedaron igual. La fase 1 no se toca (Daniel recordó ese día que
+  debe seguir viva).

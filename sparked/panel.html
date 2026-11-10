@@ -157,7 +157,11 @@
   .entrada-clave > .ayuda { margin: 0 0 14px; }
 
   /* ---------- Resumen: cifras ---------- */
-  .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+  /* Dos columnas en pantallas angostas y cuatro en las anchas. Si el número de tarjetas es impar, la última ocupa
+     dos lugares para que el bloque cierre parejo (hoy son siete: 4 + 2 + la ancha; en celular 2 + 2 + 2 + la ancha). */
+  .numeros { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (min-width: 900px) { .numeros { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .numero:last-child:nth-child(odd) { grid-column: span 2; }
   .numero { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 6px; background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); padding: 20px 22px; min-width: 0; }
   .numero b { display: block; font-size: 28px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; color: var(--pn-texto); overflow-wrap: anywhere; }
   .numero span { color: var(--pn-suave); font-size: 13px; font-weight: 500; line-height: 1.35; }
@@ -629,10 +633,12 @@ for (const d of $$("details.plegable")) {
 // ---------- Resumen ----------
 async function cargarResumen() {
   const r = await api("/resumen");
+  // Sin «guías publicadas», «borradores por revisar» ni «generaciones en curso» (pedido de Daniel, 10 nov 2026):
+  // SparkEd ya solo genera guías personalizadas que cada familia pide y paga por su cuenta; él no publica ni revisa borradores.
   $("#numeros").innerHTML = [
-    [r.guias.publicadas, "guías publicadas"], [r.guias.borradores, "borradores por revisar"], [r.guias.personalizadas, "guías personalizadas vivas"],
+    [r.guias.personalizadas, "guías personalizadas vivas"],
     [r.compras.pendientes, "compras pendientes de pago"], [r.compras.pagadas_hoy + " · " + dinero(r.compras.ingresos_hoy), "ventas de hoy"], [r.compras.pagadas_mes + " · " + dinero(r.compras.ingresos_mes), "ventas del mes"], [r.compras.con_codigo_mes ?? 0, "guías con código gratis este mes (no son ventas)"],
-    [r.reportes_nuevos, "reportes nuevos"], [r.ia.corriendo, "generaciones en curso"], ["US$" + r.ia.costo_usd_mes.toFixed(2), "gasto de IA este mes"],
+    [r.reportes_nuevos, "reportes nuevos"], ["US$" + r.ia.costo_usd_mes.toFixed(2), "gasto de IA este mes"],
   ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
   // Guías pagadas que la IA no pudo terminar: la familia ve "Estamos revisando tu guía" hasta que se reintente.
   $("#alertas").innerHTML = (r.entregas_con_error ?? []).map((x) => `<div class="caja-clave" style="border-left-color:#dc2626;margin-bottom:12px"><b>⚠️ Una guía pagada no se terminó</b><div class="ayuda" style="margin:4px 0 8px">La IA no pudo terminar los bloques que faltan (paso ${esc(x.paso ?? "")}, ${esc(fecha(x.desde))}). La familia ve "Estamos revisando tu guía; te avisamos por correo en cuanto esté lista". Toca ↻ Reintentar; al terminar, a la familia le llega sola su guía.</div><button class="boton chico" data-reintentar="${esc(x.trabajo_id)}">↻ Reintentar</button></div>`).join("");
