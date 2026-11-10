@@ -460,6 +460,17 @@
         <div id="listaServicios"></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px"><button class="boton linea chico" type="button" id="btnAgregarServicio">＋ Agregar servicio</button><button class="boton chico" type="button" id="btnGuardarServicios">Guardar servicios</button></div>
       </div>
+      <div class="panel-paso" style="margin-top:18px" id="tarjetaImpuestos"><h2 style="margin-top:0">Impuestos (estimación)</h2>
+        <p class="ayuda">Lo que conviene apartar para el SAT de lo que cobras. El IVA ya va incluido en el precio de la guía; el ISR se calcula sobre lo cobrado sin IVA. Las guías con código gratis no cuentan como venta.</p>
+        <div id="impuestos"><p class="ayuda">Cargando…</p></div>
+        <form id="formImpuestos" class="rejilla-campos" style="margin-top:14px">
+          <div class="campo"><label for="impIva">IVA (%)</label><input id="impIva" name="sparked_iva_tasa" inputmode="decimal"></div>
+          <div class="campo"><label for="impModo">Cómo se calcula el ISR</label><select id="impModo" name="sparked_isr_modo"><option value="resico">Tabla de RESICO (personas físicas)</option><option value="fijo">Un porcentaje fijo</option></select></div>
+          <div class="campo" id="campoImpTasa" hidden><label for="impTasa">ISR (% de lo cobrado sin IVA)</label><input id="impTasa" name="sparked_isr_tasa" inputmode="decimal" placeholder="El que te indique tu contador"></div>
+          <div style="align-self:end"><button class="boton chico" type="submit">Guardar impuestos</button></div>
+        </form>
+        <p class="ayuda" id="notaImpuestos" style="margin-bottom:0"></p>
+      </div>
     </section>
     <section data-panel="ajustes" hidden>
       <div class="panel-paso"><h2 style="margin-top:0">Ajustes del sitio</h2>
@@ -943,6 +954,7 @@ async function cargarCostos() {
       ${r.por_paso.map((x) => `<tr><td>${esc(x.paso)}</td><td>${esc(MODELO(x.modelo))}</td><td class="n">${x.llamadas || "—"}</td><td class="n"><b>${pesos(x.mxn)}</b><br><small class="ayuda">${dolares(x.usd, 3)}</small></td><td class="n">${Math.round((x.usd / totalPasos) * 100)} %</td></tr>`).join("")}
     </tbody></table></div>` : `<p class="ayuda">Sin gasto en estos días.</p>`}`;
   pintarServicios(r.servicios_fijos ?? [], r.fijos_mes_mxn, tc.valor);
+  pintarImpuestos(r.impuestos);
 }
 function filaServicio(s = { nombre: "", monto: 0, moneda: "USD", nota: "" }) {
   return `<div class="fila-servicio"><input class="s-nombre" data-k="nombre" maxlength="60" placeholder="Servicio" value="${esc(s.nombre)}"><input data-k="monto" inputmode="decimal" placeholder="0" value="${esc(s.monto)}"><select data-k="moneda"><option value="USD" ${s.moneda === "USD" ? "selected" : ""}>dólares</option><option value="MXN" ${s.moneda === "MXN" ? "selected" : ""}>pesos</option></select><input class="s-nota" data-k="nota" maxlength="120" placeholder="Nota" value="${esc(s.nota ?? "")}"><button class="boton linea chico" type="button" data-quitar title="Quitar">✕</button></div>`;
@@ -958,6 +970,43 @@ $("#btnGuardarServicios").onclick = async () => {
   try { await api("/costos/servicios", { method: "POST", body: { servicios } }); aviso("Servicios guardados"); cargarCostos(); } catch (e) { aviso(e.message, true); }
 };
 $("#diasCostos").onchange = cargarCostos; $("#btnRefrescarCostos").onclick = cargarCostos;
+
+// ---------- Impuestos estimados (IVA e ISR) ----------
+// El servidor (GET /admin/costos → impuestos) hace la cuenta; aquí solo se muestra: una guía al precio de hoy, lo que
+// va del mes y el mes anterior completo (el que toca declarar). Las tasas se guardan como ajustes del sitio.
+function pintarImpuestos(i) {
+  const caja = $("#impuestos");
+  if (!i) { caja.innerHTML = `<p class="ayuda">Todavía no disponible.</p>`; return; }
+  const nombreMes = (ymd) => new Date(ymd + "T12:00:00Z").toLocaleDateString("es-MX", { month: "long", year: "numeric", timeZone: "UTC" });
+  const ventas = (n) => `${n} ${n === 1 ? "venta" : "ventas"}`;
+  const columnas = [
+    { titulo: "Una guía", x: i.por_guia, cobrado: i.por_guia.precio_mxn },
+    { titulo: `Lo que va de ${nombreMes(i.mes_desde)} · ${ventas(i.mes.ventas)}`, x: i.mes, cobrado: i.mes.cobrado_mxn },
+    { titulo: `${nombreMes(i.mes_anterior.desde)} completo · ${ventas(i.mes_anterior.ventas)}`, x: i.mes_anterior, cobrado: i.mes_anterior.cobrado_mxn },
+  ];
+  const filas = [
+    ["Cobrado (con IVA)", (c) => pesos(c.cobrado)],
+    ["Sin IVA", (c) => pesos(c.x.sin_iva_mxn)],
+    [`IVA (${i.iva_tasa} %)`, (c) => pesos(c.x.iva_mxn)],
+    ["ISR", (c) => `${pesos(c.x.isr_mxn)} <small>(${c.x.isr_tasa} %)</small>`],
+    ["<b>Aparta para impuestos</b>", (c) => `<b>${pesos(c.x.impuestos_mxn)}</b>`],
+    ["Te queda después de impuestos", (c) => pesos(c.x.queda_mxn)],
+  ];
+  // Tres tarjetas (una guía, el mes en curso y el mes anterior): lado a lado en computadora y una debajo de otra en celular.
+  caja.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px">${columnas.map((c) => `<div class="tarjeta"><h3 style="margin:0 0 10px">${esc(c.titulo)}</h3><div class="balance">${filas.map(([nombre, valor]) => `<span>${nombre}</span><span>${valor(c)}</span>`).join("")}</div></div>`).join("")}</div>`;
+  $("#impIva").value = i.iva_tasa; $("#impModo").value = i.isr_modo; $("#impTasa").value = i.isr_modo === "fijo" ? i.isr_tasa_fija : ""; $("#campoImpTasa").hidden = i.isr_modo !== "fijo";
+  const tabla = (i.tabla_resico ?? []).map(([tope, tasa]) => `hasta ${pesos(tope)} al mes, ${tasa} %`).join("; ");
+  $("#notaImpuestos").innerHTML = `<b>Es una estimación, no tu declaración.</b> No resta el IVA de tus gastos con factura ni otras deducciones, y el ISR depende de tu régimen fiscal: confirma tus tasas con tu contador.${i.isr_modo === "resico" ? ` Tabla de RESICO que se está usando (sobre lo cobrado sin IVA): ${esc(tabla)}.` : ""}`;
+}
+$("#impModo").onchange = () => { $("#campoImpTasa").hidden = $("#impModo").value !== "fijo"; };
+$("#formImpuestos").onsubmit = async (e) => {
+  e.preventDefault();
+  const f = e.target, body = { sparked_iva_tasa: f.sparked_iva_tasa.value.trim(), sparked_isr_modo: f.sparked_isr_modo.value, sparked_isr_tasa: f.sparked_isr_tasa.value.trim() };
+  const numero = (t) => t !== "" && Number.isFinite(Number(t.replace(",", "."))) && Number(t.replace(",", ".")) >= 0 && Number(t.replace(",", ".")) <= 50;
+  if (!numero(body.sparked_iva_tasa)) { aviso("Escribe el IVA como un número entre 0 y 50.", true); return; }
+  if (body.sparked_isr_modo === "fijo" && !numero(body.sparked_isr_tasa)) { aviso("Escribe el porcentaje de ISR (entre 0 y 50).", true); return; }
+  try { await api("/config", { method: "POST", body }); aviso("Impuestos guardados"); cargarCostos(); } catch (x) { aviso(x.message, true); }
+};
 
 // ---------- WhatsApp (Green API) ----------
 const INSTANCIA = { authorized: "Conectado ✅", notAuthorized: "Falta vincular el teléfono (escanear el código QR en Green API)", blocked: "Bloqueado por WhatsApp", sleepMode: "Teléfono sin conexión", starting: "Encendiendo…", yellowCard: "Con advertencia de WhatsApp (envía menos mensajes)", suspended: "Con restricciones temporales de WhatsApp" };
