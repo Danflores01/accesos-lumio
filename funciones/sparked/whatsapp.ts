@@ -43,16 +43,44 @@ export function motorWhatsApp(): boolean {
   return !!k.id && !!k.token;
 }
 
+// La llave de la instancia viaja en la dirección de cada llamada, y Green API la repite en sus errores (campo "path");
+// los errores de red de Deno también traen la dirección completa. Por eso NINGÚN error sale de aquí sin pasar por
+// sinLlave(): esos textos acaban en la base de datos, en el panel y en los correos de aviso.
+export function sinLlave(s: unknown): string {
+  const { token } = llaves();
+  let t = String(s ?? "");
+  if (token) t = t.split(token).join("***");
+  return t.replace(/https?:\/\/[^\s"')]+/g, "(dirección)");
+}
+// De una respuesta de error de Green API se queda solo con el motivo (su campo "message"), nunca con "path".
+export function motivoDeError(txt: string): string {
+  let motivo = txt;
+  try {
+    const j = JSON.parse(txt);
+    if (j && typeof j === "object") {
+      const m = j.message ?? j.error ?? j.description;
+      if (m) motivo = Array.isArray(m) ? m.join("; ") : typeof m === "string" ? m : JSON.stringify(m);
+      else { delete j.path; motivo = JSON.stringify(j); }
+    }
+  } catch { /* no era JSON: se usa el texto tal cual */ }
+  return sinLlave(motivo).replace(/\s+/g, " ").trim().slice(0, 200);
+}
+
 async function api(metodo: string, cuerpo?: Record<string, unknown>): Promise<any> {
   const k = llaves();
-  const r = await fetch(`${k.url}/waInstance${k.id}/${metodo}/${k.token}`, {
-    method: cuerpo ? "POST" : "GET",
-    headers: cuerpo ? { "content-type": "application/json" } : {},
-    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
-    signal: AbortSignal.timeout(ESPERA_API_MS),
-  });
+  let r: Response;
+  try {
+    r = await fetch(`${k.url}/waInstance${k.id}/${metodo}/${k.token}`, {
+      method: cuerpo ? "POST" : "GET",
+      headers: cuerpo ? { "content-type": "application/json" } : {},
+      body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+      signal: AbortSignal.timeout(ESPERA_API_MS),
+    });
+  } catch (e) {
+    throw new Error(`Green API ${metodo}: ${sinLlave((e as Error).message).replace(/\s+/g, " ").slice(0, 160)}`);
+  }
   const txt = await r.text();
-  if (!r.ok) throw new Error(`Green API ${metodo}: HTTP ${r.status} ${txt.replace(/\s+/g, " ").slice(0, 160)}`);
+  if (!r.ok) throw new Error(`Green API ${metodo}: HTTP ${r.status} ${motivoDeError(txt)}`);
   try { return JSON.parse(txt); } catch { return {}; }
 }
 
@@ -264,36 +292,61 @@ async function marcarCompra(c: CtxBase, id: string, cambios: Record<string, unkn
 }
 
 // ---------- Envío ----------
-// Busca la forma del número que existe en WhatsApp. null = ninguna existe. Si checkWhatsapp falla (red, límite del plan),
-// se usa la primera forma: WhatsApp redirige los números de México con o sin el "1".
+// Pregunta a Green API si un número tiene WhatsApp. La API actual recibe { chatId }; hay instancias que solo aceptan la
+// forma anterior, { phoneNumber } (entero), y responden HTTP 400 a la nueva: en ese caso se reintenta así.
+export async function consultarNumero(digitos: string): Promise<any> {
+  try {
+    return await api("checkWhatsapp", { chatId: digitos });
+  } catch (e) {
+    if (!/HTTP 400/.test((e as Error).message)) throw e;
+    return await api("checkWhatsapp", { phoneNumber: Number(digitos) });
+  }
+}
+
+// Forma del número a la que se manda cuando Green API no dice cuál es la buena. En México casi todos los celulares
+// viven en WhatsApp como "521" + 10 dígitos (así aparece también el número de SparkEd), aunque checkWhatsapp conteste
+// «existe» para las dos formas; mandar a la equivocada termina en «noAccount» (primera entrega real, 9 nov 2026).
+export function formaPreferida(formas: string[]): string {
+  return formas.find((f) => f.startsWith("521") && f.length === 13) ?? formas[0] ?? "";
+}
+
+// Busca a qué chat mandar. null = el número no tiene WhatsApp. Orden: (1) el identificador que devuelve Green API (lid
+// o número real de la cuenta) con cualquiera de las formas; (2) si solo una forma existe, esa; (3) si WhatsApp dice que
+// existen las dos y no viene identificador, la forma preferida; (4) si la consulta falla (red, límite del plan), la
+// forma preferida «sin comprobar».
 export async function resolverChat(intl: string): Promise<{ chat: string | null; nota?: string }> {
   const formas = chatsPosibles(intl);
   if (!formas.length) return { chat: null, nota: "teléfono no válido" };
   try {
+    const existen: string[] = [];
     for (const f of formas) {
-      const r = await api("checkWhatsapp", { chatId: f });
-      if (r?.existsWhatsapp === true) return { chat: chatDeRespuesta(r, f) };
+      const r = await consultarNumero(f);
+      if (r?.existsWhatsapp !== true) continue;
+      const id = identificadorDe(r);
+      if (id) return { chat: id };
+      existen.push(f);
     }
-    return { chat: null, nota: "el número no tiene WhatsApp" };
+    if (!existen.length) return { chat: null, nota: "el número no tiene WhatsApp" };
+    return { chat: `${existen.length === formas.length ? formaPreferida(formas) : existen[0]}@c.us` };
   } catch (e) {
-    return { chat: `${formas[0]}@c.us`, nota: `sin comprobar: ${(e as Error).message}` };
+    return { chat: `${formaPreferida(formas)}@c.us`, nota: `sin comprobar: ${(e as Error).message}` };
   }
 }
 
-// A qué chat mandar cuando checkWhatsapp dice que la cuenta existe. Green API recomienda usar el identificador que
-// devuelve la consulta (el "lid" de la cuenta, campo chatId): así no importa si un celular de México vive como 52… o
-// 521… (mandar a la forma equivocada deja el mensaje atorado en la cola; ver su FAQ «features of the checkWhatsapp
-// method with some numbers» y «lid important differences»). Si no viene el lid, se usa el número real de la cuenta
-// (campo phoneNumber, "[5212291234567@c.us]") y, si tampoco viene, la forma que se preguntó.
-// deno-lint-ignore no-explicit-any
-export function chatDeRespuesta(r: any, pedido: string): string {
-  const lid = String(r?.chatId ?? "").trim();
-  if (/^\d{6,20}@lid$/.test(lid)) return lid;
-  // Algunas versiones devuelven en chatId el número real de la cuenta ("5212291234567@c.us") en vez del lid.
-  if (/^\d{8,15}@c\.us$/.test(lid)) return lid;
+// Identificador que devuelve checkWhatsapp para la cuenta: su "lid" (campo chatId) o, si no viene, su número real
+// (chatId o phoneNumber con forma "5212291234567@c.us"). null si la respuesta no trae ninguno. Green API recomienda
+// mandar a ese identificador: así no importa si un celular de México vive como 52… o 521… (ver su FAQ «features of the
+// checkWhatsapp method with some numbers» y «lid important differences»).
+export function identificadorDe(r: any): string | null {
+  const id = String(r?.chatId ?? "").trim();
+  if (/^\d{6,20}@lid$/.test(id)) return id;
+  if (/^\d{8,15}@c\.us$/.test(id)) return id;
   const tel = String(r?.phoneNumber ?? "").match(/(\d{8,15})@c\.us/);
-  if (tel) return `${tel[1]}@c.us`;
-  return `${pedido}@c.us`;
+  return tel ? `${tel[1]}@c.us` : null;
+}
+// Igual, pero nunca vacío: si no viene identificador, la forma que se preguntó.
+export function chatDeRespuesta(r: any, pedido: string): string {
+  return identificadorDe(r) ?? `${pedido}@c.us`;
 }
 
 async function estadoInstancia(): Promise<string> {
@@ -554,18 +607,21 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
     const raw = String(body.telefono ?? "").trim();
     const intl = telefonoInternacional(raw.startsWith("+") || raw.replace(/\D/g, "").length === 10 ? raw : "+" + raw);
     if (!intl) return c.error("Escribe un teléfono válido, con lada (por ejemplo +52 y 10 dígitos).");
+    const intentar = async (cuerpo: Record<string, unknown>) => {
+      try {
+        const r = await api("checkWhatsapp", cuerpo);
+        return { respuesta: r, identificador: r?.existsWhatsapp === true ? identificadorDe(r) : null };
+      } catch (e) {
+        return { error: recorte((e as Error).message, 260) };
+      }
+    };
     const formas: any[] = [];
     for (const f of chatsPosibles(intl)) {
-      for (const force of body.forzar === true ? [false, true] : [false]) {
-        try {
-          const r = await api("checkWhatsapp", force ? { chatId: f, force: true } : { chatId: f });
-          formas.push({ pedido: f, forzado: force, respuesta: r, chat: r?.existsWhatsapp === true ? chatDeRespuesta(r, f) : null });
-        } catch (e) {
-          formas.push({ pedido: f, forzado: force, error: recorte((e as Error).message, 200) });
-        }
-      }
+      formas.push({ pedido: f, con: "chatId", ...(await intentar({ chatId: f })) });
+      if (body.forzar === true) formas.push({ pedido: f, con: "chatId y force", ...(await intentar({ chatId: f, force: true })) });
+      formas.push({ pedido: f, con: "phoneNumber", ...(await intentar({ phoneNumber: Number(f) })) });
     }
-    return c.json({ ok: true, formas, estado_instancia: await estadoInstancia() });
+    return c.json({ ok: true, formas, se_mandaria_a: await resolverChat(intl), estado_instancia: await estadoInstancia() });
   }
 
   // Mensaje de prueba a un teléfono.
