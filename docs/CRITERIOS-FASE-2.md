@@ -798,3 +798,30 @@ con los colores oficiales. Vio una muestra con dos caras y eligió la **A: ojos 
   Sparky cambia en `arte.js`, basta con volver a correrla.
 - **Qué se comprobó y qué no.** Medidas, transparencia y enlaces se revisaron archivo por archivo. La vista en iPhone y
   en Android se revisó con una simulación, no en un teléfono real; en Android la forma exacta depende de cada teléfono.
+
+## 33. Panel: chats de WhatsApp en el Resumen y Motores en el menú (Daniel, 10 de noviembre de 2026)
+
+Daniel pidió tener dentro de su panel los chats de WhatsApp que ve en Green API, para conversar con los clientes a los
+que se les mandó su guía, y pasar Motores al menú de hamburguesa («simplemente muévelos de lugar»).
+
+- **Orden del Resumen.** Avisos, las siete cifras y, debajo, el cuadro «Chats de WhatsApp». Motores ya no está ahí.
+- **Motores en el menú.** Es una sección propia, entre Costos y Ajustes, con lo mismo de antes: un renglón con el estado
+  general («5 de 5 encendidos») y las tarjetas. En el menú, «Motores» lleva una marca amarilla solo cuando alguno de los
+  cinco motores de la venta necesita atención.
+- **Chats: cuadro propio, no la pantalla de Green API.** Green API ofrece su pantalla de chats por link, pero exige
+  poner la llave de WhatsApp en la dirección de la página. Se hizo un cuadro propio, con el estilo del panel, para que
+  la llave no salga del servidor. (Decisión de Claude; si Daniel prefiere la pantalla de Green API, hay que explicarle
+  ese riesgo antes.)
+- **Qué hace.** Lista de chats de los últimos 7 días con el nombre del cliente (el de la compra, cuando el número
+  coincide), la hora y cuántos mensajes siguen sin contestar. Al abrir un chat: la conversación con sus días («Ayer»,
+  «Hoy»), el estado de lo enviado (Enviado, Entregado, Leído) y una caja para contestar. En celular se ve una parte a
+  la vez, con flecha para volver a la lista.
+- **Qué no hace todavía.** Mandar fotos o archivos, marcar como leído en WhatsApp, ver más de 7 días ni avisar con
+  sonido.
+- **Privacidad.** Las conversaciones no se guardan en SparkEd: se leen de Green API cada vez y se borran de la pantalla
+  al cerrar sesión.
+- **Lo escrito en el teléfono.** Aparece en el cuadro después de pulsar «Activar» en el aviso amarillo (o «Conectar» en
+  Ajustes → WhatsApp), que enciende ese ajuste en Green API.
+- **Palabras.** «Chats de WhatsApp», «Elige un chat para leerlo y contestar», «Escribe un mensaje», «Enviar», «No hay
+  conversaciones en los últimos 7 días».
+- El detalle técnico está en `docs/WHATSAPP.md`, sección «Chats en el panel».

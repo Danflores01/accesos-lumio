@@ -169,7 +169,7 @@
   .numero span { color: var(--pn-suave); font-size: 13px; font-weight: 500; line-height: 1.35; }
   .numero span::first-letter { text-transform: uppercase; }
 
-  /* ---------- Bloques que se abren y se cierran (Motores, Entrada, WhatsApp) ---------- */
+  /* ---------- Bloques que se abren y se cierran (Entrada, WhatsApp) ---------- */
   details.plegable { background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); }
   details.plegable > summary { cursor: pointer; list-style: none; display: flex; gap: 12px; align-items: center; min-height: 52px; padding: 14px 20px; background: none; border: 0; border-radius: 20px; font-size: 14.5px; }
   details.plegable > summary::-webkit-details-marker { display: none; }
@@ -186,9 +186,14 @@
   .pleg-resumen { font-weight: 400; font-size: 14.5px; padding: 0; border-radius: 0; background: none; color: var(--pn-texto); }
   .pleg-resumen.verde, .pleg-resumen.amarillo, .pleg-resumen.rojo { background: none; color: var(--pn-texto); }
   details.plegable > .panel-paso { background: none; box-shadow: none; border-radius: 0 0 20px 20px; padding: 20px; }
-  details.plegable > .motores { padding: 16px 20px 20px; }
 
-  /* Motores */
+  /* Motores: sección propia del menú. Arriba, un renglón con el estado general y su punto de color; abajo, las tarjetas. */
+  .caja-motores { background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); padding: 20px; }
+  .motores-estado { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; font-size: 14.5px; line-height: 1.4; }
+  .motores-estado::before { content: ""; flex: 0 0 auto; width: 9px; height: 9px; margin-left: 4px; border-radius: 50%; background: #A9A3BF; box-shadow: 0 0 0 4px #F0EEF5; }
+  .motores-estado.verde::before { background: #16a34a; box-shadow: 0 0 0 4px #dcfce7; }
+  .motores-estado.amarillo::before { background: #D97706; box-shadow: 0 0 0 4px #FEF3C7; }
+  .motores-estado.rojo::before { background: #DC2626; box-shadow: 0 0 0 4px #FEE2E2; }
   .motores { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
   .motor { display: flex; flex-direction: column; gap: 4px; background: #FAF9FD; border: 0; border-radius: 14px; padding: 14px 16px; font-size: 14px; min-width: 0; }
   .motor.on { background: #F4FAF5; }
@@ -281,6 +286,77 @@
   .wa-burbuja { background: #dcf8c6; border-radius: 4px 14px 14px 14px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.45; color: #111b21; box-shadow: 0 1px 1px rgba(0,0,0,.12); }
   .wa-botones { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
+  /* ---------- Resumen: chats de WhatsApp (10 nov 2026) ----------
+     Una tarjeta con dos partes: a la izquierda la lista de chats y a la derecha la conversación. En celular se ve
+     una sola parte a la vez (la lista; al tocar un chat, la conversación con su flecha para volver). */
+  .chats { margin-top: 22px; background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); overflow: hidden; }
+  .chats-cab { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--pn-linea); }
+  body.panel.sitio.claro .chats-cab h2 { margin: 0; font-size: 17px; font-weight: 600; white-space: nowrap; }
+  body.panel.sitio.claro .chats-cab .ayuda { flex: 1 1 140px; min-width: 0; font-size: 13px; }
+  .chats-nota { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; padding: 12px 20px; background: var(--pn-ambar-fondo); color: var(--pn-ambar-texto); font-size: 13.5px; line-height: 1.45; }
+  .chats-nota span { flex: 1 1 260px; min-width: 0; }
+  body.panel.sitio.claro .chats-nota .boton { background: #fff; box-shadow: none; flex: 0 0 auto; }
+  .chats-cuerpo { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); height: min(620px, 74vh); min-height: 420px; }
+  .chats-lista { min-height: 0; overflow-y: auto; border-right: 1px solid var(--pn-linea); padding: 8px; }
+  .chats-aviso { margin: 0; padding: 28px 16px; text-align: center; color: var(--pn-suave); font-size: 14px; line-height: 1.5; }
+  .chat-item { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 1px 12px; align-items: center; width: 100%; min-height: 62px; padding: 9px 12px; border: 0; border-radius: 14px; background: none; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+  .chat-item:hover { background: #FAF9FD; }
+  .chat-item.on { background: var(--pn-sec); }
+  .chat-inicial { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--pn-lila-caja); color: var(--pn-violeta); font-weight: 700; font-size: 15px; flex: 0 0 auto; }
+  .chat-item .chat-inicial { grid-row: 1 / span 2; }
+  .chat-item.on .chat-inicial { background: #fff; }
+  .chat-item b { font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-item time { font-size: 12px; color: var(--pn-suave); white-space: nowrap; }
+  .chat-ultimo { grid-column: 2; font-size: 13px; color: var(--pn-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-item .n { grid-column: 3; justify-self: end; display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--pn-amarillo); color: var(--pn-noche); font: 700 11.5px/1 var(--pn-letra); }
+  .chat-item.pendiente b { font-weight: 700; }
+  .chat-item.pendiente .chat-ultimo { color: var(--pn-texto); }
+  .chats-conv { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #FAF9FD; }
+  .conv { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .conv-cab { display: flex; align-items: center; gap: 12px; min-height: 62px; padding: 10px 16px; background: #fff; border-bottom: 1px solid var(--pn-linea); flex: 0 0 auto; }
+  .conv-volver { display: none; place-items: center; width: 44px; height: 44px; margin-left: -8px; border: 0; border-radius: 12px; background: none; color: var(--pn-texto); cursor: pointer; flex: 0 0 auto; }
+  .conv-volver:hover { background: var(--pn-sec); }
+  .conv-volver svg { width: 20px; height: 20px; }
+  .conv-quien { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+  .conv-quien b { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .conv-quien span { font-size: 12.5px; color: var(--pn-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .conv-mensajes { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; overscroll-behavior: contain; }
+  .conv-dia { align-self: center; margin: 8px 0 4px; padding: 4px 12px; border-radius: 999px; background: #fff; color: var(--pn-suave); font-size: 12px; font-weight: 500; box-shadow: 0 1px 2px rgba(27,19,64,.06); }
+  .burbuja { align-self: flex-start; max-width: min(78%, 520px); min-width: 0; padding: 8px 12px 6px; border-radius: 4px 16px 16px 16px; background: #fff; color: var(--pn-texto); box-shadow: 0 1px 2px rgba(27,19,64,.08); font-size: 14.5px; line-height: 1.45; overflow-wrap: anywhere; }
+  .burbuja.mia { align-self: flex-end; border-radius: 16px 4px 16px 16px; background: #DCF8C6; color: #111B21; }
+  .burbuja .b-texto { white-space: pre-wrap; }
+  .burbuja .b-nota { color: var(--pn-suave); font-style: italic; }
+  .burbuja .b-mini { display: block; max-width: min(220px, 100%); max-height: 220px; border-radius: 10px; margin-bottom: 6px; }
+  body.panel.sitio.claro .burbuja a { color: var(--pn-violeta); font-weight: 600; text-decoration: underline; }
+  .burbuja .b-pie { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 2px; font-size: 11.5px; line-height: 1.3; color: var(--pn-suave); white-space: nowrap; }
+  .burbuja.mia .b-pie { color: #4F6B55; }
+  .burbuja .b-pie .leido { color: #1D6FD8; font-weight: 600; }
+  .burbuja.fallo { background: var(--pn-pel-fondo); }
+  .burbuja.fallo .b-pie { color: var(--pn-pel-texto); font-weight: 600; white-space: normal; }
+  .conv-escribir { display: flex; align-items: flex-end; gap: 10px; padding: 12px 16px; background: #fff; border-top: 1px solid var(--pn-linea); flex: 0 0 auto; }
+  body.panel.sitio.claro .conv-escribir textarea { flex: 1 1 auto; min-width: 0; width: auto; min-height: 44px; max-height: 132px; resize: none; padding: 11px 14px; border: 1px solid var(--pn-campo); border-radius: 14px; background: #fff; color: var(--pn-texto); font: 400 15px/1.4 var(--pn-letra); box-shadow: none; }
+  body.panel.sitio.claro .conv-escribir textarea:focus { outline: none; border-color: #8B6FD8; box-shadow: var(--pn-anillo); }
+  body.panel.sitio.claro .conv-escribir .boton { flex: 0 0 auto; width: auto; min-height: 44px; }
+  @media (max-width: 760px) {
+    .chats { border-radius: 18px; }
+    .chats-cab, .chats-nota { padding-left: 16px; padding-right: 16px; }
+    /* Arriba el título con su botón; debajo, a todo lo ancho, cuándo se actualizó. */
+    body.panel.sitio.claro .chats-cab h2 { flex: 1 1 auto; }
+    body.panel.sitio.claro .chats-cab .ayuda { order: 3; flex: 1 1 100%; }
+    body.panel.sitio.claro .chats-nota .boton { width: auto; }
+    .chats-cuerpo { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; }
+    .chats-lista { border-right: 0; max-height: 62vh; }
+    .chats-conv { display: none; }
+    .chats-cuerpo.abierto .chats-lista { display: none; }
+    .chats-cuerpo.abierto .chats-conv { display: flex; height: 72vh; height: min(72dvh, 620px); min-height: 360px; }
+    .conv-volver { display: grid; }
+    .conv-cab { padding: 8px 14px; }
+    .conv-mensajes { padding: 12px; }
+    .burbuja { max-width: 86%; }
+    .conv-escribir { padding: 10px 12px; gap: 8px; }
+    body.panel.sitio.claro .conv-escribir textarea { font-size: 16px; }
+  }
+
   /* ---------- Diálogos y avisos ---------- */
   body.panel.sitio.claro dialog { border: 0; border-radius: 20px; padding: 26px; max-width: 560px; width: calc(100% - 32px); color: var(--pn-texto); box-shadow: 0 30px 60px rgba(27,19,64,.30); font: 15px/1.5 var(--pn-letra); }
   body.panel.sitio.claro dialog h2 { font-size: 20px; margin: 0 0 10px; }
@@ -312,7 +388,7 @@
     .fila-g { padding: 16px; border-radius: 18px; gap: 12px; }
     details.plegable > summary { padding: 12px 16px; min-height: 56px; }
     details.plegable > .panel-paso { padding: 16px; }
-    details.plegable > .motores { padding: 14px 16px 16px; }
+    .caja-motores { padding: 16px; border-radius: 18px; }
     body.panel.sitio.claro .boton, body.panel.sitio.claro .boton.chico { min-height: 44px; }
     body.panel.sitio.claro .acciones .boton { flex: 1 1 auto; }
     body.panel.sitio.claro .rejilla-campos .boton, body.panel.sitio.claro .wa-botones .boton { width: 100%; }
@@ -362,6 +438,7 @@
     <button data-tab="reportes">Reportes <span class="n" id="nReportes" hidden></span></button>
     <button data-tab="comentarios">Comentarios <span class="n" id="nComentarios" hidden></span></button>
     <button data-tab="costos">Costos</button>
+    <button data-tab="motores">Motores <span class="n" id="nMotores" title="Algún motor necesita atención" hidden>!</span></button>
     <button data-tab="ajustes">Ajustes</button>
   </div>
   <div class="menu-pie"><a href="index.html" target="_blank" rel="noopener">Ver el sitio ↗</a><a href="../accesos/">Accesos Lumio (clases)</a><a href="#" id="salir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>Cerrar sesión</a></div>
@@ -386,10 +463,41 @@
       <div id="alertas"></div>
       <div id="alertaComentarios"></div>
       <div class="numeros" id="numeros"></div>
-      <details class="plegable" id="plegMotores" style="margin-top:22px">
-        <summary><span class="pleg-texto"><span class="pleg-titulo">Motores</span> <span class="pleg-resumen" id="resumenMotores">Revisando…</span></span></summary>
+      <!-- Chats de WhatsApp: la lista y los mensajes salen del historial de Green API, a través del servidor. -->
+      <div class="chats" id="chats" hidden>
+        <div class="chats-cab">
+          <h2>Chats de WhatsApp</h2>
+          <span class="ayuda" id="chatsEstado"></span>
+          <button class="boton linea chico" type="button" id="chatsActualizar">⟳ Actualizar</button>
+        </div>
+        <div class="chats-nota" id="chatsNota" hidden><span>Lo que contestas desde tu teléfono todavía no aparece aquí. Pulsa «Activar» para que también se vea; Green API aplica el cambio en unos 5 minutos.</span><button class="boton chico" type="button" id="chatsActivar">Activar</button></div>
+        <div class="chats-cuerpo" id="chatsCuerpo">
+          <div class="chats-lista" id="chatsLista"><p class="chats-aviso">Cargando los chats…</p></div>
+          <div class="chats-conv">
+            <p class="chats-aviso" id="chatsVacio" style="margin:auto">Elige un chat para leerlo y contestar.</p>
+            <div class="conv" id="conv" hidden>
+              <div class="conv-cab">
+                <button type="button" class="conv-volver" id="convVolver" aria-label="Volver a la lista de chats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+                <span class="chat-inicial" id="convInicial" aria-hidden="true"></span>
+                <div class="conv-quien"><b id="convNombre"></b><span id="convDatos"></span></div>
+              </div>
+              <div class="conv-mensajes" id="convMensajes"></div>
+              <form class="conv-escribir" id="convEscribir">
+                <textarea id="convTexto" rows="1" maxlength="4000" placeholder="Escribe un mensaje" aria-label="Mensaje para este chat"></textarea>
+                <button class="boton" type="submit" id="convEnviar">Enviar</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Motores: desde el 10 nov 2026 es una sección propia del menú (antes era un bloque plegable del Resumen). -->
+    <section data-panel="motores" hidden>
+      <div class="caja-motores">
+        <p class="motores-estado" id="resumenMotores">Revisando…</p>
         <div class="motores" id="motores"></div>
-      </details>
+      </div>
     </section>
 
     <section data-panel="guias" hidden>
@@ -573,6 +681,7 @@ function salir(limpiar = true) {
   if (limpiar) { try { localStorage.removeItem(LS); } catch {} }
   guardarSesion(null); clave = "";
   cerrarMenu(); $("#app").hidden = true; $("#login").hidden = false; $("#abrirMenu").hidden = true; $("#seccionActual").textContent = "";
+  limpiarChats();
 }
 // ---------- Menú de hamburguesa ----------
 function abrirMenu() { $("#menu").hidden = false; $("#velo").hidden = false; $("#abrirMenu").setAttribute("aria-expanded", "true"); $("#cerrarMenu").focus(); }
@@ -588,7 +697,7 @@ async function entrar() {
     $("#login").hidden = true; $("#app").hidden = false; $("#abrirMenu").hidden = false;
     $("#menuQuien").textContent = sesion?.correo ? "Sesión: " + sesion.correo : "Entraste con la clave de administrador";
     $("#errSesion").textContent = ""; $("#errLogin").textContent = "";
-    pintarMotores(p); cargarTodo();
+    iniciarChats(p); pintarMotores(p); cargarTodo();
   } catch (e) { $(conSesion ? "#errSesion" : "#errLogin").textContent = e.message; if (!conSesion) $("#entradaClave").open = true; }
 }
 // Entrar con correo y contraseña.
@@ -621,7 +730,7 @@ function mostrarTab(t) {
   location.hash = t;
   $("#seccionActual").textContent = $$("#tabs button").find((b) => b.dataset.tab === t)?.firstChild?.textContent?.trim() ?? "";
   cerrarMenu();
-  ({ resumen: cargarResumen, guias: cargarCostosGuias, compras: cargarCompras, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, comentarios: cargarComentarios, costos: cargarCostos, ajustes: cargarAjustes })[t]?.();
+  ({ resumen: () => { cargarChats(); return cargarResumen(); }, guias: cargarCostosGuias, compras: cargarCompras, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, comentarios: cargarComentarios, costos: cargarCostos, motores: cargarMotores, ajustes: cargarAjustes })[t]?.();
 }
 function cargarTodo() { mostrarTab(location.hash.replace("#", "") || "resumen"); }
 
@@ -651,6 +760,8 @@ async function cargarResumen() {
   // Comentarios nuevos de la portada (si la ruta todavía no existe, no se muestra nada).
   api("/comentarios?estado=nuevo").then((c) => pintarNuevosComentarios(c.nuevos ?? 0)).catch(() => {});
 }
+// ---------- Motores (sección propia del menú; al abrirla se vuelve a preguntar al servidor) ----------
+async function cargarMotores() { pintarMotores(await api("/ping")); }
 function pintarMotores(p) {
   const m = p.motores ?? {};
   const lista = [["ia", "Inteligencia artificial", "ANTHROPIC_API_KEY", "Escribe las guías"], ["mercadopago", "Cobro en línea (Mercado Pago)", "MP_ACCESS_TOKEN", m.mercadopago_prueba ? "MODO DE PRUEBA: no cobra de verdad. Al terminar las pruebas pon la llave de producción" : "Tarjeta, OXXO y SPEI. Apagado = las compras se confirman a mano aquí"], ["mercadopago_webhook", "Aviso de pago de Mercado Pago", "MP_WEBHOOK_SECRET", "Activa la guía sola en cuanto Mercado Pago confirma el pago"], ["correo", "Correos (Resend)", "RESEND_API_KEY", "Manda el link y el QR al correo del cliente"], ["whatsapp", "WhatsApp (Green API)", "GREEN_API_TOKEN_INSTANCE", "Manda la guía por WhatsApp, con Sparky y su código QR"],["stripe", "Stripe (dormido)", "STRIPE_SECRET_KEY", "No se usa: el cobro en línea es con Mercado Pago"], ["webhook", "Aviso de pago de Stripe", "STRIPE_WEBHOOK_SECRET", "Solo si algún día se usa Stripe"], ["helicone", "Medición de costos (Helicone)", "HELICONE_API_KEY", "Opcional: cuánto cuesta cada guía"]];
@@ -667,8 +778,10 @@ function pintarResumenMotores() {
   const bien = MOTORES_CLAVE.filter(([k]) => estadoMotores[k] === "ok").length;
   const apagados = MOTORES_CLAVE.filter(([k]) => estadoMotores[k] === "apagado").map(([, n]) => n);
   const avisos = MOTORES_CLAVE.filter(([k]) => !["ok", "apagado", undefined].includes(estadoMotores[k])).map(([k, n]) => `${n}: ${estadoMotores[k]}`);
-  el.className = "pleg-resumen " + (apagados.length ? "rojo" : avisos.length ? "amarillo" : "verde");
+  el.className = "motores-estado " + (apagados.length ? "rojo" : avisos.length ? "amarillo" : "verde");
   el.textContent = `${bien} de ${MOTORES_CLAVE.length} encendidos` + (apagados.length ? ` · apagado: ${apagados.join(", ")}` : "") + (avisos.length ? ` · ${avisos.join(" · ")}` : "");
+  // En el menú, «Motores» lleva una marca solo cuando alguno de los cinco necesita atención.
+  $("#nMotores").hidden = !(apagados.length || avisos.length);
 }
 // WhatsApp está encendido de verdad cuando, además de tener las llaves, el teléfono sigue enlazado en Green API:
 // se le pregunta el estado y la tarjeta lo dice con palabras (verde = entrega mensajes; amarillo = hay algo que arreglar).
@@ -678,15 +791,216 @@ async function pintarMotorWhatsApp() {
   const ESTADOS = { notAuthorized: "el teléfono no está enlazado (falta escanear el código QR en Green API)", blocked: "WhatsApp bloqueó el número", suspended: "WhatsApp puso restricciones al número", yellowCard: "WhatsApp puso restricciones al número", sleepMode: "el teléfono está apagado o sin internet", starting: "la instancia está arrancando; vuelve a revisar en un minuto", sin_respuesta: "Green API no respondió" };
   try {
     const w = await api("/whatsapp");
+    notaChats(w);
     const bien = w.estado_instancia === "authorized";
     caja.classList.toggle("on", bien);
-    estadoMotores.whatsapp = bien ? "ok" : "con un problema (ábrelo para ver)"; pintarResumenMotores();
+    estadoMotores.whatsapp = bien ? "ok" : "con un problema"; pintarResumenMotores();
     caja.querySelector("b").textContent = `${bien ? "🟢" : "🟡"} WhatsApp (Green API)`;
     caja.querySelector("div").innerHTML = bien
       ? `<b>Encendido</b>${w.numero ? " · número " + esc(w.numero) : ""}${w.webhook_configurado ? "" : " · falta pulsar «Conectar» en Ajustes"}`
       : `Llaves puestas, pero ${esc(ESTADOS[w.estado_instancia] ?? "la instancia está en «" + (w.estado_instancia ?? "desconocido") + "»")}`;
   } catch { /* si no se pudo preguntar, se queda con lo que dice el servidor: llaves configuradas */ }
 }
+
+// ---------- Chats de WhatsApp (en el Resumen) ----------
+// La lista y los mensajes salen del historial de Green API a través del servidor: la llave de WhatsApp nunca llega al
+// navegador y el panel no guarda nada. Mientras el Resumen está a la vista se pregunta cada 30 segundos por la lista y
+// cada 12 por el chat abierto. Un mensaje recién enviado puede tardar hasta 2 minutos en salir en ese historial; por
+// eso se muestra de inmediato (CHATS.propios) y deja de ser «propio» cuando el historial ya lo trae.
+const CHATS = { motor: false, lista: null, dias: 7, listaEn: 0, abierto: null, mensajes: [], firma: "", propios: new Map(), borradores: new Map(), pidiendoLista: false, pidiendoConv: null, enviando: false };
+const TIPO_CHAT = { foto: "Foto", video: "Video", audio: "Audio", documento: "Documento", sticker: "Sticker", ubicacion: "Ubicación", contacto: "Contacto", encuesta: "Encuesta", eliminado: "Mensaje eliminado", otro: "Mensaje que no se puede mostrar aquí" };
+const ESTADO_ENVIO = { sent: "Enviado", delivered: "Entregado", read: "Leído", failed: "No se envió", noAccount: "No se envió: el número no tiene WhatsApp", yellowCard: "WhatsApp detuvo el envío" };
+const punteroFino = () => matchMedia("(pointer: fine)").matches;
+const chatsALaVista = () => CHATS.motor && !document.hidden && !$("#app").hidden && !$('[data-panel="resumen"]').hidden;
+const ahoraSeg = () => Math.floor(Date.now() / 1000);
+const horaChat = (seg) => new Date(seg * 1000).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" });
+const diaDe = (seg) => { const d = new Date(seg * 1000); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
+// En la lista: la hora si es de hoy, «Ayer» o «8 nov». En la conversación (largo): «Hoy», «Ayer» o «8 de noviembre».
+function diaChat(seg, largo = false) {
+  const dias = Math.round((diaDe(ahoraSeg()) - diaDe(seg)) / 86400000);
+  if (dias === 0) return largo ? "Hoy" : horaChat(seg);
+  if (dias === 1) return "Ayer";
+  const d = new Date(seg * 1000), otroAnio = d.getFullYear() !== new Date().getFullYear();
+  return d.toLocaleDateString("es-MX", largo ? { day: "numeric", month: "long", ...(otroAnio ? { year: "numeric" } : {}) } : { day: "numeric", month: "short" });
+}
+const inicialDe = (nombre) => (String(nombre ?? "").trim().match(/^\p{L}/u)?.[0] ?? "#").toUpperCase();
+const propiosDe = (chat) => CHATS.propios.get(chat) ?? [];
+// Un chat de la lista, con lo último que se mandó desde aquí si el historial todavía no lo trae.
+function chatAlDia(c) {
+  const p = propiosDe(c.chat).at(-1);
+  return p && p.hora >= c.ultimo.hora ? { ...c, ultimo: { texto: p.texto, hora: p.hora, mio: true, tipo: "texto", estado: null }, sin_responder: 0 } : c;
+}
+
+// Enciende el cuadro al entrar al panel. Sin WhatsApp conectado solo queda el aviso.
+function iniciarChats(p) {
+  CHATS.motor = !!p.motores?.whatsapp;
+  $("#chats").hidden = false;
+  $("#chatsCuerpo").hidden = !CHATS.motor; $("#chatsActualizar").hidden = !CHATS.motor;
+  if (!CHATS.motor) { $("#chatsNota").hidden = true; $("#chatsEstado").textContent = "WhatsApp no está conectado. Puedes revisarlo en el menú, en Motores."; }
+}
+// Al cerrar sesión no queda ninguna conversación en la pantalla ni en la memoria de la página.
+function limpiarChats() {
+  Object.assign(CHATS, { lista: null, listaEn: 0, abierto: null, mensajes: [], firma: "" });
+  CHATS.propios.clear(); CHATS.borradores.clear();
+  $("#chatsLista").innerHTML = `<p class="chats-aviso">Cargando los chats…</p>`; $("#convMensajes").innerHTML = ""; $("#convTexto").value = "";
+  $("#conv").hidden = true; $("#chatsVacio").hidden = false; $("#chatsCuerpo").classList.remove("abierto"); $("#chatsEstado").textContent = "";
+}
+// Aviso para que también se vea lo que Daniel contesta desde su teléfono (ajuste de Green API que pone «Conectar»).
+function notaChats(w) { $("#chatsNota").hidden = !(CHATS.motor && w?.historial_del_telefono === false); }
+
+async function cargarChats() {
+  if (!CHATS.motor || CHATS.pidiendoLista) return;
+  CHATS.pidiendoLista = true;
+  try {
+    const r = await api("/whatsapp/chats");
+    CHATS.lista = r.chats ?? []; CHATS.dias = r.dias ?? 7; CHATS.listaEn = Date.now();
+    pintarListaChats();
+    $("#chatsEstado").textContent = `Últimos ${CHATS.dias} días · actualizado a las ${horaChat(ahoraSeg())}`;
+  } catch (e) {
+    if ($("#app").hidden) return;   // la sesión terminó: ya se ve la pantalla de entrada
+    const falta = /ruta no encontrada/i.test(e.message);
+    $("#chatsEstado").textContent = falta ? "Los chats todavía no están disponibles." : "No se pudieron cargar los chats. Se intenta de nuevo en un momento.";
+    if (!CHATS.lista) $("#chatsLista").innerHTML = `<p class="chats-aviso">${falta ? "Los chats todavía no están disponibles." : "No se pudieron cargar los chats.<br>" + esc(e.message)}</p>`;
+  } finally { CHATS.pidiendoLista = false; }
+}
+function pintarListaChats() {
+  if (!CHATS.lista) return;
+  const lista = CHATS.lista.map(chatAlDia).sort((a, b) => b.ultimo.hora - a.ultimo.hora);
+  $("#chatsLista").innerHTML = lista.length ? lista.map((c) => {
+    const u = c.ultimo, abierto = c.chat === CHATS.abierto;
+    const previo = (u.mio ? "Tú: " : "") + (u.tipo === "texto" ? u.texto : (TIPO_CHAT[u.tipo] ?? "Mensaje") + (u.texto ? ": " + u.texto : ""));
+    return `<button type="button" class="chat-item${abierto ? " on" : ""}${c.sin_responder ? " pendiente" : ""}" data-chat="${esc(c.chat)}"${abierto ? ' aria-current="true"' : ""}><span class="chat-inicial" aria-hidden="true">${esc(inicialDe(c.nombre))}</span><b>${esc(c.nombre)}</b><time>${esc(diaChat(u.hora))}</time><span class="chat-ultimo">${esc(previo)}</span>${c.sin_responder ? `<span class="n" title="Mensajes sin contestar">${Number(c.sin_responder)}</span>` : ""}</button>`;
+  }).join("") : `<p class="chats-aviso">No hay conversaciones en los últimos ${CHATS.dias} días.</p>`;
+}
+$("#chatsLista").onclick = (e) => { const b = e.target.closest("[data-chat]"); if (b) abrirChat(b.dataset.chat); };
+
+function abrirChat(chat) {
+  const c = (CHATS.lista ?? []).find((x) => x.chat === chat);
+  if (!c) return;
+  const campo = $("#convTexto");
+  if (CHATS.abierto && CHATS.abierto !== chat) CHATS.borradores.set(CHATS.abierto, campo.value);
+  if (CHATS.abierto !== chat) { CHATS.abierto = chat; CHATS.mensajes = []; CHATS.firma = ""; campo.value = CHATS.borradores.get(chat) ?? ""; $("#convMensajes").innerHTML = `<p class="chats-aviso">Cargando la conversación…</p>`; }
+  $("#chatsCuerpo").classList.add("abierto"); $("#chatsVacio").hidden = true; $("#conv").hidden = false;
+  $("#convInicial").textContent = inicialDe(c.nombre); $("#convNombre").textContent = c.nombre;
+  const cl = c.cliente;
+  $("#convDatos").textContent = [c.telefono, cl?.nombre && cl.nombre !== c.nombre ? "Cliente: " + cl.nombre : "", cl?.guia ? (cl.estado === "pagada" ? "Guía: " : "Compra sin pagar: ") + cl.guia : ""].filter(Boolean).join(" · ");
+  ajustarAltoChat(); pintarListaChats(); cargarConversacion(true);
+  // En celular la conversación ocupa el lugar de la lista: se sube el cuadro para que se vea entera, con su caja de escribir.
+  if (matchMedia("(max-width: 760px)").matches) $("#chats").scrollIntoView({ block: "start" });
+  else if (punteroFino()) campo.focus({ preventScroll: true });
+}
+function cerrarChat() {
+  if (CHATS.abierto) CHATS.borradores.set(CHATS.abierto, $("#convTexto").value);
+  CHATS.abierto = null; CHATS.mensajes = []; CHATS.firma = "";
+  $("#chatsCuerpo").classList.remove("abierto"); $("#conv").hidden = true; $("#chatsVacio").hidden = false; $("#convMensajes").innerHTML = "";
+  pintarListaChats();
+}
+$("#convVolver").onclick = cerrarChat;
+
+async function cargarConversacion(alFinal = false, reintento = false) {
+  const chat = CHATS.abierto;
+  if (!chat || CHATS.pidiendoConv === chat) return;
+  CHATS.pidiendoConv = chat;
+  try {
+    const r = await api("/whatsapp/chats/mensajes?chat=" + encodeURIComponent(chat));
+    if (CHATS.abierto !== chat) return;
+    CHATS.mensajes = r.mensajes ?? [];
+    const ya = new Set(CHATS.mensajes.map((m) => m.id)), quedan = propiosDe(chat).filter((p) => !ya.has(p.id));
+    if (quedan.length) CHATS.propios.set(chat, quedan); else CHATS.propios.delete(chat);
+    pintarConversacion(alFinal);
+  } catch (e) {
+    if (CHATS.abierto !== chat || $("#app").hidden) return;
+    // Green API admite una consulta por segundo: si se cambió de chat muy rápido, se intenta una vez más.
+    if (!reintento) { setTimeout(() => { if (CHATS.abierto === chat) cargarConversacion(alFinal, true); }, 1500); return; }
+    if (!CHATS.mensajes.length && !propiosDe(chat).length) $("#convMensajes").innerHTML = `<p class="chats-aviso">No se pudo cargar la conversación.<br>${esc(e.message)}</p>`;
+  } finally { if (CHATS.pidiendoConv === chat) CHATS.pidiendoConv = null; }
+}
+function pintarConversacion(alFinal = false) {
+  const caja = $("#convMensajes"), chat = CHATS.abierto;
+  const todos = [...CHATS.mensajes, ...propiosDe(chat)].sort((a, b) => a.hora - b.hora);
+  const firma = chat + "|" + todos.map((m) => `${m.id}:${m.estado ?? ""}:${m.tipo}`).join("|");
+  if (firma === CHATS.firma && !alFinal) return;
+  const pegado = caja.scrollHeight - caja.scrollTop - caja.clientHeight < 80;
+  CHATS.firma = firma;
+  if (!todos.length) { caja.innerHTML = `<p class="chats-aviso">Todavía no hay mensajes en este chat.</p>`; return; }
+  let dia = 0, html = "";
+  for (const m of todos) {
+    const d = diaDe(m.hora);
+    if (d !== dia) { dia = d; html += `<div class="conv-dia">${esc(diaChat(m.hora, true))}</div>`; }
+    html += burbujaChat(m);
+  }
+  caja.innerHTML = html;
+  // Baja hasta el último mensaje; las vistas previas de las fotos cambian el alto al terminar de cargar, así que se baja otra vez.
+  if (alFinal || pegado) {
+    const bajar = () => { caja.scrollTop = caja.scrollHeight; };
+    bajar();
+    for (const img of $$("img.b-mini", caja)) if (!img.complete) img.addEventListener("load", bajar, { once: true });
+  }
+}
+// Texto de un mensaje → HTML seguro: los links se pueden abrir y lo demás lleva el formato de WhatsApp (waFormato escapa todo).
+function textoChat(t) {
+  return String(t).split(/(https?:\/\/[^\s<>"']+)/g).map((parte, i) => {
+    if (i % 2 === 0) return waFormato(parte);
+    const cola = parte.match(/[.,;:!?)\]]+$/)?.[0] ?? "", u = cola ? parte.slice(0, -cola.length) : parte;
+    return `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a>${esc(cola)}`;
+  }).join("");
+}
+function burbujaChat(m) {
+  const url = String(m.archivo?.url ?? "").startsWith("https://") ? m.archivo.url : "";
+  const nota = (t) => `<div class="b-nota">${esc(t)}</div>`;
+  const abrir = (t) => url ? `<div><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(t)}</a></div>` : nota(TIPO_CHAT[m.tipo] ?? "Archivo");
+  const partes = [];
+  if (m.miniatura && /^[A-Za-z0-9+/]+=*$/.test(m.miniatura)) {
+    const img = `<img class="b-mini" src="data:image/jpeg;base64,${m.miniatura}" alt="${esc(TIPO_CHAT[m.tipo] ?? "Imagen")}">`;
+    partes.push(url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="Abrir en otra pestaña">${img}</a>` : img);
+    if (m.tipo === "video") partes.push(abrir("Abrir el video"));
+  } else if (m.tipo === "foto") partes.push(abrir("Abrir la foto"));
+  else if (m.tipo === "video") partes.push(abrir("Abrir el video"));
+  else if (m.tipo === "sticker") partes.push(abrir("Abrir el sticker"));
+  if (m.tipo === "audio") partes.push(abrir("Abrir el audio"));
+  if (m.tipo === "documento") partes.push(abrir("Abrir el documento" + (m.archivo?.nombre ? ": " + m.archivo.nombre : "")));
+  if (m.tipo === "ubicacion") partes.push(abrir("Ver la ubicación en el mapa"));
+  if (m.tipo === "contacto") partes.push(nota("Contacto compartido"));
+  if (m.tipo === "encuesta") partes.push(nota("Encuesta"));
+  if (m.tipo === "eliminado" || m.tipo === "otro") partes.push(nota(TIPO_CHAT[m.tipo]));
+  if (m.texto) partes.push(`<div class="b-texto">${textoChat(m.texto)}</div>`);
+  // Pie: la hora y, en los míos, cómo va el envío. «Enviando» solo se dice de los mensajes de los últimos 2 minutos.
+  const fallo = m.mio && (m.estado === "failed" || m.estado === "noAccount" || m.estado === "yellowCard");
+  let envio = "";
+  if (m.mio) envio = m.local ? "Enviado" : m.estado === "pending" ? (ahoraSeg() - m.hora < 120 ? "Enviando" : "") : ESTADO_ENVIO[m.estado] ?? "";
+  const marca = envio ? `<span${m.estado === "read" ? ' class="leido"' : ""}>${esc(envio)}</span>` : "";
+  return `<div class="burbuja${m.mio ? " mia" : ""}${fallo ? " fallo" : ""}">${partes.join("")}<div class="b-pie">${marca}<span>${esc(horaChat(m.hora))}</span></div></div>`;
+}
+
+function ajustarAltoChat() { const t = $("#convTexto"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, 132) + "px"; }
+$("#convTexto").addEventListener("input", ajustarAltoChat);
+// En computadora, Enter manda y Mayús + Enter baja de renglón; en celular, Enter baja de renglón y se manda con el botón.
+$("#convTexto").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && punteroFino()) { e.preventDefault(); $("#convEscribir").requestSubmit(); } });
+$("#convEscribir").onsubmit = async (e) => {
+  e.preventDefault();
+  const chat = CHATS.abierto, campo = $("#convTexto"), boton = $("#convEnviar"), texto = campo.value.trim();
+  if (!chat || !texto || CHATS.enviando) return;
+  CHATS.enviando = true; boton.disabled = true; campo.readOnly = true;
+  try {
+    const r = await api("/whatsapp/chats/enviar", { method: "POST", body: { chat, texto } });
+    CHATS.propios.set(chat, [...propiosDe(chat), { id: String(r.id_mensaje), mio: true, hora: Number(r.hora) || ahoraSeg(), tipo: "texto", texto, local: true }]);
+    CHATS.borradores.delete(chat);
+    if (CHATS.abierto === chat) { campo.value = ""; ajustarAltoChat(); pintarConversacion(true); }
+    pintarListaChats();
+    setTimeout(() => { if (CHATS.abierto === chat) cargarConversacion(); }, 6000);
+  } catch (err) { aviso(err.message, true, 7000); }
+  finally { CHATS.enviando = false; boton.disabled = false; campo.readOnly = false; if (CHATS.abierto === chat && punteroFino()) campo.focus({ preventScroll: true }); }
+};
+$("#chatsActualizar").onclick = async (e) => { const b = e.currentTarget; b.disabled = true; await Promise.all([cargarChats(), CHATS.abierto ? cargarConversacion() : null]); b.disabled = false; };
+$("#chatsActivar").onclick = async (e) => {
+  const b = e.currentTarget; b.disabled = true;
+  try { const r = await api("/whatsapp/configurar", { method: "POST" }); aviso(r.mensaje || "Listo", !r.ok, 7000); if (r.ok) $("#chatsNota").hidden = true; }
+  catch (err) { aviso(err.message, true, 7000); }
+  b.disabled = false;
+};
+setInterval(() => { if (chatsALaVista()) cargarChats(); }, 30000);
+setInterval(() => { if (chatsALaVista() && CHATS.abierto) cargarConversacion(); }, 12000);
+document.addEventListener("visibilitychange", () => { if (chatsALaVista() && Date.now() - CHATS.listaEn > 30000) { cargarChats(); if (CHATS.abierto) cargarConversacion(); } });
 
 // ---------- Guías: solo números (sin títulos ni datos de quién la generó) ----------
 // GET /admin/costos/guias devuelve conteos, promedios y una lista de { fecha, tipo, usd, mxn }; nada personal.
@@ -1054,6 +1368,7 @@ async function cargarWhatsApp() {
   let w = null;
   try { w = await api("/whatsapp"); } catch { w = null; }
   waDatos = w;
+  if (w) notaChats(w);
   const apagado = !w || !w.motor || ["apagado", "sin_motor", "ninguno", "no"].includes(String(w.motor));
   const res = $("#resumenWhatsApp");
   if (apagado) { res.className = "pleg-resumen"; res.textContent = "Apagado · las guías se envían solo por correo"; }

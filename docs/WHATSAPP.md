@@ -88,6 +88,20 @@ Lo que te toca a ti (recomendaciones de Green API, https://green-api.com/en/docs
 
 Reglas que el sistema cumple aunque se te olvide algo: la entrega **siempre** lleva el link de la guía (si quitas `{link}`, se añade al final); el mensaje de «compartir» siempre lleva el link de la portada; si la familia no dejó nombre, el saludo queda «Hola:»; cada mensaje tiene un máximo de 1 500 caracteres.
 
+### Chats con tus clientes, dentro del panel
+
+Desde el 10 de noviembre de 2026, en el **Resumen** del panel hay un cuadro **Chats de WhatsApp**:
+
+1. A la izquierda está la lista de chats de los últimos 7 días, del más reciente al más viejo. El número amarillo dice cuántos mensajes de esa persona siguen sin contestar.
+2. Toca un chat para leer la conversación. Si el número coincide con una compra, arriba ves el nombre del cliente y su guía.
+3. Escribe abajo y pulsa **Enviar** (en computadora, también con la tecla Enter). El mensaje sale desde el WhatsApp de SparkEd.
+4. Las fotos, audios y documentos que te manden se abren en otra pestaña. Desde el panel solo se mandan mensajes de texto.
+5. La lista se actualiza sola cada medio minuto mientras tienes el Resumen abierto. Un mensaje puede tardar hasta 2 minutos en aparecer.
+
+Para que también aparezca lo que contestas **desde tu teléfono**, pulsa una vez **Activar** en el aviso amarillo del cuadro (o **Conectar** en Ajustes → WhatsApp). Green API aplica el cambio en unos 5 minutos.
+
+Leer un chat en el panel no lo marca como leído en WhatsApp. Las conversaciones no se guardan en SparkEd: se leen de Green API cada vez.
+
 ---
 
 ## Parte 2. Técnica
@@ -102,7 +116,7 @@ Código: `funciones/sparked/whatsapp.ts` (módulo aparte; `index.ts` lo llama). 
 
 ### Métodos de Green API usados
 
-`sendMessage` (`chatId`, `message`, `linkPreview` → `idMessage`), `checkWhatsapp` (`chatId` con `@c.us` → `existsWhatsapp`, `chatId` = lid, `phoneNumber`), `getStateInstance` (→ `stateInstance`), `getSettings` (`wid`, `webhookUrl`, `webhookUrlToken`, `incomingWebhook`) y `setSettings` (→ `saveSettings`). Formato: `{apiUrl}/waInstance{idInstance}/{método}/{apiTokenInstance}`.
+`sendMessage` (`chatId`, `message`, `linkPreview` → `idMessage`), `checkWhatsapp` (`chatId` con `@c.us` → `existsWhatsapp`, `chatId` = lid, `phoneNumber`), `getStateInstance` (→ `stateInstance`), `getSettings` (`wid`, `webhookUrl`, `webhookUrlToken`, `incomingWebhook`, `outgoingMessageWebhook`) y `setSettings` (→ `saveSettings`). Para los chats del panel: `lastIncomingMessages` y `lastOutgoingMessages` (GET con `?minutes=`) y `getChatHistory` (`chatId`, `count`). Formato: `{apiUrl}/waInstance{idInstance}/{método}/{apiTokenInstance}`.
 
 ### Rutas
 
@@ -110,8 +124,11 @@ Código: `funciones/sparked/whatsapp.ts` (módulo aparte; `index.ts` lo llama). 
 |---|---|---|
 | `GET /publico` | pública | `{ whatsapp: boolean }` |
 | `POST /whatsapp/webhook` | Green API | Siempre responde 200 al instante. Con token malo, o con el motor apagado, no hace nada. Procesa en segundo plano. |
-| `GET /admin/whatsapp` | admin | `{ motor, estado_instancia, numero, enviados_7d, fallidos_7d, compartir_7d, ultimo_error, webhook_configurado }` |
-| `POST /admin/whatsapp/configurar` | admin | `setSettings`: `webhookUrl` = `…/functions/v1/sparked/whatsapp/webhook`, `webhookUrlToken`, `incomingWebhook` y `stateWebhook` en `yes`; avisos de salida, llamadas, encuestas, ediciones, borrados y acuses en `no`; `markIncomingMessagesReaded` `no`; `linkPreview` `yes`; `delaySendMessagesMilliseconds` 15000. Green API reinicia la instancia y aplica en unos 5 minutos. |
+| `GET /admin/whatsapp` | admin | `{ motor, estado_instancia, numero, enviados_7d, fallidos_7d, compartir_7d, ultimo_error, webhook_configurado, historial_del_telefono }` (`historial_del_telefono`: `false` si falta el ajuste para que el historial traiga lo escrito en el teléfono; `null` si no se pudo preguntar) |
+| `POST /admin/whatsapp/configurar` | admin | `setSettings`: `webhookUrl` = `…/functions/v1/sparked/whatsapp/webhook`, `webhookUrlToken`, `incomingWebhook` y `stateWebhook` en `yes`; desde el 10 nov 2026 también `outgoingMessageWebhook` (lo escrito en el teléfono) y `outgoingWebhook` (enviado, entregado, leído) en `yes`, para los chats del panel; `outgoingAPIMessageWebhook`, llamadas, encuestas, ediciones, borrados y acuses en `no`; `markIncomingMessagesReaded` `no`; `linkPreview` `yes`; `delaySendMessagesMilliseconds` 15000. Green API reinicia la instancia y aplica en unos 5 minutos. |
+| `GET /admin/whatsapp/chats` | admin | Lista de chats individuales con mensajes en los últimos 7 días: `{ chats: [{ chat, nombre, telefono, cliente, ultimo, sin_responder }], dias }`. |
+| `GET /admin/whatsapp/chats/mensajes?chat=&cuantos=` | admin | Mensajes de un chat, del más viejo al más nuevo (60 por defecto, máximo 200). |
+| `POST /admin/whatsapp/chats/enviar { chat, texto }` | admin | Manda un texto (máximo 4 000 caracteres) a un chat individual. Con el teléfono desconectado responde 409 y no manda. |
 | `POST /admin/whatsapp/prueba { telefono }` | admin | Manda un mensaje de prueba. |
 | `POST /admin/whatsapp/verificar { telefono }` | admin | No manda nada: muestra la respuesta de `checkWhatsapp` para cada forma del número y el chat que se usaría. |
 | `GET /admin/whatsapp/imagen?tipo=&idioma=` | admin | No manda nada: devuelve el PNG que acompañaría al mensaje (`tipo` = `entrega` o `compartir`; `idioma` = `es` o `en`). |
@@ -188,13 +205,29 @@ Green API lleva la llave de la instancia en la dirección de cada llamada y la r
 - Solo se responde a chats individuales (`@c.us` o `@lid`) cuyo número coincide con una compra pagada, máximo 2 respuestas por chat cada 24 horas. Tipos de mensaje leídos: `textMessage` (`textMessageData.textMessage`), `extendedTextMessage` y `quotedMessage` (`extendedTextMessageData.text`). Grupos (`@g.us`), estados, audios, imágenes y lo demás se ignoran.
 - Avisos repetidos (mismo `idMessage`) se descartan con un índice único.
 
+### Chats en el panel
+
+Pedido de Daniel (10 nov 2026): tener dentro de su panel los chats que ve en Green API, para conversar con sus clientes. Vive en el Resumen de `sparked/panel.html` (cuadro «Chats de WhatsApp») y en `rutasChats()` de `whatsapp.ts`.
+
+- **Por qué no se incrusta la pantalla de Green API.** Green API ofrece su pantalla de chats por link (`https://chats.green-api.com/?idInstance=…&apiTokenInstance=…`), pero exige poner la llave de la instancia en la dirección de la página. Aquí la llave nunca sale del servidor: el panel pide los chats a la función, y la función le pregunta a Green API.
+- **De dónde salen los datos.** Del historial de Green API: `lastIncomingMessages` y `lastOutgoingMessages` con `minutes=10080` (7 días) para la lista, y `getChatHistory` para un chat. SparkEd no guarda el texto de ningún mensaje; `wa_mensajes` solo anota que salió un mensaje de tipo `chat`.
+- **Lista** (`armarChats()`): solo chats individuales (`@c.us` y `@lid`; sin grupos, estados ni canales), del más reciente al más viejo, máximo 80. `sin_responder` = mensajes recibidos después de la última respuesta. Reacciones y votos de encuestas no cuentan ni se muestran.
+- **Con quién habla** (`clientesDeChats()`): la compra se busca por los últimos 10 dígitos del teléfono o, si el chat es un `@lid`, por una entrega anterior a ese chat. De varias compras del mismo teléfono gana la más nueva, y una pagada le gana a una pendiente. El nombre que se muestra es, en orden: el de la agenda del teléfono, el de la compra, el del perfil de WhatsApp o el teléfono.
+- **Mensajes** (`resumirMensaje()`): texto, foto, video, audio, documento, sticker, ubicación, contacto, encuesta, eliminado u «otro». Los archivos se abren con el `downloadUrl` de Green API (solo direcciones `https`); la vista previa de una foto solo pasa si es base64 limpio y de tamaño razonable.
+- **Enviar**: solo texto y solo a chats individuales. Antes de mandar se pregunta el estado de la instancia: con el teléfono desconectado, bloqueado o arrancando no se manda (Green API lo guardaría y lo mandaría horas después). Los envíos respetan la pausa de 15 segundos entre mensajes de la instancia.
+- **Lo escrito en el teléfono**: para que el historial lo traiga hace falta `outgoingMessageWebhook: yes`. `GET /admin/whatsapp` dice si falta (`historial_del_telefono: false`) y el panel muestra un aviso con el botón «Activar», que llama a `configurar`.
+- **En el panel**: la lista se pide cada 30 segundos y el chat abierto cada 12, solo con el Resumen a la vista (Green API admite una llamada por segundo a cada método). Un mensaje recién enviado se muestra de inmediato y se retira de «propios» cuando el historial ya lo trae (puede tardar hasta 2 minutos). Todo texto se escapa antes de mostrarse; solo los links `http(s)` se pueden abrir. Al cerrar sesión se borran de la pantalla.
+- **Límites conocidos**: leer un chat en el panel no lo marca como leído en WhatsApp; no se mandan fotos ni archivos; la lista solo ve 7 días.
+- Pruebas: `prueba-chats.mjs` (servidor) y `capturas-chats.mjs` (panel a 13 anchos, con datos inventados).
+
 ### Otros avisos del webhook
 
 - `stateInstanceChanged`: `notAuthorized`, `blocked`, `suspended`, `yellowCard` o `sleepMode` → correo a Daniel (uno al día por estado).
 - `quotaExceeded` (límite del plan Developer) → correo a Daniel (uno al día).
-- `outgoingMessageStatus` con `failed` o `noAccount` (Green API los manda siempre) → la entrega pasa a `fallido` o `sin_whatsapp`.
+- `outgoingMessageStatus` con `failed` o `noAccount` (Green API los manda siempre) → la entrega pasa a `fallido` o `sin_whatsapp`. Los demás estados (`sent`, `delivered`, `read`) llegan desde que `outgoingWebhook` está en `yes` y no hacen nada.
+- `outgoingMessageReceived` (lo que Daniel escribe en su teléfono; llega desde que `outgoingMessageWebhook` está en `yes`) → se ignora; solo sirve para que Green API lo guarde en su historial.
 
 ### Tablas (migración `sql/migraciones/20261109_sparked_whatsapp.sql`)
 
 - `compras`: `wa_estado`, `wa_enviado_en`, `wa_detalle`.
-- `wa_mensajes`: `creado_en`, `direccion` (`entrada`/`salida`/`interno`), `tipo` (`entrega`, `compartir`, `prueba`, `ignorado`; internos: `aviso`, `estado`, `limite`), `chat`, `compra_id`, `estado`, `id_mensaje`, `detalle` corto. No guarda el texto de ningún mensaje. RLS activado sin políticas: solo entra la llave de servicio.
+- `wa_mensajes`: `creado_en`, `direccion` (`entrada`/`salida`/`interno`), `tipo` (`entrega`, `compartir`, `prueba`, `chat` = mensaje escrito por Daniel en el panel, `ignorado`; internos: `aviso`, `estado`, `limite`), `chat`, `compra_id`, `estado`, `id_mensaje`, `detalle` corto. No guarda el texto de ningún mensaje. RLS activado sin políticas: solo entra la llave de servicio.
