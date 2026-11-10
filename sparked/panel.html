@@ -303,8 +303,25 @@ async function cargarResumen() {
 }
 function pintarMotores(p) {
   const m = p.motores ?? {};
-  const lista = [["ia", "Inteligencia artificial", "ANTHROPIC_API_KEY", "Escribe las guías"], ["mercadopago", "Cobro en línea (Mercado Pago)", "MP_ACCESS_TOKEN", m.mercadopago_prueba ? "MODO DE PRUEBA: no cobra de verdad. Al terminar las pruebas pon la llave de producción" : "Tarjeta, OXXO y SPEI. Apagado = las compras se confirman a mano aquí"], ["mercadopago_webhook", "Aviso de pago de Mercado Pago", "MP_WEBHOOK_SECRET", "Activa la guía sola en cuanto Mercado Pago confirma el pago"], ["correo", "Correos (Resend)", "RESEND_API_KEY", "Manda el link y el QR al correo del cliente"], ["stripe", "Stripe (dormido)", "STRIPE_SECRET_KEY", "No se usa: el cobro en línea es con Mercado Pago"], ["webhook", "Aviso de pago de Stripe", "STRIPE_WEBHOOK_SECRET", "Solo si algún día se usa Stripe"], ["helicone", "Medición de costos (Helicone)", "HELICONE_API_KEY", "Opcional: cuánto cuesta cada guía"]];
-  $("#motores").innerHTML = lista.map(([k, nombre, sec, desc]) => `<div class="motor ${m[k] ? "on" : ""}"><b>${m[k] ? (k === "mercadopago" && m.mercadopago_prueba ? "🟡" : "🟢") : "⚪"} ${esc(nombre)}</b><span class="ayuda">${esc(desc)}</span><div style="margin-top:6px"><code>${esc(sec)}</code> ${m[k] ? "configurada" : "sin configurar"}</div></div>`).join("");
+  const lista = [["ia", "Inteligencia artificial", "ANTHROPIC_API_KEY", "Escribe las guías"], ["mercadopago", "Cobro en línea (Mercado Pago)", "MP_ACCESS_TOKEN", m.mercadopago_prueba ? "MODO DE PRUEBA: no cobra de verdad. Al terminar las pruebas pon la llave de producción" : "Tarjeta, OXXO y SPEI. Apagado = las compras se confirman a mano aquí"], ["mercadopago_webhook", "Aviso de pago de Mercado Pago", "MP_WEBHOOK_SECRET", "Activa la guía sola en cuanto Mercado Pago confirma el pago"], ["correo", "Correos (Resend)", "RESEND_API_KEY", "Manda el link y el QR al correo del cliente"], ["whatsapp", "WhatsApp (Green API)", "GREEN_API_TOKEN_INSTANCE", "Manda la guía por WhatsApp, con Sparky y su código QR"],["stripe", "Stripe (dormido)", "STRIPE_SECRET_KEY", "No se usa: el cobro en línea es con Mercado Pago"], ["webhook", "Aviso de pago de Stripe", "STRIPE_WEBHOOK_SECRET", "Solo si algún día se usa Stripe"], ["helicone", "Medición de costos (Helicone)", "HELICONE_API_KEY", "Opcional: cuánto cuesta cada guía"]];
+  $("#motores").innerHTML = lista.map(([k, nombre, sec, desc]) => `<div class="motor ${m[k] ? "on" : ""}" data-motor="${k}"><b>${m[k] ? (k === "mercadopago" && m.mercadopago_prueba ? "🟡" : "🟢") : "⚪"} ${esc(nombre)}</b><span class="ayuda">${esc(desc)}</span><div style="margin-top:6px"><code>${esc(sec)}</code> ${m[k] ? "configurada" : "sin configurar"}</div></div>`).join("");
+  if (m.whatsapp) pintarMotorWhatsApp();
+}
+// WhatsApp está encendido de verdad cuando, además de tener las llaves, el teléfono sigue enlazado en Green API:
+// se le pregunta el estado y la tarjeta lo dice con palabras (verde = entrega mensajes; amarillo = hay algo que arreglar).
+async function pintarMotorWhatsApp() {
+  const caja = document.querySelector('#motores [data-motor="whatsapp"]');
+  if (!caja) return;
+  const ESTADOS = { notAuthorized: "el teléfono no está enlazado (falta escanear el código QR en Green API)", blocked: "WhatsApp bloqueó el número", suspended: "WhatsApp puso restricciones al número", yellowCard: "WhatsApp puso restricciones al número", sleepMode: "el teléfono está apagado o sin internet", starting: "la instancia está arrancando; vuelve a revisar en un minuto", sin_respuesta: "Green API no respondió" };
+  try {
+    const w = await api("/whatsapp");
+    const bien = w.estado_instancia === "authorized";
+    caja.classList.toggle("on", bien);
+    caja.querySelector("b").textContent = `${bien ? "🟢" : "🟡"} WhatsApp (Green API)`;
+    caja.querySelector("div").innerHTML = bien
+      ? `<b>Encendido</b>${w.numero ? " · número " + esc(w.numero) : ""}${w.webhook_configurado ? "" : " · falta pulsar «Conectar» en Ajustes"}`
+      : `Llaves puestas, pero ${esc(ESTADOS[w.estado_instancia] ?? "la instancia está en «" + (w.estado_instancia ?? "desconocido") + "»")}`;
+  } catch { /* si no se pudo preguntar, se queda con lo que dice el servidor: llaves configuradas */ }
 }
 
 // ---------- Guías ----------

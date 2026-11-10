@@ -114,6 +114,7 @@ Código: `funciones/sparked/whatsapp.ts` (módulo aparte; `index.ts` lo llama). 
 | `POST /admin/whatsapp/configurar` | admin | `setSettings`: `webhookUrl` = `…/functions/v1/sparked/whatsapp/webhook`, `webhookUrlToken`, `incomingWebhook` y `stateWebhook` en `yes`; avisos de salida, llamadas, encuestas, ediciones, borrados y acuses en `no`; `markIncomingMessagesReaded` `no`; `linkPreview` `yes`; `delaySendMessagesMilliseconds` 15000. Green API reinicia la instancia y aplica en unos 5 minutos. |
 | `POST /admin/whatsapp/prueba { telefono }` | admin | Manda un mensaje de prueba. |
 | `POST /admin/whatsapp/verificar { telefono }` | admin | No manda nada: muestra la respuesta de `checkWhatsapp` para cada forma del número y el chat que se usaría. |
+| `GET /admin/whatsapp/imagen?tipo=&idioma=` | admin | No manda nada: devuelve el PNG que acompañaría al mensaje (`tipo` = `entrega` o `compartir`; `idioma` = `es` o `en`). |
 | `POST /admin/whatsapp/reenviar { compra_id }` | admin | Reenvía la entrega de una compra pagada con guía completa (`guias.reporte.etapa = 'completa'`); link = `<sitio>guia.html#<accesos.token>`. |
 
 ### Entrega: `avisarPorWhatsApp(c, compra, { titulo, link, expira_en }, { forzar? })`
@@ -129,6 +130,23 @@ Código: `funciones/sparked/whatsapp.ts` (módulo aparte; `index.ts` lo llama). 
 - `armarMensaje()` en el servidor: limpia saltos de línea y caracteres de control, corta a 1 500 caracteres; entrega: `{nombre}`, `{titulo}`, `{link}`, `{portada}`; si falta el link, lo añade al final en su propio renglón; sin nombre quita `, {nombre}` («Hola, :» → «Hola:»). «Compartir»: solo `{portada}`; si no aparece `sparkeducation-mx.com`, la añade al final. Comodines desconocidos se quedan tal cual.
 - `GET /admin/whatsapp` devuelve además `mensajes` (por plantilla: `texto`, `original`, `personalizado`, `clave`) y `ejemplo` (`nombre`, `titulo`, `link`, `portada`, `maximo`).
 - `POST /admin/whatsapp/prueba { telefono, mensaje? }`: con `mensaje` = `entrega_es` · `entrega_en` · `compartir_es` · `compartir_en`, manda esa plantilla con los datos de ejemplo (María, «Fracciones y decimales al ataque», `<sitio>guia.html#ejemplo`).
+
+### Imágenes de los mensajes (Sparky)
+
+Pedido de Daniel (9 nov 2026): que la gente conozca a Sparky. Cada mensaje sale como **una imagen con el texto de pie de foto**:
+
+| Mensaje | Imagen | Archivo en el sitio |
+|---|---|---|
+| Entrega de la guía | Sparky sujetando una tarjeta con el **código QR de esa guía** (el mismo link del texto, para abrirla desde otro dispositivo) | `sparked/img/wa/entrega-es.png` y `entrega-en.png` (plantillas con la tarjeta vacía) |
+| Respuesta a «compartir» | Sparky saludando: «Convierte tu temario en una guía de estudio interactiva» | `sparked/img/wa/compartir-es.png` y `compartir-en.png` |
+
+- **Cómo se arma la entrega** (`funciones/sparked/imagen-wa.ts`): baja la plantilla del sitio, dibuja el QR del link en la zona blanca de la tarjeta y vuelve a escribir el PNG. La zona está en `sparked/img/wa/manifiesto.json` (`{ "entrega-es": { "zona": { "x", "y", "lado" } }, … }`, en píxeles). El QR se calcula en `qr.ts` con `qrcode-generator` 1.4.4, nivel M, igual que el de `listo.html`; se dibuja con módulos de píxeles enteros y 2 módulos de margen. No se usa ninguna biblioteca de imagen: el PNG se lee y se escribe con la compresión nativa (`DecompressionStream`, `CompressionStream`). Plantillas admitidas: PNG de 8 bits, RGB o RGBA, sin entrelazado, hasta 4 millones de píxeles.
+- **Cómo se manda** (`enviarMensaje()` en `whatsapp.ts`): `sendFileByUpload` de Green API (formulario con `chatId`, `caption`, `fileName`, `file`) en su servidor de medios, que es la `apiUrl` cambiando `api` por `media` (`https://7107.media.greenapi.com`); el secreto opcional `GREEN_API_MEDIA_URL` lo fija a mano.
+- **Nunca se queda nadie sin mensaje por la imagen.** Sale el texto de siempre si: no hay arte publicado, el ajuste `sparked_wa_imagenes` está en `no`, el texto pasa de 1 024 caracteres (lo más que admite un pie de foto) o falla armar o subir la imagen. En `wa_mensajes.detalle` queda «con imagen» o «sin imagen: motivo».
+- **Cambiar el arte no requiere desplegar la función:** basta publicar los archivos nuevos en `sparked/img/wa/` (la función los recuerda 10 minutos). Si cambia el lugar de la tarjeta, se actualiza el manifiesto. La zona del QR debe ser un cuadrado de blanco puro, sin nada encima y con al menos 40 px de blanco alrededor.
+- **Ver sin mandar:** `GET /admin/whatsapp/imagen?tipo=entrega|compartir&idioma=es|en` devuelve el PNG (la entrega, con un QR de ejemplo) y la cabecera `x-tiempo-ms`. `POST /admin/whatsapp/prueba { telefono, mensaje }` manda la plantilla elegida con su imagen.
+- **Vista previa del link:** aparte de WhatsApp, las páginas llevan `og:image` = `sparked/img/og-sparky.png` (1200 × 630) para que al pegar un link del sitio se vea a Sparky y no el ícono del rayo.
+- Pruebas: `prueba-imagen.mjs` (lectura y escritura de PNG con los cinco filtros, y el QR leído con jsQR a 1080 y a 540 px) y `prueba-whatsapp.mjs`.
 
 ### Números de México
 
