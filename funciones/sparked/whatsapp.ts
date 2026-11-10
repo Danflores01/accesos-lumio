@@ -289,6 +289,8 @@ export async function resolverChat(intl: string): Promise<{ chat: string | null;
 export function chatDeRespuesta(r: any, pedido: string): string {
   const lid = String(r?.chatId ?? "").trim();
   if (/^\d{6,20}@lid$/.test(lid)) return lid;
+  // Algunas versiones devuelven en chatId el número real de la cuenta ("5212291234567@c.us") en vez del lid.
+  if (/^\d{8,15}@c\.us$/.test(lid)) return lid;
   const tel = String(r?.phoneNumber ?? "").match(/(\d{8,15})@c\.us/);
   if (tel) return `${tel[1]}@c.us`;
   return `${pedido}@c.us`;
@@ -542,6 +544,28 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
     } catch (e) {
       return c.error(`Green API no aceptó la configuración: ${recorte((e as Error).message, 200)}`, 502);
     }
+  }
+
+  // Diagnóstico que NO manda nada: qué responde Green API al preguntar por un teléfono, en cada forma posible del
+  // número (México: 52… y 521…), y a qué chat se mandaría. Sirve para entender un «noAccount» sin gastar chats del plan.
+  // { telefono, forzar?: true } → forzar pregunta también directo a WhatsApp, sin la memoria de la instancia.
+  if (r2 === "verificar") {
+    const body = await c.leerJson(c.req);
+    const raw = String(body.telefono ?? "").trim();
+    const intl = telefonoInternacional(raw.startsWith("+") || raw.replace(/\D/g, "").length === 10 ? raw : "+" + raw);
+    if (!intl) return c.error("Escribe un teléfono válido, con lada (por ejemplo +52 y 10 dígitos).");
+    const formas: any[] = [];
+    for (const f of chatsPosibles(intl)) {
+      for (const force of body.forzar === true ? [false, true] : [false]) {
+        try {
+          const r = await api("checkWhatsapp", force ? { chatId: f, force: true } : { chatId: f });
+          formas.push({ pedido: f, forzado: force, respuesta: r, chat: r?.existsWhatsapp === true ? chatDeRespuesta(r, f) : null });
+        } catch (e) {
+          formas.push({ pedido: f, forzado: force, error: recorte((e as Error).message, 200) });
+        }
+      }
+    }
+    return c.json({ ok: true, formas, estado_instancia: await estadoInstancia() });
   }
 
   // Mensaje de prueba a un teléfono.
