@@ -976,8 +976,11 @@ function burbujaChat(m) {
   return `<div class="burbuja${m.mio ? " mia" : ""}${fallo ? " fallo" : ""}">${partes.join("")}<div class="b-pie">${marca}<span>${esc(horaChat(m.hora))}</span></div></div>`;
 }
 
-function ajustarAltoChat() { const t = $("#convTexto"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight + 2, 132) + "px"; }
+// La caja de escribir crece con el texto (hasta 132 px). Se vuelve a medir al girar el teléfono o cambiar el tamaño de la
+// ventana; si la página no se está mostrando (ancho 0) no se fija ninguna altura.
+function ajustarAltoChat() { const t = $("#convTexto"); t.style.height = "auto"; if (t.clientWidth) t.style.height = Math.min(t.scrollHeight + 2, 132) + "px"; }
 $("#convTexto").addEventListener("input", ajustarAltoChat);
+addEventListener("resize", () => { if (CHATS.abierto) ajustarAltoChat(); });
 // En computadora, Enter manda y Mayús + Enter baja de renglón; en celular, Enter baja de renglón y se manda con el botón.
 $("#convTexto").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && punteroFino()) { e.preventDefault(); $("#convEscribir").requestSubmit(); } });
 $("#convEscribir").onsubmit = async (e) => {
