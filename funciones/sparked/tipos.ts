@@ -11,6 +11,9 @@ export type CtxBase = {
   mandarCorreo: (para: string, asunto: string, html: string, texto?: string) => Promise<void>;
   avisarDaniel: (asunto: string, html: string) => Promise<void>; // correo de aviso al dueño (si tiene correo de avisos)
   enSegundoPlano: (p: Promise<unknown>) => void;    // deja corriendo una promesa después de responder
+  // Imagen PNG que acompaña a un mensaje de WhatsApp (imagen-wa.ts): "entrega" lleva el QR del link; "compartir" es
+  // fija. Devuelve null si no hay arte publicado en el sitio. Opcional: sin ella, los mensajes salen solo con texto.
+  imagenWhatsApp?: (tipo: "entrega" | "compartir", idioma: "es" | "en", link?: string) => Promise<Uint8Array | null>;
 };
 
 // Lo mismo, más los datos de la petición. Cada módulo revisa si la ruta es suya y, si no lo es, devuelve null.

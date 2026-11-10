@@ -27,6 +27,8 @@ const SUFIJO_WEBHOOK = ":sparked-whatsapp-webhook-v1";
 const RESPUESTAS_POR_DIA = 2;       // respuestas al comando "compartir" por chat cada 24 horas
 const DEMORA_ENVIO_MS = 15000;      // pausa entre mensajes de la cola de Green API (lo que recomienda su guía contra bloqueos)
 const ESPERA_API_MS = 15000;        // tiempo máximo de cada llamada a Green API
+const ESPERA_MEDIOS_MS = 30000;     // tiempo máximo para subir una imagen
+const MAX_PIE = 1024;               // lo más que WhatsApp admite en el pie de una foto
 
 // ---------- Llaves y llamadas a Green API ----------
 const env = (k: string) => String((globalThis as any).Deno?.env?.get(k) ?? "").trim();
@@ -371,6 +373,49 @@ async function enviarTexto(chat: string, texto: string): Promise<string> {
   return String(r.idMessage);
 }
 
+// Los archivos se suben a otro servidor de Green API (su "mediaUrl"): el mismo de la apiUrl cambiando "api" por
+// "media" (https://7107.api.greenapi.com → https://7107.media.greenapi.com). GREEN_API_MEDIA_URL lo puede fijar a mano.
+function urlMedios(): string {
+  return (env("GREEN_API_MEDIA_URL") || llaves().url.replace(/\/\/(\d+\.)?api\./, "//$1media.")).replace(/\/+$/, "");
+}
+// Manda una imagen PNG con su pie de foto (sendFileByUpload, formulario). Devuelve el idMessage, o lanza error.
+async function enviarImagen(chat: string, bytes: Uint8Array, nombre: string, pie: string): Promise<string> {
+  const k = llaves();
+  const f = new FormData();
+  f.append("chatId", chat);
+  f.append("caption", pie);
+  f.append("fileName", nombre);
+  f.append("file", new Blob([bytes as any], { type: "image/png" }), nombre);
+  let r: Response;
+  try {
+    r = await fetch(`${urlMedios()}/waInstance${k.id}/sendFileByUpload/${k.token}`, { method: "POST", body: f, signal: AbortSignal.timeout(ESPERA_MEDIOS_MS) });
+  } catch (e) {
+    throw new Error(`Green API sendFileByUpload: ${sinLlave((e as Error).message).replace(/\s+/g, " ").slice(0, 160)}`);
+  }
+  const txt = await r.text();
+  if (!r.ok) throw new Error(`Green API sendFileByUpload: HTTP ${r.status} ${motivoDeError(txt)}`);
+  let j: any = null;
+  try { j = JSON.parse(txt); } catch { /* respuesta sin JSON */ }
+  if (!j?.idMessage) throw new Error("Green API sendFileByUpload no devolvió idMessage");
+  return String(j.idMessage);
+}
+
+// Manda un mensaje con su imagen (el texto va como pie de foto) y, si no se puede, el texto solo. La imagen nunca deja
+// a la familia sin mensaje: si no hay arte publicado, si el ajuste sparked_wa_imagenes está en "no", si el texto no
+// cabe en un pie de foto (1 024 caracteres) o si armar o subir la imagen falla, sale el texto de siempre.
+// tipo "entrega": Sparky sujetando el código QR de esa guía · "compartir": Sparky saludando (imagen-wa.ts).
+export async function enviarMensaje(c: CtxBase, chat: string, texto: string, tipo: "entrega" | "compartir", idioma: "es" | "en", link?: string): Promise<{ id: string; imagen: boolean; nota?: string }> {
+  let nota: string | undefined;
+  try {
+    const quiere = !!c.imagenWhatsApp && texto.length <= MAX_PIE && (await ajustesDe(c)).sparked_wa_imagenes !== "no";
+    const bytes = quiere ? await c.imagenWhatsApp!(tipo, idioma, link) : null;
+    if (bytes) return { id: await enviarImagen(chat, bytes, `sparked-${tipo}.png`, texto), imagen: true };
+  } catch (e) {
+    nota = `sin imagen: ${recorte(sinLlave((e as Error).message), 120)}`;
+  }
+  return { id: await enviarTexto(chat, texto), imagen: false, nota };
+}
+
 type Resultado = { ok: boolean; estado: string };
 
 // Manda la guía lista por WhatsApp. Nunca lanza errores: devuelve qué pasó y deja el estado en la compra
@@ -412,11 +457,13 @@ export async function avisarPorWhatsApp(c: CtxBase, compra: any, entrega: Entreg
     const plantilla = (await ajustesDe(c))[CLAVES_PLANTILLA[idioma === "en" ? "entrega_en" : "entrega_es"]];
     const texto = mensajeEntrega(idioma, compra.nombre, entrega.titulo || compra.titulo, entrega.link, plantilla);
     try {
-      const id = await enviarTexto(chat, texto);
+      const envio = await enviarMensaje(c, chat, texto, "entrega", idioma, entrega.link);
+      const id = envio.id;
+      const como = [nota, envio.imagen ? "con imagen" : envio.nota].filter(Boolean).join(" · ") || null;
       // Si el teléfono está desconectado, Green API guarda el mensaje en cola 24 horas y lo manda al reconectarse.
       const final = estado === "authorized" ? "enviado" : "en_cola";
-      await marcarCompra(c, compra.id, { wa_estado: final, wa_enviado_en: c.ahora(), wa_detalle: final === "en_cola" ? `En cola: la instancia estaba en "${estado}"` : (nota ?? null) });
-      await anotar(c, { direccion: "salida", tipo: "entrega", compra_id: compra.id, chat, estado: final, id_mensaje: id, detalle: nota ?? (final === "en_cola" ? `instancia ${estado}` : null) });
+      await marcarCompra(c, compra.id, { wa_estado: final, wa_enviado_en: c.ahora(), wa_detalle: final === "en_cola" ? `En cola: la instancia estaba en "${estado}"` : como });
+      await anotar(c, { direccion: "salida", tipo: "entrega", compra_id: compra.id, chat, estado: final, id_mensaje: id, detalle: como ?? (final === "en_cola" ? `instancia ${estado}` : null) });
       if (final === "en_cola") await avisarDesconexion(c, estado);
       return { ok: true, estado: final };
     } catch (e) {
@@ -536,8 +583,8 @@ export async function procesarAviso(c: CtxBase, b: any): Promise<string> {
     const idioma = idiomaDe(telefonoInternacional(compra.telefono) || chat.split("@")[0]);
     try {
       const plantilla = (await ajustesDe(c))[CLAVES_PLANTILLA[idioma === "en" ? "compartir_en" : "compartir_es"]];
-      const id = await enviarTexto(chat, mensajeCompartir(idioma, plantilla));
-      await anotar(c, { direccion: "salida", tipo: "compartir", chat, compra_id: compra.id, estado: "enviado", id_mensaje: id });
+      const envio = await enviarMensaje(c, chat, mensajeCompartir(idioma, plantilla), "compartir", idioma);
+      await anotar(c, { direccion: "salida", tipo: "compartir", chat, compra_id: compra.id, estado: "enviado", id_mensaje: envio.id, detalle: envio.imagen ? "con imagen" : envio.nota ?? null });
       return "compartir";
     } catch (e) {
       await anotar(c, { direccion: "salida", tipo: "compartir", chat, compra_id: compra.id, estado: "fallido", detalle: (e as Error).message });
@@ -610,6 +657,22 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
     return c.json({ motor, estado_instancia, numero, enviados_7d, fallidos_7d, compartir_7d, ultimo_error, webhook_configurado, mensajes, ejemplo });
   }
 
+  // Vista de la imagen que acompaña a un mensaje (PNG): ?tipo=entrega|compartir&idioma=es|en. La de entrega sale con
+  // un QR de ejemplo. No manda nada. La cabecera x-tiempo-ms dice cuánto tardó en armarse.
+  if (r2 === "imagen" && c.m === "GET") {
+    const q = new URL(c.req.url).searchParams;
+    const tipo = q.get("tipo") === "compartir" ? "compartir" : "entrega", idioma = q.get("idioma") === "en" ? "en" : "es";
+    const t0 = Date.now();
+    let bytes: Uint8Array | null = null;
+    try {
+      bytes = c.imagenWhatsApp ? await c.imagenWhatsApp(tipo, idioma, `${await c.sitio()}guia.html#ejemplo`) : null;
+    } catch (e) {
+      return c.error(`No se pudo armar la imagen: ${recorte(sinLlave((e as Error).message), 160)}`, 500);
+    }
+    if (!bytes) return c.error("Todavía no hay imagen publicada para ese mensaje.", 404);
+    return new Response(bytes as any, { headers: { "content-type": "image/png", "cache-control": "no-store", "access-control-allow-origin": "*", "access-control-expose-headers": "x-tiempo-ms", "x-tiempo-ms": String(Date.now() - t0) } });
+  }
+
   if (c.m !== "POST") return c.error("Ruta no encontrada", 404);
   if (!motorWhatsApp()) return c.error("WhatsApp no está conectado: faltan las llaves de Green API en los secretos de Supabase (GREEN_API_ID_INSTANCE y GREEN_API_TOKEN_INSTANCE).", 400);
 
@@ -680,14 +743,16 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
     const { chat, nota } = await resolverChat(intl);
     if (!chat) return c.error(`No se pudo mandar: ${nota ?? "el número no tiene WhatsApp"}.`);
     try {
-      let texto = MENSAJE_PRUEBA;
+      let texto = MENSAJE_PRUEBA, id = "", conImagen = false, notaImagen: string | undefined;
       if (cual) {
-        const k = cual as ClavePlantilla;
-        texto = armarMensaje(k, (await ajustesDe(c))[CLAVES_PLANTILLA[k]], { ...EJEMPLO, link: `${await c.sitio()}guia.html#ejemplo` });
-      }
-      const id = await enviarTexto(chat, texto);
-      await anotar(c, { direccion: "salida", tipo: "prueba", chat, estado: "enviado", id_mensaje: id, detalle: cual ? `plantilla ${cual}${nota ? " · " + nota : ""}` : nota });
-      return c.json({ ok: true, chat, id_mensaje: id, mensaje: cual ? "Mensaje de prueba enviado con datos de ejemplo" : "Mensaje de prueba enviado", estado_instancia: await estadoInstancia(), nota: nota ?? null });
+        // Con plantilla, la prueba sale igual que el mensaje real: con su imagen (la de entrega, con un QR de ejemplo).
+        const k = cual as ClavePlantilla, linkEjemplo = `${await c.sitio()}guia.html#ejemplo`;
+        texto = armarMensaje(k, (await ajustesDe(c))[CLAVES_PLANTILLA[k]], { ...EJEMPLO, link: linkEjemplo });
+        const envio = await enviarMensaje(c, chat, texto, k.startsWith("entrega") ? "entrega" : "compartir", k.endsWith("_en") ? "en" : "es", linkEjemplo);
+        id = envio.id; conImagen = envio.imagen; notaImagen = envio.nota;
+      } else id = await enviarTexto(chat, texto);
+      await anotar(c, { direccion: "salida", tipo: "prueba", chat, estado: "enviado", id_mensaje: id, detalle: cual ? [`plantilla ${cual}`, nota, conImagen ? "con imagen" : notaImagen].filter(Boolean).join(" · ") : nota });
+      return c.json({ ok: true, chat, id_mensaje: id, con_imagen: conImagen, mensaje: cual ? "Mensaje de prueba enviado con datos de ejemplo" : "Mensaje de prueba enviado", estado_instancia: await estadoInstancia(), nota: nota ?? notaImagen ?? null });
     } catch (e) {
       await anotar(c, { direccion: "salida", tipo: "prueba", chat, estado: "fallido", detalle: (e as Error).message });
       return c.error(`No se pudo mandar: ${recorte((e as Error).message, 200)}`, 502);
