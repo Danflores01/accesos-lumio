@@ -3,141 +3,349 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#FFD400">
+<meta name="theme-color" content="#1B1340">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/sitio.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <title>SparkEd · Panel de guías</title>
 <style>
-  .flujo .contenedor { max-width: 1100px; }
-  /* Cabecera en teléfono: el rótulo «Panel de guías» no se parte en tres renglones y el menú no se apelmaza. */
-  header.cab .marca small { white-space: nowrap; }
-  @media (max-width: 560px) { header.cab .marca small { display: none; } header.cab nav { flex-wrap: nowrap; white-space: nowrap; } }
-  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
-  .tabs button { font: 700 15px var(--texto); padding: 10px 14px; border-radius: 999px; border: 2px solid var(--borde); background: #fff; cursor: pointer; color: var(--tinta); }
-  .tabs button.on { background: var(--tinta); color: #fff; border-color: var(--tinta); }
-  .tabs button .n { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--amarillo); color: var(--tinta); font-size: 12px; line-height: 20px; }
-  .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-  .numero { background: #fff; border-radius: 18px; box-shadow: var(--sombra); padding: 14px 16px; }
-  .numero b { display: block; font-size: 30px; line-height: 1.1; }
-  .numero span { color: var(--gris); font-size: 14px; }
-  .fila-g { display: flex; gap: 14px; align-items: flex-start; background: #fff; border-radius: 18px; box-shadow: var(--sombra); padding: 14px 16px; margin-bottom: 10px; flex-wrap: wrap; }
-  .fila-g .info { flex: 1 1 320px; min-width: 0; }
-  .fila-g .info b { font-size: 17px; }
-  .acciones { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .acciones .boton { font-size: 14px; padding: 7px 11px; min-height: 36px; box-shadow: none; }
-  .estado { display: inline-block; font: 800 11px/1 var(--texto); letter-spacing: .6px; text-transform: uppercase; padding: 5px 8px; border-radius: 999px; background: #eef0f6; color: #444; vertical-align: middle; margin-left: 6px; }
-  .estado.publicada, .estado.pagada, .estado.listo { background: #dcfce7; color: #166534; }
-  .estado.borrador, .estado.pendiente, .estado.generando, .estado.corriendo { background: #fef3c7; color: #92400e; }
-  .estado.archivada, .estado.fallida, .estado.error, .estado.revisado { background: #fee2e2; color: #991b1b; }
-  .estado.personalizada, .estado.sin_guia, .estado.nuevo { background: #ede9fe; color: #5b21b6; }
-  .prog { height: 8px; background: var(--borde); border-radius: 4px; overflow: hidden; margin: 6px 0 2px; }
-  .prog i { display: block; height: 100%; background: var(--amarillo); transition: width .4s; }
-  .link-caja { word-break: break-all; }
-  .motores { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-  .motor { background: #fff; border-radius: 14px; padding: 12px 14px; border: 2px solid var(--borde); }
-  .motor.on { border-color: #16a34a; }
-  .motor b { display: block; }
-  .motor code { font-size: 12px; background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
-  dialog { border: 0; border-radius: 20px; padding: 22px; max-width: 640px; width: calc(100% - 32px); box-shadow: 0 30px 60px rgba(0,0,0,.3); }
-  dialog::backdrop { background: rgba(20, 24, 38, .55); }
-  .msg { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--tinta); color: #fff; padding: 12px 18px; border-radius: 14px; font-weight: 700; z-index: 50; max-width: calc(100% - 32px); display: none; }
-  .msg.on { display: block; }
-  .msg.mal { background: #991b1b; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  td, th { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--borde); vertical-align: top; }
-  .detalle pre { background: #f6f7fb; padding: 10px; border-radius: 10px; font-size: 12px; max-height: 240px; overflow: auto; white-space: pre-wrap; }
-  @media (min-width: 760px) { .rejilla-campos { grid-template-columns: 1fr 1fr; } }
-  /* Comentarios */
-  .estado.leido { background: #e0f2fe; color: #075985; }
-  .estado.destacado { background: #fef9c3; color: #854d0e; }
-  .estado.oculto { background: #f3f4f6; color: #6b7280; }
-  .estrellas { color: #f59e0b; font-size: 18px; letter-spacing: 1px; }
-  .estrellas i { color: #d1d5db; font-style: normal; }
-  .texto-visitante { margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
-  /* Costos */
-  .grandes { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
-  .grande { background: #fff; border-radius: 18px; box-shadow: var(--sombra); padding: 16px 18px; }
-  .grande span { display: block; color: var(--gris); font-size: 14px; font-weight: 700; }
-  .grande b { display: block; font-size: 34px; line-height: 1.15; margin: 4px 0 2px; }
-  .grande small { color: var(--gris); font-size: 13px; }
-  .tabla-mov { overflow-x: auto; -webkit-overflow-scrolling: touch; background: #fff; border-radius: 16px; box-shadow: var(--sombra); padding: 6px 10px; }
-  .tabla-mov table { min-width: 460px; }
-  .tabla-mov td.n, .tabla-mov th.n { text-align: right; white-space: nowrap; }
-  .balance { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; max-width: 460px; font-size: 16px; }
-  .balance .total { font-weight: 800; border-top: 2px solid var(--borde); padding-top: 6px; }
-  .fila-servicio { display: grid; grid-template-columns: minmax(0, 2fr) minmax(70px, 1fr) 100px minmax(0, 2fr) 44px; gap: 6px; margin-bottom: 6px; align-items: center; }
-  .fila-servicio .boton { padding: 6px; min-height: 38px; }
-  .fila-servicio input, .fila-servicio select { width: 100%; padding: 8px 10px; border: 2px solid var(--borde); border-radius: 10px; font: inherit; font-size: 14px; min-width: 0; }
-  @media (max-width: 620px) { .fila-servicio { grid-template-columns: 1fr 1fr 44px; padding-bottom: 10px; border-bottom: 1px solid var(--borde); margin-bottom: 10px; } .fila-servicio .s-nombre, .fila-servicio .s-nota { grid-column: 1 / -1; } .fila-servicio .s-nota { order: 5; } }
-  .tabla-mov td:first-child { white-space: nowrap; }
-  .compra-estado { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
-  .compra-estado b { font-weight: 700; }
-  /* WhatsApp: prueba y mensajes que se mandan solos */
-  .wa-prueba { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
-  .wa-prueba input, .wa-prueba select { flex: 1 1 200px; min-width: 0; padding: 9px 12px; border: 2px solid var(--borde); border-radius: 12px; font: inherit; background: #fff; }
-  .wa-mensajes { margin-top: 18px; border-top: 2px solid var(--borde); padding-top: 14px; }
-  .wa-mensajes h3 { margin: 0 0 6px; font-size: 19px; }
-  .wa-msg { background: #fff; border: 2px solid var(--borde); border-radius: 16px; padding: 12px 14px; margin-bottom: 12px; }
-  .wa-msg-cab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .wa-rejilla { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  @media (min-width: 900px) { .wa-rejilla { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
-  .wa-msg textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; line-height: 1.45; padding: 10px 12px; border: 2px solid var(--borde); border-radius: 12px; resize: vertical; min-height: 180px; }
-  .wa-msg textarea:focus { outline: none; border-color: var(--p); }
-  .wa-herr { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
-  .wa-herr .boton { font-size: 14px; padding: 6px 10px; min-height: 36px; box-shadow: none; }
-  .wa-herr .wa-cuenta { margin-left: auto; white-space: nowrap; }
-  .wa-alerta { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; background: #fef3c7; color: #92400e; font-size: 14px; font-weight: 700; }
-  .wa-burbuja { background: #dcf8c6; border-radius: 4px 14px 14px 14px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.45; color: #111b21; box-shadow: 0 1px 1px rgba(0,0,0,.12); }
-  .wa-botones { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  /* Bloques que se abren y se cierran (Motores, WhatsApp): el renglón resumen se ve aun cerrado */
-  details.plegable > summary { cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 14px; background: #fff; border: 2px solid var(--borde); border-radius: 14px; }
-  details.plegable > summary::-webkit-details-marker { display: none; }
-  details.plegable > summary::after { content: "▾"; margin-left: auto; font-size: 18px; color: var(--gris); transition: transform .2s; }
-  details.plegable[open] > summary::after { transform: rotate(180deg); }
-  details.plegable > summary .pleg-titulo { font-weight: 800; font-size: 18px; }
-  details.plegable[open] > summary { margin-bottom: 12px; }
-  .pleg-resumen { font-weight: 700; font-size: 14px; padding: 4px 10px; border-radius: 999px; background: #eef0f6; color: #444; }
-  .pleg-resumen.verde { background: #dcfce7; color: #166534; }
-  .pleg-resumen.amarillo { background: #fef3c7; color: #92400e; }
-  .pleg-resumen.rojo { background: #fee2e2; color: #991b1b; }
-  /* Compras: el nombre del cliente va primero y en negritas */
-  .fila-g .info b.cliente { font-size: 18px; }
-  /* Guías: tabla corta de 3 columnas; cabe en el celular sin moverla de lado */
-  .tabla-guias table { min-width: 0; }
-  .tabla-guias td:first-child { white-space: normal; }
-  /* Menú de hamburguesa (visible en cualquier dispositivo) y entrada con correo y contraseña */
-  header.cab .contenedor { gap: 10px; }
-  .hamb { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; border: 2px solid var(--borde); background: #fff; cursor: pointer; flex: 0 0 auto; color: var(--tinta); }
+  /* ================= Panel de SparkEd · estilo «Noche arriba» con letra Inter (10 nov 2026) =================
+     Barra y menú en morado noche (#1B1340) con acento amarillo; contenido claro (#F5F3FA) con tarjetas blancas
+     sin borde, esquinas de 20 px y sombra muy suave. Todo va dentro de body.panel.sitio.claro para no tocar el sitio público. */
+  body.panel.sitio.claro {
+    --pn-noche: #1B1340; --pn-noche-2: #2E2366; --pn-amarillo: #FFD400; --pn-fondo: #F5F3FA;
+    --pn-texto: #1B1340; --pn-suave: #6B6585; --pn-lila-barra: #C9C2E6; --pn-violeta: #4C1D95;
+    --pn-linea: #EEEAF6; --pn-campo: #E3DFF0; --pn-sec: #F1EEF9; --pn-lila-caja: #F6F3FC;
+    --pn-pel-fondo: #FDEEF3; --pn-pel-texto: #A3245A; --pn-ok-fondo: #ECF7EF; --pn-ok-texto: #1E6B3A;
+    --pn-ambar-fondo: #FFF4DA; --pn-ambar-texto: #8A4B00;
+    --pn-sombra: 0 1px 2px rgba(27,19,64,.04), 0 8px 24px rgba(27,19,64,.07);
+    --pn-anillo: 0 0 0 4px rgba(109,74,214,.16);
+    --pn-letra: "Inter", "Segoe UI", system-ui, sans-serif;
+    --titulos: var(--pn-letra); --texto: var(--pn-letra); --gris: var(--pn-suave); --borde: var(--pn-linea); --tinta: var(--pn-texto); --p: #6D4AD6;
+    font: 15px/1.5 var(--pn-letra); color: var(--pn-texto); background: var(--pn-fondo);
+    -webkit-text-size-adjust: 100%; overflow-x: hidden;
+  }
+  body.panel.sitio.claro h1, body.panel.sitio.claro h2, body.panel.sitio.claro h3 { font-family: var(--pn-letra); color: var(--pn-texto); letter-spacing: -.02em; line-height: 1.2; }
+  body.panel.sitio.claro h1 { font-size: 26px; font-weight: 700; }
+  body.panel.sitio.claro h2 { font-size: 18px; font-weight: 700; }
+  body.panel.sitio.claro h3 { font-size: 16px; font-weight: 700; }
+  body.panel.sitio.claro a { color: var(--pn-violeta); font-weight: 500; }
+  body.panel.sitio.claro code { font-family: ui-monospace, Consolas, monospace; font-size: .92em; background: var(--pn-sec); padding: 2px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+  body.panel.sitio.claro .ayuda { font-size: 14px; color: var(--pn-suave); line-height: 1.5; }
+  body.panel.sitio.claro .error { color: var(--pn-pel-texto); font-weight: 600; font-size: 14px; }
+  body.panel.sitio.claro .error:empty { display: none; }
+  body.panel.sitio.claro button:focus-visible, body.panel.sitio.claro a:focus-visible, body.panel.sitio.claro summary:focus-visible { outline: 3px solid rgba(109,74,214,.55); outline-offset: 2px; }
+
+  /* ---------- Barra superior ---------- */
+  body.panel.sitio.claro header.cab { background: var(--pn-noche); border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
+  body.panel.sitio.claro header.cab .contenedor { width: 100%; max-width: none; min-height: 60px; padding: 0 20px; gap: 14px; justify-content: flex-start; }
+  .hamb { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; border: 0; background: rgba(255,255,255,.08); cursor: pointer; flex: 0 0 auto; color: #fff; }
+  .hamb:hover { background: rgba(255,255,255,.14); }
   .hamb[hidden] { display: none; }
   .hamb svg { width: 22px; height: 22px; }
-  .seccion-actual { font-weight: 800; color: var(--tinta); margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .velo { position: fixed; inset: 0; background: rgba(18,24,38,.45); z-index: 60; }
-  .menu { position: fixed; top: 0; left: 0; bottom: 0; width: min(320px, 86vw); background: #fff; z-index: 61; display: flex; flex-direction: column; padding: 14px; gap: 10px; box-shadow: 8px 0 30px rgba(18,24,38,.18); overflow-y: auto; }
+  body.panel.sitio.claro .marca, body.panel.sitio.claro header.cab .marca { display: inline-flex; align-items: center; gap: 0; font: 700 17px var(--pn-letra); letter-spacing: -.01em; color: #fff; text-decoration: none; white-space: nowrap; flex: 0 0 auto; }
+  body.panel.sitio.claro .marca .rayo { width: 11px; height: 18px; margin-right: 8px; }
+  body.panel.sitio.claro .marca span { color: var(--pn-amarillo); }
+  body.panel.sitio.claro .marca .marca-sub { font-size: 17px; font-weight: 500; color: var(--pn-lila-barra); }
+  .seccion-actual { font-weight: 600; font-size: 15px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; padding-left: 14px; border-left: 1px solid rgba(255,255,255,.18); line-height: 22px; }
+  .seccion-actual:empty { display: none; }
+  .barra-sesion { margin-left: auto; display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 14px; color: var(--pn-lila-barra); }
+  .barra-sesion .inicial { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--pn-amarillo); color: var(--pn-noche); font-weight: 700; font-size: 14px; flex: 0 0 auto; }
+  .barra-sesion .correo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+  body.panel.sitio.claro:has(#abrirMenu[hidden]) .barra-sesion { display: none; }
+
+  /* ---------- Menú lateral ---------- */
+  .velo { position: fixed; inset: 0; background: rgba(27,19,64,.45); z-index: 60; }
+  .menu { position: fixed; top: 0; left: 0; bottom: 0; width: min(300px, 86vw); background: var(--pn-noche); color: #fff; z-index: 61; display: flex; flex-direction: column; box-shadow: 8px 0 30px rgba(0,0,0,.18); overflow-y: auto; }
   .menu[hidden], .velo[hidden] { display: none; }
-  .menu-cab { display: flex; align-items: center; justify-content: space-between; font-size: 18px; }
-  .menu-cab button { width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--borde); background: #fff; font-size: 18px; cursor: pointer; color: var(--tinta); }
-  .menu-quien { margin: 0; font-size: 13px; color: var(--gris); word-break: break-all; }
-  .menu .tabs { flex-direction: column; flex-wrap: nowrap; gap: 4px; margin: 0; }
-  .menu .tabs button { text-align: left; border-radius: 12px; border-color: transparent; display: flex; align-items: center; justify-content: space-between; }
+  .menu-cab { display: flex; align-items: center; justify-content: space-between; min-height: 60px; padding: 0 10px 0 20px; border-bottom: 1px solid rgba(255,255,255,.10); flex: 0 0 auto; }
+  .menu-cab .marca { pointer-events: none; }
+  .menu-cab button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; border: 0; background: none; cursor: pointer; color: #fff; }
+  .menu-cab button:hover { background: rgba(255,255,255,.08); }
+  .menu-cab button svg { width: 20px; height: 20px; }
+  .menu-quien { margin: 0; padding: 14px 20px 6px; font-size: 12.5px; color: #B9B1DB; overflow-wrap: anywhere; }
+  .menu .tabs { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 2px; margin: 0; padding: 6px 12px 12px; }
+  .menu .tabs button { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 46px; padding: 0 14px; border: 0; border-radius: 14px; background: none; color: #fff; font: 500 15.5px var(--pn-letra); text-align: left; cursor: pointer; }
+  .menu .tabs button:hover { background: rgba(255,255,255,.06); }
+  .menu .tabs button.on { background: var(--pn-noche-2); color: var(--pn-amarillo); font-weight: 600; }
+  .menu .tabs button.on::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; background: var(--pn-amarillo); }
   .menu .tabs button[hidden] { display: none; }
-  .menu-pie { margin-top: auto; display: flex; flex-direction: column; gap: 4px; border-top: 2px solid var(--borde); padding-top: 10px; }
-  .menu-pie a { padding: 10px 14px; border-radius: 12px; font-weight: 700; color: var(--tinta); text-decoration: none; }
-  .menu-pie a:hover { background: var(--gris-suave); }
-  .entrada-clave { margin-top: 16px; }
-  .entrada-clave > summary { cursor: pointer; font-weight: 700; color: var(--gris); }
+  .menu .tabs button .n { display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; margin: 0; border-radius: 999px; background: var(--pn-amarillo); color: var(--pn-noche); font: 700 12px/1 var(--pn-letra); }
+  .menu-pie { margin-top: auto; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid rgba(255,255,255,.10); padding: 10px 12px 14px; }
+  body.panel.sitio.claro .menu-pie a { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 14px; font-weight: 500; font-size: 14.5px; color: #DCD6F2; text-decoration: none; }
+  body.panel.sitio.claro .menu-pie a:hover { background: rgba(255,255,255,.06); color: #fff; }
+  body.panel.sitio.claro .menu-pie a#salir { color: #FFD9E6; font-weight: 600; font-size: 15px; }
+  .menu-pie a svg { width: 18px; height: 18px; flex: 0 0 auto; }
+
+  /* ---------- Contenido ---------- */
+  body.panel.sitio.claro .flujo { padding: 32px 0 64px; }
+  body.panel.sitio.claro .flujo > .contenedor { width: min(1100px, 100% - 64px); max-width: none; }
+  .pag-titulo { margin: 0 0 22px; }
+  body.panel.sitio.claro [id] { scroll-margin-top: 76px; }
+  body.panel.sitio.claro [data-panel] > h2, body.panel.sitio.claro #costosGuias h2, body.panel.sitio.claro #costos h2 { font-size: 17px; font-weight: 600; }
+  .barra-herr { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  body.panel.sitio.claro select.filtro { min-height: 40px; padding: 8px 36px 8px 14px; border: 1px solid var(--pn-campo); border-radius: 999px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%236B6585' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center / 16px; font: 500 14px var(--pn-letra); color: var(--pn-texto); -webkit-appearance: none; appearance: none; cursor: pointer; max-width: 100%; }
+  body.panel.sitio.claro select.filtro:focus { outline: none; border-color: #8B6FD8; box-shadow: var(--pn-anillo); }
+
+  /* Tarjetas */
+  body.panel.sitio.claro .panel-paso, body.panel.sitio.claro .tarjeta { background: #fff; color: var(--pn-texto); border: 0; border-radius: 20px; box-shadow: var(--pn-sombra); padding: 24px; gap: 14px; }
+  body.panel.sitio.claro .panel-paso h2 { font-size: 18px; }
+  body.panel.sitio.claro .tarjeta h3 { font-size: 15px; font-weight: 600; }
+
+  /* Cajas de explicación y avisos: lila muy suave, texto normal */
+  body.panel.sitio.claro .caja-clave { background: var(--pn-lila-caja); border: 0; border-radius: 16px; padding: 16px 18px; font-size: 14.5px; line-height: 1.55; color: var(--pn-texto); }
+  body.panel.sitio.claro .caja-clave b { font-weight: 600; }
+  body.panel.sitio.claro .caja-clave p { color: #3E3760; }
+  body.panel.sitio.claro #alertas .caja-clave { background: var(--pn-pel-fondo); }
+  body.panel.sitio.claro #alertas .caja-clave > b { color: var(--pn-pel-texto); }
+  body.panel.sitio.claro #alertas .caja-clave .ayuda { color: #5B4660; }
+  body.panel.sitio.claro #alertaComentarios .caja-clave b { font-weight: 600; }
+
+  /* Botones en forma de píldora */
+  body.panel.sitio.claro .boton { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 18px; border: 0; border-radius: 999px; font: 600 14.5px/1.2 var(--pn-letra); letter-spacing: 0; word-spacing: 0; background: var(--pn-amarillo); color: var(--pn-texto); box-shadow: 0 4px 12px rgba(255,212,0,.35); text-decoration: none; white-space: normal; transform: none; transition: background-color .15s, box-shadow .15s, filter .15s; }
+  body.panel.sitio.claro .boton:hover { transform: none; box-shadow: 0 6px 16px rgba(255,212,0,.45); filter: brightness(1.02); }
+  body.panel.sitio.claro .boton:active { transform: translateY(1px); }
+  body.panel.sitio.claro .boton.linea { background: var(--pn-sec); color: var(--pn-texto); border: 0; box-shadow: none; }
+  body.panel.sitio.claro .boton.linea:hover { background: #E7E2F5; box-shadow: none; filter: none; }
+  body.panel.sitio.claro .boton.chico { min-height: 40px; padding: 8px 16px; font-size: 14px; }
+  body.panel.sitio.claro .boton:disabled { opacity: .55; cursor: default; }
+  /* Botones de peligro: cancelar, borrar, apagar, quitar */
+  body.panel.sitio.claro .boton[data-act="cancelar"], body.panel.sitio.claro .boton[data-borrar], body.panel.sitio.claro .boton[data-activo="false"], body.panel.sitio.claro .boton[data-quitar] { background: var(--pn-pel-fondo); color: var(--pn-pel-texto); box-shadow: none; }
+  body.panel.sitio.claro .boton[data-act="cancelar"]:hover, body.panel.sitio.claro .boton[data-borrar]:hover, body.panel.sitio.claro .boton[data-activo="false"]:hover, body.panel.sitio.claro .boton[data-quitar]:hover { background: #FAE0EA; }
+  body.panel.sitio.claro .acciones { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 8px; margin: 0; }
+  body.panel.sitio.claro .acciones .boton { width: auto; }
+
+  /* Formularios */
+  body.panel.sitio.claro .rejilla-campos { gap: 16px 18px; }
+  body.panel.sitio.claro .campo { gap: 7px; min-width: 0; }
+  body.panel.sitio.claro .campo label { font-weight: 600; font-size: 13.5px; color: var(--pn-texto); line-height: 1.35; }
+  body.panel.sitio.claro .campo input, body.panel.sitio.claro .campo select, body.panel.sitio.claro .campo textarea,
+  body.panel.sitio.claro .fila-servicio input, body.panel.sitio.claro .fila-servicio select, body.panel.sitio.claro .wa-prueba input, body.panel.sitio.claro .wa-prueba select, body.panel.sitio.claro .wa-msg textarea {
+    font: 400 15px var(--pn-letra); color: var(--pn-texto); background: #fff; border: 1px solid var(--pn-campo); border-radius: 12px; min-height: 46px; padding: 10px 14px; width: 100%; min-width: 0; box-shadow: none;
+  }
+  body.panel.sitio.claro .campo select, body.panel.sitio.claro .fila-servicio select, body.panel.sitio.claro .wa-prueba select { -webkit-appearance: none; appearance: none; padding-right: 36px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%236B6585' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center / 16px; }
+  body.panel.sitio.claro .campo input::placeholder, body.panel.sitio.claro .fila-servicio input::placeholder, body.panel.sitio.claro .wa-prueba input::placeholder { color: #9A94B2; }
+  body.panel.sitio.claro .campo input:focus, body.panel.sitio.claro .campo select:focus, body.panel.sitio.claro .campo textarea:focus,
+  body.panel.sitio.claro .fila-servicio input:focus, body.panel.sitio.claro .fila-servicio select:focus, body.panel.sitio.claro .wa-prueba input:focus, body.panel.sitio.claro .wa-prueba select:focus, body.panel.sitio.claro .wa-msg textarea:focus {
+    outline: none; border-color: #8B6FD8; box-shadow: var(--pn-anillo);
+  }
+  @media (min-width: 760px) { .rejilla-campos { grid-template-columns: 1fr 1fr; } }
+
+  /* ---------- Pantalla de entrada ---------- */
+  body.panel.sitio.claro:has(#login:not([hidden])) { background: linear-gradient(172deg, #1B1340 0%, #2A1A5E 100%) fixed; min-height: 100vh; }
+  body.panel.sitio.claro:has(#login:not([hidden])) header.cab { display: none; }
+  body.panel.sitio.claro:has(#login:not([hidden])) .flujo { min-height: 100vh; display: flex; align-items: center; padding: 32px 0; }
+  body.panel.sitio.claro #login { width: min(400px, 100%); margin: 0 auto; padding: 32px 28px; gap: 0; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,.35); }
+  .entrada-marca { display: flex; align-items: center; gap: 0; font: 700 18px var(--pn-letra); letter-spacing: -.01em; color: var(--pn-texto); margin-bottom: 24px; }
+  .entrada-marca .rayo { width: 11px; height: 18px; margin-right: 8px; }
+  .entrada-marca span { color: var(--pn-violeta); }
+  .entrada-marca small { font-size: 18px; font-weight: 500; color: var(--pn-suave); }
+  body.panel.sitio.claro #login h1 { font-size: 24px; }
+  body.panel.sitio.claro #login > .ayuda { margin: 6px 0 24px; }
+  body.panel.sitio.claro #login .rejilla-campos { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  body.panel.sitio.claro #login .rejilla-campos > div[style] { align-self: stretch !important; }
+  body.panel.sitio.claro #login .rejilla-campos .boton { width: 100%; min-height: 48px; font-size: 15.5px; margin-top: 4px; }
+  .entrada-clave { margin-top: 18px; }
+  .entrada-clave > summary { display: block; text-align: center; cursor: pointer; font-weight: 600; font-size: 13.5px; color: var(--pn-violeta); list-style: none; padding: 10px 0; border-radius: 8px; }
+  .entrada-clave > summary::-webkit-details-marker { display: none; }
+  .entrada-clave > summary:hover { text-decoration: underline; }
+  .entrada-clave[open] > summary { margin-bottom: 4px; }
+  .entrada-clave > .ayuda { margin: 0 0 14px; }
+
+  /* ---------- Resumen: cifras ---------- */
+  .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+  .numero { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 6px; background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); padding: 20px 22px; min-width: 0; }
+  .numero b { display: block; font-size: 28px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; color: var(--pn-texto); overflow-wrap: anywhere; }
+  .numero span { color: var(--pn-suave); font-size: 13px; font-weight: 500; line-height: 1.35; }
+  .numero span::first-letter { text-transform: uppercase; }
+
+  /* ---------- Bloques que se abren y se cierran (Motores, Entrada, WhatsApp) ---------- */
+  details.plegable { background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); }
+  details.plegable > summary { cursor: pointer; list-style: none; display: flex; gap: 12px; align-items: center; min-height: 52px; padding: 14px 20px; background: none; border: 0; border-radius: 20px; font-size: 14.5px; }
+  details.plegable > summary::-webkit-details-marker { display: none; }
+  details.plegable > summary::before { content: ""; flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: #A9A3BF; box-shadow: 0 0 0 4px #F0EEF5; }
+  details.plegable > summary:has(.pleg-resumen.verde)::before { background: #16a34a; box-shadow: 0 0 0 4px #dcfce7; }
+  details.plegable > summary:has(.pleg-resumen.amarillo)::before { background: #D97706; box-shadow: 0 0 0 4px #FEF3C7; }
+  details.plegable > summary:has(.pleg-resumen.rojo)::before { background: #DC2626; box-shadow: 0 0 0 4px #FEE2E2; }
+  details.plegable > summary::after { content: "Ver detalle"; flex: 0 0 auto; margin-left: auto; padding-right: 22px; font-weight: 600; font-size: 13.5px; color: var(--pn-violeta); white-space: nowrap; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%234C1D95' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right center / 18px; }
+  details.plegable[open] > summary::after { content: "Ocultar"; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 15l6-6 6 6' fill='none' stroke='%234C1D95' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+  details.plegable[open] > summary { border-bottom: 1px solid var(--pn-linea); border-radius: 20px 20px 0 0; margin: 0; }
+  .pleg-texto { flex: 1 1 auto; min-width: 0; line-height: 1.4; }
+  details.plegable > summary .pleg-titulo { font-weight: 600; font-size: 14.5px; }
+  details.plegable > summary .pleg-titulo::after { content: ":"; }
+  .pleg-resumen { font-weight: 400; font-size: 14.5px; padding: 0; border-radius: 0; background: none; color: var(--pn-texto); }
+  .pleg-resumen.verde, .pleg-resumen.amarillo, .pleg-resumen.rojo { background: none; color: var(--pn-texto); }
+  details.plegable > .panel-paso { background: none; box-shadow: none; border-radius: 0 0 20px 20px; padding: 20px; }
+  details.plegable > .motores { padding: 16px 20px 20px; }
+
+  /* Motores */
+  .motores { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+  .motor { display: flex; flex-direction: column; gap: 4px; background: #FAF9FD; border: 0; border-radius: 14px; padding: 14px 16px; font-size: 14px; min-width: 0; }
+  .motor.on { background: #F4FAF5; }
+  .motor b { display: block; font-weight: 600; font-size: 14.5px; }
+  .motor .ayuda { font-size: 13px; }
+  .motor > div { font-size: 13px; color: var(--pn-suave); overflow-wrap: anywhere; }
+  .motor code { font-size: 12px; background: #EFEBF8; padding: 2px 6px; border-radius: 6px; }
+
+  /* ---------- Listas en tarjetas (compras, códigos, comentarios, reportes, pedidos) ---------- */
+  .fila-g { display: flex; flex-direction: column; gap: 16px; background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); padding: 20px 22px; margin-bottom: 14px; min-width: 0; }
+  .fila-g .info { min-width: 0; display: flex; flex-direction: column; gap: 4px; overflow-wrap: anywhere; }
+  .fila-g .info > b:first-child { font-size: 17px; font-weight: 700; }
+  .fila-g .info b.cliente { font-size: 17px; font-weight: 700; }
+  .fila-g .info .ayuda { font-size: 13.5px; }
+  .fila-g .info .ayuda b { font-weight: 600; color: var(--pn-texto); }
+  .fila-g .info > .estado { align-self: flex-start; margin: 2px 0 4px; }
+  .fila-g .acciones { padding-top: 14px; border-top: 1px solid var(--pn-linea); }
+  .fila-g .acciones:empty { display: none; }
+  .link-caja { word-break: break-all; background: #FAF9FD; border-radius: 10px; padding: 8px 12px; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px !important; }
+  .compra-estado { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--pn-linea); display: flex; flex-direction: column; gap: 3px; font-size: 13.5px; }
+  .compra-estado b { font-weight: 600; }
+  /* Códigos: el código en letra de máquina sobre fondo lila */
+  #listaCodigos .info > b:first-child { align-self: flex-start; font: 600 15px ui-monospace, Consolas, monospace !important; background: var(--pn-sec); padding: 4px 10px; border-radius: 8px; letter-spacing: .02em; }
+  @media (min-width: 760px) {
+    #listaCodigos .fila-g { flex-direction: row; align-items: center; gap: 20px; }
+    #listaCodigos .fila-g .info { flex: 1 1 auto; }
+    #listaCodigos .fila-g .acciones { flex: 0 0 auto; padding-top: 0; border-top: 0; flex-wrap: nowrap; }
+  }
+
+  /* Etiquetas de estado: píldoras suaves */
+  .estado { display: inline-block; font: 600 12.5px/1 var(--pn-letra); letter-spacing: 0; text-transform: none; padding: 5px 10px 5px 22px; background-image: radial-gradient(circle at 12px 50%, currentColor 0 3px, transparent 3.5px) !important; border-radius: 999px; background: #F0EEF5; color: #4A4463; vertical-align: middle; margin-left: 0; white-space: nowrap; }
+  .estado::first-letter { text-transform: uppercase; }
+  .estado.publicada, .estado.pagada, .estado.listo, .estado.activo, .estado.avisada, .estado.convertida { background: var(--pn-ok-fondo); color: var(--pn-ok-texto); }
+  .estado.borrador, .estado.pendiente, .estado.generando, .estado.corriendo { background: var(--pn-ambar-fondo); color: var(--pn-ambar-texto); }
+  .estado.archivada, .estado.fallida, .estado.error, .estado.cancelada, .estado.vencido, .estado.agotado { background: var(--pn-pel-fondo); color: var(--pn-pel-texto); }
+  .estado.personalizada, .estado.sin_guia, .estado.nuevo { background: var(--pn-sec); color: var(--pn-violeta); }
+  .estado.apagado, .estado.revisado, .estado.leido { background: #F0EEF5; color: #4A4463; }
+  .estado.destacado { background: #FFF6CC; color: #7A5A00; }
+  body.panel.sitio.claro .estado.oculto { display: inline-block !important; background: #F0EEF5; color: #5E5878; }
+  .estrellas { color: #F5B800; font-size: 17px; letter-spacing: 1px; }
+  .estrellas i { color: #DCD8E8; font-style: normal; }
+  .texto-visitante { margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; }
+  .prog { height: 8px; background: var(--pn-linea); border-radius: 4px; overflow: hidden; margin: 6px 0 2px; }
+  .prog i { display: block; height: 100%; background: var(--pn-amarillo); transition: width .4s; }
+
+  /* ---------- Tablas: sin bordes verticales, renglones separados por líneas finas ---------- */
+  body.panel.sitio.claro table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  body.panel.sitio.claro td, body.panel.sitio.claro th { text-align: left; padding: 12px 18px; border-bottom: 1px solid var(--pn-linea); vertical-align: top; }
+  body.panel.sitio.claro th { font-size: 12.5px; font-weight: 600; color: var(--pn-suave); background: #fff; white-space: nowrap; }
+  body.panel.sitio.claro tbody tr:last-child td, body.panel.sitio.claro table tr:last-child td { border-bottom: 0; }
+  .tabla-mov, #listaIntentos:has(table) { overflow-x: auto; -webkit-overflow-scrolling: touch; background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); padding: 4px 0; }
+  .tabla-mov table { min-width: 460px; }
+  body.panel.sitio.claro .tabla-mov td.n, body.panel.sitio.claro .tabla-mov th.n { text-align: right; white-space: nowrap; }
+  .tabla-mov td:first-child { white-space: nowrap; }
+  .tabla-guias table { min-width: 0; }
+  .tabla-guias td:first-child { white-space: normal; }
+  #listaIntentos td { overflow-wrap: anywhere; }
+  .tipo-guia { display: inline-block; line-height: 1.2; font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--pn-sec); color: var(--pn-violeta); white-space: nowrap; }
+  .tipo-guia.guia_completa { background: var(--pn-violeta); color: #fff; }
+
+  /* ---------- Costos ---------- */
+  .grandes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .grande { background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); padding: 20px 22px; min-width: 0; }
+  .grande span { display: block; color: var(--pn-suave); font-size: 13px; font-weight: 500; }
+  .grande b { display: block; font-size: 28px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin: 6px 0 4px; }
+  .grande small { color: var(--pn-suave); font-size: 12.5px; line-height: 1.45; display: block; }
+  .balance { display: grid; grid-template-columns: 1fr auto; gap: 8px 0; max-width: 460px; font-size: 14.5px; }
+  .balance span:nth-child(even) { text-align: right; white-space: nowrap; }
+  .balance span:nth-child(odd) { padding-right: 14px; }
+  .balance .total { font-weight: 700; border-top: 1px solid var(--pn-linea); padding-top: 10px; margin-top: 2px; }
+  .fila-servicio { display: grid; grid-template-columns: minmax(0, 2fr) minmax(70px, 1fr) 120px minmax(0, 2fr) 44px; gap: 8px; margin-bottom: 8px; align-items: center; }
+  body.panel.sitio.claro .fila-servicio .boton { padding: 0; min-height: 44px; width: 44px; }
+  @media (max-width: 620px) { .fila-servicio { grid-template-columns: 1fr 1fr 44px; padding-bottom: 12px; border-bottom: 1px solid var(--pn-linea); margin-bottom: 12px; } .fila-servicio .s-nombre, .fila-servicio .s-nota { grid-column: 1 / -1; } .fila-servicio .s-nota { order: 5; } }
+
+  /* ---------- WhatsApp: prueba y mensajes que se mandan solos ---------- */
+  .wa-prueba { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; align-items: center; }
+  body.panel.sitio.claro .wa-prueba input, body.panel.sitio.claro .wa-prueba select { flex: 1 1 200px; width: auto; }
+  .wa-mensajes { margin-top: 22px; border-top: 1px solid var(--pn-linea); padding-top: 20px; }
+  .wa-mensajes h3 { margin: 0 0 6px; font-size: 16px; }
+  .wa-msg { background: #FAF9FD; border: 0; border-radius: 16px; padding: 16px 18px; margin-bottom: 14px; }
+  .wa-msg-cab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .wa-msg-cab b { font-weight: 600; }
+  .wa-rejilla { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  @media (min-width: 900px) { .wa-rejilla { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  body.panel.sitio.claro .wa-msg textarea { box-sizing: border-box; font-size: 15px; line-height: 1.45; resize: vertical; min-height: 180px; }
+  .wa-herr { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  body.panel.sitio.claro .wa-herr .boton { font-size: 13.5px; padding: 6px 12px; min-height: 36px; box-shadow: none; }
+  .wa-herr .wa-cuenta { margin-left: auto; white-space: nowrap; font-size: 12.5px; }
+  .wa-alerta { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--pn-ambar-fondo); color: var(--pn-ambar-texto); font-size: 13.5px; font-weight: 500; }
+  .wa-burbuja { background: #dcf8c6; border-radius: 4px 14px 14px 14px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.45; color: #111b21; box-shadow: 0 1px 1px rgba(0,0,0,.12); }
+  .wa-botones { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  /* ---------- Diálogos y avisos ---------- */
+  body.panel.sitio.claro dialog { border: 0; border-radius: 20px; padding: 26px; max-width: 560px; width: calc(100% - 32px); color: var(--pn-texto); box-shadow: 0 30px 60px rgba(27,19,64,.30); font: 15px/1.5 var(--pn-letra); }
+  body.panel.sitio.claro dialog h2 { font-size: 20px; margin: 0 0 10px; }
+  body.panel.sitio.claro dialog p { margin: 0 0 10px; }
+  dialog::backdrop { background: rgba(27,19,64,.45); }
+  .msg { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--pn-noche); color: #fff; padding: 12px 20px; border-radius: 14px; font: 600 14.5px/1.4 var(--pn-letra); z-index: 70; max-width: calc(100% - 32px); width: max-content; box-shadow: 0 12px 30px rgba(27,19,64,.30); display: none; }
+  .msg.on { display: block; }
+  .msg.mal { background: var(--pn-pel-texto); }
+  .detalle pre { background: #FAF9FD; padding: 10px; border-radius: 10px; font-size: 12px; max-height: 240px; overflow: auto; white-space: pre-wrap; }
+
+  /* ---------- Celular ---------- */
+  @media (max-width: 600px) {
+    body.panel.sitio.claro header.cab .contenedor { padding: 0 14px; gap: 10px; min-height: 58px; }
+    body.panel.sitio.claro header.cab .marca .marca-sub { display: none; }
+    .barra-sesion .correo { display: none; }
+    .seccion-actual { padding-left: 10px; }
+    body.panel.sitio.claro .flujo { padding: 20px 0 48px; }
+    body.panel.sitio.claro .flujo > .contenedor { width: calc(100% - 32px); }
+    body.panel.sitio.claro h1 { font-size: 24px; }
+    .pag-titulo { margin-bottom: 16px; }
+    .numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .numero { padding: 14px; border-radius: 18px; }
+    .numero b { font-size: 22px; }
+    .numero span { font-size: 12px; }
+    .grandes { grid-template-columns: minmax(0, 1fr) !important; gap: 10px; }
+    .grande { padding: 16px 18px; }
+    .grande b { font-size: 24px; }
+    body.panel.sitio.claro .panel-paso, body.panel.sitio.claro .tarjeta { padding: 20px 16px; border-radius: 18px; }
+    .fila-g { padding: 16px; border-radius: 18px; gap: 12px; }
+    details.plegable > summary { padding: 12px 16px; min-height: 56px; }
+    details.plegable > .panel-paso { padding: 16px; }
+    details.plegable > .motores { padding: 14px 16px 16px; }
+    body.panel.sitio.claro .boton, body.panel.sitio.claro .boton.chico { min-height: 44px; }
+    body.panel.sitio.claro .acciones .boton { flex: 1 1 auto; }
+    body.panel.sitio.claro .rejilla-campos .boton, body.panel.sitio.claro .wa-botones .boton { width: 100%; }
+    body.panel.sitio.claro .campo input, body.panel.sitio.claro .campo select, body.panel.sitio.claro .campo textarea, body.panel.sitio.claro .fila-servicio input, body.panel.sitio.claro .fila-servicio select, body.panel.sitio.claro .wa-prueba input, body.panel.sitio.claro .wa-prueba select, body.panel.sitio.claro .wa-msg textarea { font-size: 16px; }
+    body.panel.sitio.claro select.filtro { min-height: 44px; flex: 1 1 auto; font-size: 15px; }
+    .barra-herr .boton { flex: 0 0 auto; }
+    body.panel.sitio.claro td, body.panel.sitio.claro th { padding: 10px 12px; }
+    #login { padding: 28px 20px !important; }
+    body.panel.sitio.claro:has(#login:not([hidden])) .flujo > .contenedor { width: calc(100% - 32px); }
+    .wa-herr .wa-cuenta { margin-left: 0; flex-basis: 100%; }
+    body.panel.sitio.claro .wa-herr .boton { min-height: 44px; }
+    body.panel.sitio.claro .wa-prueba > * { flex: 1 1 100%; width: 100%; }
+    body.panel.sitio.claro #btnInventarCodigo { width: 48px; flex: 0 0 auto; padding: 0; }
+    .entrada-clave > summary { padding: 13px 0; }
+    /* Últimos intentos: cada renglón como una ficha corta */
+    #listaIntentos table, #listaIntentos tbody, #listaIntentos tr, #listaIntentos td { display: block; }
+    #listaIntentos tr:first-child:has(th) { display: none; }
+    #listaIntentos tr { padding: 12px 16px; border-bottom: 1px solid var(--pn-linea); }
+    #listaIntentos tr:last-child { border-bottom: 0; }
+    body.panel.sitio.claro #listaIntentos td { padding: 2px 0; border: 0; }
+    #listaIntentos td:nth-child(1) { font-size: 12.5px; color: var(--pn-suave); }
+    #listaIntentos td:nth-child(2) { font-weight: 600; }
+    #listaIntentos td:nth-child(3)::before { content: "Resultado: "; color: var(--pn-suave); }
+    #listaIntentos td:nth-child(4)::before { content: "Quién: "; color: var(--pn-suave); }
+    #listaIntentos td:nth-child(4):empty { display: none; }
+    body.panel.sitio.claro dialog { padding: 20px; }
+  }
 </style>
 </head>
-<body class="sitio claro">
+<body class="sitio claro panel">
 <header class="cab"><div class="contenedor">
   <button class="hamb" id="abrirMenu" type="button" aria-label="Abrir el menú" aria-expanded="false" aria-controls="menu" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-  <a class="marca" href="panel.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span>&nbsp;<small style="font-weight:600;color:var(--gris)">Panel de guías</small></a>
+  <a class="marca" href="panel.html"><svg class="rayo" viewBox="0 0 60 100" aria-hidden="true"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span><small class="marca-sub">&nbsp;· Panel</small></a>
   <span class="seccion-actual" id="seccionActual"></span>
+  <div class="barra-sesion" id="barraSesion"><span class="inicial" id="barraInicial" aria-hidden="true">A</span><span class="correo" id="barraCorreo"></span></div>
 </div></header>
 <div class="velo" id="velo" hidden></div>
 <aside class="menu" id="menu" aria-label="Menú del panel" hidden>
-  <div class="menu-cab"><b>Menú</b><button type="button" id="cerrarMenu" aria-label="Cerrar el menú">✕</button></div>
+  <div class="menu-cab"><span class="marca"><svg class="rayo" viewBox="0 0 60 100" aria-hidden="true"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span><small class="marca-sub">&nbsp;· Panel</small></span><button type="button" id="cerrarMenu" aria-label="Cerrar el menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <p class="menu-quien" id="menuQuien"></p>
   <div class="tabs" id="tabs">
     <button data-tab="resumen" class="on">Resumen</button>
@@ -150,11 +358,12 @@
     <button data-tab="costos">Costos</button>
     <button data-tab="ajustes">Ajustes</button>
   </div>
-  <div class="menu-pie"><a href="index.html" target="_blank" rel="noopener">Ver el sitio ↗</a><a href="../accesos/">Accesos Lumio (clases)</a><a href="#" id="salir">Cerrar sesión</a></div>
+  <div class="menu-pie"><a href="index.html" target="_blank" rel="noopener">Ver el sitio ↗</a><a href="../accesos/">Accesos Lumio (clases)</a><a href="#" id="salir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>Cerrar sesión</a></div>
 </aside>
 
 <main class="flujo"><div class="contenedor">
   <section class="panel-paso" id="login">
+    <div class="entrada-marca"><svg class="rayo" viewBox="0 0 60 100" aria-hidden="true"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span><small>&nbsp;· Panel</small></div>
     <h1>Entra a tu panel</h1>
     <p class="ayuda">Escribe tu correo y tu contraseña.</p>
     <form id="formSesion" class="rejilla-campos"><div class="campo"><label for="sCorreo">Correo</label><input id="sCorreo" name="correo" type="email" autocomplete="username" required></div><div class="campo"><label for="sContra">Contraseña</label><input id="sContra" name="contrasena" type="password" autocomplete="current-password" required></div><div style="align-self:end"><button class="boton" type="submit">Entrar</button></div><div class="error" id="errSesion" style="grid-column:1/-1"></div></form>
@@ -165,20 +374,21 @@
   </section>
 
   <div id="app" hidden>
+    <h1 class="pag-titulo" id="tituloSeccion"></h1>
 
     <section data-panel="resumen">
       <div id="alertas"></div>
       <div id="alertaComentarios"></div>
       <div class="numeros" id="numeros"></div>
       <details class="plegable" id="plegMotores" style="margin-top:22px">
-        <summary><span class="pleg-titulo">Motores</span><span class="pleg-resumen" id="resumenMotores">Revisando…</span></summary>
+        <summary><span class="pleg-texto"><span class="pleg-titulo">Motores</span> <span class="pleg-resumen" id="resumenMotores">Revisando…</span></span></summary>
         <div class="motores" id="motores"></div>
       </details>
     </section>
 
     <section data-panel="guias" hidden>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-        <select id="diasGuias" aria-label="Periodo de la lista" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="30">Lista: últimos 30 días</option><option value="90" selected>Lista: últimos 90 días</option><option value="365">Lista: último año</option></select>
+      <div class="barra-herr">
+        <select id="diasGuias" class="filtro" aria-label="Periodo de la lista"><option value="30">Lista: últimos 30 días</option><option value="90" selected>Lista: últimos 90 días</option><option value="365">Lista: último año</option></select>
         <button class="boton linea chico" id="btnRefrescarGuias">⟳ Actualizar</button>
       </div>
       <div id="costosGuias"><p class="ayuda">Cargando…</p></div>
@@ -195,8 +405,8 @@
     </section>
 
     <section data-panel="compras" hidden>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-        <select id="filtroCompras" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="pendiente">Pendientes de pago</option><option value="pagada">Pagadas</option><option value="">Todas</option></select>
+      <div class="barra-herr">
+        <select id="filtroCompras" class="filtro" aria-label="Qué compras ver"><option value="pendiente">Pendientes de pago</option><option value="pagada">Pagadas</option><option value="">Todas</option></select>
         <button class="boton linea chico" id="btnRefrescarCompras">⟳ Actualizar</button>
       </div>
       <div class="caja-clave" style="margin-bottom:12px">
@@ -231,8 +441,8 @@
     <section data-panel="reportes" hidden><p class="ayuda">Lo que los alumnos reportaron desde la banderita 🚩 del reproductor.</p><div id="listaReportes"></div></section>
 
     <section data-panel="comentarios" hidden>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-        <select id="filtroComentarios" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="todos">Todos (menos los ocultos)</option><option value="nuevo">Nuevos</option><option value="leido">Leídos</option><option value="destacado">Destacados</option><option value="oculto">Ocultos</option></select>
+      <div class="barra-herr">
+        <select id="filtroComentarios" class="filtro" aria-label="Qué comentarios ver"><option value="todos">Todos (menos los ocultos)</option><option value="nuevo">Nuevos</option><option value="leido">Leídos</option><option value="destacado">Destacados</option><option value="oculto">Ocultos</option></select>
         <button class="boton linea chico" id="btnRefrescarComentarios">⟳ Actualizar</button>
       </div>
       <p class="ayuda">Lo que las familias escriben en la caja de comentarios al final de la portada. "Destacar" sirve para apartar los que quieras publicar más adelante (solo si la persona dio permiso). Nada de esto se publica solo.</p>
@@ -240,8 +450,8 @@
     </section>
 
     <section data-panel="costos" hidden>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-        <select id="diasCostos" style="padding:10px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit"><option value="7">Últimos 7 días</option><option value="30" selected>Últimos 30 días</option><option value="90">Últimos 90 días</option></select>
+      <div class="barra-herr">
+        <select id="diasCostos" class="filtro" aria-label="Periodo de los costos"><option value="7">Últimos 7 días</option><option value="30" selected>Últimos 30 días</option><option value="90">Últimos 90 días</option></select>
         <button class="boton linea chico" id="btnRefrescarCostos">⟳ Actualizar</button>
       </div>
       <div id="costos"><p class="ayuda">Cargando…</p></div>
@@ -266,7 +476,7 @@
         </form>
       </div>
       <details class="plegable" style="margin-top:14px" id="plegAcceso">
-        <summary><span class="pleg-titulo">Entrada con correo y contraseña</span><span class="pleg-resumen" id="resumenAcceso">Revisando…</span></summary>
+        <summary><span class="pleg-texto"><span class="pleg-titulo">Entrada con correo y contraseña</span> <span class="pleg-resumen" id="resumenAcceso">Revisando…</span></span></summary>
         <div class="panel-paso">
           <p class="ayuda" style="margin-top:0">Con esto entras al panel con tu correo y una contraseña que solo tú conoces. La contraseña se guarda cifrada; nadie puede verla. Tu clave de administrador sigue sirviendo como respaldo.</p>
           <form id="formAcceso" class="rejilla-campos" autocomplete="off">
@@ -280,7 +490,7 @@
         </div>
       </details>
       <details class="plegable" style="margin-top:14px" id="plegWhatsApp">
-        <summary><span class="pleg-titulo">WhatsApp (Green API)</span><span class="pleg-resumen" id="resumenWhatsApp">Revisando…</span></summary>
+        <summary><span class="pleg-texto"><span class="pleg-titulo">WhatsApp (Green API)</span> <span class="pleg-resumen" id="resumenWhatsApp">Revisando…</span></span></summary>
         <div class="panel-paso" id="tarjetaWhatsApp"><div id="estadoWhatsApp"><p class="ayuda">Cargando…</p></div></div>
       </details>
       <div class="caja-clave" style="margin-top:14px"><b>Cómo se encienden los motores</b><p style="margin:6px 0 0">Cada motor se enciende poniendo su llave en Supabase → Edge Functions → Secrets (nunca en el código ni en WhatsApp): <code>ANTHROPIC_API_KEY</code> (la IA que escribe las guías), <code>MP_ACCESS_TOKEN</code> y <code>MP_WEBHOOK_SECRET</code> (cobro en línea con Mercado Pago: tarjeta, OXXO y SPEI), <code>RESEND_API_KEY</code> (correos) y, opcional, <code>HELICONE_API_KEY</code> (medición de costos). Stripe (<code>STRIPE_SECRET_KEY</code> y <code>STRIPE_WEBHOOK_SECRET</code>) queda dormido: solo se usaría si Mercado Pago no estuviera puesto. Mientras un motor está apagado, el sitio sigue funcionando en modo manual. Los pasos para Mercado Pago están en GUIA.md.</p></div>
@@ -491,7 +701,7 @@ async function cargarCostosGuias() {
     ${c.sin_terminar.total ? `<p class="ayuda">Además, ${cuantas(c.sin_terminar.total, "generación no se terminó", "generaciones no se terminaron")} (${c.sin_terminar.d30} en los últimos 30 días). En total gastaron ${pesos(c.sin_terminar.mxn_total)}; no entran en estos promedios, pero sí en la pestaña Costos.</p>` : ""}
     <h2 style="margin:22px 0 10px">Últimas guías (${{ 30: "últimos 30 días", 90: "últimos 90 días", 365: "último año" }[r.dias] ?? `últimos ${r.dias} días`})</h2>
     ${r.ultimas.length ? `<div class="tabla-mov tabla-guias"><table><thead><tr><th>Fecha</th><th>Tipo</th><th class="n">Costo de IA</th></tr></thead><tbody>
-      ${r.ultimas.map((f) => `<tr><td>${esc(fecha(f.fecha))}</td><td>${esc(TIPO_GUIA[f.tipo] ?? f.tipo)}</td><td class="n"><b>${pesos(f.mxn)}</b><br><small class="ayuda">${dolares(f.usd, 3)}</small></td></tr>`).join("")}
+      ${r.ultimas.map((f) => `<tr><td>${esc(fecha(f.fecha))}</td><td><span class="tipo-guia ${esc(f.tipo)}">${esc(TIPO_GUIA[f.tipo] ?? f.tipo)}</span></td><td class="n"><b>${pesos(f.mxn)}</b><br><small class="ayuda">${dolares(f.usd, 3)}</small></td></tr>`).join("")}
     </tbody></table></div>
     <p class="ayuda">Cuando una familia paga, su guía aparece dos veces: como vista previa (el día que la pidió) y como guía completa (el día que se terminó); el costo de la guía completa ya incluye el de su vista previa. Tipo de cambio de hoy: ${Number(r.tipo_cambio?.valor ?? 0).toFixed(4)} pesos por dólar.</p>`
     : `<p class="ayuda">No se generó ninguna guía en estos días.</p>`}`;
@@ -904,6 +1114,25 @@ function activarMensajesWa(w) {
     catch (err) { aviso(err.message, true); e.target.disabled = false; }
   };
 }
+</script>
+<script>
+// Solo presentación: copia a la barra el correo de la sesión (que el código escribe en #menuQuien) con su inicial,
+// y pone el nombre de la sección actual como título de la página. No toca la sesión ni la lógica del panel.
+(() => {
+  const quien = document.getElementById("menuQuien"), seccion = document.getElementById("seccionActual");
+  const correo = document.getElementById("barraCorreo"), inicial = document.getElementById("barraInicial");
+  const barra = document.getElementById("barraSesion"), titulo = document.getElementById("tituloSeccion");
+  const pintar = () => {
+    const t = quien.textContent.trim();
+    const c = t.startsWith("Sesión: ") ? t.slice(8).trim() : t ? "Administrador" : "";
+    correo.textContent = c;
+    inicial.textContent = (c[0] || "A").toUpperCase();
+    barra.title = t;
+    titulo.textContent = seccion.textContent;
+  };
+  for (const el of [quien, seccion]) new MutationObserver(pintar).observe(el, { childList: true, characterData: true, subtree: true });
+  pintar();
+})();
 </script>
 </body>
 </html>
