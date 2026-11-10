@@ -769,3 +769,32 @@ Con la app lista para lanzar, Daniel pidió que su panel (`sparked/panel.html`) 
   celular) y, cuando son un número impar, la última ocupa dos lugares para que el bloque cierre parejo. Solo cambió
   lo que se muestra: el servidor y la base de datos quedaron igual. La fase 1 no se toca (Daniel recordó ese día que
   debe seguir viva).
+
+## 32. Icono para anclar al inicio: Sparky asomándose (Daniel, 10 de noviembre de 2026)
+
+Daniel pidió que, al anclar SparkEd a la pantalla de inicio del teléfono, en lugar del rayo salga Sparky asomándose
+con los colores oficiales. Vio una muestra con dos caras y eligió la **A: ojos redondos** (la cara `quieto`).
+
+- **Qué es.** El Sparky oficial (el de `sparked/js/arte.js`) en la pose de las stories «Próximamente»: el cuerpo girado
+  6°, la cara mirando un poco hacia arriba y los guantes sobre la orilla. Fondo: el degradado oficial noche → violeta →
+  magenta, con el sol detrás.
+- **Tres archivos en `sparked/img/iconos/`.** `sparky-180.png` (cuadrado, sin transparencia: iPhone y iPad; iOS
+  redondea las esquinas y pinta de negro lo transparente), `sparky-192.png` (disco con las esquinas transparentes:
+  Android y navegadores) y `sparky-48.png` (disco «de cerca», solo la cabeza: pestaña del navegador).
+- **Dónde va.** En la portada, el formulario, la guía, la página «listo», el panel y la página de Sparky
+  (`sparked/*.html`), y en la portada de la raíz, que redirige a `sparked/`. Son tres enlaces por página: `icon` de 48,
+  `icon` de 192 y `apple-touch-icon` de 180.
+- **Sin manifiesto.** La fase 2 no lleva `manifest.webmanifest`: un manifiesto fija qué página abre el icono anclado
+  (rompería las guías ancladas, que llevan su propio `#`) y convierte la página en «app» sin barra del navegador. Con
+  solo los enlaces, cada quien ancla la página que tiene abierta.
+- **Sin archivo de 512 px.** Chrome en el celular baja el icono más grande que encuentra; con 192 alcanza para la
+  pantalla de inicio y pesa la cuarta parte.
+- **La fase 1 no se toca.** La app de accesos (`accesos/`), `entrar.html` y la carpeta `icons/` siguen con el rayo. Para
+  poner a Sparky también ahí hace falta el visto bueno de Daniel.
+- **Para verlo en un teléfono.** El icono se guarda en el momento de anclar: hay que quitar el acceso viejo de la
+  pantalla de inicio y anclar de nuevo.
+- **Cómo se vuelve a generar.** `node herramientas/icono-sparky.mjs` (usa Edge o Chrome sin ventana y dibuja cada tamaño
+  directo del vector). Con otra cara: `node herramientas/icono-sparky.mjs sparked/img/iconos riendo`. Si el dibujo de
+  Sparky cambia en `arte.js`, basta con volver a correrla.
+- **Qué se comprobó y qué no.** Medidas, transparencia y enlaces se revisaron archivo por archivo. La vista en iPhone y
+  en Android se revisó con una simulación, no en un teléfono real; en Android la forma exacta depende de cada teléfono.
