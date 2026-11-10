@@ -75,6 +75,23 @@
   .tabla-mov td:first-child { white-space: nowrap; }
   .compra-estado { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
   .compra-estado b { font-weight: 700; }
+  /* WhatsApp: prueba y mensajes que se mandan solos */
+  .wa-prueba { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  .wa-prueba input, .wa-prueba select { flex: 1 1 200px; min-width: 0; padding: 9px 12px; border: 2px solid var(--borde); border-radius: 12px; font: inherit; background: #fff; }
+  .wa-mensajes { margin-top: 18px; border-top: 2px solid var(--borde); padding-top: 14px; }
+  .wa-mensajes h3 { margin: 0 0 6px; font-size: 19px; }
+  .wa-msg { background: #fff; border: 2px solid var(--borde); border-radius: 16px; padding: 12px 14px; margin-bottom: 12px; }
+  .wa-msg-cab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .wa-rejilla { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  @media (min-width: 900px) { .wa-rejilla { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .wa-msg textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; line-height: 1.45; padding: 10px 12px; border: 2px solid var(--borde); border-radius: 12px; resize: vertical; min-height: 180px; }
+  .wa-msg textarea:focus { outline: none; border-color: var(--p); }
+  .wa-herr { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+  .wa-herr .boton { font-size: 14px; padding: 6px 10px; min-height: 36px; box-shadow: none; }
+  .wa-herr .wa-cuenta { margin-left: auto; white-space: nowrap; }
+  .wa-alerta { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; background: #fef3c7; color: #92400e; font-size: 14px; font-weight: 700; }
+  .wa-burbuja { background: #dcf8c6; border-radius: 4px 14px 14px 14px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.45; color: #111b21; box-shadow: 0 1px 1px rgba(0,0,0,.12); }
+  .wa-botones { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 </style>
 </head>
 <body class="sitio claro">
@@ -658,33 +675,156 @@ $("#btnGuardarServicios").onclick = async () => {
 $("#diasCostos").onchange = cargarCostos; $("#btnRefrescarCostos").onclick = cargarCostos;
 
 // ---------- WhatsApp (Green API) ----------
-const INSTANCIA = { authorized: "Conectado ✅", notAuthorized: "Falta vincular el teléfono (escanear el código QR en Green API)", blocked: "Bloqueado por WhatsApp", sleepMode: "Teléfono sin conexión", starting: "Encendiendo…", yellowCard: "Con advertencia de WhatsApp (envía menos mensajes)" };
+const INSTANCIA = { authorized: "Conectado ✅", notAuthorized: "Falta vincular el teléfono (escanear el código QR en Green API)", blocked: "Bloqueado por WhatsApp", sleepMode: "Teléfono sin conexión", starting: "Encendiendo…", yellowCard: "Con advertencia de WhatsApp (envía menos mensajes)", suspended: "Con restricciones temporales de WhatsApp" };
+// Los cuatro mensajes automáticos. Los textos originales vienen del servidor (GET /admin/whatsapp → mensajes).
+const WA_MENSAJES = [
+  { k: "entrega_es", titulo: "Entrega de la guía · español", cuando: "Sale solo cuando la guía pagada queda lista, a teléfonos de México y de países de habla hispana.", comodines: ["nombre", "titulo", "link"] },
+  { k: "entrega_en", titulo: "Entrega de la guía · inglés", cuando: "Lo mismo, para teléfonos de Estados Unidos, Canadá y otros países que no son de habla hispana.", comodines: ["nombre", "titulo", "link"] },
+  { k: "compartir_es", titulo: "Respuesta a «compartir» · español", cuando: "Sale cuando la familia escribe «compartir». Está pensado para que lo reenvíe tal cual.", comodines: ["portada"] },
+  { k: "compartir_en", titulo: "Respuesta a «share» · inglés", cuando: "Lo mismo, cuando escribe «share» desde un teléfono en inglés.", comodines: ["portada"] },
+];
+const COMODIN_AYUDA = { nombre: "primer nombre de quien compró", titulo: "título de la guía", link: "link de la guía", portada: "sparkeducation-mx.com" };
+let waDatos = null;
+
+// Misma lógica que el servidor (armarMensaje en whatsapp.ts), solo para la vista previa.
+function waArmar(k, plantilla, ej) {
+  let t = String(plantilla ?? "").replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "").replace(/[ \t]+$/gm, "").trim().slice(0, ej.maximo);
+  if (!t) t = waDatos.mensajes[k].original;
+  if (k.startsWith("entrega")) {
+    t = t.replaceAll("{nombre}", ej.nombre).replaceAll("{titulo}", ej.titulo).replaceAll("{portada}", ej.portada);
+    if (t.includes("{link}")) t = t.replaceAll("{link}", ej.link); else if (!t.includes(ej.link)) t += "\n\n" + ej.link;
+    return t;
+  }
+  t = t.replaceAll("{portada}", ej.portada);
+  if (!t.includes("sparkeducation-mx.com")) t += "\n\n" + ej.portada;
+  return t;
+}
+// Texto de WhatsApp → HTML seguro: primero se escapa todo; luego *negritas*, _cursivas_ y ~tachado~.
+function waFormato(texto) {
+  return esc(texto)
+    .replace(/(^|[\s(¡¿])\*([^*\n]+)\*(?=$|[\s.,:;!?)])/g, "$1<b>$2</b>")
+    .replace(/(^|[\s(¡¿])_([^_\n]+)_(?=$|[\s.,:;!?)])/g, "$1<i>$2</i>")
+    .replace(/(^|[\s(¡¿])~([^~\n]+)~(?=$|[\s.,:;!?)])/g, "$1<s>$2</s>");
+}
+
 async function cargarWhatsApp() {
   const caja = $("#estadoWhatsApp");
   let w = null;
   try { w = await api("/whatsapp"); } catch { w = null; }
+  waDatos = w;
   const apagado = !w || !w.motor || ["apagado", "sin_motor", "ninguno", "no"].includes(String(w.motor));
+  let html;
   if (apagado) {
-    caja.innerHTML = `<p style="margin:0"><b>Todavía no hay WhatsApp conectado.</b></p><p class="ayuda" style="margin:6px 0 0">Mientras tanto, las guías se envían solo por correo. Los pasos para conectarlo están en la guía <a href="https://github.com/Danflores01/accesos-lumio/blob/main/docs/WHATSAPP.md" target="_blank" rel="noopener">docs/WHATSAPP.md</a>.</p>`;
-    return;
-  }
-  const dato = (t, v) => v === undefined || v === null || v === "" ? "" : `<div><span class="ayuda">${t}:</span> <b>${esc(v)}</b></div>`;
-  caja.innerHTML = `<div style="display:grid;gap:4px">
+    html = `<p style="margin:0"><b>Todavía no hay WhatsApp conectado.</b></p><p class="ayuda" style="margin:6px 0 0">Mientras tanto, las guías se envían solo por correo. Los pasos para conectarlo están en la guía <a href="https://github.com/Danflores01/accesos-lumio/blob/main/docs/WHATSAPP.md" target="_blank" rel="noopener">docs/WHATSAPP.md</a>.</p>`;
+  } else {
+    const dato = (t, v) => v === undefined || v === null || v === "" ? "" : `<div><span class="ayuda">${t}:</span> <b>${esc(v)}</b></div>`;
+    html = `<div style="display:grid;gap:4px">
       ${dato("Estado", INSTANCIA[w.estado_instancia] ?? w.estado_instancia ?? "desconocido")}
       ${dato("Número", w.numero)}
       ${dato("Guías enviadas (7 días)", w.enviados_7d)}
       ${dato("Envíos que fallaron (7 días)", w.fallidos_7d)}
       ${dato("Veces que compartieron (7 días)", w.compartir_7d)}
       ${w.webhook_configurado !== undefined ? dato("Avisos de mensajes recibidos", w.webhook_configurado ? "configurados" : "sin configurar") : ""}
-      ${w.ultimo_error ? `<div style="color:#b91c1c"><span class="ayuda">Último error:</span> ${esc(typeof w.ultimo_error === "string" ? w.ultimo_error : JSON.stringify(w.ultimo_error))}</div>` : ""}
+      ${w.ultimo_error ? `<div style="color:#b91c1c"><span class="ayuda">Último error:</span> ${esc(typeof w.ultimo_error === "string" ? w.ultimo_error : [w.ultimo_error.fecha ? fecha(w.ultimo_error.fecha) : "", w.ultimo_error.detalle].filter(Boolean).join(" · "))}</div>` : ""}
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center">
+    <div class="wa-prueba">
       <button class="boton chico" type="button" id="btnWaConectar">🔗 Conectar</button>
-      <input id="waTelPrueba" inputmode="tel" placeholder="Teléfono para la prueba (10 dígitos)" style="flex:1;min-width:200px;padding:9px 12px;border:2px solid var(--borde);border-radius:12px;font:inherit">
+      <input id="waTelPrueba" inputmode="tel" placeholder="Teléfono para la prueba (10 dígitos)">
+      <select id="waCualPrueba" aria-label="Qué mensaje mandar en la prueba">
+        <option value="">Mensaje corto de prueba</option>
+        ${WA_MENSAJES.map((m) => `<option value="${m.k}">${esc(m.titulo)} (con datos de ejemplo)</option>`).join("")}
+      </select>
       <button class="boton linea chico" type="button" id="btnWaPrueba">Enviar mensaje de prueba</button>
     </div>`;
-  $("#btnWaConectar").onclick = async (e) => { e.target.disabled = true; try { const r = await api("/whatsapp/configurar", { method: "POST" }); aviso(r.mensaje || "WhatsApp configurado", false, 6000); cargarWhatsApp(); } catch (err) { e.target.disabled = false; aviso(err.message, true, 6000); } };
-  $("#btnWaPrueba").onclick = async (e) => { const telefono = $("#waTelPrueba").value.trim(); if (!telefono) { aviso("Escribe el teléfono para la prueba", true); return; } e.target.disabled = true; try { const r = await api("/whatsapp/prueba", { method: "POST", body: { telefono } }); aviso(r.mensaje || "Mensaje de prueba enviado", false, 6000); } catch (err) { aviso(err.message, true, 6000); } e.target.disabled = false; };
+  }
+  if (w?.mensajes && w?.ejemplo) html += pintarMensajesWa(w);
+  caja.innerHTML = html;
+  if (!apagado) {
+    $("#btnWaConectar").onclick = async (e) => { e.target.disabled = true; try { const r = await api("/whatsapp/configurar", { method: "POST" }); aviso(r.mensaje || "WhatsApp configurado", false, 6000); cargarWhatsApp(); } catch (err) { e.target.disabled = false; aviso(err.message, true, 6000); } };
+    $("#btnWaPrueba").onclick = async (e) => {
+      const telefono = $("#waTelPrueba").value.trim(); const mensaje = $("#waCualPrueba").value;
+      if (!telefono) { aviso("Escribe el teléfono para la prueba", true); return; }
+      if (mensaje && $$(".wa-msg").some((m) => m.dataset.cambio === "1")) aviso("Ojo: la prueba usa los mensajes guardados. Guarda primero tus cambios.", true, 5000);
+      e.target.disabled = true;
+      try { const r = await api("/whatsapp/prueba", { method: "POST", body: mensaje ? { telefono, mensaje } : { telefono } }); aviso(r.mensaje || "Mensaje de prueba enviado", false, 6000); } catch (err) { aviso(err.message, true, 6000); }
+      e.target.disabled = false;
+    };
+  }
+  if (w?.mensajes && w?.ejemplo) activarMensajesWa(w);
+}
+
+function pintarMensajesWa(w) {
+  const ej = w.ejemplo;
+  return `<div class="wa-mensajes">
+    <h3>Mensajes que se mandan solos</h3>
+    <p class="ayuda" style="margin:0 0 4px">Cuando una guía pagada queda lista, la familia recibe el mensaje de entrega. Si responde «compartir», recibe el mensaje para reenviar a sus amigos.</p>
+    <p class="ayuda" style="margin:0 0 10px">El idioma se elige solo por la lada del teléfono: español para México y países de habla hispana; inglés para los demás. Si dejas un mensaje vacío, se usa el texto original.</p>
+    ${WA_MENSAJES.map((m) => `<div class="wa-msg" data-k="${m.k}">
+      <div class="wa-msg-cab"><b>${esc(m.titulo)}</b> <span class="estado ${w.mensajes[m.k].personalizado ? "personalizada" : "listo"}" data-etq>${w.mensajes[m.k].personalizado ? "personalizado" : "original"}</span></div>
+      <p class="ayuda" style="margin:2px 0 8px">${esc(m.cuando)}</p>
+      <div class="wa-rejilla">
+        <div>
+          <textarea rows="9" maxlength="${ej.maximo}" spellcheck="true" aria-label="Texto de ${esc(m.titulo)}"></textarea>
+          <div class="wa-herr">
+            ${m.comodines.map((c) => `<button type="button" class="boton linea chico" data-ins="{${c}}" title="${esc(COMODIN_AYUDA[c])}">{${c}}</button>`).join("")}
+            <span class="ayuda wa-cuenta"></span>
+          </div>
+          <p class="ayuda" style="margin:4px 0 0">${m.comodines.map((c) => `<code>{${c}}</code> = ${esc(COMODIN_AYUDA[c])}`).join(" · ")}. Para negritas escribe *así*; para cursivas, _así_.</p>
+          <p class="wa-alerta" hidden></p>
+        </div>
+        <div>
+          <div class="ayuda" style="font-weight:700;margin-bottom:4px">Vista previa (con datos de ejemplo)</div>
+          <div class="wa-burbuja"></div>
+        </div>
+      </div>
+    </div>`).join("")}
+    <div class="wa-botones">
+      <button class="boton chico" type="button" id="btnWaGuardarMsg">Guardar mensajes</button>
+      <span class="ayuda">Los cambios se usan desde el siguiente mensaje que salga.</span>
+    </div>
+  </div>`;
+}
+
+function activarMensajesWa(w) {
+  const ej = w.ejemplo;
+  for (const caja of $$(".wa-msg")) {
+    const k = caja.dataset.k, ta = $("textarea", caja);
+    ta.value = w.mensajes[k].texto; // .value: el texto nunca se interpreta como HTML
+    const pintar = () => {
+      const txt = ta.value;
+      $(".wa-burbuja", caja).innerHTML = waFormato(waArmar(k, txt, ej));
+      $(".wa-cuenta", caja).textContent = `${txt.length} / ${ej.maximo} caracteres`;
+      const alerta = $(".wa-alerta", caja);
+      const vacio = !txt.trim();
+      if (vacio) { alerta.hidden = false; alerta.textContent = "Está vacío: se usará el texto original."; }
+      else if (k.startsWith("entrega") && !txt.includes("{link}")) { alerta.hidden = false; alerta.textContent = "Quitaste {link}: el link de la guía se añadirá al final del mensaje."; }
+      else if (k.startsWith("compartir") && !txt.includes("{portada}") && !txt.includes("sparkeducation-mx.com")) { alerta.hidden = false; alerta.textContent = "Quitaste {portada}: el link de la portada se añadirá al final del mensaje."; }
+      else alerta.hidden = true;
+      caja.dataset.cambio = txt.trim() === String(w.mensajes[k].texto).trim() ? "0" : "1";
+    };
+    ta.oninput = pintar;
+    for (const b of $$("[data-ins]", caja)) b.onclick = () => {
+      const ins = b.dataset.ins, ini = ta.selectionStart ?? ta.value.length, fin = ta.selectionEnd ?? ini;
+      if (ta.value.length - (fin - ini) + ins.length > ej.maximo) { aviso("El mensaje ya llegó al máximo de caracteres", true); return; }
+      ta.setRangeText(ins, ini, fin, "end"); ta.focus(); pintar();
+    };
+    const volver = document.createElement("button");
+    volver.type = "button"; volver.className = "boton linea chico"; volver.textContent = "Volver al texto original";
+    volver.onclick = () => { if (ta.value !== w.mensajes[k].original && !confirm("¿Volver al texto original de este mensaje? Se aplica al pulsar «Guardar mensajes».")) return; ta.value = w.mensajes[k].original; pintar(); };
+    $(".wa-herr", caja).append(volver);
+    pintar();
+  }
+  $("#btnWaGuardarMsg").onclick = async (e) => {
+    const body = {};
+    for (const caja of $$(".wa-msg")) {
+      const k = caja.dataset.k, txt = $("textarea", caja).value.trim();
+      // Igual al original (o vacío) se guarda vacío: así, si algún día cambia el original, se usa el nuevo.
+      body[w.mensajes[k].clave] = !txt || txt === w.mensajes[k].original.trim() ? "" : txt;
+    }
+    e.target.disabled = true;
+    try { await api("/config", { method: "POST", body }); aviso("Mensajes guardados"); await cargarWhatsApp(); }
+    catch (err) { aviso(err.message, true); e.target.disabled = false; }
+  };
 }
 </script>
 </body>

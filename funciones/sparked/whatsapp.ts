@@ -99,44 +99,97 @@ export function idiomaDe(intl: string): "es" | "en" {
 const ultimos = (d: string) => d.slice(-Math.min(10, d.length));
 const esChatIndividual = (chat: string) => /^\d{6,20}@(c\.us|lid)$/.test(chat);
 
-// ---------- Mensajes ----------
-const primerNombre = (n: unknown) => String(n ?? "").trim().split(/\s+/)[0]?.replace(/[*_~`]/g, "") ?? "";
-
-export function mensajeEntrega(idioma: "es" | "en", nombre: unknown, titulo: string, link: string): string {
-  const n = primerNombre(nombre);
-  const t = String(titulo ?? "").replace(/[*_~`]/g, "").trim() || (idioma === "es" ? "Tu guía" : "Your guide");
-  if (idioma === "en") {
-    return [
-      n ? `Hi, ${n}:` : "Hi:",
-      `Your SparkEd interactive study guide is ready: *${t}*`,
-      link,
-      "You have 7 days of unlimited access to your guide, on 2 devices. Each link is for one family only.",
-      'Want to recommend me to your friends and classmates? Reply with the word "share" and I\'ll send you a link you can forward.',
-    ].join("\n\n");
-  }
-  return [
-    n ? `Hola, ${n}:` : "Hola:",
-    `Tu guía interactiva de SparkEd ya está lista: *${t}*`,
-    link,
+// ---------- Mensajes (plantillas editables desde el panel) ----------
+// Daniel puede cambiar los cuatro mensajes en Ajustes → WhatsApp; se guardan en la tabla config (claves CLAVES_PLANTILLA).
+// Vacío = el texto original. Comodines: {nombre}, {titulo}, {link} y {portada}; en «compartir» solo {portada}.
+// Reglas que el servidor siempre cumple: la entrega lleva el link, «compartir» lleva la portada, el saludo sin nombre no
+// queda roto, máximo MAX_PLANTILLA caracteres y sin caracteres de control; los comodines desconocidos se quedan tal cual.
+export type ClavePlantilla = "entrega_es" | "entrega_en" | "compartir_es" | "compartir_en";
+export const MAX_PLANTILLA = 1500;
+export const CLAVES_PLANTILLA: Record<ClavePlantilla, string> = {
+  entrega_es: "sparked_wa_entrega_es",
+  entrega_en: "sparked_wa_entrega_en",
+  compartir_es: "sparked_wa_compartir_es",
+  compartir_en: "sparked_wa_compartir_en",
+};
+export const PLANTILLAS_ORIGINALES: Record<ClavePlantilla, string> = {
+  entrega_es: [
+    "Hola, {nombre}:",
+    "Tu guía interactiva de SparkEd ya está lista: *{titulo}*",
+    "{link}",
     "Tienes 7 días de acceso ilimitado a tu guía, en 2 dispositivos. Cada link es de una sola familia.",
     '¿Me quieres recomendar con tus amigos y compañeros? Escribe la palabra "compartir" y te mando un link que puedes reenviar.',
-  ].join("\n\n");
-}
-
-// Pensado para reenviarse tal cual: no habla de la conversación ni da las gracias.
-export function mensajeCompartir(idioma: "es" | "en"): string {
-  if (idioma === "en") {
-    return [
-      "*SparkEd*: interactive study guides made from your notes.",
-      "1. You take photos of your notes.\n2. Sparky turns them into a guide.\n3. You play and study.",
-      `Learn more here: ${PORTADA}`,
-    ].join("\n\n");
-  }
-  return [
+  ].join("\n\n"),
+  entrega_en: [
+    "Hi, {nombre}:",
+    "Your SparkEd interactive study guide is ready: *{titulo}*",
+    "{link}",
+    "You have 7 days of unlimited access to your guide, on 2 devices. Each link is for one family only.",
+    'Want to recommend me to your friends and classmates? Reply with the word "share" and I\'ll send you a link you can forward.',
+  ].join("\n\n"),
+  // Pensado para reenviarse tal cual: no habla de la conversación ni da las gracias.
+  compartir_es: [
     "*SparkEd*: guías de estudio interactivas hechas con tus apuntes.",
     "1. Tomas fotos de tus apuntes.\n2. Sparky las convierte en una guía.\n3. Juegas y estudias.",
-    `Conócelo aquí: ${PORTADA}`,
-  ].join("\n\n");
+    "Conócelo aquí: {portada}",
+  ].join("\n\n"),
+  compartir_en: [
+    "*SparkEd*: interactive study guides made from your notes.",
+    "1. You take photos of your notes.\n2. Sparky turns them into a guide.\n3. You play and study.",
+    "Learn more here: {portada}",
+  ].join("\n\n"),
+};
+// Datos de ejemplo para la vista previa del panel y para «Enviar mensaje de prueba» con una plantilla.
+export const EJEMPLO = { nombre: "María", titulo: "Fracciones y decimales al ataque" };
+
+const primerNombre = (n: unknown) => String(n ?? "").trim().split(/\s+/)[0]?.replace(/[*_~`{}]/g, "") ?? "";
+const sinFormato = (s: unknown) => String(s ?? "").replace(/[*_~`{}]/g, "").replace(/\s+/g, " ").trim();
+
+// Limpia una plantilla guardada: saltos de línea normales, sin caracteres de control (salvo el salto de línea y el
+// tabulador), sin espacios sobrantes al final y con el tope de caracteres.
+export function limpiarPlantilla(s: unknown): string {
+  return String(s ?? "").replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "").replace(/[ \t]+$/gm, "").trim().slice(0, MAX_PLANTILLA);
+}
+// La plantilla que se usaría hoy: la personalizada (si tiene algo) o la original.
+export function plantillaVigente(clave: ClavePlantilla, cfg: Record<string, string> | null | undefined): { texto: string; original: string; personalizado: boolean } {
+  const original = PLANTILLAS_ORIGINALES[clave];
+  const propia = limpiarPlantilla(cfg?.[CLAVES_PLANTILLA[clave]]);
+  return { texto: propia || original, original, personalizado: !!propia && propia !== original };
+}
+
+// Arma el mensaje final a partir de una plantilla (vacía = original).
+export function armarMensaje(clave: ClavePlantilla, plantilla: string | null | undefined, datos: { nombre?: unknown; titulo?: unknown; link?: string } = {}): string {
+  let t = limpiarPlantilla(plantilla) || PLANTILLAS_ORIGINALES[clave];
+  if (clave.startsWith("entrega")) {
+    const en = clave === "entrega_en";
+    const n = primerNombre(datos.nombre);
+    const titulo = sinFormato(datos.titulo) || (en ? "Your guide" : "Tu guía");
+    const link = String(datos.link ?? "").trim();
+    if (!n) {
+      // Sin nombre: «Hola, {nombre}:» → «Hola:», «Hola {nombre}!» → «Hola!», «{nombre}, tu guía…» → «Tu guía…».
+      t = t.replace(/[ \t]*,?[ \t]*\{nombre\}/g, "");
+      t = t.replace(/^,[ \t]*(\S)/gm, (_m, c1: string) => c1.toUpperCase());
+    }
+    t = t.replaceAll("{nombre}", n).replaceAll("{titulo}", titulo).replaceAll("{portada}", PORTADA);
+    if (link) {
+      if (t.includes("{link}")) t = t.replaceAll("{link}", link);
+      else if (!t.includes(link)) t = `${t}\n\n${link}`;
+    }
+    return t;
+  }
+  t = t.replaceAll("{portada}", PORTADA);
+  if (!t.includes("sparkeducation-mx.com")) t = `${t}\n\n${PORTADA}`;
+  return t;
+}
+
+export function mensajeEntrega(idioma: "es" | "en", nombre: unknown, titulo: string, link: string, plantilla?: string | null): string {
+  return armarMensaje(idioma === "en" ? "entrega_en" : "entrega_es", plantilla, { nombre, titulo, link });
+}
+export function mensajeCompartir(idioma: "es" | "en", plantilla?: string | null): string {
+  return armarMensaje(idioma === "en" ? "compartir_en" : "compartir_es", plantilla);
+}
+async function ajustesDe(c: CtxBase): Promise<Record<string, string>> {
+  try { return await c.config(); } catch { return {}; }
 }
 
 const MENSAJE_PRUEBA = "Mensaje de prueba de SparkEd: el WhatsApp de entregas está conectado.";
@@ -288,7 +341,9 @@ export async function avisarPorWhatsApp(c: CtxBase, compra: any, entrega: Entreg
       return { ok: false, estado: "sin_whatsapp" };
     }
 
-    const texto = mensajeEntrega(idiomaDe(intl), compra.nombre, entrega.titulo || compra.titulo, entrega.link);
+    const idioma = idiomaDe(intl);
+    const plantilla = (await ajustesDe(c))[CLAVES_PLANTILLA[idioma === "en" ? "entrega_en" : "entrega_es"]];
+    const texto = mensajeEntrega(idioma, compra.nombre, entrega.titulo || compra.titulo, entrega.link, plantilla);
     try {
       const id = await enviarTexto(chat, texto);
       // Si el teléfono está desconectado, Green API guarda el mensaje en cola 24 horas y lo manda al reconectarse.
@@ -381,7 +436,8 @@ export async function procesarAviso(c: CtxBase, b: any): Promise<string> {
 
     const idioma = idiomaDe(telefonoInternacional(compra.telefono) || chat.split("@")[0]);
     try {
-      const id = await enviarTexto(chat, mensajeCompartir(idioma));
+      const plantilla = (await ajustesDe(c))[CLAVES_PLANTILLA[idioma === "en" ? "compartir_en" : "compartir_es"]];
+      const id = await enviarTexto(chat, mensajeCompartir(idioma, plantilla));
       await anotar(c, { direccion: "salida", tipo: "compartir", chat, compra_id: compra.id, estado: "enviado", id_mensaje: id });
       return "compartir";
     } catch (e) {
@@ -448,7 +504,11 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
     const [enviados_7d, fallidos_7d, compartir_7d] = await Promise.all([contar("entrega", ["enviado", "en_cola"]), contar("entrega", ["fallido", "sin_whatsapp"]), contar("compartir", ["enviado"])]);
     const { data: ue } = await c.supabase.from("wa_mensajes").select("creado_en, tipo, detalle").eq("direccion", "salida").eq("estado", "fallido").order("creado_en", { ascending: false }).limit(1);
     const ultimo_error = ue?.[0] ? { fecha: ue[0].creado_en, tipo: ue[0].tipo, detalle: ue[0].detalle } : null;
-    return c.json({ motor, estado_instancia, numero, enviados_7d, fallidos_7d, compartir_7d, ultimo_error, webhook_configurado });
+    // Los cuatro mensajes automáticos: texto que se usaría hoy (plantilla con comodines), el original y si está personalizado.
+    const cfg = await ajustesDe(c);
+    const mensajes = Object.fromEntries((Object.keys(PLANTILLAS_ORIGINALES) as ClavePlantilla[]).map((k) => [k, { ...plantillaVigente(k, cfg), clave: CLAVES_PLANTILLA[k] }]));
+    const ejemplo = { ...EJEMPLO, link: `${await c.sitio()}guia.html#ejemplo`, portada: PORTADA, maximo: MAX_PLANTILLA };
+    return c.json({ motor, estado_instancia, numero, enviados_7d, fallidos_7d, compartir_7d, ultimo_error, webhook_configurado, mensajes, ejemplo });
   }
 
   if (c.m !== "POST") return c.error("Ruta no encontrada", 404);
@@ -478,7 +538,7 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
     try {
       const r = await api("setSettings", ajustes);
       const estado = await estadoInstancia();
-      return c.json({ ok: r?.saveSettings === true, estado_instancia: estado, nota: "Green API reinicia la instancia y aplica los cambios en unos 5 minutos." });
+      return c.json({ ok: r?.saveSettings === true, estado_instancia: estado, mensaje: r?.saveSettings === true ? "WhatsApp configurado. Green API aplica los cambios en unos 5 minutos." : "Green API no confirmó la configuración; inténtalo de nuevo en unos minutos.", nota: "Green API reinicia la instancia y aplica los cambios en unos 5 minutos." });
     } catch (e) {
       return c.error(`Green API no aceptó la configuración: ${recorte((e as Error).message, 200)}`, 502);
     }
@@ -487,15 +547,23 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
   // Mensaje de prueba a un teléfono.
   if (r2 === "prueba") {
     const body = await c.leerJson(c.req);
+    // mensaje (opcional): entrega_es · entrega_en · compartir_es · compartir_en → manda esa plantilla con los datos de ejemplo.
+    const cual = body.mensaje ? String(body.mensaje) : "";
+    if (cual && !(cual in PLANTILLAS_ORIGINALES)) return c.error("Mensaje de prueba desconocido.");
     const raw = String(body.telefono ?? "").trim();
     const intl = telefonoInternacional(raw.startsWith("+") || raw.replace(/\D/g, "").length === 10 ? raw : "+" + raw);
     if (!intl) return c.error("Escribe un teléfono válido, con lada (por ejemplo +52 y 10 dígitos).");
     const { chat, nota } = await resolverChat(intl);
     if (!chat) return c.error(`No se pudo mandar: ${nota ?? "el número no tiene WhatsApp"}.`);
     try {
-      const id = await enviarTexto(chat, MENSAJE_PRUEBA);
-      await anotar(c, { direccion: "salida", tipo: "prueba", chat, estado: "enviado", id_mensaje: id, detalle: nota });
-      return c.json({ ok: true, chat, id_mensaje: id, estado_instancia: await estadoInstancia(), nota: nota ?? null });
+      let texto = MENSAJE_PRUEBA;
+      if (cual) {
+        const k = cual as ClavePlantilla;
+        texto = armarMensaje(k, (await ajustesDe(c))[CLAVES_PLANTILLA[k]], { ...EJEMPLO, link: `${await c.sitio()}guia.html#ejemplo` });
+      }
+      const id = await enviarTexto(chat, texto);
+      await anotar(c, { direccion: "salida", tipo: "prueba", chat, estado: "enviado", id_mensaje: id, detalle: cual ? `plantilla ${cual}${nota ? " · " + nota : ""}` : nota });
+      return c.json({ ok: true, chat, id_mensaje: id, mensaje: cual ? "Mensaje de prueba enviado con datos de ejemplo" : "Mensaje de prueba enviado", estado_instancia: await estadoInstancia(), nota: nota ?? null });
     } catch (e) {
       await anotar(c, { direccion: "salida", tipo: "prueba", chat, estado: "fallido", detalle: (e as Error).message });
       return c.error(`No se pudo mandar: ${recorte((e as Error).message, 200)}`, 502);

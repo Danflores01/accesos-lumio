@@ -20,7 +20,7 @@ import type { CtxBase, CtxRutas } from "./tipos.ts";
 import { rutasExtras } from "./extras.ts";
 import { rutasWhatsApp, avisarPorWhatsApp, motorWhatsApp } from "./whatsapp.ts";
 
-const VERSION = "2026-11-09.1";
+const VERSION = "2026-11-09.2";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -81,6 +81,8 @@ const CONFIG_DEF: Record<string, string> = {
   sparked_correo_aviso: "",        // correo de Daniel para avisos de ventas
   sparked_correo_remitente: "SparkEd <onboarding@resend.dev>",
   sparked_correo_respuestas: "",   // buzón real al que llegan las respuestas de las familias (reply-to); vacío = sin reply-to
+  // Mensajes de WhatsApp que se mandan solos (whatsapp.ts). Vacío = el texto original. Se editan en Ajustes → WhatsApp.
+  sparked_wa_entrega_es: "", sparked_wa_entrega_en: "", sparked_wa_compartir_es: "", sparked_wa_compartir_en: "",
   // Ya no se usa (9 nov 2026): la familia recibe su link solo cuando la guía está completa y verificada.
   sparked_jugar_durante_generacion: "no",
   // Modelo (haiku | sonnet | opus) y esfuerzo (low | medium | high) de cada paso de la IA. El defecto es el de siempre.

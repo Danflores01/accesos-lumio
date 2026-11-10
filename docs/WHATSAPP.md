@@ -72,6 +72,22 @@ Lo que te toca a ti (recomendaciones de Green API, https://green-api.com/en/docs
 - Pide a las familias que **guarden el número** de SparkEd (por ejemplo, en la página de pago o en el correo).
 - No uses ese número para mandar mensajes masivos a mano.
 
+### Cómo cambiar los mensajes
+
+1. En el panel, entra a **Ajustes** y baja a la tarjeta **WhatsApp (Green API)** → «Mensajes que se mandan solos».
+2. Hay cuatro mensajes: la entrega de la guía (español e inglés) y la respuesta a «compartir» (español e inglés). El idioma se elige solo por la lada del teléfono.
+3. Escribe tu texto en la caja. Con los botones metes los datos que cambian en cada familia:
+   - `{nombre}`: el primer nombre de quien compró.
+   - `{titulo}`: el título de la guía.
+   - `{link}`: el link de la guía.
+   - `{portada}`: sparkeducation-mx.com (en el mensaje de «compartir»).
+4. Para negritas escribe `*así*`; para cursivas, `_así_`. A la derecha (o abajo, en el celular) ves la **vista previa** con datos de ejemplo.
+5. Pulsa **Guardar mensajes**. Se usan desde el siguiente mensaje que salga.
+6. Para deshacer, pulsa **Volver al texto original** y luego **Guardar mensajes**. Si dejas una caja vacía, también se usa el original.
+7. Para ver cómo llega de verdad, elige el mensaje en el selector junto a «Enviar mensaje de prueba» y mándalo a tu número (sale con datos de ejemplo). Recuerda que el plan gratis solo permite 3 chats al mes.
+
+Reglas que el sistema cumple aunque se te olvide algo: la entrega **siempre** lleva el link de la guía (si quitas `{link}`, se añade al final); el mensaje de «compartir» siempre lleva el link de la portada; si la familia no dejó nombre, el saludo queda «Hola:»; cada mensaje tiene un máximo de 1 500 caracteres.
+
 ---
 
 ## Parte 2. Técnica
@@ -105,6 +121,13 @@ Código: `funciones/sparked/whatsapp.ts` (módulo aparte; `index.ts` lo llama). 
 - Estados: `enviado` · `en_cola` (instancia sin sesión: Green API guarda la cola 24 horas) · `sin_whatsapp` · `sin_telefono` · `sin_motor` · `fallido` · `ya_enviado` (no se mandó por ser repetida).
 - Idempotente: reclama la compra con `update … where wa_estado is null`; solo una ejecución gana. `forzar: true` (reenvío del panel) manda otra vez.
 - Si la instancia está `blocked` o `suspended`, no manda. Si el envío falla, aviso a Daniel (máximo uno por hora). Desconexión: aviso máximo uno al día.
+
+### Plantillas de los mensajes
+
+- Claves en la tabla `config` (y en `CONFIG_DEF` de `index.ts`): `sparked_wa_entrega_es`, `sparked_wa_entrega_en`, `sparked_wa_compartir_es`, `sparked_wa_compartir_en`. Vacío = texto original (`PLANTILLAS_ORIGINALES` en `whatsapp.ts`). El panel guarda con `POST /admin/config`; si el texto es igual al original, guarda vacío.
+- `armarMensaje()` en el servidor: limpia saltos de línea y caracteres de control, corta a 1 500 caracteres; entrega: `{nombre}`, `{titulo}`, `{link}`, `{portada}`; si falta el link, lo añade al final en su propio renglón; sin nombre quita `, {nombre}` («Hola, :» → «Hola:»). «Compartir»: solo `{portada}`; si no aparece `sparkeducation-mx.com`, la añade al final. Comodines desconocidos se quedan tal cual.
+- `GET /admin/whatsapp` devuelve además `mensajes` (por plantilla: `texto`, `original`, `personalizado`, `clave`) y `ejemplo` (`nombre`, `titulo`, `link`, `portada`, `maximo`).
+- `POST /admin/whatsapp/prueba { telefono, mensaje? }`: con `mensaje` = `entrega_es` · `entrega_en` · `compartir_es` · `compartir_en`, manda esa plantilla con los datos de ejemplo (María, «Fracciones y decimales al ataque», `<sitio>guia.html#ejemplo`).
 
 ### Números de México
 
