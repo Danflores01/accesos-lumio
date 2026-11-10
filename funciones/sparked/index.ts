@@ -17,12 +17,12 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, verificarCartucho, type Trabajo } from "./pipeline.ts";
 import type { CtxBase, CtxRutas } from "./tipos.ts";
-import { rutasExtras } from "./extras.ts";
+import { rutasExtras, codigoBorrado } from "./extras.ts";
 import { rutasWhatsApp, avisarPorWhatsApp, motorWhatsApp } from "./whatsapp.ts";
 import { imagenEntrega, imagenCompartir } from "./imagen-wa.ts";
 import { matrizQr } from "./qr.ts";
 
-const VERSION = "2026-11-10.1";
+const VERSION = "2026-11-10.2";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -507,7 +507,7 @@ async function avisoMercadoPago(req: Request, url: URL): Promise<Response> {
 const CODIGO_NO_VALIDO = "Ese código no es válido";
 const CODIGO_INTENTOS_MAX = 5;
 const MSG_REVISANDO = "Estamos revisando tu guía; te avisamos por correo en cuanto esté lista.";
-type Codigo = { id: string; codigo: string; tipo: string; valor: number; usos_max: number | null; usos: number; activo: boolean; expira_en: string | null };
+type Codigo = { id: string; codigo: string; tipo: string; valor: number; usos_max: number | null; usos: number; activo: boolean; expira_en: string | null; borrado_en?: string | null };
 type Quien = { telefono: string; correo: string; ip: string | null };
 const normalizarCodigo = (v: unknown) => String(v ?? "").normalize("NFC").replace(/\s+/g, "").toUpperCase().slice(0, 60);
 const formatoCodigo = (c: string) => /^[A-Z0-9Ñ][A-Z0-9Ñ_-]{2,39}$/.test(c);
@@ -515,6 +515,7 @@ const redondear = (n: number) => Math.round(n * 100) / 100;
 const comillas = (s: string) => `"${String(s).replace(/["\\]/g, "")}"`; // valor seguro dentro de un filtro .or()
 function motivoCodigo(c: Codigo | null): string | null {
   if (!c) return "no_existe";
+  if (codigoBorrado(c)) return "borrado"; // borrado en el panel: deja de valer al momento
   if (!c.activo) return "apagado";
   if (c.expira_en && new Date(c.expira_en).getTime() <= Date.now()) return "vencido";
   if (c.usos_max !== null && c.usos_max !== undefined && Number(c.usos) >= Number(c.usos_max)) return "agotado";
@@ -536,7 +537,7 @@ async function revisarCodigo(valor: unknown, quien: Quien): Promise<null | { err
   const filtro = [`telefono.eq.${comillas(quien.telefono)}`, `correo.eq.${comillas(quien.correo)}`, quien.ip ? `ip.eq.${comillas(quien.ip)}` : ""].filter(Boolean).join(",");
   const { count } = await supabase.from("codigo_intentos").select("id", { count: "exact", head: true }).gte("creado_en", new Date(Date.now() - 3600 * 1000).toISOString()).not("resultado", "in", "(ok,bloqueado)").or(filtro);
   if ((count ?? 0) >= CODIGO_INTENTOS_MAX) { await anotarIntento({ ...fila, resultado: "bloqueado" }); return { error: CODIGO_NO_VALIDO }; }
-  const { data } = formatoCodigo(escrito) ? await supabase.from("codigos").select("id, codigo, tipo, valor, usos_max, usos, activo, expira_en").eq("codigo", escrito).maybeSingle() : { data: null };
+  const { data } = formatoCodigo(escrito) ? await supabase.from("codigos").select("*").eq("codigo", escrito).maybeSingle() : { data: null };
   const motivo = motivoCodigo(data as Codigo | null);
   if (motivo) { await anotarIntento({ ...fila, codigo_id: (data as any)?.id ?? null, resultado: motivo }); return { error: CODIGO_NO_VALIDO }; }
   return { codigo: data as Codigo };
@@ -1410,7 +1411,7 @@ Deno.serve(async (req: Request) => {
           supabase.from("codigo_intentos").select("id, codigo, resultado, telefono, correo, ip, compra_id, creado_en").order("creado_en", { ascending: false }).limit(60),
         ]);
         if (e) throw e;
-        return json({ codigos: cods ?? [], intentos: ints ?? [] });
+        return json({ codigos: (cods ?? []).filter((x) => !codigoBorrado(x)), intentos: ints ?? [] }); // los borrados no se listan
       }
       if (rec === "codigos" && !id && m === "POST") {
         const b = await leerJson(req);
@@ -1429,7 +1430,7 @@ Deno.serve(async (req: Request) => {
           expira = d.toISOString();
         }
         const { data, error: e } = await supabase.from("codigos").insert({ codigo, tipo, valor, usos_max: usosMax, expira_en: expira, nota: texto(b.nota, 200) || null }).select().single();
-        if (e) return /duplicate|unique/i.test(e.message) ? error("Ese código ya existe. Escribe otro.", 409) : error(e.message);
+        if (e) return /duplicate|unique/i.test(e.message) ? error("Ese código ya existe (o se usó antes y se borró). Escribe otro.", 409) : error(e.message);
         return json(data, 201);
       }
       if (rec === "codigos" && esUuid(id) && m === "PATCH") {
@@ -1437,6 +1438,8 @@ Deno.serve(async (req: Request) => {
         if (typeof b.activo === "boolean") cambios.activo = b.activo;
         if (typeof b.nota === "string") cambios.nota = texto(b.nota, 200) || null;
         if (!Object.keys(cambios).length) return error("Nada que cambiar");
+        const { data: actual } = await supabase.from("codigos").select("*").eq("id", id).maybeSingle();
+        if (codigoBorrado(actual)) return error("Ese código se borró y ya no se puede cambiar.", 409);
         const { data, error: e } = await supabase.from("codigos").update(cambios).eq("id", id).select().single(); if (e) throw e;
         return json(data);
       }

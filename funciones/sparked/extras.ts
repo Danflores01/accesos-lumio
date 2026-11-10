@@ -7,6 +7,10 @@
 //   PATCH /admin/comentarios/:id { estado }   · DELETE /admin/comentarios/:id
 //   GET  /admin/costos?dias=30                gasto de IA en pesos (tipo de cambio del DOF del día de cada trabajo)
 //   POST /admin/costos/servicios { servicios } lista de servicios fijos mensuales (fila sparked_servicios_fijos de config)
+//   GET  /admin/costos/guias?dias=90          costo de IA por guía, SIN datos personales ni títulos: conteos, promedios y
+//                                             una lista de { fecha, tipo, usd, mxn } (pestaña «Guías» del panel)
+//   DELETE /admin/codigos/:id                 borra un código (borrado suave: activo = false y borrado_en = ahora; el
+//                                             historial de intentos y compras se conserva)
 //
 // Tipo de cambio: el "tipo de cambio para solventar obligaciones denominadas en dólares" (FIX de Banxico publicado en
 // el DOF), de la API abierta del DOF (sidofqa.segob.gob.mx, indicador 158; sin llave). Alternativa opcional: la API SIE
@@ -364,7 +368,82 @@ async function leerServicios(c: CtxRutas): Promise<{ servicios: Servicio[]; guar
   return { servicios: SERVICIOS_INICIALES, guardados: false };
 }
 
+// ---------- Costo de IA por guía (sin datos personales) ----------
+type TrabajoGuia = { id?: string; alcance: string; estado: string; costo_usd: number | string | null; creado_en: string; guia_id: string | null; borrador_id: string | null };
+export type FilaCostoGuia = { fecha: string; tipo: "vista_previa" | "guia_completa"; usd: number; mxn: number };
+
+/**
+ * Cálculo puro del reporte de costos por guía (se prueba sin base de datos).
+ * - Vista previa: un trabajo "vista_previa" terminado.
+ * - Guía completa: un trabajo "resto" terminado MÁS el costo de su vista previa (la guía pagada reutiliza el bloque 1),
+ *   o un trabajo "completa" terminado (guías hechas desde el panel).
+ * - Sin terminar: trabajos con error (su gasto fue real, pero no produjeron guía); se cuentan aparte.
+ * Cada parte se pasa a pesos con el tipo de cambio del día (Ciudad de México) en que se creó.
+ */
+export function calcularCostosGuias(e: { trabajos: TrabajoGuia[]; tipos: TipoCambio[]; ajusteTc: number; hoy: string; dias: number; maxFilas?: number }) {
+  const { hoy, dias } = e;
+  const tcDe = (dia: string) => tcDelDia(e.tipos, dia)?.valor ?? e.ajusteTc;
+  const d30 = sumarDias(hoy, -29), desdeTabla = sumarDias(hoy, -(dias - 1));
+  const usdDe = (t: TrabajoGuia) => Number(t.costo_usd ?? 0) || 0;
+  const mxnDe = (t: TrabajoGuia) => usdDe(t) * tcDe(diaMx(t.creado_en));
+  // Vista previa terminada más reciente de cada borrador (o guía), para sumarla a su trabajo "resto".
+  const previaDe = (t: TrabajoGuia): TrabajoGuia | null => {
+    let mejor: TrabajoGuia | null = null;
+    for (const p of e.trabajos) {
+      if (p.alcance !== "vista_previa" || p.estado !== "listo") continue;
+      const misma = (t.borrador_id && p.borrador_id === t.borrador_id) || (!t.borrador_id && t.guia_id && p.guia_id === t.guia_id);
+      if (misma && p.creado_en <= t.creado_en && (!mejor || p.creado_en > mejor.creado_en)) mejor = p;
+    }
+    return mejor;
+  };
+  const filas: (FilaCostoGuia & { dia: string })[] = [];
+  const sinTerminar = { d30: 0, total: 0, mxn_total: 0 };
+  for (const t of e.trabajos) {
+    const dia = diaMx(t.creado_en);
+    if (t.estado === "error") { sinTerminar.total++; sinTerminar.mxn_total += mxnDe(t); if (dia >= d30) sinTerminar.d30++; continue; }
+    if (t.estado !== "listo") continue;
+    if (t.alcance === "vista_previa") filas.push({ fecha: t.creado_en, dia, tipo: "vista_previa", usd: usdDe(t), mxn: mxnDe(t) });
+    else if (t.alcance === "completa") filas.push({ fecha: t.creado_en, dia, tipo: "guia_completa", usd: usdDe(t), mxn: mxnDe(t) });
+    else if (t.alcance === "resto") {
+      const p = previaDe(t);
+      filas.push({ fecha: t.creado_en, dia, tipo: "guia_completa", usd: usdDe(t) + (p ? usdDe(p) : 0), mxn: mxnDe(t) + (p ? mxnDe(p) : 0) });
+    }
+  }
+  const de = (tipo: string, desde = "") => filas.filter((f) => f.tipo === tipo && f.dia >= desde && f.dia <= hoy);
+  const prom = (arr: { usd: number; mxn: number }[]) => arr.length ? { n: arr.length, usd: r4(arr.reduce((a, f) => a + f.usd, 0) / arr.length), mxn: r2(arr.reduce((a, f) => a + f.mxn, 0) / arr.length) } : { n: 0, usd: 0, mxn: 0 };
+  const ultimas = filas.filter((f) => f.dia >= desdeTabla && f.dia <= hoy).sort((a, b) => (a.fecha < b.fecha ? 1 : -1)).slice(0, e.maxFilas ?? 200)
+    .map((f) => ({ fecha: f.fecha, tipo: f.tipo, usd: r4(f.usd), mxn: r2(f.mxn) }));
+  return {
+    dias, hoy, desde: desdeTabla,
+    conteo: {
+      vistas_previas: { d30: de("vista_previa", d30).length, total: de("vista_previa").length },
+      guias_completas: { d30: de("guia_completa", d30).length, total: de("guia_completa").length },
+      sin_terminar: { ...sinTerminar, mxn_total: r2(sinTerminar.mxn_total) },
+    },
+    promedio: { vista_previa: prom(de("vista_previa")), guia_completa: prom(de("guia_completa")) },
+    promedio_30: { vista_previa: prom(de("vista_previa", d30)), guia_completa: prom(de("guia_completa", d30)) },
+    ultimas,
+  };
+}
+
+async function costosPorGuia(c: CtxRutas): Promise<Response> {
+  const dias = Math.min(365, Math.max(1, Math.round(Number(new URL(c.req.url).searchParams.get("dias")) || 90)));
+  const hoy = diaMx(Date.now());
+  // Solo columnas de costo y fechas: ni títulos, ni nombres, ni teléfonos salen de aquí.
+  const { data, error: e } = await c.supabase.from("trabajos").select("id, alcance, estado, costo_usd, creado_en, guia_id, borrador_id").in("alcance", ["vista_previa", "resto", "completa"]).order("creado_en").limit(10000);
+  if (e) throw e;
+  const T = (data ?? []) as TrabajoGuia[];
+  const primero = T.length ? diaMx(T[0].creado_en) : hoy;
+  const desde = [primero, sumarDias(hoy, -(dias - 1))].sort()[0];
+  const [{ tipos }, cfg] = await Promise.all([tiposDeCambio(c, desde, hoy), c.config()]);
+  const ajusteTc = Number(cfg.sparked_tipo_cambio) || 18.5;
+  const r = calcularCostosGuias({ trabajos: T, tipos, ajusteTc, hoy, dias });
+  const tc = tcDelDia(tipos, hoy);
+  return c.json({ tipo_cambio: { valor: tc ? tc.valor : ajusteTc, fecha: tc?.fecha ?? null, fuente: tc ? tc.fuente : "ajuste" }, ...r });
+}
+
 async function adminCostos(c: CtxRutas): Promise<Response> {
+  if (c.ruta[2] === "guias" && !c.ruta[3] && c.m === "GET") return await costosPorGuia(c);
   if (c.ruta[2] === "servicios" && c.m === "POST") {
     const v = validarServicios((await c.leerJson(c.req)).servicios);
     if (typeof v === "string") return c.error(v);
@@ -416,6 +495,38 @@ async function adminCostos(c: CtxRutas): Promise<Response> {
 }
 
 // ======================================================================
+// 3. BORRAR CÓDIGOS DE DESCUENTO (borrado suave)
+// ======================================================================
+// Un código borrado queda apagado (activo = false: la función SQL sparked_usar_codigo ya no le suma usos) y con la fecha
+// en borrado_en: no aparece en la lista del panel, no se puede volver a encender y, al escribirlo, cuenta como borrado.
+// La fila se conserva para no perder el historial (intentos y compras que lo usaron).
+// Si la columna borrado_en todavía no existe (falta la migración 20261110), el código solo se apaga y se avisa.
+
+/** true si el código está borrado (con o sin la columna borrado_en en la base). */
+export const codigoBorrado = (cod: Record<string, unknown> | null | undefined) => !!cod?.borrado_en;
+/** El error de Supabase/PostgREST dice que falta la columna borrado_en (la migración no se ha aplicado). */
+export const faltaColumnaBorrado = (e: { message?: string; code?: string } | null | undefined) =>
+  !!e && (e.code === "42703" || e.code === "PGRST204" || /borrado_en/i.test(e.message ?? ""));
+export const MSG_FALTA_MIGRACION = "El código quedó apagado, pero todavía no se puede borrar: falta aplicar en la base de datos la migración 20261110_sparked_codigos_borrado.sql. Mientras tanto ya no funciona.";
+
+async function borrarCodigo(c: CtxRutas, id: string): Promise<Response> {
+  const { data: cod, error: e0 } = await c.supabase.from("codigos").select("*").eq("id", id).maybeSingle();
+  if (e0) throw e0;
+  if (!cod) return c.error("No encontramos ese código", 404);
+  if (codigoBorrado(cod)) return c.json({ ok: true, codigo: cod.codigo, borrado_en: cod.borrado_en });
+  const cuando = c.ahora();
+  const { data, error: e } = await c.supabase.from("codigos").update({ activo: false, borrado_en: cuando }).eq("id", id).select("id");
+  if (faltaColumnaBorrado(e)) {
+    const { error: e2 } = await c.supabase.from("codigos").update({ activo: false }).eq("id", id);
+    if (e2) throw e2;
+    return c.error(MSG_FALTA_MIGRACION, 409);
+  }
+  if (e) throw e;
+  if (!data?.length) return c.error("No encontramos ese código", 404);
+  return c.json({ ok: true, codigo: cod.codigo, borrado_en: cuando });
+}
+
+// ======================================================================
 // Enrutador del módulo
 // ======================================================================
 export async function rutasExtras(c: CtxRutas): Promise<Response | null> {
@@ -423,6 +534,15 @@ export async function rutasExtras(c: CtxRutas): Promise<Response | null> {
   if (r0 === "comentarios" && !c.ruta[1]) {
     if (c.m !== "POST") return c.error("Método no permitido", 405);
     return await recibirComentario(c);
+  }
+  // Solo DELETE /admin/codigos/:id es de este módulo; el resto de /admin/codigos lo atiende index.ts.
+  if (r0 === "admin" && r1 === "codigos" && esUuid(c.ruta[2]) && !c.ruta[3] && c.m === "DELETE") {
+    if (!(await c.esAdmin())) return c.error("Clave de administrador incorrecta", 401);
+    try { return await borrarCodigo(c, c.ruta[2]); }
+    catch (e) {
+      console.error("extras:", (e as Error)?.message ?? e);
+      return c.error("Error del servidor: " + ((e as Error)?.message ?? "desconocido"), 500);
+    }
   }
   if (r0 === "admin" && (r1 === "comentarios" || r1 === "costos")) {
     if (!(await c.esAdmin())) return c.error("Clave de administrador incorrecta", 401);
