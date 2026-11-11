@@ -2,6 +2,18 @@
 
 Lo más nuevo arriba. Cada entrada: qué cambió, por qué, a quién se avisó y qué secciones de su manual.
 
+## 2026-11-11 · Tope baja a 5 MXN y nada se corrige sin fuente
+- Qué: cada guía en producción ≤ 5 MXN de IA (antes 6); la verificación solo cambia la guía con una fuente que salió en
+  la búsqueda, si no va a Reportes. Arreglos del código 2026-11-11.5 (verificación, segunda búsqueda, «;» en el planificador).
+- Por qué: Daniel; en la prueba v52 la IA «corrigió» sin fuente que lápiz es esdrújula.
+- A quién: IA de SPARKED (encargo y checklist corto en su manual).
+
+## 2026-11-11 · Nueva sesión: Legal y Privacidad
+- Qué: sesión con Opus 5.5 para el aviso de privacidad, los términos de uso y la seguridad de uso que se explica a los clientes.
+  Trabaja solo en `_equipo/legal/` y su manual; no publica: entrega a la jefe para revisión de Daniel (y de un abogado).
+- Por qué: pedido de Daniel, transparencia con las familias.
+- A quién: la propia sesión (encargo inicial); tabla de `LEEME.md`.
+
 ## 2026-11-11 · Tope de costo de IA: 6 MXN por guía
 - Qué: en producción cada guía (vista previa + resto) debe costar 6 MXN o menos de IA; pruebas hasta 15 MXN.
 - Por qué: Daniel ve un promedio de 4 a 5 MXN y quiere que 6 sea el máximo.

@@ -6,12 +6,13 @@ GitHub no publica esta carpeta (empieza con guion bajo).
 
 | Sesión | Motor | Manual |
 |---|---|---|
-| Principal («Study Guide Hub») | Fable 5.2 | Coordina, decide entre sesiones, despliega con el sí de Daniel |
+| Principal («Study Guide Hub») | Opus 5.5 (lo crítico: ayudante Fable en max) | Coordina, decide entre sesiones, despliega con el sí de Daniel |
 | IA de SPARKED | Opus 5.5 | `ia-sparked.md` |
 | Motores de Pago para Sparked | Opus 5.5 | `pagos.md` |
 | Visuales y Marketing SparkEd | Sonnet 5.5 | `visuales-marketing.md` |
 | Animaciones y Juegos | Sonnet 5.5 | `animaciones-juegos.md` |
 | Jefe de Seguridad | Opus 5.5 | `seguridad.md` |
+| Legal y Privacidad (aviso de privacidad, términos de uso) | Opus 5.5 | `legal-privacidad.md` (lo escribe ella; borradores en `legal/`) |
 
 La sesión jefe mantiene estos manuales al día con la skill `jefe-de-equipo` (fuente en `_equipo/skill/`, instalada en
 la carpeta de usuario de Claude) y anota cada cambio avisado en `CAMBIOS.md`.
