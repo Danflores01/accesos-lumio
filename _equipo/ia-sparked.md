@@ -71,9 +71,9 @@ prueba (nunca el link de una familia), versión desplegada si la hubo, y qué ac
 | Qué | Dónde |
 |---|---|
 | Cadena de pasos | `funciones/sparked/pipeline.ts`: `ejecutarPaso`, `claude`, `llamar`, `ajusteDe`, `ajustarPlan`, `recortarBloques`, `recortarVistaPrevia`, `verificarCartucho`, `aplicarCorreccion`, `aplicarOrtografia` |
-| Temas del temario (11 nov) | `pipeline.ts`: `temasPendientes`, `investigarTemas`, `validarInvestigacion`, `marcarInvestigado`, `agregarNotasTemario`, `reportesContradice`; prompt `INVESTIGADOR`; ajuste `sparked_investigar` (apagado: "no"); prueba de una guía con `POST /admin/guias/<id>/generar {"investigar":"si"}` |
+| Temas del temario (11 nov) | `pipeline.ts`: `temasPendientes`, `investigarTemas`, `validarInvestigacion`, `marcarInvestigado`, `agregarNotasTemario`, `reportesContradice`, `bloqueSoloNota`, `contenidoParaVerificar`; topes `MAX_TEMAS_INVESTIGAR` (6) y `BUSQUEDAS_POR_TEMA` (2); prompt `INVESTIGADOR`; ajuste `sparked_investigar` (apagado: "no"); prueba de una guía con `POST /admin/guias/<id>/generar {"investigar":"si"}` |
 | Prompts | `funciones/sparked/prompts.ts` (identidad del Planificador y regla 12 «TODO CABE» del Generador) |
-| Trabajos y entrega | `funciones/sparked/index.ts`: `correrPaso` (3 intentos por paso), `reanudarSiAtorado` (150 s quieto; 6 interrupciones = error), `alFinalizar`, `lanzarResto` (solo después del pago) |
+| Trabajos y entrega | `funciones/sparked/index.ts`: `correrPaso` (3 intentos por paso), `reanudarSiAtorado` (150 s quieto; 6 interrupciones = error; lo llaman las consultas de las familias y, desde el 2026-11-11.3, `GET /admin/trabajos/<id>` para las guías `completa`), `alFinalizar`, `lanzarResto` (solo después del pago; sigue en el primer bloque que la vista previa no escribió) |
 | Despliegue | `funciones/puente-sparked/index.ts` (puente a un commit fijo) y `_guardia/skill/guardia-sparked/references/publicar-rapido.md` |
 | Tablas | `trabajos` (`alcance`: vista_previa, resto o completa; `paso`, `estado`, `intentos`, `error`, `costo_usd`, `datos`), `borradores`, `guias` (`cartucho`, `vista_previa`, `reporte`, `costo_mxn`), `config`, `tipos_cambio` |
 | Dentro de `trabajos.datos` | `inventario`, `plan`, `bloques`, `metricas` (costo de cada llamada), `diagnostico(s)`, `intento_ia`, `descartes`, `ortografia`, `verificacion`, `no_leidas`, `huecos` |
@@ -113,6 +113,8 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 - [ ] Pasó la revisión final: el cartucho dice `completo: true` y el `reporte` no trae `verificacion_final`.
 - [ ] La verificación de datos corrió (`reporte.verificacion` con resultados) y cada «✓ Dato corregido» sale una vez.
 - [ ] Revisé `datos.descartes` y `datos.no_leidas`: nada se perdió sin motivo.
+- [ ] Ninguna pregunta en blanco: `verificarCartucho` sin «sin texto» y, si cambié prompts o el reparador, la consulta de
+      preguntas en blanco sobre las guías de los últimos 30 días (nota `ia-arreglo-preguntas-en-blanco-prueba-en-seco.sql`).
 - [ ] Leí a mano 10 preguntas al azar contra el inventario: respuesta correcta, nada inventado, tono y largo del grado.
 - [ ] Cobertura: cada parte de los apuntes quedó en un bloque; reviso `inventario_no_usado` y `temas_a_investigar`.
 - [ ] `node herramientas/revisar-slides.mjs <cartucho.json>` y `<cartucho.json>:previa` en 0 y fotos al 100 %
@@ -128,7 +130,8 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 - [ ] Leo la causa: `error`, `datos.diagnostico(s)` (parada, tokens, inicio y fin del texto) y la línea `IA`.
 - [ ] Error de las fotos («no parecen material de estudio», «No se pudo leer ninguna foto»): no es del sistema; lo reporto.
 - [ ] Error del motor (`Falta configurar`, `Claude 401`, `429` o `529`): `/admin/ping` → `motores.ia`; aviso a Daniel.
-- [ ] Atorado más de 5 minutos o falla de una sola vez: `POST /admin/trabajos/<id>/reintentar` (el ↻ del Resumen).
+- [ ] Atorado más de 5 minutos o falla de una sola vez: `POST /admin/trabajos/<id>/reintentar` (el ↻ del Resumen). Las
+      guías de prueba y de biblioteca (`completa`) se reanudan solas al consultar `GET /admin/trabajos/<id>`.
 - [ ] Falla que se repite en el mismo paso: arreglo, pruebo con un inventario de prueba, despliegue con el sí de Daniel
       y entonces reintento el trabajo de la familia.
 - [ ] «Verificación final: …»: la guía no se entregó; arreglo la causa y reintento; la entrega sale sola al completarse.
@@ -182,6 +185,20 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
   el trabajo quedó trabado 22 min: los de las familias se reanudan solos cuando su página pregunta, los del
   administrador no. Las búsquedas fallidas («entrada inválida», tope agotado) dejaron sin confirmar temas fáciles. El
   revisor de slides no ve preguntas vacías: revisar también el contenido.
+- **11 nov · Preguntas en blanco en guías ya entregadas:** 22 preguntas de 8 guías (6 pagadas y entregadas, del 7 al
+  10 nov) y 1 de una vista previa traían su texto en `texto`; el reproductor solo muestra `pregunta ?? afirmacion ??
+  enunciado` (y el juego de deslizar, solo `afirmacion`). Causa: el prompt del reparador decía «el mismo formato del
+  generador» sin mostrarlo y el código le pasaba las preguntas con la clave `texto`; la vista previa no pasa por
+  revisar. Ningún revisor lo vio: el de slides no lee contenido y la revisión final no miraba el texto. Lección: cada
+  prompt que pide JSON muestra el formato exacto; el código acomoda los nombres desde que se escribe; y una consulta
+  a la base («¿cuántas preguntas en blanco hay?») vale más que revisar una guía a ojo.
+- **11 nov · Arreglos antes de encender la investigación (código 2026-11-11.3):** un bloque sin nada confirmado y sin
+  contenido propio no se escribe ni se repara (solo lleva su nota, que al armar pasa al bloque vecino; en la vista
+  previa se escribe el bloque siguiente); si en toda la guía no hay nada confirmado ni contenido, la guía falla con
+  error claro en vez de inventar. La revisión final rechaza preguntas sin texto (la guía de la prueba real no habría
+  salido). Búsqueda sin ninguna página → un reintento con consultas más cortas. La verificación ya no repite lo que trae
+  fuentes (0 búsquedas si todo es investigado; 4 si es más de la mitad). Lección: cada regla de «no inventar» necesita
+  su candado en tres lugares: el escritor, el reparador y la revisión final.
 - **11 nov · Banco de pruebas que no caduca:** una guía de biblioteca (`POST /admin/guias` + subir las páginas +
   `/generar`) no es de ninguna familia, no se publica y su material dura 365 días.
 - 2026-11-11 · Daniel: **la vista previa NO se abarata.** «La calidad es primero y al cliente le tenemos que mostrar lo que
@@ -222,15 +239,19 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 ## Pendientes de mi tema
 
 - **Temas del temario con fuentes (v50, apagado).** Prueba real del 11 nov (temario de Español 1.º, guía
-  `7e590167…`): 3 de 6 subtemas confirmados (SEP), 3 como nota, 5.87 MXN. Antes de encenderlo: (1) reintentar cuando
-  la búsqueda no devolvió páginas y pedir búsquedas simples; (2) un bloque sin nada confirmado no se escribe (su nota
-  pasa al bloque vecino); (3) `normalizarActividad`: `texto` → `pregunta` y `fuente` en texto → objeto (el reparador
-  dejó preguntas vacías), y la revisión final rechaza preguntas sin texto; (4) `GET /admin/trabajos/:id` reanuda un
-  trabajo atorado; (5) lo de costos de la nota `ia-tope-6-mxn.md`. Luego, la misma prueba otra vez.
+  `7e590167…`): 3 de 6 subtemas confirmados (SEP), 3 como nota, 5.87 MXN. Los 4 arreglos (preguntas vacías o
+  inventadas, reintento de búsquedas, reanudar pruebas trabadas y costo) están en el código 2026-11-11.3, probados sin
+  IA y SIN desplegar. Falta: despliegue (principal, con el sí de Daniel) y la misma prueba otra vez
+  (`scratchpad/investigar/probar-temario.mjs`, máx. 15 MXN). Se enciende si confirma ≥ 5 de 6, sin preguntas
+  inventadas ni vacías y en ≤ 6 MXN.
+- **Arreglo de datos de las preguntas en blanco** (6 guías pagadas y entregadas, 8 compras): SQL con respaldo,
+  arreglo y comprobación en la nota `ia-arreglo-preguntas-en-blanco.sql` de la carpeta de notas de la principal
+  (prueba en seco: 22 → 0 y 1 → 0). Se corre solo con el sí de Daniel; si se avisa a las familias, lo decide él.
+- **Guardar lo investigado para reutilizarlo** (materia + grado + tema, 30 días; tabla nueva): Daniel dijo «no
+  todavía»; proponerlo aparte después de la prueba.
 - Solo las preguntas muestran la fuente investigada; Mix & match, Super sort y los demás juegos no (Animaciones y Juegos,
   si Daniel lo quiere). La ayuda de Reportes en el panel solo habla de la banderita y la ronda cuenta estos reportes
   como «de familias» (principal).
-- Si en un bloque ningún tema se confirma y no hay más contenido, el bloque queda sin juegos y la guía va a revisión.
 - **Modelos:** confirmar con 2 o 3 corridas más y probar aparte «escribir» (con Sonnet, unos 10 pesos más por guía).
 - **Banco de pruebas fijo** (§12c): Civics III, Química 3.º (6 errores conocidos) e Historia de México 2, con
   inventarios que no caduquen y 3 corridas por caso. No existe.

@@ -235,7 +235,7 @@ ok(vista4.calentamiento.length === 0 && !vista4.primera_actividad, "vista4 previ
 ok(vista4.bloques_totales === 2 && vista4.actividades_totales >= cBueno.bloques.reduce((n: number, b: any) => n + b.actividades.length, 0), `vista4 previa: el candado conoce la guía completa (${vista4.bloques_totales} bloques, ${vista4.actividades_totales} actividades)`);
 const pesada = JSON.parse(JSON.stringify(cBueno)); pesada.bloques[0].pistas = [{ id: "larga", titulo: "Larga", ideas: Array.from({ length: 30 }, () => "Una idea bastante larga para llenar la pista de texto.") }, { id: "corta", titulo: "Corta", ideas: ["Una idea."] }];
 ok(P.recortarVistaPrevia(pesada).bloques[0].pistas[0].id === "corta", "vista4 previa: elige una pista que cabe en una página");
-const sinQuiz = JSON.parse(JSON.stringify(cBueno)); sinQuiz.bloques[0].actividades = sinQuiz.bloques[0].actividades.filter((a: any) => a.tipo !== "opcion_multiple").concat([{ id: "vf1", tipo: "verdadero_falso" }]);
+const sinQuiz = JSON.parse(JSON.stringify(cBueno)); sinQuiz.bloques[0].actividades = sinQuiz.bloques[0].actividades.filter((a: any) => a.tipo !== "opcion_multiple").concat([{ id: "vf1", tipo: "verdadero_falso", afirmacion: "El dato es cierto.", es_verdadera: true }]);
 ok(new Set(P.recortarVistaPrevia(sinQuiz).bloques[0].actividades.map((a: any) => a.tipo)).size === 2, "vista4 previa: sin juego de preguntas, dos formatos distintos");
 
 // ---------- Temas del temario completados con fuentes (Daniel, 11 nov 2026) ----------
@@ -305,7 +305,7 @@ respuestas = [apiTexto({ temas: [
 const sig1 = await P.ejecutarPaso(falso, tG, fuenteG);
 const inv = tG.datos.investigacion ?? [];
 const pedInv = pedidos[0];
-ok(sig1 === "generar:0" && pedidos.length === 1 && /ERES EL INVESTIGADOR/.test(pedInv.system[0].text) && pedInv.tools[0].max_uses === 6 && pedInv.tools[0].allowed_domains.includes("conaliteg.sep.gob.mx") && !/Gapped/.test(pedInv.messages[0].content[0].text), "paso: una llamada de investigación con búsqueda en dominios confiables y sin la práctica del examen");
+ok(sig1 === "generar:0" && pedidos.length === 1 && /ERES EL INVESTIGADOR/.test(pedInv.system[0].text) && pedInv.tools[0].max_uses === 2 * P.BUSQUEDAS_POR_TEMA && P.BUSQUEDAS_POR_TEMA === 2 && pedInv.tools[0].allowed_domains.includes("conaliteg.sep.gob.mx") && !/Gapped/.test(pedInv.messages[0].content[0].text), "paso: una llamada de investigación (2 búsquedas por tema) en dominios confiables y sin la práctica del examen");
 ok(inv.find((r: any) => /Gapped/.test(r.tema))?.estado === "practica_examen" && inv.find((r: any) => r.tema === "Figuras retóricas")?.estado === "confirmado" && inv.find((r: any) => r.tema === "Tradición oral")?.estado === "no_confirmado", "paso: práctica del examen ignorada; tema con fuentes confirmado; tema con páginas que el buscador no dio, sin confirmar · " + inv.map((r: any) => `${r.tema}=${r.estado}`).join(" | "));
 ok((tG.datos.inventario.investigado ?? []).length === 2 && tG.datos.inventario.investigado.every((e: any) => e.bloque === "b1" && e.fuentes.length) && tG.datos.citas.includes(datosF[1]), "paso: lo confirmado entra al inventario del bloque como «investigado» y vale como cita");
 respuestas = [apiTexto({ bloque: "b1", pistas: [
@@ -335,7 +335,7 @@ ok(pedidos.length === 1 && /ERES EL GENERADOR/.test(pedidos[0].system[0].text) &
 // Tope de temas por guía: los que pasan del tope quedan como nota sin gastar.
 const muchos: any = { plan: { bloques: [{ id: "b1" }], temas_a_investigar: Array.from({ length: 11 }, (_, i) => ({ tema: "Tema número " + (i + 1), bloque: "b1", pagina: "" })) } };
 const pendM = P.temasPendientes(muchos, "b1");
-ok(pendM.length === P.MAX_TEMAS_INVESTIGAR && muchos.investigacion.length === 3 && muchos.investigacion.every((r: any) => r.estado === "no_confirmado"), `tope: se investigan ${P.MAX_TEMAS_INVESTIGAR} temas por guía; los demás quedan como nota`);
+ok(P.MAX_TEMAS_INVESTIGAR === 6 && pendM.length === P.MAX_TEMAS_INVESTIGAR && muchos.investigacion.length === 11 - P.MAX_TEMAS_INVESTIGAR && muchos.investigacion.every((r: any) => r.estado === "no_confirmado"), `tope: se investigan ${P.MAX_TEMAS_INVESTIGAR} temas por guía; los demás quedan como nota`);
 // Las pistas que la reparación divide conservan la marca al armar; cada bloque lleva lo completado y lo que se repasa.
 tG.datos.bloques[0].pistas.push({ id: "b1p2_2", titulo: "Figuras retóricas (2)", ideas: ["Símil: compara dos cosas."] });
 tG.datos.bloques[0].actividades.push(...[3, 4, 5].map((n) => ({ id: "b1om" + n, tipo: "opcion_multiple", pregunta: "¿P" + n + "?", opciones: ["a" + n, "b", "c", "d"], correcta: 0, retro_correcta: "s", retro_incorrecta: "n", pista: "b1p1", fuente: { foto: 1, tipo: "textual", cita: "normas de un grupo" } })));
@@ -372,6 +372,134 @@ ok(P.reportesContradice([{ estado: "corregida" }, { estado: "no_confirmada" }], 
 const leerRepo = (r: string) => readFileSync(join(repo, r), "utf8");
 const cartJs = leerRepo("sparked/js/cartucho.js"), teoJs = leerRepo("sparked/js/teoria.js"), uiJs = leerRepo("sparked/js/ui.js");
 ok((cartJs.match(/con_fuentes: "/g) ?? []).length === 3 && /"completado_con_fuentes"\]/.test(cartJs) && /caja-fuentes/.test(teoJs) && /fuente\?\.tipo === "investigado"/.test(uiJs) && /\.caja-fuentes/.test(leerRepo("sparked/css/base.css")), "reproductor: «Completado con fuentes» en español, inglés y francés; caja en la pista y fuente en las preguntas");
+
+// 25. Arreglos del 11 nov 2026, antes de encender la investigación (prueba real: preguntas vacías en un bloque sin nada
+// confirmado, «Acento normativo» sin ninguna búsqueda, una prueba trabada 22 min y la guía a 0.13 MXN del tope de 6).
+// a) El reparador escribió el texto en «texto»: el reproductor lee pregunta, afirmacion o enunciado.
+const omT: any = { tipo: "opcion_multiple", texto: "¿Qué es un reglamento?", opciones: ["normas", "versos"], correcta: 0, fuente: "normas de un grupo", retroalimentacion: "¡Muy bien!" };
+const vfT: any = { tipo: "verdadero_falso", texto: "Un reglamento tiene normas.", es_verdadera: true };
+const coT: any = { tipo: "completar", texto: "Un reglamento tiene ___.", respuesta: "normas", distractores: ["versos", "rimas"] };
+const coV: any = { tipo: "completar", pregunta: "", texto: "Un reglamento reúne ___ de un grupo.", respuesta: "normas", distractores: ["versos", "rimas"] };
+[omT, vfT, coT, coV].forEach((a) => P.normalizarActividad(a, "es"));
+ok(!("pregunta" in coV) && coV.enunciado === "Un reglamento reúne ___ de un grupo.", "una «pregunta» vacía ya no tapa el enunciado (el reproductor lee pregunta ?? afirmacion ?? enunciado)");
+ok(omT.pregunta === "¿Qué es un reglamento?" && !("texto" in omT) && vfT.afirmacion === "Un reglamento tiene normas." && coT.enunciado === "Un reglamento tiene ___." && omT.fuente?.tipo === "textual" && omT.fuente?.cita === "normas de un grupo" && omT.retro_correcta === "¡Muy bien!", "pregunta con el texto en «texto»: pasa a pregunta, afirmación o enunciado; la fuente suelta y la retroalimentación también se acomodan");
+// b) La revisión final no deja pasar una pregunta sin texto.
+const cVac: any = { completo: true, plan: { presupuesto_slides: 25 }, bloques: [{ id: "b1", pistas: [{ id: "b1p1", titulo: "A", ideas: ["A: x"] }], actividades: [1, 2, 3, 4, 5, 6].map((n) => ({ id: "b1om" + n, tipo: "opcion_multiple", pregunta: n === 3 ? "" : "¿P" + n + "?", opciones: ["a", "b", "c", "d"], correcta: 0 })), mini_examen: [], duelo: [] }] };
+const probVac = P.verificarCartucho(cVac);
+cVac.bloques[0].actividades[2].pregunta = "¿P3?";
+ok(probVac.some((x: string) => /1 pregunta\(s\) sin texto \(b1om3\)/.test(x)) && !P.verificarCartucho(cVac).some((x: string) => /sin texto/.test(x)), "revisión final: una pregunta sin texto detiene la entrega; con su texto, pasa · " + probVac.filter((x: string) => /sin texto/.test(x)).join(" | "));
+const vfP: any = { tipo: "verdadero_falso", pregunta: "El reglamento tiene normas.", es_verdadera: true };
+const cVf: any = { ...cVac, bloques: [{ ...cVac.bloques[0], actividades: [...cVac.bloques[0].actividades, ...[1, 2, 3, 4, 5].map((n) => ({ ...vfP, id: "b1vf" + n }))] }] };
+const probVf = P.verificarCartucho(cVf);
+P.normalizarActividad(vfP, "es");
+ok(probVf.some((x: string) => /5 pregunta\(s\) sin texto \(b1vf1/.test(x)) && vfP.afirmacion === "El reglamento tiene normas.", "verdadero o falso con el texto en «pregunta»: la revisión final lo detiene (el juego de deslizar solo lee la afirmación) y normalizar lo acomoda");
+// c) Bloque sin nada confirmado y sin contenido en los apuntes: no se llama al escritor; solo lleva su nota.
+const resNo = (tema: string, bloque: string, pagina = "") => ({ tema, bloque, pagina, estado: "no_confirmado", datos: [], fuentes: [], motivo: "sin fuentes confiables" });
+const planS: any = { idioma_guia: "es", perfil_edad: "juvenil", materia: "Español", apoyo: null, puntos_dificiles: [], identidad: { titulo: "T" }, primera_actividad: "calentamiento", reto_final: 16,
+  temas_a_investigar: [{ tema: "Acento normativo", bloque: "b2", pagina: "12" }],
+  bloques: [
+    { id: "b1", titulo: "Reglamento", temas: ["Reglamento"], ids_inventario: ["tem1", "dat1"], pistas: ["Reglamento"], juegos: { opcion_multiple: 5 }, mini_examen: 0 },
+    { id: "b2", titulo: "Ortografía", temas: ["Acento normativo"], ids_inventario: ["tem2"], pistas: ["Acento normativo"], juegos: { opcion_multiple: 5 }, mini_examen: 0 },
+    { id: "b3", titulo: "Literatura", temas: ["Cuento"], ids_inventario: ["tem3", "dat3"], pistas: ["Cuento"], juegos: { opcion_multiple: 5 }, mini_examen: 0 }] };
+const invS = { temas: [{ id: "tem1", foto: 1, texto: "Reglamento", cita: "Reglamento" }, { id: "tem2", foto: 1, texto: "Acento normativo", cita: "Acento normativo" }, { id: "tem3", foto: 1, texto: "Cuento", cita: "Cuento" }],
+  datos_clave: [{ id: "dat1", foto: 1, texto: "Reglamento: normas de un grupo", cita: "normas de un grupo" }, { id: "dat3", foto: 1, texto: "Cuento: narración breve", cita: "narración breve" }] };
+const blq = (id: string, cita = "normas de un grupo") => ({ id, titulo: id.toUpperCase(), pistas: [{ id: id + "p1", titulo: "P " + id, ideas: [id + ": idea."] }], actividades: [1, 2, 3, 4, 5, 6].map((k) => ({ id: `${id}om${k}`, tipo: "opcion_multiple", pregunta: `¿Pregunta ${k} del bloque ${id}?`, opciones: ["uno" + k, "dos" + k, "tres" + k, "cuatro" + k], correcta: 0, retro_correcta: "¡Sí!", retro_incorrecta: "No.", pista: id + "p1", fuente: { foto: 1, tipo: "textual", cita } })), mini_examen: [] });
+const tS: any = { id: "ts", guia_id: "gs", alcance: "completa", paso: "generar:1", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, progreso: { pct: 50 }, datos: { inventario: JSON.parse(JSON.stringify(invS)), citas: ["normas de un grupo", "narración breve"], fotos: [{ indice: 1, tipo: "temario" }], plan: JSON.parse(JSON.stringify(planS)), investigacion: [resNo("Acento normativo", "b2", "12")], bloques: [blq("b1")] } };
+pedidos.length = 0; respuestas = [];
+const sigS = await P.ejecutarPaso(falso, tS, fuenteG);
+const b2S = tS.datos.bloques[1];
+ok(sigS === "generar:2" && pedidos.length === 0 && b2S?.solo_nota === true && b2S.actividades.length === 0 && b2S.pistas.length === 1 && b2S.pistas[0].nota_temario && b2S.pistas[0].ideas[0] === "Acento normativo: este tema venía en tu temario; repásalo en tu libro (pág. 12).", "bloque sin nada confirmado y sin contenido en los apuntes: no se llama al escritor (nada inventado); solo lleva su nota");
+ok(P.tieneContenidoPropio({ temas: [{ texto: "x" }], ejercicios_del_libro: [{ instruccion: "ninguno" }], vocabulario: [{ palabra: "x", significado: "sin_definicion" }] }) === false && P.tieneContenidoPropio({ temas: [{}], reglas: [{ texto: "Agudas: n, s o vocal" }] }) === true, "contenido propio: no cuentan los temas sueltos, el «ninguno» de los ejercicios ni las palabras sin definición");
+tS.datos.bloques[2] = blq("b3", "narración breve");
+tS.paso = "revisar";
+await P.ejecutarPaso(falso, tS, fuenteG);
+ok(!(tS.datos.huecos ?? []).some((h: string) => /\bb2\b/.test(h)), "revisar: el bloque que solo lleva la nota no pide huecos (el reparador no le inventa preguntas) · huecos: " + JSON.stringify(tS.datos.huecos ?? []));
+const repS = P.aplicarReparacion(tS.datos.bloques, { actividades_nuevas: { opcion_multiple: [
+  { id: "r_b2om1", pregunta: "¿Cuándo lleva tilde una palabra aguda?", opciones: ["n, s o vocal", "siempre", "nunca", "en la última"], correcta: 0, pista: "b2nt1", fuente: { foto: 1, tipo: "textual", cita: "normas de un grupo" } },
+  { id: "r_om9", pregunta: "¿Qué tiene un reglamento?", opciones: ["normas", "versos", "rimas", "mapas"], correcta: 0, fuente: { foto: 1, tipo: "textual", cita: "normas de un grupo" } }] } }, tS.datos.citas, "secundaria", "es", []);
+ok(repS.descartes.some((d: any) => d.id === "r_b2om1" && /no se inventan/.test(d.motivo)) && tS.datos.bloques[1].actividades.length === 0 && repS.colocadas.some((c: string) => /^r_om9→b[13]$/.test(c)), "reparar: una pregunta para el bloque de la nota se descarta; una sin bloque nunca cae ahí · " + repS.colocadas.join(", "));
+tS.paso = "reparar"; tS.datos.huecos = ["Bloque b1: agrega preguntas a los juegos que ya tiene el bloque (opcion_multiple)"]; tS.datos.pistas_largas = [];
+pedidos.length = 0; respuestas = [apiTexto({ actividades_nuevas: {} }, [])];
+await P.ejecutarPaso(falso, tS, fuenteG);
+const txtRep = pedidos[0]?.messages?.[0]?.content?.[0]?.text ?? "";
+const parteRep = txtRep.split("Pistas de cada bloque")[1]?.split("Ids que ya existen")[0] ?? "";
+ok(pedidos.length === 1 && /"b1"/.test(parteRep) && !/"b2"/.test(parteRep), "reparar: al reparador no se le muestran los bloques que solo llevan la nota");
+tS.paso = "armar";
+await P.ejecutarPaso(falso, tS, fuenteG);
+const cS = tS.datos.cartucho;
+ok(cS.bloques.map((b: any) => b.id).join() === "b1,b3" && cS.bloques[0].pistas.at(-1)?.nota_temario && /^Acento normativo/.test(cS.bloques[0].pistas.at(-1).ideas[0]) && cS.bloques[0].temas_para_repasar?.some((x: any) => x.tema === "Acento normativo") && tS.datos.bloques.length === 3, "armar: el bloque de la nota no se arma; su nota pasa al bloque anterior (datos.bloques no cambia) · " + cS.bloques.map((b: any) => b.id).join(","));
+ok(!P.verificarCartucho(cS).some((x: string) => /\bb2\b|sin texto|no tiene juegos/.test(x)), "revisión final: ni bloque vacío ni preguntas sin texto · " + P.verificarCartucho(cS).join(" | "));
+// d) Vista previa: si el bloque 1 solo lleva la nota, se escribe el siguiente; la familia ve un bloque de verdad.
+const planP = { ...JSON.parse(JSON.stringify(planS)), bloques: [planS.bloques[1], planS.bloques[0], planS.bloques[2]] };
+const tP: any = { id: "tp", guia_id: null, borrador_id: "bp", alcance: "vista_previa", paso: "generar:0", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, progreso: { pct: 40 }, datos: { inventario: JSON.parse(JSON.stringify(invS)), citas: ["normas de un grupo"], fotos: [{ indice: 1, tipo: "temario" }], plan: planP, investigacion: [resNo("Acento normativo", "b2", "12")], bloques: [] } };
+pedidos.length = 0; respuestas = [];
+const sigP = await P.ejecutarPaso(falso, tP, fuenteG);
+ok(sigP === "generar:1" && pedidos.length === 0 && tP.datos.bloques[0]?.solo_nota === true, "vista previa: el bloque 1 solo lleva la nota → sigue con el bloque 2 (sin llamar al escritor para el 1)");
+// (La pregunta 2 viene con el texto en «texto», como la que salió vacía en una vista previa real del 10 nov.)
+respuestas = [apiTexto({ bloque: "b1", pistas: [{ id: "b1p1", titulo: "Reglamento", emoji: "📜", ideas: ["Reglamento: normas de un grupo."], tema_investigado: null }], actividades: { opcion_multiple: [1, 2, 3, 4, 5, 6].map((n) => ({ id: "b1om" + n, [n === 2 ? "texto" : "pregunta"]: "¿Pregunta número " + n + " del reglamento?", opciones: ["normas" + n, "versos" + n, "rimas" + n, "mapas" + n], correcta: 0, retro_correcta: "¡Sí!", retro_incorrecta: "No.", pista: "b1p1", fuente: { foto: 1, tipo: "textual", cita: "normas de un grupo" } })) }, duelo: [], mini_examen: [] })];
+const sigP2 = await P.ejecutarPaso(falso, tP, fuenteG);
+ok(sigP2 === "armar" && pedidos.length === 1 && /ERES EL GENERADOR/.test(pedidos[0].system[0].text), "vista previa: escribe el bloque con contenido y pasa a armar");
+ok(tP.datos.bloques[1].actividades.find((a: any) => a.id === "b1om2")?.pregunta === "¿Pregunta número 2 del reglamento?", "escribir: la pregunta que vino en «texto» queda en «pregunta» desde que se escribe (la vista previa no pasa por revisar)");
+await P.ejecutarPaso(falso, tP, fuenteG);
+const vpP = P.recortarVistaPrevia(tP.datos.cartucho);
+ok(tP.datos.cartucho.bloques.length === 1 && vpP.bloques[0]?.id === "b1" && !vpP.bloques[0].pistas[0]?.nota_temario && vpP.bloques[0].actividades.length > 0 && tP.datos.bloques.length === 2, "vista previa: muestra el bloque con contenido, sin la nota; el trabajo «resto» seguirá en el bloque 3 (datos.bloques tiene 2)");
+const cEnBlanco = JSON.parse(JSON.stringify(tP.datos.cartucho));
+cEnBlanco.bloques[0].actividades[0].pregunta = "";
+const vpBlanco = P.recortarVistaPrevia(cEnBlanco);
+ok(vpBlanco.bloques[0].actividades.length > 0 && vpBlanco.bloques[0].actividades.every((a: any) => P.textoPregunta(a)), "vista previa: nunca elige una pregunta en blanco");
+// e) Si ningún tema se confirma y las fotos no traen contenido, la guía no se hace: nunca se inventa.
+const tE: any = { ...JSON.parse(JSON.stringify(tP)), id: "te", paso: "generar:0", datos: { ...JSON.parse(JSON.stringify(tP.datos)), plan: { ...planP, bloques: [planS.bloques[1]] }, bloques: [], cartucho: undefined } };
+let errE = "";
+try { await P.ejecutarPaso(falso, tE, fuenteG); } catch (e) { errE = (e as Error).message; }
+ok(/no se hace para no inventar/.test(errE), "sin nada confirmado ni contenido en toda la guía: error claro en vez de una guía inventada o vacía");
+// f) Búsqueda que no devolvió ninguna página: se reintenta una vez, pidiendo consultas más cortas.
+const tR: any = { id: "tr", guia_id: "gr", alcance: "completa", paso: "generar:0", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, progreso: { pct: 40 }, datos: { inventario: JSON.parse(JSON.stringify(invS)), citas: [], fotos: [{ indice: 1, tipo: "temario" }], plan: JSON.parse(JSON.stringify(planP)), bloques: [] } };
+const tR2: any = JSON.parse(JSON.stringify(tR));
+const urlRae = "https://www.rae.es/dpd/tilde";
+const respAcento = { temas: [{ tema: "Acento normativo", estado: "confirmado", datos: [{ texto: "Acento normativo: reglas para poner la tilde.", fuentes: [{ nombre: "RAE", url: urlRae }] }, { texto: "Agudas: llevan tilde si terminan en n, s o vocal.", fuentes: [{ nombre: "RAE", url: urlRae }] }] }] };
+pedidos.length = 0;
+respuestas = [apiTexto({ temas: [{ tema: "Acento normativo", estado: "no_confirmado", motivo: "el buscador dio error", datos: [] }] }, [])];
+let errR = "";
+try { await P.ejecutarPaso(falso, tR, fuenteG); } catch (e) { errR = (e as Error).message; }
+ok(/se reintenta/.test(errR) && tR.datos.intento_inv?.n === 1 && !(tR.datos.investigacion ?? []).some((r: any) => r.tema === "Acento normativo"), "búsqueda sin ninguna página: su «no confirmado» no se acepta; se reintenta · " + errR);
+respuestas = [apiTexto(respAcento, [urlRae])];
+await P.ejecutarPaso(falso, tR, fuenteG);
+const txtR = pedidos[1]?.messages?.[0]?.content?.[0]?.text ?? "";
+ok(/INTENTO ANTERIOR FALLIDO/.test(txtR) && /MÁS CORTAS/.test(txtR) && tR.datos.investigacion.find((r: any) => r.tema === "Acento normativo")?.estado === "confirmado" && !tR.datos.intento_inv, "reintento: pide consultas más cortas y, con páginas de verdad, el tema se confirma");
+respuestas = [apiTexto({ temas: [{ tema: "Acento normativo", estado: "no_confirmado", datos: [] }] }, []), apiTexto({ temas: [{ tema: "Acento normativo", estado: "no_confirmado", datos: [] }] }, [])];
+try { await P.ejecutarPaso(falso, tR2, fuenteG); } catch { /* primer intento: se reintenta */ }
+await P.ejecutarPaso(falso, tR2, fuenteG);
+ok(tR2.datos.investigacion.find((r: any) => r.tema === "Acento normativo")?.estado === "no_confirmado" && !tR2.datos.intento_inv, "si el reintento tampoco trae páginas, el tema queda como nota (la guía nunca se detiene)");
+ok(/consultas CORTAS/.test(PR.INVESTIGADOR) && /nunca uses site:, comillas, OR/.test(PR.INVESTIGADOR) && /no busques más/.test(PR.INVESTIGADOR), "investigador: consultas cortas y sin operadores; con una fuente oficial, no busca más");
+// g) Verificar no vuelve a buscar lo que ya trae fuentes (1 oficial o 2 confiables).
+const pistaF = { id: "b1p2", titulo: "Figuras retóricas", ideas: datosF, completado_con_fuentes: { fuentes: [] } };
+const notaF = { id: "b1nt1", titulo: "Repásalo en tu libro", ideas: ["X: nota"], nota_temario: true };
+const actF = { id: "b1om1", tipo: "opcion_multiple", pregunta: "¿Qué figura exagera una cualidad?", opciones: ["hipérbole", "metáfora"], correcta: 0, fuente: { tipo: "investigado", cita: datosF[1] } };
+const invF = [{ tema: "Figuras retóricas", bloque: "b1", pagina: "", estado: "confirmado", datos: datosF.map((x) => ({ texto: x, fuentes: [] })), fuentes: [], motivo: "" }];
+const DV: any = { investigacion: invF, bloques: [{ id: "b1", pistas: [{ id: "b1p1", titulo: "Reglamento", ideas: ["Reglamento: normas."] }, pistaF, notaF], actividades: [actF,
+  { id: "b1om2", tipo: "opcion_multiple", pregunta: "¿Qué tiene un reglamento?", opciones: ["normas", "versos"], correcta: 0, fuente: { tipo: "textual", cita: "normas de un grupo" } },
+  { id: "b1om3", tipo: "opcion_multiple", pregunta: "¿Otra?", opciones: ["a", "b"], correcta: 0, fuente: { tipo: "investigado", cita: "Algo que no viene en ningún dato" } }], mini_examen: [] }] };
+const cvV = P.contenidoParaVerificar(DV);
+ok(cvV.total === 5 && cvV.omitidos === 2 && cvV.bloques[0].pistas.map((p: any) => p.id).join() === "b1p1" && cvV.bloques[0].actividades.map((a: any) => a.id).join() === "b1om2,b1om3", "verificar: no vuelve a buscar la pista con fuentes ni la pregunta de un dato confirmado; sí lo de los apuntes (y lo «investigado» sin cita que lo respalde)");
+const tVo: any = { id: "tvo", guia_id: "gvo", alcance: "completa", paso: "verificar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "es", materia: "Español" }, fotos: [{ tipo: "temario" }], inventario: {}, investigacion: invF, bloques: [{ id: "b1", pistas: [pistaF, notaF], actividades: [actF], mini_examen: [] }] } };
+const tVm: any = JSON.parse(JSON.stringify(tVo));
+tVm.datos.bloques[0].pistas.push({ id: "b1p9", titulo: "Reglamento", ideas: ["Reglamento: normas de un grupo."] });
+pedidos.length = 0; respuestas = [];
+const sigVo = await P.ejecutarPaso(falsoR, tVo, fuenteG);
+ok(sigVo === "imagenes" && pedidos.length === 0 && tVo.datos.verificacion[0]?.estado === "omitida", "verificar: si todo viene de fuentes confirmadas, no se llama a la IA (0 MXN)");
+respuestas = [apiTexto({ resultados: [] }, [])];
+await P.ejecutarPaso(falsoR, tVm, fuenteG);
+const txtVm = pedidos[0]?.messages?.[0]?.content?.[0]?.text ?? "";
+ok(pedidos.length === 1 && pedidos[0].tools[0].max_uses === 4 && /b1p9/.test(txtVm) && !/b1p2|b1om1|b1nt1/.test(txtVm), "verificar: si más de la mitad ya trae sus fuentes, 4 búsquedas en vez de 10 y solo lo de los apuntes");
+const tVp: any = { id: "tvp", guia_id: null, alcance: "resto", paso: "verificar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "es", materia: "Español" }, fotos: [{ tipo: "apuntes_a_mano" }], inventario: {}, bloques: [blq("b1")] } };
+pedidos.length = 0; respuestas = [apiTexto({ resultados: [] }, [])];
+await P.ejecutarPaso(falsoR, tVp, fuenteG);
+ok(pedidos.length === 1 && pedidos[0].tools[0].max_uses === 10 && /b1om6/.test(pedidos[0].messages[0].content[0].text), "verificar sin investigación: igual que antes (10 búsquedas con apuntes a mano, todo el contenido)");
+// h) Las guías de prueba y de la biblioteca se reanudan solas; la guía pagada sigue donde la vista previa se quedó.
+const idxTs = leerRepo("funciones/sparked/index.ts");
+const rutaTrab = idxTs.split('rec === "trabajos" && esUuid(id) && !accion && m === "GET"')[1]?.slice(0, 700) ?? "";
+ok(/if \(t\.alcance === "completa"\) await reanudarSiAtorado\(t\);/.test(rutaTrab), "guías de prueba y de la biblioteca: al consultar su trabajo, se reanuda si se trabó (las de las familias, igual que antes)");
+ok(/const desde = Math\.max\(1, Array\.isArray\(datos\.bloques\) \? datos\.bloques\.length : 1\);/.test(idxTs) && /const paso = desde < nBloques \? `generar:\$\{desde\}` : "revisar";/.test(idxTs), "guía pagada: el trabajo «resto» empieza en el primer bloque que la vista previa no escribió (casi siempre el 2, como antes)");
 
 console.log(fallos ? `\n${fallos} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);

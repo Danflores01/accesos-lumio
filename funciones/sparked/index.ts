@@ -23,7 +23,7 @@ import { imagenEntrega, imagenCompartir } from "./imagen-wa.ts";
 import { matrizQr } from "./qr.ts";
 import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 
-const VERSION = "2026-11-11.2";
+const VERSION = "2026-11-11.3";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -726,8 +726,11 @@ async function lanzarResto(guiaId: string, borradorId: string) {
   if (!vp) throw new Error("No existe la vista previa para continuar la guía");
   const datos = { ...(vp.datos as any) }; delete datos.cartucho;
   const nBloques = datos.plan?.bloques?.length ?? 1;
-  const paso = nBloques > 1 ? "generar:1" : "revisar";
-  const { data: t, error: e } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: borradorId, guia_id: guiaId, alcance: "resto", paso, estado: "pendiente", datos, progreso: { pct: 42, mensaje: nBloques > 1 ? `Escribiendo el bloque 2 de ${nBloques} ✍️` : "Revisando que todo esté perfecto ✅", paso } }).select("id").single();
+  // Sigue en el primer bloque que la vista previa no escribió. Casi siempre es el 2; con la investigación de temas, si
+  // el bloque 1 solo traía la nota del temario, la vista previa ya escribió también el siguiente (11 nov 2026).
+  const desde = Math.max(1, Array.isArray(datos.bloques) ? datos.bloques.length : 1);
+  const paso = desde < nBloques ? `generar:${desde}` : "revisar";
+  const { data: t, error: e } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: borradorId, guia_id: guiaId, alcance: "resto", paso, estado: "pendiente", datos, progreso: { pct: 42, mensaje: desde < nBloques ? `Escribiendo el bloque ${desde + 1} de ${nBloques} ✍️` : "Revisando que todo esté perfecto ✅", paso } }).select("id").single();
   if (e) throw e;
   disparar(t.id);
 }
@@ -1518,6 +1521,9 @@ Deno.serve(async (req: Request) => {
 
       if (rec === "trabajos" && esUuid(id) && !accion && m === "GET") {
         const t = await cargarTrabajo(id); if (!t) return error("No existe", 404);
+        // Las guías de prueba y de la biblioteca (alcance "completa") se reanudan solas si se traban, como las de las
+        // familias cuando su página pregunta (11 nov 2026: una prueba se quedó 22 min parada a media búsqueda).
+        if (t.alcance === "completa") await reanudarSiAtorado(t);
         const { datos, ...resto } = t as any;
         return json({ ...resto, datos_resumen: { inventario: Object.fromEntries(Object.entries(datos?.inventario ?? {}).map(([k, v]) => [k, (v as any[]).length])), bloques: (datos?.bloques ?? []).filter(Boolean).length, plan: datos?.plan ? { titulo: datos.plan.identidad?.titulo, bloques: datos.plan.bloques?.length, presupuesto: datos.plan.presupuesto_slides, camino: datos.plan.camino } : null, huecos: datos?.huecos ?? [], verificacion: datos?.verificacion ?? [] } });
       }

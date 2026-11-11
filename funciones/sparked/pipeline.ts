@@ -421,6 +421,18 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const resB = resultadosDeBloque(D, pb.id);
     const confirmados = resB.filter((r) => r.estado === "confirmado");
     const sinConfirmar = resB.filter((r) => r.estado === "no_confirmado");
+    // Un bloque sin nada confirmado y sin contenido propio en los apuntes no se escribe: la IA solo podría inventar
+    // (11 nov 2026). Queda con su nota «repásalo en tu libro» y, al armar, la nota pasa al bloque vecino. En la vista
+    // previa se sigue con el bloque siguiente (la familia ve un bloque de verdad; el trabajo "resto" empieza después).
+    if (bloqueSoloNota(resB, invBloque)) {
+      const ultimo = bi + 1 >= plan.bloques.length;
+      if (ultimo && !(D.bloques as any[]).some((x: any, k: number) => k !== bi && x && !x.solo_nota)) throw new Error("Ningún tema del temario se pudo confirmar con fuentes confiables y las fotos no traen su contenido: la guía no se hace para no inventar");
+      D.bloques[bi] = { id: pb.id ?? `b${bi + 1}`, titulo: pb.titulo, solo_nota: true, pistas: [], actividades: [], mini_examen: [] };
+      agregarNotasTemario(D.bloques[bi], sinConfirmar, plan.idioma_guia ?? "es");
+      const sigN = !ultimo ? `generar:${bi + 1}` : t.alcance === "vista_previa" ? "armar" : "revisar";
+      await guardar(supabase, t, { datos: D, paso: sigN, progreso: { pct: 40 + Math.round(30 * (bi + 1) / plan.bloques.length), mensaje: sigN.startsWith("generar") ? `Escribiendo el bloque ${bi + 2} de ${plan.bloques.length} ✍️` : "Revisando que todo esté perfecto ✅", paso: sigN }, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
+      return sigN;
+    }
     const n = D.intento_ia?.paso === t.paso ? Number(D.intento_ia.n) || 0 : 0;
     const cortado = n > 0 && D.intento_ia?.motivo === "max_tokens";
     // Si la respuesta anterior se cortó por largo, se pide la mitad de los juegos (respuesta más corta).
@@ -466,8 +478,9 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const duelo = (Array.isArray(b.duelo) ? b.duelo : []).filter((a: any) => a && typeof a === "object").map((a: any) => ({ ...a, tipo: "duelo" }));
     const tipoDe = (a: any) => a.tipo ?? (Array.isArray(a.opciones) ? "opcion_multiple" : a.afirmacion !== undefined ? "verdadero_falso" : "completar");
     D.bloques[bi] = { id: pb.id ?? `b${bi + 1}`, titulo: pb.titulo, ...(cortado ? { reducido: true } : {}), ...(parcial ? { parcial: true } : {}), pistas: (b.pistas ?? []).map((p: any, k: number) => ({ ...p, id: p.id ?? `${pb.id ?? "b" + (bi + 1)}p${k + 1}` })), actividades: [...aplanar(b.actividades), ...duelo], mini_examen: (b.mini_examen ?? []).map((a: any, k: number) => ({ ...a, tipo: tipoDe(a), id: a.id ?? `${pb.id ?? "b" + (bi + 1)}me${k + 1}` })) };
-    // Los juegos de clasificar quedan con dos grupos desde que se escriben (también en la vista previa).
-    for (const a of D.bloques[bi].actividades) normalizarClasificar(a);
+    // Los juegos de clasificar quedan con dos grupos desde que se escriben (también en la vista previa), y cada pregunta
+    // con sus campos de siempre: la vista previa no pasa por revisar (11 nov 2026: una salió vacía por venir en "texto").
+    for (const a of [...D.bloques[bi].actividades, ...D.bloques[bi].mini_examen]) { normalizarActividad(a, plan.idioma_guia ?? "es"); normalizarClasificar(a); }
     // Pistas y actividades con datos investigados llevan la marca «Completado con fuentes»; los temas que no se
     // pudieron confirmar quedan como nota para repasarlos en el libro (nunca con contenido inventado).
     if (resB.length) { marcarInvestigado(D.bloques[bi], resB); agregarNotasTemario(D.bloques[bi], sinConfirmar, plan.idioma_guia ?? "es"); }
@@ -486,6 +499,8 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const idioma = D.plan.idioma_guia ?? "es";
     const descartes: Descarte[] = [];
     for (const b of D.bloques as any[]) {
+      // Un bloque que solo trae la nota del temario no pide huecos: el reparador no debe inventar preguntas para él.
+      if (b?.solo_nota) continue;
       b.actividades = fusionarParejas(b.actividades, idioma);
       const antes = b.actividades.length;
       b.actividades = b.actividades.filter((a: any) => revisarActividad(a, citas, nivel, huecos, b.id, descartes, idioma));
@@ -525,9 +540,11 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const pistaPorId = (id: string) => (D.bloques as any[]).flatMap((b) => b.pistas).find((p: any) => p.id === id);
     const textoLargas = largas.length ? `\nPistas demasiado largas (divídelas en dos):\n${largas.map((l) => `- ${l.id} (${l.motivo}): ${JSON.stringify(pistaPorId(l.id))}`).join("\n")}` : "";
     const notaR = notaIdioma(idiomaForzado(fuente) ?? (plan.idioma_forzado ? plan.idioma_guia : null));
-    // Lo que ya tiene cada bloque (tipos y textos), para completar con el mismo tipo y sin repetir preguntas.
-    const actuales = Object.fromEntries((D.bloques as any[]).map((b) => [b.id, { tipos: [...new Set(b.actividades.map((a: any) => a.tipo))], mini_examen: b.mini_examen.length, preguntas: [...b.actividades, ...b.mini_examen].map((a: any) => ({ id: a.id, tipo: a.tipo, texto: a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.instruccion, pares: a.pares?.map((p: any) => p.termino), tarjetas: a.elementos?.map((e: any) => `${e.texto} → ${a.grupos?.[e.grupo]}`) })) }]));
-    const contenido = [{ type: "text", text: `${notaR ? notaR + "\n" : ""}Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n") || "(ninguno)"}${textoLargas}\nPistas de cada bloque (cada actividad nueva lleva en "pista" una de las del bloque de su hueco): ${JSON.stringify(Object.fromEntries((D.bloques as any[]).map((b) => [b.id, b.pistas.map((p: any) => p.id)])))}\nJuegos que ya tiene cada bloque (no repitas sus preguntas): ${JSON.stringify(actuales)}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => [...b.actividades, ...b.mini_examen].map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
+    // Lo que ya tiene cada bloque (tipos y textos), para completar con el mismo tipo y sin repetir preguntas. Los bloques
+    // que solo llevan la nota del temario no se muestran: ahí no hay nada confirmado con qué escribir preguntas.
+    const conJuegos = (D.bloques as any[]).filter((b) => b && !b.solo_nota);
+    const actuales = Object.fromEntries(conJuegos.map((b) => [b.id, { tipos: [...new Set(b.actividades.map((a: any) => a.tipo))], mini_examen: b.mini_examen.length, preguntas: [...b.actividades, ...b.mini_examen].map((a: any) => ({ id: a.id, tipo: a.tipo, pregunta: a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.instruccion, pares: a.pares?.map((p: any) => p.termino), tarjetas: a.elementos?.map((e: any) => `${e.texto} → ${a.grupos?.[e.grupo]}`) })) }]));
+    const contenido = [{ type: "text", text: `${notaR ? notaR + "\n" : ""}Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n") || "(ninguno)"}${textoLargas}\nPistas de cada bloque (cada actividad nueva lleva en "pista" una de las del bloque de su hueco): ${JSON.stringify(Object.fromEntries(conJuegos.map((b) => [b.id, b.pistas.map((p: any) => p.id)])))}\nJuegos que ya tiene cada bloque (no repitas sus preguntas): ${JSON.stringify(actuales)}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => [...b.actividades, ...b.mini_examen].map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
     let divididas: any[] = [];
     if ((D.huecos ?? []).length || largas.length) try {
       const res = await llamar(supabase, t, fuente, "reparar", "reparar", { sistema, contenido, maxTokens: 16000 });
@@ -592,11 +609,15 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const plan = D.plan; const tipos = (D.fotos ?? []).map((f: any) => f.tipo);
     const hayApuntes = tipos.some((x: string) => x && x !== "libro_impreso");
     const reporte: any[] = [];
-    try {
-      const bloquesResumen = (D.bloques as any[]).map((b) => ({ id: b.id, pistas: b.pistas.map((p: any) => ({ id: p.id, titulo: p.titulo, ideas: p.ideas })), actividades: [...b.actividades, ...b.mini_examen].map((a: any) => ({ id: a.id, tipo: a.tipo, pregunta: a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.texto ?? a.instruccion, respuesta: a.opciones ? a.opciones[a.correcta] : a.respuesta ?? (a.es_verdadera !== undefined ? String(a.es_verdadera) : undefined), pares: a.pares, pasos: a.pasos?.map((p: any) => p.texto), grupos: a.grupos, elementos: a.elementos })) }));
+    // Lo que ya viene de fuentes confirmadas al investigar los temas no se vuelve a buscar (tope de 6 MXN, 11 nov 2026).
+    const { bloques: bloquesResumen, total, omitidos } = contenidoParaVerificar(D);
+    if (!bloquesResumen.length) reporte.push({ estado: "omitida", detalle: `No se llamó a la IA: todo el contenido (${total}) viene de fuentes confirmadas al investigar los temas del temario` });
+    else try {
       const sospechas = Object.values(D.inventario as Record<string, any[]>).flat().filter((e: any) => e?.motivo);
       const contenido = [{ type: "text", text: `Idioma: ${plan.idioma_guia}. Materia: ${plan.materia}. Grado: ${fuente.grado}. Tipos de foto: ${JSON.stringify(tipos)}. ${hayApuntes ? "Hay apuntes a mano o pizarrón: verifica las afirmaciones clave." : "Es libro impreso: verifica solo lo dudoso."}\nSospechas del extractor: ${JSON.stringify(sospechas)}\n\nCONTENIDO A VERIFICAR:\n${JSON.stringify(bloquesResumen)}` }];
-      const res = await llamar(supabase, t, fuente, "verificar", "verificar", { sistema: VERIFICADOR, contenido, maxTokens: 16000, herramientas: [{ type: "web_search_20260209", name: "web_search", max_uses: hayApuntes ? 10 : 4, allowed_domains: DOMINIOS_CONFIABLES }] });
+      // 10 búsquedas para apuntes a mano; 4 para libro impreso o si más de la mitad ya trae sus fuentes.
+      const busquedas = hayApuntes && omitidos * 2 <= total ? 10 : 4;
+      const res = await llamar(supabase, t, fuente, "verificar", "verificar", { sistema: VERIFICADOR, contenido, maxTokens: 16000, herramientas: [{ type: "web_search_20260209", name: "web_search", max_uses: busquedas, allowed_domains: DOMINIOS_CONFIABLES }] });
       if (res === REPETIR) return "verificar";
       const r = res;
       if (!Array.isArray(r.json?.resultados)) await diagnosticar(supabase, t, "verificar", r);
@@ -655,6 +676,15 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       marcarInvestigado(b, resB);
       b.temas_completados = resB.filter((r) => r.estado === "confirmado").map((r) => ({ tema: r.tema, fuentes: r.fuentes }));
       b.temas_para_repasar = resB.filter((r) => r.estado === "no_confirmado").map((r) => ({ tema: r.tema, pagina: r.pagina }));
+    }
+    // Bloques que solo traen la nota del temario: la nota pasa al bloque anterior (o al siguiente) y el bloque vacío no se
+    // arma (nunca un bloque sin juegos ni preguntas inventadas para llenarlo).
+    for (let i = bloques.length - 1; i >= 0; i--) {
+      if (!bloques[i].solo_nota || bloques.length < 2) continue;
+      const vecino = bloques[i - 1] ?? bloques[i + 1];
+      vecino.pistas = [...(vecino.pistas ?? []), ...bloques[i].pistas];
+      vecino.temas_para_repasar = [...(vecino.temas_para_repasar ?? []), ...(bloques[i].temas_para_repasar ?? [])];
+      bloques.splice(i, 1);
     }
     const cartucho: any = { version_formato: "1.3", plan: { ...plan, identidad: { ...plan.identidad } }, bloques, calentamiento: [], reto_final: [] };
     delete cartucho.plan.bloques; delete cartucho.plan.inventario_no_usado;
@@ -1136,6 +1166,7 @@ export function aplicarReparacion(bloques: any[], j: any, citas: string[], nivel
     if (!revisarActividad(a, citas, nivel, [], "reparar", descartes, idioma)) continue;
     const b = bloqueDeNueva(bloques, a, huecos);
     if (!b) continue;
+    if (b.solo_nota) { descartes.push({ id: String(a.id ?? "?"), tipo: String(a.tipo), bloque: b.id, motivo: "bloque sin temas confirmados (solo lleva la nota del temario): no se inventan preguntas" }); continue; }
     if (!tiene(b, a)) { descartes.push({ id: String(a.id ?? "?"), tipo: String(a.tipo), bloque: b.id, motivo: "tipo de juego que el bloque no tiene (la reparación solo completa juegos existentes)" }); continue; }
     if (a._mini) { delete a._mini; b.mini_examen.push(a); } else b.actividades.push(a);
     colocadas.push(`${a.id}→${b.id}`);
@@ -1271,8 +1302,10 @@ export function bloqueDeNueva(bloques: any[], a: any, huecos: string[]): any {
     if (b) return b;
   }
   // Sin pista: el bloque con hueco (mencionado en los huecos) que tenga menos actividades; si ninguno, el más corto.
-  const conHueco = bloques.filter((b) => huecos.some((h) => new RegExp(`\\b${b.id}\\b`).test(h)));
-  const lista = conHueco.length ? conHueco : bloques;
+  // Nunca un bloque que solo lleva la nota del temario.
+  const vivos = bloques.filter((b) => b && !b.solo_nota);
+  const conHueco = vivos.filter((b) => huecos.some((h) => new RegExp(`\\b${b.id}\\b`).test(h)));
+  const lista = conHueco.length ? conHueco : vivos;
   return [...lista].sort((x, y) => x.actividades.length - y.actividades.length)[0];
 }
 
@@ -1389,6 +1422,16 @@ export function indiceCorrecta(valor: unknown, opciones: string[]): number {
 export function normalizarActividad(a: any, idioma = "es"): void {
   if (!a || typeof a !== "object") return;
   const [bien, malTxt] = RETRO[idioma] ?? RETRO.es;
+  // La IA a veces escribe el texto en "texto" y la fuente como texto suelto (11 nov 2026: el reparador dejó preguntas que
+  // el reproductor mostraba vacías). Cada tipo lleva su campo: pregunta, afirmacion o enunciado.
+  const campo = a.tipo === "verdadero_falso" ? "afirmacion" : a.tipo === "completar" ? "enunciado" : ["opcion_multiple", "duelo"].includes(a.tipo) ? "pregunta" : "";
+  // Un campo vacío ("") tapa al bueno: el reproductor muestra pregunta ?? afirmacion ?? enunciado.
+  if (campo) for (const k of ["pregunta", "afirmacion", "enunciado"]) if (typeof a[k] === "string" && !a[k].trim()) delete a[k];
+  if (campo && !String(a[campo] ?? "").trim() && String(a.texto ?? "").trim()) { a[campo] = String(a.texto).trim(); delete a.texto; }
+  // El juego de deslizar (verdadero o falso) solo lee "afirmacion".
+  if (a.tipo === "verdadero_falso" && !String(a.afirmacion ?? "").trim() && String(a.pregunta ?? "").trim()) a.afirmacion = String(a.pregunta).trim();
+  if (typeof a.fuente === "string") a.fuente = { foto: 0, tipo: "textual", cita: a.fuente };
+  if (!a.retro_correcta && typeof a.retroalimentacion === "string" && a.retroalimentacion.trim()) a.retro_correcta = a.retroalimentacion.trim();
   if (["opcion_multiple", "duelo"].includes(a.tipo)) {
     if (!Array.isArray(a.opciones) && a.opciones && typeof a.opciones === "object") a.opciones = Object.values(a.opciones);
     if (Array.isArray(a.opciones)) a.opciones = a.opciones.map(textoOpcion).map((o: string) => o.trim());
@@ -1548,7 +1591,8 @@ export function recortarVistaPrevia(c: any): any {
   const v: any = { version_formato: c.version_formato, plan: { ...c.plan }, bloques: [], calentamiento: [], reto_final: [], vista_previa: true, bloques_totales: Math.max(planeados.length, bloques.length), actividades_totales: Math.max(hechas, estimadas) };
   delete v.plan.bloques_plan;
   if (b0) {
-    const acts = (b0.actividades ?? []) as any[];
+    // Nunca una pregunta en blanco en la vista previa (11 nov 2026).
+    const acts = ((b0.actividades ?? []) as any[]).filter((a: any) => !TIPOS_PREGUNTA.includes(a?.tipo) || textoPregunta(a));
     const quiz = acts.filter((a: any) => a.tipo === "opcion_multiple" || a.tipo === "completar").slice(0, 6);
     const orden = (Array.isArray(b0.orden) ? b0.orden : []) as string[];
     // Otro formato (el que el plan pone primero); sin juego de preguntas en el bloque 1, dos formatos distintos.
@@ -1573,6 +1617,11 @@ export function recortarVistaPrevia(c: any): any {
 // reproductor conoce; total de slides dentro del tope y completo === true. Devuelve la lista de problemas (vacía = pasa).
 export const TIPOS_REPRODUCTOR = ["opcion_multiple", "completar", "verdadero_falso", "super_dato", "conceptos", "quien_es_quien", "ordenar", "clasificar", "duelo"];
 const TIPOS_PREGUNTA = ["opcion_multiple", "completar", "verdadero_falso"];
+// El texto que el alumno ve en una pregunta: el reproductor muestra pregunta ?? afirmacion ?? enunciado, y el juego de
+// deslizar de verdadero o falso, solo la afirmacion. Vacío = la pregunta sale en blanco.
+export function textoPregunta(a: any): string {
+  return String((a?.tipo === "verdadero_falso" ? a?.afirmacion : a?.pregunta ?? a?.afirmacion ?? a?.enunciado) ?? "").trim();
+}
 export const TOPE_SLIDES_ENTREGA = TOPE_JUSTIFICADO + 2; // el tope más alto del plan, con margen para la cuenta del reproductor
 export function verificarCartucho(c: any): string[] {
   const out: string[] = [];
@@ -1589,6 +1638,9 @@ export function verificarCartucho(c: any): string[] {
     for (const a of acts) if (!TIPOS_REPRODUCTOR.includes(a?.tipo)) out.push(`Bloque ${id}: tipo de actividad desconocido "${a?.tipo}"`);
     for (const a of [...(b.mini_examen ?? []), ...(b.duelo ?? []).map((x: any) => ({ tipo: "opcion_multiple", ...x }))]) if (!TIPOS_PREGUNTA.includes(a?.tipo)) out.push(`Bloque ${id}: pregunta de tipo desconocido "${a?.tipo}"`);
     if (juegosDelBloque(b) < 1) out.push(`Bloque ${id}: no tiene juegos`);
+    // Nunca una pregunta vacía (11 nov 2026): ver textoPregunta.
+    const sinTexto = [...acts.filter((a: any) => TIPOS_PREGUNTA.includes(a?.tipo)), ...(b.mini_examen ?? []), ...(b.duelo ?? [])].filter((a: any) => !textoPregunta(a));
+    if (sinTexto.length) out.push(`Bloque ${id}: ${sinTexto.length} pregunta(s) sin texto (${sinTexto.slice(0, 3).map((a: any) => a?.id).join(", ")})`);
     // Mínimos: los mismos del generador (el duelo ya vive en su lista propia).
     const conDuelo = { ...b, actividades: [...acts, ...(b.duelo ?? []).map((x: any) => ({ ...x, tipo: "duelo" }))] };
     for (const f of faltasDeBloque(conDuelo)) out.push(`Bloque ${id}: ${f.juego}${f.id ? " " + f.id : ""} tiene ${f.tiene} ${f.unidad} (mínimo ${f.minimo})`);
@@ -1608,7 +1660,9 @@ export function verificarCartucho(c: any): string[] {
 export type TemaInv = { tema: string; bloque: string; pagina: string };
 export type FuenteInv = { nombre: string; url: string; oficial?: boolean; sitio?: string };
 export type ResultadoInv = TemaInv & { estado: "confirmado" | "no_confirmado" | "practica_examen"; datos: { texto: string; fuentes: FuenteInv[] }[]; fuentes: { nombre: string; url: string }[]; motivo: string };
-export const MAX_TEMAS_INVESTIGAR = 8; // por guía; los que sigan quedan como nota para repasar en el libro
+// Tope de 6 MXN por guía (Daniel, 11 nov 2026): hasta 6 temas por guía y 2 búsquedas por tema (antes 8 y 3).
+export const MAX_TEMAS_INVESTIGAR = 6; // por guía; los que sigan quedan como nota para repasar en el libro
+export const BUSQUEDAS_POR_TEMA = 2;
 // Nota para el Planificador cuando la investigación está encendida: cada tema del temario lleva su pista (y su slide).
 const NOTA_PLAN_INVESTIGAR = "TEMAS DEL TEMARIO: SparkEd completará con fuentes confiables los temas_a_investigar. Pon cada uno en su bloque con su propia pista (un título de \"pistas\"; cuenta como slide). Si no se puede confirmar, esa pista se vuelve una nota para repasarlo en el libro.";
 const TEMAS_POR_LLAMADA = 2; // cada llamada, con sus búsquedas, debe terminar antes de 125 s
@@ -1655,6 +1709,38 @@ function bloqueParecido(bloques: any[], tema: string): string | null {
   return mejor;
 }
 
+// ¿El inventario del bloque trae contenido de los apuntes (no solo la lista de temas)? No cuentan el «ninguno» de los
+// ejercicios ni las palabras de vocabulario que la foto no define («sin_definicion»).
+const PROPIAS = ["datos_clave", "vocabulario", "reglas", "secuencias", "categorias", "personajes", "diagramas", "textos_dificiles", "ejercicios_del_libro"];
+export function tieneContenidoPropio(inv: Record<string, any[]>): boolean {
+  const vacio = (k: string, e: any) => (k === "ejercicios_del_libro" && /^ninguno$/i.test(String(e.instruccion ?? "").trim())) || (k === "vocabulario" && /^sin_definici[oó]n$/i.test(String(e.significado ?? "").trim()));
+  return PROPIAS.some((k) => (Array.isArray(inv?.[k]) ? inv[k] : []).some((e: any) => e && (typeof e === "object" ? !vacio(k, e) : String(e).trim() !== "")));
+}
+// Bloque que solo lleva la nota del temario: tenía temas por investigar, ninguno se confirmó y los apuntes no traen
+// contenido propio para él. Sin investigación (resB vacío) nunca aplica: todo sigue como antes.
+export function bloqueSoloNota(resB: ResultadoInv[], invBloque: Record<string, any[]>): boolean {
+  return resB.some((r) => r.estado === "no_confirmado") && !resB.some((r) => r.estado === "confirmado") && !tieneContenidoPropio(invBloque);
+}
+// Lo que el paso verificar le manda a la IA. Fuera quedan las notas «repásalo en tu libro», las pistas marcadas
+// «Completado con fuentes» y las actividades cuya cita es un dato confirmado al investigar (ya traen 1 fuente oficial o
+// 2 confiables). Sin investigación, el resumen es el mismo de siempre. total y omitidos cuentan pistas y actividades.
+export function contenidoParaVerificar(D: any): { bloques: any[]; total: number; omitidos: number } {
+  const datos = (Array.isArray(D?.investigacion) ? D.investigacion : []).filter((r: any) => r?.estado === "confirmado").flatMap((r: any) => (r.datos ?? []).map((d: any) => String(d?.texto ?? ""))).filter(Boolean);
+  const conFuentes = (a: any) => a?.fuente?.tipo === "investigado" && datos.length > 0 && citaExiste(String(a.fuente?.cita ?? ""), datos);
+  let total = 0, omitidos = 0;
+  const bloques: any[] = [];
+  for (const b of (Array.isArray(D?.bloques) ? D.bloques : []).filter(Boolean)) {
+    const pistas = (b.pistas ?? []).filter((p: any) => p && !p.nota_temario);
+    const acts = [...(b.actividades ?? []), ...(b.mini_examen ?? [])].filter(Boolean);
+    const pistasV = pistas.filter((p: any) => !p.completado_con_fuentes);
+    const actsV = acts.filter((a: any) => !conFuentes(a));
+    total += pistas.length + acts.length;
+    omitidos += pistas.length - pistasV.length + acts.length - actsV.length;
+    if (!pistasV.length && !actsV.length) continue;
+    bloques.push({ id: b.id, pistas: pistasV.map((p: any) => ({ id: p.id, titulo: p.titulo, ideas: p.ideas })), actividades: actsV.map((a: any) => ({ id: a.id, tipo: a.tipo, pregunta: a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.texto ?? a.instruccion, respuesta: a.opciones ? a.opciones[a.correcta] : a.respuesta ?? (a.es_verdadera !== undefined ? String(a.es_verdadera) : undefined), pares: a.pares, pasos: a.pasos?.map((p: any) => p.texto), grupos: a.grupos, elementos: a.elementos })) });
+  }
+  return { bloques, total, omitidos };
+}
 export function resultadosDeBloque(D: any, bloqueId: string): ResultadoInv[] {
   return (Array.isArray(D?.investigacion) ? D.investigacion : []).filter((r: any) => r?.bloque === bloqueId);
 }
@@ -1684,13 +1770,17 @@ async function investigarTemas(supabase: Supa, t: Trabajo, fuente: Fuente, pb: a
   const clave = lote.map((x) => normaliza(x.tema)).join("|");
   const intento = D.intento_inv?.clave === clave ? Number(D.intento_inv.n) || 0 : 0;
   await guardar(supabase, t, { progreso: { pct: Number((t.progreso as any)?.pct) || 40, mensaje: `Buscando en fuentes confiables: ${lote.map((x) => x.tema).join(", ").slice(0, 70)} 🔎`, paso: t.paso } });
-  const contenido = [{ type: "text", text: `Materia: ${plan.materia ?? fuente.materia}. Grado: ${fuente.grado}. Nivel: ${nivel}. Idioma de la guía: ${plan.idioma_guia ?? "es"}.\nBloque de la guía: «${pb.titulo}» (sus temas: ${JSON.stringify(pb.temas ?? [])}).\nTEMAS A INVESTIGAR: ${JSON.stringify(lote.map((x) => ({ tema: x.tema, pagina: x.pagina })))}` }];
+  // En el reintento la IA sabe qué falló la primera vez (11 nov 2026: «entrada inválida» del buscador, 0 páginas).
+  const aviso = intento > 0 ? `\nINTENTO ANTERIOR FALLIDO (${String(D.intento_inv?.motivo ?? "").slice(0, 120)}): haz consultas MÁS CORTAS y sencillas (3 a 7 palabras, sin site:, comillas ni OR).` : "";
+  const contenido = [{ type: "text", text: `Materia: ${plan.materia ?? fuente.materia}. Grado: ${fuente.grado}. Nivel: ${nivel}. Idioma de la guía: ${plan.idioma_guia ?? "es"}.\nBloque de la guía: «${pb.titulo}» (sus temas: ${JSON.stringify(pb.temas ?? [])}).\nTEMAS A INVESTIGAR: ${JSON.stringify(lote.map((x) => ({ tema: x.tema, pagina: x.pagina })))}${aviso}` }];
   let resultados: ResultadoInv[] | null = null;
   let motivo = "";
   try {
-    const res = await llamar(supabase, t, fuente, "investigar", `investigar ${pb.id}`, { sistema: INVESTIGADOR, contenido, maxTokens: 12000, herramientas: [{ type: "web_search_20260209", name: "web_search", max_uses: 3 * lote.length, allowed_domains: DOMINIOS_CONFIABLES }] });
+    const res = await llamar(supabase, t, fuente, "investigar", `investigar ${pb.id}`, { sistema: INVESTIGADOR, contenido, maxTokens: 12000, herramientas: [{ type: "web_search_20260209", name: "web_search", max_uses: BUSQUEDAS_POR_TEMA * lote.length, allowed_domains: DOMINIOS_CONFIABLES }] });
     if (res === REPETIR) return t.paso;
-    if (Array.isArray(res.json?.temas)) resultados = validarInvestigacion(res.json, lote, res.urls);
+    // Si el buscador no devolvió ni una página (falló o rechazó las consultas), la respuesta no vale: se reintenta una vez.
+    if (Array.isArray(res.json?.temas) && !res.urls.length && intento < 1) motivo = "el buscador no devolvió ninguna página";
+    else if (Array.isArray(res.json?.temas)) resultados = validarInvestigacion(res.json, lote, res.urls);
     else { motivo = `sin JSON (${res.parada ?? "sin motivo"})`; await diagnosticar(supabase, t, `investigar ${pb.id}`, res); }
   } catch (e) {
     if ((e as any)?.reintentar) throw e;

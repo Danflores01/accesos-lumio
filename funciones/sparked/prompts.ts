@@ -390,6 +390,15 @@ Usa ids nuevos con el prefijo "r" y el bloque del hueco (ej. "r_b2om1"). Cada ac
 lleva en "pista" el id de una pista del bloque de su hueco (te damos la lista) y "correcta"
 como número (0 a 3).
 
+FORMATO DE CADA PREGUNTA NUEVA (los nombres exactos: el juego solo muestra estos campos; con otro nombre, como
+"texto" o "retroalimentacion", la pregunta sale VACÍA):
+- opcion_multiple, duelo y mini_examen: { "id", "pregunta", "opciones": [4], "correcta", "dificultad", "pista",
+  "retro_correcta", "retro_incorrecta", "fuente": { "foto", "tipo", "cita" } }
+- verdadero_falso: { "id", "afirmacion", "es_verdadera": true o false, "dificultad", "pista", "retro_correcta",
+  "retro_incorrecta", "fuente" }
+- completar: { "id", "enunciado" (con ___ en el hueco), "respuesta", "distractores": [3], "dificultad", "pista",
+  "retro_correcta", "retro_incorrecta", "fuente" }
+
 PISTAS DEMASIADO LARGAS (si te mandamos alguna): cada slide debe caber completa. Divide
 cada pista larga en DOS pistas de continuación, cada una con sentido completo por sí
 sola: misma información (no inventes ni quites datos clave), "titulo" de máx. 6 palabras
@@ -484,6 +493,10 @@ temario y los otros temas de su bloque, para que entiendas el enfoque).
    (libros.conaliteg.gob.mx, conaliteg.sep.gob.mx) y los sitios oficiales (sep.gob.mx, gob.mx, INEGI, INAH, RAE);
    después, los académicos de la lista. Wikipedia NO cuenta como fuente. Busca con el nombre del tema, la materia y
    el grado; si el temario da una página o un recurso, úsalo para entender qué parte del tema piden.
+   CÓMO BUSCAR (tienes pocas búsquedas, unas 2 por tema): consultas CORTAS y sencillas, de 3 a 7 palabras (por
+   ejemplo: "ciclo del agua primaria SEP"); nunca uses site:, comillas, OR ni signos raros. Si una búsqueda
+   falla o no trae nada útil, intenta UNA vez con otras palabras. Si la primera ya trae una fuente oficial con el
+   contenido del tema, no busques más para ese tema: escribe sus datos con esa página.
 3. Regla de confirmación: un dato se queda solo si lo respalda 1 fuente oficial o 2 fuentes confiables distintas que
    dicen lo mismo. Cada dato lleva sus fuentes: el nombre de la página y su url EXACTA, tal como salió en tu
    búsqueda. Nada de memoria: si no lo encontraste en una fuente, no lo escribas.
