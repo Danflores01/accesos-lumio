@@ -11,7 +11,10 @@ Horas en hora de México (UTC−6).
 ## 2026-11-10 · Las guías pagadas no abrían («Algo falló»)
 
 **Gravedad:** máxima. Se cobraba y se entregaba un link que no abría.
-**Duración del fallo:** 10:46 → 19:31 (8 h 45 min). **Familias afectadas:** 1 (23 minutos, 11 intentos).
+**Duración del fallo:** 10:46 → 19:31 (8 h 45 min). **Familias afectadas:** 1 (23 minutos, 11 intentos). Fueron dos
+compras de la misma guía: la de tarjeta de las 19:01 y otra con código a las 19:21, hecha en plena falla (parece un
+reintento para conseguir un link nuevo), que tampoco abrió. Por las huellas de red, 10 de los 11 intentos salieron de
+una misma red (una computadora y un iPhone) y 1 de un segundo teléfono en otra red.
 **Del aviso de Daniel al arreglo en vivo:** unos 6 minutos.
 
 ### Qué vio el cliente
@@ -98,8 +101,19 @@ Por qué no se detectó en nueve horas:
 - La ronda (`scripts/ronda.mjs`) pregunta al servidor por la llave de cada compra entregada, sin gastarla.
 - Esta skill y su agente.
 
+### Simulacro del mismo día (20:31)
+Un ayudante sin contexto recibió «una clienta dice que pagó hoy en la tarde y su link dice que algo salió mal». Con la
+skill llegó en minuto y medio al diagnóstico correcto (la dirección tapada, ya resuelta; las dos compras abiertas a
+las 19:33 y 19:45). Lo que le costó, ya corregido: contó dos familias donde había una (ahora la skill dice «cuenta
+compras, no huellas»), la consulta de compras no mostraba una compra creada antes y pagada después, las horas venían
+en UTC y faltaba una consulta de intentos de abrir uno por uno. La compuerta también tuvo su tropiezo: esperaba la
+publicación mirando una lista de GitHub que anotó el commit anterior y se quedó colgada 7 minutos; ahora mira la
+corrida de ese commit y compara lo publicado con la copia.
+
 ### Pendiente al cerrar
-- Desplegar el código 2026-11-10.7 (necesita el visto bueno de Daniel; el permiso fue rechazado).
+- Desplegar el código 2026-11-10.7 (necesita el visto bueno de Daniel; el permiso fue rechazado). Mientras no se
+  despliegue, la dirección anterior sigue tapada: quien tenga la página abierta desde antes de las 19:30 del 10 nov
+  tiene que recargarla.
 - Encender el vigilante automático (necesita el visto bueno de Daniel; el permiso para subirlo fue rechazado). Pasos
   en `_guardia/LEEME.md`.
 - Daniel no tenía puesto su «correo de avisos» en Ajustes.

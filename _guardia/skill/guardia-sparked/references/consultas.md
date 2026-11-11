@@ -6,31 +6,50 @@ registro del servidor con `query_logs` (ventana máxima de 24 horas; pasa siempr
 **Privacidad.** Estas consultas no traen nombres, teléfonos, correos ni claves de acceso. No las cambies para traerlos:
 para diagnosticar bastan folios, horas y estados. La clave de un link (`accesos.token`) nunca se imprime.
 
-Horas: la base y el registro están en UTC. México = UTC − 6.
+Horas: la base y el registro guardan todo en UTC (México = UTC − 6). Las consultas 1, 2 y la de «intentos de abrir»
+ya devuelven la hora de México (columnas que terminan en `_mx`), para no convertir a mano cuando alguien dice «hoy en
+la tarde».
 
 ## 1. Compras recientes, con todo su camino
 
 ```sql
-select left(c.id::text, 8) as folio, c.estado, c.metodo_pago, c.mp_estado,
-       c.creada_en, c.pagada_en, c.entregada_en, c.correo_lista_en, c.wa_estado, left(coalesce(c.wa_detalle,''), 80) as wa_detalle,
+select left(c.id::text, 8) as folio, c.estado, c.metodo_pago, c.mp_estado, c.codigo is not null as con_codigo,
+       to_char(c.creada_en at time zone 'America/Mexico_City', 'DD Mon HH24:MI') as creada_mx,
+       to_char(c.pagada_en at time zone 'America/Mexico_City', 'DD Mon HH24:MI') as pagada_mx,
+       to_char(c.entregada_en at time zone 'America/Mexico_City', 'DD Mon HH24:MI') as entregada_mx,
+       c.correo_lista_en is not null as correo_enviado, c.wa_estado, left(coalesce(c.wa_detalle,''), 80) as wa_detalle,
        c.grado, c.materia, c.guia_id, g.estado as guia_estado, g.reporte->>'etapa' as etapa,
        (g.cartucho->>'completo') as completa,
-       a.id is not null as tiene_acceso, a.usos, a.primer_uso_en, a.ultimo_uso_en, a.expira_en, a.revocado,
+       a.id is not null as tiene_acceso, a.usos,
+       to_char(a.primer_uso_en at time zone 'America/Mexico_City', 'DD Mon HH24:MI') as primer_uso_mx,
+       to_char(a.ultimo_uso_en at time zone 'America/Mexico_City', 'DD Mon HH24:MI') as ultimo_uso_mx,
+       to_char(a.expira_en at time zone 'America/Mexico_City', 'DD Mon HH24:MI') as expira_mx, a.revocado,
        (select count(*) from acceso_dispositivos d where d.acceso_id = a.id) as dispositivos
 from compras c
 left join guias g on g.id = c.guia_id
 left join accesos a on a.id = c.acceso_id
-where c.creada_en > now() - interval '48 hours'
-order by c.creada_en desc limit 30;
+where greatest(c.creada_en, coalesce(c.pagada_en, c.creada_en), coalesce(c.entregada_en, c.creada_en)) > now() - interval '48 hours'
+order by greatest(c.creada_en, coalesce(c.pagada_en, c.creada_en), coalesce(c.entregada_en, c.creada_en)) desc limit 30;
 ```
 
-Cómo leerla: `pagada` + `completa = true` + `entregada_en` + `usos > 0` es el camino completo. Lo que falte dice en qué
+Cómo leerla: `pagada` + `completa = true` + `entregada_mx` + `usos > 0` es el camino completo. Lo que falte dice en qué
 etapa se quedó. `usos = 0` horas después de entregar puede ser normal (no la han abierto) o señal de que no pueden.
+El filtro mira la fecha más reciente de las tres (creada, pagada, entregada): una compra en OXXO se crea un día y se
+paga al siguiente. El texto del código de descuento no se trae a propósito (a veces es el nombre de una persona).
+
+**Cómo ubicar la compra de «una clienta que dice que…» sin datos personales.** Pregúntale a Daniel la hora aproximada
+en que pagó, el método de pago y, si lo tiene a la mano, el folio que ve en Compras de su panel. Con la hora y el
+método, esta consulta la deja ubicada. Si hay dos compras de la misma guía (`guia_id` igual) y la segunda se pagó con
+código en plena falla, casi seguro es la misma familia reintentando o una prueba de Daniel: no las cuentes como dos
+familias sin preguntar.
 
 ## 2. ¿Ya entró la familia? (la prueba de que un arreglo funcionó)
 
 ```sql
-select left(a.id::text, 8) as acceso, a.usos, a.primer_uso_en, a.ultimo_uso_en, a.expira_en,
+select left(a.id::text, 8) as acceso, a.usos,
+       to_char(a.primer_uso_en at time zone 'America/Mexico_City', 'DD Mon HH24:MI') as primer_uso_mx,
+       to_char(a.ultimo_uso_en at time zone 'America/Mexico_City', 'DD Mon HH24:MI') as ultimo_uso_mx,
+       to_char(a.expira_en at time zone 'America/Mexico_City', 'DD Mon HH24:MI') as expira_mx,
        (select count(*) from acceso_dispositivos d where d.acceso_id = a.id) as dispositivos
 from accesos a join compras c on c.acceso_id = a.id
 where c.id::text like '<folio en minúsculas>%';
@@ -138,6 +157,37 @@ group by quien, st order by min(timestamp) asc limit 60
 
 `quien` es una huella de la dirección de red, no la dirección. Las pruebas que hagas a mano (con `curl` o desde un
 navegador de prueba) sí salen ahí: réstalas.
+
+Intentos de abrir, uno por uno y en hora de México: la consulta que separa a las familias de las pruebas y cuenta la
+historia completa de un fallo (quién no pudo, desde qué equipo y a qué hora entró por fin):
+
+```sql
+select formatDateTime(timestamp, '%d %H:%i:%S', 'America/Mexico_City') as hora_mx,
+       substring(hex(cityHash64(log_attributes['request.headers.cf_connecting_ip'])), 1, 6) as quien,
+       multiIf(position(log_attributes['request.headers.user_agent'], 'guardia-sparked') > 0, 'guardia',
+               position(log_attributes['request.headers.user_agent'], 'iPhone') > 0, 'iPhone',
+               position(log_attributes['request.headers.user_agent'], 'Android') > 0, 'Android',
+               position(log_attributes['request.headers.user_agent'], 'Windows') > 0, 'Windows',
+               position(log_attributes['request.headers.user_agent'], 'Macintosh') > 0, 'Mac', 'otro') as equipo,
+       log_attributes['request.method'] as m,
+       replaceRegexpAll(log_attributes['request.pathname'], '/acceso/[A-Za-z0-9]{8,64}', '/acceso/<clave>') as ruta,
+       log_attributes['response.status_code'] as st, count() as veces
+from logs
+where source = 'function_edge_logs' and log_attributes['request.method'] != 'OPTIONS'
+  and match(log_attributes['request.pathname'], '/sparked/acceso/[A-Za-z0-9]{8,64}(/abrir|/estado)?$')
+group by hora_mx, quien, equipo, m, ruta, st
+order by hora_mx asc limit 150
+```
+
+Cómo leerla:
+
+- **Tu propia huella** es la de las filas con equipo `guardia` (las mandó la ronda desde esta computadora). Todo lo
+  que tenga esa misma huella, aunque diga `Windows` u `otro`, son pruebas tuyas, no familias.
+- Un `POST …/abrir` con 200 es una familia que entró. Los `GET …/estado` de la guardia no gastan accesos.
+- **Cuenta compras, no huellas.** Una familia usa varios equipos y redes (la computadora de casa y el celular con
+  datos son dos huellas), y Daniel también prueba desde su teléfono. Cruza con la consulta 1 antes de decir a cuántas
+  familias les pasó.
+- Esta herramienta no acepta `with <expresión> as nombre` (da «Expected: AS»): repite la expresión, como arriba.
 
 Errores que escribió el propio servidor (`console.error` y avisos):
 

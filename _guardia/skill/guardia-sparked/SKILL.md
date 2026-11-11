@@ -96,12 +96,16 @@ Todo cambio de SparkEd pasa por aquí, por pequeño que parezca. El del 10 de no
 
 Aquí el reloj corre: cada minuto puede haber otra familia que pagó y no puede entrar.
 
-0. **Avisa a Daniel en una línea** que ya lo estás viendo. No esperes a tener la causa.
+0. **Avisa a Daniel en una línea** que ya lo estás viendo, por ejemplo: «Ya lo estoy revisando; en unos minutos te
+   digo qué pasó y cómo queda». No esperes a tener la causa. (Si trabajas como ayudante de otro Claude, tu canal es
+   tu informe: el aviso lo da quien te llamó.)
 1. **Corre la ronda.** Casi siempre dice sola en qué etapa está el problema.
 2. **Ubica la etapa, no la frase.** Daniel y las familias casi nunca citan el texto exacto de la pantalla. Mira, en
    este orden: Reportes (un `AVISO AUTOMÁTICO` trae el código y el motivo), las compras de esa hora (consulta 1) y el
-   registro del servidor (consulta 7, fallos agrupados). `references/sintomas.md` traduce lo que dice la familia a lo
-   que hay que comprobar. `references/incidentes.md` cuenta los fallos anteriores: lo más probable es que se parezca.
+   registro del servidor (consulta 7: fallos agrupados e intentos de abrir uno por uno). Para ubicar la compra sin
+   datos personales, pregúntale a Daniel la hora aproximada del pago y el método. `references/sintomas.md` traduce lo
+   que dice la familia a lo que hay que comprobar. `references/incidentes.md` cuenta los fallos anteriores: lo más
+   probable es que se parezca.
 3. **¿Una familia o todas?** Si es del sistema (una ruta, el sitio, un motor), hay que restablecer ya. Si es de una
    sola compra (pago sin confirmar, trabajo atorado, número sin WhatsApp), se arregla esa compra.
 4. **Restablece antes de entender.** `references/publicar-rapido.md`: primero el sitio (un minuto y sin permisos);
@@ -109,7 +113,11 @@ Aquí el reloj corre: cada minuto puede haber otra familia que pagó y no puede 
    desplegar y la salida fue cambiar la dirección que pedía el reproductor.
 5. **Comprueba con evidencia real:** la ronda sin `FALLA`; `primer_uso_en` de la compra afectada cuando la familia
    entra (consulta 2); `node herramientas/probar-guia.mjs <id de la guía>` para ver que su contenido se arma bien.
-6. **Mide el daño:** desde cuándo y a quién más le pasó (consulta 7, «quién intentó abrir»).
+6. **Mide el daño:** desde cuándo y a quién más le pasó (consulta 7, «intentos de abrir»). Cuenta compras, no
+   equipos: una familia usa varios dispositivos y redes, y una segunda compra de la misma guía pagada con código en
+   plena falla suele ser la misma familia reintentando o una prueba de Daniel. Si no estás seguro, di «N compras» y
+   pregúntale. Y avisa de lo que siga expuesto: quien dejó la página abierta desde antes del arreglo tiene que
+   recargarla.
 7. **Informa a Daniel** con el formato de abajo, incluido lo que le toca a él (por ejemplo, decirle a la familia que
    recargue la página). Tú no le escribes a la familia.
 8. **Cierra el incidente:** causa de fondo arreglada o con fecha, un candado nuevo (una prueba que falle con el código

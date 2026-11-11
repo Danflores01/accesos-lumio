@@ -192,12 +192,14 @@ const cabeza = git("rev-parse", "--short", "HEAD"), remoto = git("rev-parse", "-
 if (!cabeza) aviso("no pude leer el estado de git de la copia");
 else if (cabeza !== remoto) aviso(`la copia local (${cabeza}) y GitHub (${remoto}) no están en el mismo commit`);
 else ok(`copia local al día con GitHub (${cabeza})${sucios ? ` · ${sucios} archivo(s) con cambios sin guardar` : ""}`);
-const gh = spawnSync("gh", ["api", "repos/Danflores01/accesos-lumio/pages/builds", "--jq", ".[0] | \"\\(.status) \\(.commit[0:7])\""], { encoding: "utf8", shell: false });
-if (gh.status !== 0) aviso("no pude preguntar a GitHub por la última publicación (¿falta gh?)");
+// La señal fiable es la última corrida «pages build and deployment»: la lista antigua (pages/builds) a veces anota el
+// commit anterior aunque el sitio ya esté publicado (pasó el 10 nov 2026).
+const gh = spawnSync("gh", ["api", "repos/Danflores01/accesos-lumio/actions/runs?per_page=30", "--jq", "[.workflow_runs[] | select(.path | test(\"pages\"))][0] | \"\\(.status) \\(.conclusion) \\(.head_sha[0:7])\""], { encoding: "utf8", shell: false });
+if (gh.status !== 0 || gh.stdout.startsWith("null")) aviso("no pude preguntar a GitHub por la última publicación (¿falta gh?)");
 else {
-  const [estado, commit] = gh.stdout.trim().split(" ");
-  if (estado === "errored") falla(`la última publicación del sitio (${commit}) falló: lo publicado es una versión anterior. Relanzar: gh api -X POST repos/Danflores01/accesos-lumio/pages/builds`);
-  else if (estado !== "built") aviso(`el sitio se está publicando (${estado}, ${commit}): repite la ronda en un minuto`);
+  const [estado, conclusion, commit] = gh.stdout.trim().split(" ");
+  if (estado !== "completed") aviso(`el sitio se está publicando (${commit}): repite la ronda en un minuto`);
+  else if (conclusion !== "success") falla(`la última publicación del sitio (${commit}) falló: lo publicado es una versión anterior. Relanzar: gh api -X POST repos/Danflores01/accesos-lumio/pages/builds`);
   else if (remoto && commit !== remoto) aviso(`lo publicado es ${commit} y GitHub va en ${remoto}`);
   else ok(`sitio publicado en ${commit}`);
 }

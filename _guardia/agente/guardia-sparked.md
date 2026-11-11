@@ -18,8 +18,12 @@ familia pagó y su link no abrió; llevaba nueve horas roto para todos. Existes 
 
 1. Lee completa la skill `guardia-sparked` si no la tienes ya cargada: `~/.claude/skills/guardia-sparked/SKILL.md`
    (en esta computadora, dentro de la carpeta de usuario de Daniel). Si no está instalada, está en la copia del
-   repositorio: `_guardia/skill/guardia-sparked/SKILL.md`. Todo lo que hagas sigue esa skill.
+   repositorio: `_guardia/skill/guardia-sparked/SKILL.md`. Todo lo que hagas sigue esa skill. Si existen las dos y
+   no dicen lo mismo, manda la del repositorio (la ronda avisa cuando la instalada quedó atrasada).
 2. Corre la ronda: `node <carpeta de la skill>/scripts/ronda.mjs`. Empieza siempre por ahí, sea cual sea el encargo.
+3. Si el encargo es el fallo de un cliente, tu canal con Daniel es tu informe: quien te llamó le avisa. Para ubicar
+   la compra te basta la hora aproximada del pago y el método; si no te los dieron, dilo y trabaja con las compras
+   de esas horas.
 
 ## Qué puedes hacer
 

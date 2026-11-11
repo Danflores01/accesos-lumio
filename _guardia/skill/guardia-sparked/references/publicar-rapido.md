@@ -54,10 +54,16 @@ git push origin main                  # UN solo push: dos en menos de un minuto 
 Esperar la construcción (no adivinar):
 
 ```bash
-until s=$(gh api repos/Danflores01/accesos-lumio/pages/builds --jq '.[0] | "\(.status) \(.commit[0:7])"') && case "$s" in "built $(git rev-parse --short HEAD)"*|errored*) true;; *) false;; esac; do sleep 8; done; echo "$s"
+until s=$(gh api "repos/Danflores01/accesos-lumio/actions/runs?head_sha=$(git rev-parse HEAD)" --jq '[.workflow_runs[] | select(.path | test("pages"))][0] | "\(.status) \(.conclusion)"') && case "$s" in completed*) true;; *) false;; esac; do sleep 6; done; echo "$s"
 ```
 
-Si dice `errored`: `gh api -X POST repos/Danflores01/accesos-lumio/pages/builds` y esperar otra vez.
+Debe decir `completed success`. Si dice `completed failure`: `gh api -X POST repos/Danflores01/accesos-lumio/pages/builds`
+y esperar otra vez.
+
+**No te fíes de la lista antigua** (`pages/builds`) para saber qué commit está publicado: el 10 nov 2026 anotó el
+commit anterior cuando el sitio ya traía el nuevo, y una espera basada en ella se quedó colgada 7 minutos. La señal
+fiable es la corrida «pages build and deployment» de ese commit; la prueba definitiva, que un archivo publicado sea
+idéntico al de la copia (la compuerta hace las dos cosas).
 
 **Copia guardada del navegador.** Si cambias `sparked/js/reproductor.js` de forma urgente, sube también el `?v=` de su
 etiqueta en `sparked/guia.html` (por ejemplo `?v=2026-11-11b`). Sin eso, quien abrió la página hace menos de 10 minutos

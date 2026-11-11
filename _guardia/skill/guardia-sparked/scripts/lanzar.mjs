@@ -135,23 +135,60 @@ async function revisar(archivos) {
 }
 
 // ---------- Publicación ----------
-async function esperarPublicacion() {
+// ¿Ya se publicó este commit? La señal fiable es la corrida «pages build and deployment» de ESE commit. La lista
+// antigua de construcciones (pages/builds) a veces anota el commit anterior (pasó el 10 nov 2026: el sitio ya estaba
+// publicado y la lista seguía diciendo el commit viejo), así que solo se usa de respaldo y por su hora.
+function estadoPublicacion(cabeza, desde) {
+  const corrida = gh("api", `repos/${NOMBRE}/actions/runs?head_sha=${cabeza}&per_page=20`, "--jq", '[.workflow_runs[] | select(.path | test("pages"))][0] | "\\(.status) \\(.conclusion)"');
+  if (corrida && !corrida.startsWith("null")) {
+    const [estado, conclusion] = corrida.split(" ");
+    return estado !== "completed" ? "construyendo" : conclusion === "success" ? "publicado" : "fallo";
+  }
+  const [estado, commit, creada] = (gh("api", `repos/${NOMBRE}/pages/builds/latest`, "--jq", '"\\(.status) \\(.commit) \\(.created_at)"') ?? "").split(" ");
+  const esDeEste = commit === cabeza || (!!creada && new Date(creada).getTime() >= desde - 5000);
+  return esDeEste && estado === "built" ? "publicado" : esDeEste && estado === "errored" ? "fallo" : "construyendo";
+}
+async function esperarPublicacion(desde) {
   const cabeza = git("rev-parse", "HEAD").sale;
-  for (let i = 0, relanzado = false; i < 70; i++) {
-    const [estado, commit] = (gh("api", `repos/${NOMBRE}/pages/builds`, "--jq", '.[0] | "\\(.status) \\(.commit)"') ?? "").split(" ");
-    if (commit === cabeza && estado === "built") return true;
-    if (commit === cabeza && estado === "errored") {
+  for (let i = 0, relanzado = false; i < 50; i++) {
+    const e = estadoPublicacion(cabeza, desde);
+    if (e === "publicado") return true;
+    if (e === "fallo") {
       if (relanzado) return false;
       relanzado = true; console.log("      la construcción falló: la relanzo una vez"); gh("api", "-X", "POST", `repos/${NOMBRE}/pages/builds`);
+      await espera(15000);
     }
-    await espera(6000);
+    await espera(5000);
   }
   return false;
 }
-async function despuesDeSubir() {
+// La prueba definitiva: lo que está en vivo es idéntico a lo de esta copia. Se comparan los archivos de este
+// lanzamiento que el sitio sirve tal cual (no las carpetas con guion bajo o punto, ni los .md, que GitHub transforma).
+async function enVivoIgual(archivos) {
+  const dominio = (() => { try { return fs.readFileSync(path.join(REPO, "CNAME"), "utf8").trim(); } catch { return ""; } })();
+  const comparables = archivos.filter((f) => /\.(js|mjs|css|html|json|svg|txt)$/i.test(f) && !f.split("/").some((p) => /^[_.]/.test(p)) && fs.existsSync(path.join(REPO, f))).slice(0, 12);
+  if (!dominio || !comparables.length) return null;
+  const limpio = (t) => t.replace(/\r\n/g, "\n");
+  let distintos = [];
+  for (let intento = 0; intento < 8; intento++) {
+    distintos = [];
+    for (const f of comparables) {
+      const local = limpio(fs.readFileSync(path.join(REPO, f), "utf8"));
+      if (local.startsWith("---")) continue;   // GitHub procesa los archivos que empiezan así
+      try { const r = await fetch(`https://${dominio}/${f}?v=${Date.now()}`, { headers: { "user-agent": "guardia-sparked/lanzar" }, signal: AbortSignal.timeout(15000) }); if (!r.ok || limpio(await r.text()) !== local) distintos.push(f); } catch { distintos.push(f); }
+    }
+    if (!distintos.length) return { bien: true, cuantos: comparables.length };
+    await espera(8000);
+  }
+  return { bien: false, distintos };
+}
+async function despuesDeSubir(desde, archivos = []) {
   paso("Esperando a que GitHub Pages publique");
-  if (!(await esperarPublicacion())) alto(`el sitio no terminó de publicarse. Revisa: gh api repos/${NOMBRE}/pages/builds --jq ".[0]"   y repite con --esperar`);
+  if (!(await esperarPublicacion(desde))) alto(`el sitio no terminó de publicarse. Mira qué pasó:  gh run list -R ${NOMBRE} -L 3   y repite con --esperar`);
   console.log(`ok    publicado ${git("rev-parse", "--short", "HEAD").sale}`);
+  const vivo = await enVivoIgual(archivos);
+  if (vivo?.bien) console.log(`ok    comprobado en vivo: ${vivo.cuantos} archivo(s) del sitio son idénticos a los de esta copia`);
+  else if (vivo) console.log(`AVISO lo que está en vivo todavía NO coincide con esta copia en: ${vivo.distintos.join(", ")}. Puede ser la copia guardada de GitHub; si sigue así en unos minutos, la publicación no salió.`);
   paso("Ronda de comprobación en producción");
   const r = RONDA ? await correr(RONDA, ["--repo", REPO]) : await correr(path.join(REPO, "herramientas", "prueba-de-humo.mjs"));
   const cabeza = git("rev-parse", "--short", "HEAD").sale;
@@ -175,7 +212,8 @@ async function sinConstruccionEnCurso() {
 }
 
 console.log(`Compuerta de lanzamiento de SparkEd · copia: ${REPO}`);
-if (modo === "esperar") await despuesDeSubir();
+// --esperar: lo ya subido. De referencia se toma la hora del último commit y se comparan en vivo sus archivos.
+if (modo === "esperar") await despuesDeSubir(Number(git("log", "-1", "--format=%ct").sale) * 1000, git("show", "--name-only", "--format=", "HEAD").sale.split("\n").filter(Boolean));
 
 if (modo === "regresar") {
   if (!/^[0-9a-f]{7,40}$/i.test(commitMalo)) alto("di qué commit se deshace: --regresar <commit>");
@@ -184,9 +222,10 @@ if (modo === "regresar") {
   for (const f of tocados) for (const [patron, motivo] of PROHIBIDOS) if (patron.test(f)) alto(`ese commit tocó ${f}, que ${motivo}: deshazlo a mano y con el visto bueno de Daniel.`);
   const r = git("revert", "--no-edit", commitMalo);
   if (!r.bien) { git("revert", "--abort"); alto("no se pudo deshacer solo (hay cambios encima): " + r.error.slice(0, 300)); }
+  const desde = Date.now();
   const s = git("push", "origin", "main"); if (!s.bien) alto("no se pudo subir: " + s.error.slice(0, 300));
   console.log(`ok    deshecho ${commitMalo} y subido (${seg()})`);
-  await despuesDeSubir();
+  await despuesDeSubir(desde, tocados);
 }
 
 const archivos = [...new Set(dados.map(relativo))];
@@ -202,7 +241,8 @@ await sinConstruccionEnCurso();
 const a = git("add", "--", ...archivos); if (!a.bien) alto("git add falló: " + a.error.slice(0, 300));
 const c = git("commit", ...mensajes.filter((m) => m.trim()).flatMap((m) => ["-m", m]), "--", ...archivos);
 if (!c.bien) alto("no se pudo guardar el cambio (¿no hay nada nuevo en esos archivos?): " + (c.error || c.sale).slice(0, 300));
+const desde = Date.now();
 const s = git("push", "origin", "main");
 if (!s.bien) alto("se guardó pero no se pudo subir: " + s.error.slice(0, 300) + "\nArréglalo y termina con: git push origin main  y luego  --esperar");
 console.log(`ok    subido ${git("rev-parse", "--short", "HEAD").sale} (${seg()})`);
-await despuesDeSubir();
+await despuesDeSubir(desde, archivos);

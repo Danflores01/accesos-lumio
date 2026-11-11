@@ -54,7 +54,7 @@ if (cola !== undefined) {
   // desplegado todavía no trae el arreglo de fondo del 10 nov 2026 (código 2026-11-10.6 o más nuevo).
   const viejo = await pedir(`${API}/acceso/${CLAVE}`, { method: "POST", body: JSON.stringify({}) });
   const bien = viejo.st === 404 && viejo.json?.estado === "inexistente";
-  console.log(`${bien ? "ok   " : "AVISO"} servidor · la dirección anterior, POST /acceso/<clave>, ${bien ? "también llega a su ruta" : "sigue tapada: falta desplegar el arreglo de fondo (el reproductor publicado ya no la usa)"} (HTTP ${viejo.st} ${corto(viejo.texto)})`);
+  console.log(`${bien ? "ok   " : "AVISO"} servidor · la dirección anterior, POST /acceso/<clave>, ${bien ? "también llega a su ruta" : "sigue tapada: falta desplegar el arreglo de fondo. El reproductor publicado ya no la usa; solo le afecta a quien tenga la página abierta desde antes del arreglo y no la haya recargado"} (HTTP ${viejo.st} ${corto(viejo.texto)})`);
 }
 
 // ---------- 3. El camino de una compra ----------
