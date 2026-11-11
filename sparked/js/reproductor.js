@@ -317,6 +317,18 @@ function avisoParcial(d) {
 
 async function cargarDatos() { try { return await (await fetch("datos/curiosos.json")).json(); } catch { return []; } }
 
+// Aviso automático (11 nov 2026): si una guía pagada no abre por un fallo nuestro, queda un reporte nuevo en el panel
+// para que Daniel se entere en el momento y no cuando una familia le escriba. No se avisa de lo que es normal (link
+// vencido, inexistente, en otros dispositivos…). Un solo aviso por link en cada sesión del navegador.
+const ESTADOS_NORMALES = new Set(["ok", "generando", "revisando", "inexistente", "borrador", "expirado", "cerrado", "agotado", "revocado", "clase_inactiva", "otro_dispositivo"]);
+function avisarFallo(detalle) {
+  if (!esToken) return;
+  try { if (sessionStorage.getItem("sparked_fallo_" + token)) return; sessionStorage.setItem("sparked_fallo_" + token, "1"); } catch {}
+  const equipo = (navigator.userAgent.match(/iPhone|iPad|Android|Windows|Macintosh|Linux/) ?? ["otro equipo"])[0];
+  const comentario = `AVISO AUTOMÁTICO: una guía pagada no abrió. ${String(detalle).replace(/\s+/g, " ")} · ${equipo}`.slice(0, 480);
+  fetch(`${CONFIG.api}/reporte`, { method: "POST", headers: { "content-type": "application/json" }, keepalive: true, body: JSON.stringify({ token, guia_id: ctx.guiaId ?? undefined, comentario }) }).catch(() => {});
+}
+
 async function arrancar() {
   ajustar();
   const carga = pantallaCarga({ t: (k) => tx("es", k) }, await cargarDatos());
@@ -329,6 +341,7 @@ async function arrancar() {
       // ninguna familia podía abrir su guía. Con /abrir la petición llega siempre a la ruta de las guías.
       const r = await fetch(`${CONFIG.api}/acceso/${token}/abrir`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ dispositivo: leerSecreto() || undefined }) });
       const d = await r.json().catch(() => ({ estado: "error" }));
+      if (!ESTADOS_NORMALES.has(d.estado) || (d.estado === "ok" && !d.cartucho)) avisarFallo(`El servidor respondió HTTP ${r.status}: ${d.error ?? d.estado ?? "sin estado"}${d.estado === "ok" ? " (sin contenido)" : ""}`);
       if (d.dispositivo) guardarSecreto(d.dispositivo);
       if (d.estado === "generando") {
         // La guía ya está pagada pero Sparky sigue escribiendo bloques: se muestra el avance y se vuelve a intentar.
@@ -341,7 +354,8 @@ async function arrancar() {
         carga.detener(); escenario.innerHTML = ""; escenario.appendChild(mensaje("revisando"));
         setTimeout(() => location.reload(), 60000); return;
       }
-      if (d.estado !== "ok" || !d.cartucho) { carga.detener(); escenario.innerHTML = ""; escenario.appendChild(mensaje(d.estado ?? "error")); return; }
+      // Un estado que el reproductor no conoce (o «ok» sin contenido) es un fallo nuestro: se dice «Algo falló», no «Enlace no válido».
+      if (d.estado !== "ok" || !d.cartucho) { carga.detener(); escenario.innerHTML = ""; escenario.appendChild(mensaje(d.estado && d.estado !== "ok" && ESTADOS_NORMALES.has(d.estado) ? d.estado : "error")); return; }
       ctx.guiaId = d.guia_id ?? null;
       await montar(d.cartucho, "acceso", !!d.parcial); recuperar(d.progreso ?? null);
       if (d.parcial) avisoParcial(d);
@@ -372,6 +386,7 @@ async function arrancar() {
     carga.detener(); render();
   } catch (e) {
     console.error(e); carga.detener(); escenario.innerHTML = ""; escenario.appendChild(mensaje("error"));
+    avisarFallo(`Error al abrirla en el navegador: ${e?.message ?? e}`);
   }
 }
 arrancar();

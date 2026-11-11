@@ -23,7 +23,7 @@ import { imagenEntrega, imagenCompartir } from "./imagen-wa.ts";
 import { matrizQr } from "./qr.ts";
 import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 
-const VERSION = "2026-11-10.6";
+const VERSION = "2026-11-10.7";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -752,6 +752,18 @@ async function avisarDaniel(asunto: string, html: string) {
   const cfg = await config();
   if (esCorreo(cfg.sparked_correo_aviso)) await mandarCorreo(cfg.sparked_correo_aviso, asunto, html);
 }
+// El reproductor manda un reporte que empieza con «AVISO AUTOMÁTICO» cuando una guía pagada no abre por un fallo
+// nuestro (11 nov 2026). Además de quedar en el panel, se le escribe a Daniel: como mucho un correo cada 30 minutos.
+const esAvisoAutomatico = (comentario: string) => /^AVISO AUTOM[ÁA]TICO/i.test(comentario);
+async function avisarFalloDeGuia(comentario: string) {
+  try {
+    const desde = new Date(Date.now() - 30 * 60_000).toISOString();
+    const { count } = await supabase.from("reportes").select("id", { count: "exact", head: true }).ilike("comentario", "AVISO AUTOM%").gte("creado_en", desde);
+    if ((count ?? 0) > 1) return;   // este mismo reporte ya cuenta 1; si hay más, el correo ya salió hace poco
+    const limpio = comentario.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]!));
+    await avisarDaniel("🚨 SparkEd: una guía pagada no abrió", `<p><b>Una familia intentó abrir su guía y no pudo.</b></p><p>${limpio}</p><p>El aviso también está en el panel, en Reportes. Si llegan varios, es un fallo general: hay que revisarlo de inmediato.</p>`);
+  } catch (e) { console.warn("aviso de fallo de guía:", (e as Error).message); }
+}
 
 // Correo de entrega a la familia: sale una sola vez por compra, cuando la guía está 100 % completa y verificada (o cuando
 // Daniel lo reenvía desde el panel). Es el único correo del caso normal.
@@ -1134,7 +1146,9 @@ Deno.serve(async (req: Request) => {
       return json({ completo: false, ...(await avanceDeGuia(g.id, new Date(a.creado_en).getTime())) });
     }
 
-    if (r0 === "acceso" && esToken(r1) && m === "POST") {
+    // El reproductor abre la guía con POST /acceso/<clave>/abrir (desde el 11 nov 2026); POST /acceso/<clave>, sin
+    // /abrir, sigue sirviendo. OJO: ningún módulo aparte puede quedarse con estas direcciones (herramientas/probar-rutas.mjs).
+    if (r0 === "acceso" && esToken(r1) && (!r2 || r2 === "abrir") && m === "POST") {
       const b = await leerJson(req);
       const { data: a } = await supabase.from("accesos").select("id, clase_id, alumno, expira_en, creado_en").eq("token", r1).maybeSingle();
       if (!a) return json({ estado: "inexistente" }, 404);
@@ -1179,6 +1193,7 @@ Deno.serve(async (req: Request) => {
       if (esToken(b.token)) { const { data: a } = await supabase.from("accesos").select("id").eq("token", b.token).maybeSingle(); accesoId = a?.id ?? null; }
       const { error: e } = await supabase.from("reportes").insert({ acceso_id: accesoId, guia_id: esUuid(b.guia_id) ? b.guia_id : null, slide: Number.isFinite(Number(b.slide)) ? Number(b.slide) : null, comentario });
       if (e) throw e;
+      if (esAvisoAutomatico(comentario)) enSegundoPlano(avisarFalloDeGuia(comentario));
       return json({ ok: true });
     }
 

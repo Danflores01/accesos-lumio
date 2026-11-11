@@ -825,3 +825,42 @@ que se les mandó su guía, y pasar Motores al menú de hamburguesa («simplemen
 - **Palabras.** «Chats de WhatsApp», «Elige un chat para leerlo y contestar», «Escribe un mensaje», «Enviar», «No hay
   conversaciones en los últimos 7 días».
 - El detalle técnico está en `docs/WHATSAPP.md`, sección «Chats en el panel».
+
+## 34. Fallo del 10 de noviembre de 2026: las guías pagadas no abrían (y los candados que dejó)
+
+Daniel avisó la noche del 10 de noviembre: una familia pagó su guía, la recibió, y al abrir el link veía «Algo falló. No
+se pudo abrir la guía». Pidió encontrar la causa y que no vuelva a pasar («es imperativo»).
+
+- **Qué pasó.** Desde el 10 de noviembre a las 10:46 (commit `a9ea2af`, entrada al panel con correo y contraseña) hasta
+  las 19:30, el servidor respondía «Ruta no encontrada» a `POST /acceso/<clave>`, que es la dirección con la que el
+  reproductor abre una guía pagada. Comprar, pagar, generar y entregar funcionaban; solo fallaba abrir.
+- **Causa.** `funciones/sparked/acceso.ts` (módulo nuevo) se quedaba con toda dirección `POST /acceso/<algo>`, no solo
+  con `entrar`, `renovar` y `salir`. Los módulos aparte se ejecutan antes que las rutas de `index.ts`, así que la ruta de
+  las familias dejó de ejecutarse. La prueba del módulo daba por bueno ese comportamiento, y las comprobaciones después
+  de desplegar solo miraban `/admin/ping`: nadie abrió una guía con una clave.
+- **A quién afectó.** A una familia (compra con tarjeta de las 19:01): 11 intentos fallidos entre las 19:10 y las 19:23
+  en dos dispositivos. Abrió su guía a las 19:33. Sus intentos no gastaron dispositivos. Ninguna otra familia intentó
+  abrir una guía en esas horas (registro del servidor).
+- **Arreglo.** (1) El reproductor abre con `POST /acceso/<clave>/abrir`, dirección que el módulo del panel no toca
+  (publicado a las 19:30; no necesita desplegar el servidor). (2) `acceso.ts` solo atiende sus tres rutas exactas y deja
+  pasar lo demás (código 2026-11-10.6 en adelante).
+
+**Candados, obligatorios desde ese día:**
+
+1. **Antes de desplegar la función:** `node herramientas/probar-rutas.mjs`. Revisa que ningún módulo aparte responda en
+   una ruta de `index.ts`. Si se agrega una ruta a `index.ts`, se agrega a esa lista.
+2. **Después de cada despliegue y de cada publicación del sitio:** `node herramientas/prueba-de-humo.mjs`. Lee el
+   reproductor publicado, saca la dirección con la que abre una guía y la prueba contra el servidor con una clave
+   inventada; también revisa el camino de la compra y la entrada del panel. No usa llaves ni escribe nada. Tiene que
+   salir sin fallas; si falla algo de «ABRIR UNA GUÍA» o de «compra», se arregla o se regresa a la versión anterior en
+   ese momento.
+3. **Regla de código:** un módulo aparte solo responde en sus rutas exactas y devuelve `null` en todo lo demás, sin
+   tocar la base de datos. Antes de estrenar una dirección nueva se busca si esa palabra ya se usa
+   (`grep 'r0 === "…"' funciones/sparked/*.ts`).
+4. **Aviso automático.** Si una guía pagada no abre por un fallo nuestro (no por link vencido o inexistente), el
+   reproductor manda un reporte que empieza con «AVISO AUTOMÁTICO»: queda en Reportes del panel y, desde el código
+   2026-11-10.7, también sale un correo al «correo de avisos» (uno cada 30 minutos como mucho). Prueba:
+   `herramientas/probar-aviso-de-fallo.mjs`.
+5. **Una guía real, sin gastar accesos.** Para comprobar que una guía guardada se ve bien no se usa el link de la
+   familia (gastaría uno de sus 2 dispositivos): se baja con `GET /admin/guias/<id>/cartucho` y se abre con
+   `guia.html?local=…`.

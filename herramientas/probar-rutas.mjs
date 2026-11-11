@@ -43,7 +43,7 @@ const CLAVES = ["79wcZFJkApbHbw", "a1B2c3D4", "entrar1234", "renovar99", "salir0
 const UUID = "93470423-3ffa-4ade-a48c-c8f0929f02ed", CLAVE_BORRADOR = "AbCdEfGhIjKlMnOpQrStUv12";
 // Todas las rutas que atiende index.ts (método y partes de la dirección después de /sparked).
 const DE_INDEX = [
-  ...CLAVES.flatMap((k) => [["POST", ["acceso", k]], ["GET", ["acceso", k, "estado"]], ["POST", ["progreso", k]]]),
+  ...CLAVES.flatMap((k) => [["POST", ["acceso", k]], ["POST", ["acceso", k, "abrir"]], ["GET", ["acceso", k, "estado"]], ["POST", ["progreso", k]]]),
   ["GET", ["vista-previa", UUID]], ["POST", ["borrador"]], ["GET", ["borrador", CLAVE_BORRADOR]], ["POST", ["borrador", CLAVE_BORRADOR, "generar"]],
   ["POST", ["pago", "crear"]], ["GET", ["pago", "estado", UUID]], ["POST", ["pago", "reintentar", UUID]], ["POST", ["pago", "mercadopago"]], ["POST", ["pago", "webhook"]],
   ["POST", ["reporte"]], ["GET", ["datos-curiosos"]], ["GET", ["colegios"]], ["POST", ["buscar"]], ["POST", ["solicitud"]],
