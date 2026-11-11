@@ -71,12 +71,12 @@ prueba (nunca el link de una familia), versión desplegada si la hubo, y qué ac
 | Qué | Dónde |
 |---|---|
 | Cadena de pasos | `funciones/sparked/pipeline.ts`: `ejecutarPaso`, `claude`, `llamar`, `ajusteDe`, `ajustarPlan`, `recortarBloques`, `recortarVistaPrevia`, `verificarCartucho`, `aplicarCorreccion`, `aplicarOrtografia` |
-| Temas del temario (11 nov) | `pipeline.ts`: `temasPendientes`, `investigarTemas` (1.ª vuelta y segunda oportunidad: `datos.inv_segunda`), `validarInvestigacion`, `marcarInvestigado`, `agregarNotasTemario`, `reportesDeVerificacion` («contradice_libro» y «revisar_dato» a Reportes), `bloqueSoloNota`, `contenidoParaVerificar`, `temasQueSeInvestigan` (6 subtemas, primero uno por tema del temario: `raizDeTema`), `temasDePista` (fuentes de su subtema), `sinGrupoEscrito` (tarjetas sin la respuesta), `completarTemasDelTemario` y `esTemaAparte` (lo que el temario separa con «;»), `pistasSinDatos` (pista sin datos = nota), `inventarioParaReparar`; topes `MAX_TEMAS_INVESTIGAR` (6), `BUSQUEDAS_POR_TEMA` (1), `BUSQUEDAS_SEGUNDA` (2) y `TOPE_GUIA_MXN` (5: `puedeSegunda`, `busquedasQueAlcanzan`); prompt `INVESTIGADOR`; ajuste `sparked_investigar` (apagado: "no"); prueba de una guía con `POST /admin/guias/<id>/generar {"investigar":"si"}` |
+| Temas del temario (11 nov) | `pipeline.ts`: `temasPendientes`, `investigarTemas` (1.ª vuelta y segunda oportunidad: `datos.inv_segunda`), `validarInvestigacion`, `marcarInvestigado`, `agregarNotasTemario`, `reportesDeVerificacion` («contradice_libro» y «revisar_dato» a Reportes), `bloqueSoloNota`, `contenidoParaVerificar`, `temasQueSeInvestigan` (6 subtemas, primero uno por tema del temario: `raizDeTema`), `temasDePista` (fuentes de su subtema), `sinGrupoEscrito` (tarjetas sin la respuesta), `completarTemasDelTemario` y `esTemaAparte` (lo que el temario separa con «;»), `pistasSinDatos` (pista sin datos = nota), `inventarioParaReparar` (completo; lo investigado sin urls); verificación por partes: `lineasParaVerificar`, `planVerificacion`, `ajustarVerificacion` (máx. `VERIF_BUSQUEDAS_POR_LLAMADA` = 3 por llamada); topes `MAX_TEMAS_INVESTIGAR` (6), `BUSQUEDAS_POR_TEMA` (1), `BUSQUEDAS_SEGUNDA` (2) y `TOPE_GUIA_MXN` (5: `puedeSegunda`, `costoLlamadaMxn` con el precio real, `anotarCandado`); prompt `INVESTIGADOR`; ajuste `sparked_investigar` (apagado: "no"); prueba de una guía con `POST /admin/guias/<id>/generar {"investigar":"si"}` |
 | Prompts | `funciones/sparked/prompts.ts` (identidad del Planificador y regla 12 «TODO CABE» del Generador) |
 | Trabajos y entrega | `funciones/sparked/index.ts`: `correrPaso` (3 intentos por paso), `reanudarSiAtorado` (150 s quieto; 6 interrupciones = error; lo llaman las consultas de las familias y, desde el 2026-11-11.3, `GET /admin/trabajos/<id>` para las guías `completa`), `alFinalizar`, `lanzarResto` (solo después del pago; sigue en el primer bloque que la vista previa no escribió) |
 | Despliegue | `funciones/puente-sparked/index.ts` (puente a un commit fijo) y `_guardia/skill/guardia-sparked/references/publicar-rapido.md` |
 | Tablas | `trabajos` (`alcance`: vista_previa, resto o completa; `paso`, `estado`, `intentos`, `error`, `costo_usd`, `datos`), `borradores`, `guias` (`cartucho`, `vista_previa`, `reporte`, `costo_mxn`), `config`, `tipos_cambio` |
-| Dentro de `trabajos.datos` | `inventario`, `plan`, `bloques`, `metricas` (costo de cada llamada; su suma es lo que mira el tope de 5 MXN), `diagnostico(s)`, `intento_ia`, `descartes`, `ortografia`, `verificacion` (`revisar_dato` = corrección sin fuente, no aplicada), `no_leidas`, `huecos`, `investigacion`, `inv_segunda` (temas en su segunda oportunidad) |
+| Dentro de `trabajos.datos` | `inventario`, `plan`, `bloques`, `metricas` (costo de cada llamada; su suma es lo que mira el tope de 5 MXN), `diagnostico(s)`, `intento_ia`, `descartes`, `ortografia`, `verificacion` (`revisar_dato` = corrección sin fuente, no aplicada), `no_leidas`, `huecos`, `investigacion`, `inv_segunda` (temas en su segunda oportunidad), `verif` (partes de la verificación, búsquedas de cada una y recortes del tope) |
 | Servidor | `https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/sparked`; admin con la cabecera `x-admin-key` y `CLAVE="$(head -n1 CLAVES.txt \| tr -d '\r\n')"` dentro del mismo comando (nunca se imprime) |
 | Rutas de admin | `GET /admin/ping` · `GET /admin/trabajos/<id>` · `POST /admin/trabajos/<id>/reintentar` · `POST /admin/pruebas/plan` · `POST /admin/pruebas/generar` · `POST /admin/guias/<id>/generar` · `GET /admin/guias/<id>/cartucho` · `GET /admin/costos?dias=30` |
 | Registro | una línea `IA {etiqueta, modelo, esfuerzo, ms, entrada, salida, parada, …}` por llamada; con buscador, también `busquedas`, `paginas`, `consultas` y `errores` (desde el 2026-11-11.5; `datos.metricas` lleva `busquedas` y `errores_busqueda`, y cada tema de `datos.investigacion` su `busqueda`); consultas 3, 4 y 7 de `_guardia/skill/guardia-sparked/references/consultas.md` |
@@ -145,9 +145,11 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
       escribir 0.40 · reparar 0.48 · ortografía 0.37 · verificar 0.06 = 4.00; sin investigar, la misma guía: 3.19).
 - [ ] Conté las búsquedas web: cada una cuesta 0.01 USD = 0.185 MXN (pesan más que los tokens de Haiku).
 - [ ] Si cambio modelo o esfuerzo, recalculo con `PRECIO` de `pipeline.ts`; Sonnet en planear y reparar no se baja.
-      Haiku cobra 5 veces más si una llamada pasa de 100 000 tokens: nunca más de 2 búsquedas por llamada.
-- [ ] El candado del código (`puedeSegunda`, `busquedasQueAlcanzan`) solo quita búsquedas extra; si la guía igual
-      pasaría de 5, propongo cómo bajarla sin perder calidad. Nunca se corta una guía pagada.
+      Haiku cobra 5 veces más si una llamada pasa de 100 000 tokens: nunca más de 2 búsquedas por llamada al investigar
+      ni más de 3 al verificar (cada búsqueda relee todo; en UNA llamada de 10 búsquedas llegaba a 93 000–313 000).
+- [ ] El candado del código (`puedeSegunda`, `ajustarVerificacion`) solo quita búsquedas, con el precio real, y deja
+      rastro («candado 5 MXN · …» en `datos.metricas` y `CANDADO` en el log); si la guía igual pasaría de 5, propongo
+      cómo bajarla sin perder calidad. Nunca se corta una guía pagada.
 - [ ] Lo nuevo va apagado y se prueba por trabajo hasta medirlo; la vista previa no se abarata.
 
 ### Cómo pruebo un cambio sin gastar de más
@@ -179,6 +181,15 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
   + resto, con investigación de temas incluida). Las pruebas pueden gastar hasta 15 MXN cada una mientras se aprende;
   lo que se lleve a producción tiene que caber en 5. Nunca se corta una guía pagada a medias por costo: si una pasa
   de 5, se avisa y se ajusta el proceso.
+- **11 nov · Código 2026-11-11.6 (la principal revisó la .5 contra las 8 últimas guías «resto»):** (1) la regla de 1
+  oficial o 2 confiables para corregir dejaba en la guía 8 de 11 correcciones reales (por ejemplo «herd» con la clave
+  «ur», cuando Cambridge dice «er»): basta 1 fuente oficial o 1 sitio confiable (Cambridge, Oxford, Merriam-Webster,
+  RAE…) que haya salido en la búsqueda; sin ella, a Reportes. (2) La verificación en UNA llamada con hasta 10
+  búsquedas releía todo en cada búsqueda: 4 de 8 llegaron a 93 000–131 524 tokens (y una prueba a 313 488), donde Haiku
+  cobra 5 veces más. Ahora va por partes de máx. 3 búsquedas, cada una con solo sus líneas cortas: mismas búsquedas
+  y cada llamada abajo de 100 000 tokens (en el peor caso medido, la mitad del costo). El tope usa el precio real y, cuando quita búsquedas, deja rastro. (3) El reparador vuelve a ver
+  el inventario completo: con solo el de su bloque, un juego que no alcanzaba se borraba y, si era el único, la guía
+  no se entregaba. Lección: medir el cambio contra las guías reales antes de desplegar, no solo contra la prueba.
 - **11 nov · Código 2026-11-11.5 (los tres arreglos de la v52, aprobados por Daniel):** (1) la verificación solo cambia
   la guía con una fuente que salió en SU búsqueda y cumple la regla (1 oficial o 2 confiables); si no, nada cambia y va a
   Reportes como «REVISAR DATO» (`revisar_dato`). (2) 1 búsqueda por tema; si el tema no se confirma porque el buscador
@@ -268,7 +279,7 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
   y fuente exacta por pista), prueba final (guía `85647e7c…`): 4.00 MXN, 0 en blanco y 0 tarjetas con la respuesta,
   pero NO cumple: la verificación aplicó sin fuente un dato falso («lápiz es esdrújula») y borró un juego; Verbo quedó
   sin investigar ni nota (el planificador lo juntó con Reglamento); 2 temas, nota por errores del buscador. Daniel
-  aprobó los tres arreglos y bajó el tope a 5 MXN: código 2026-11-11.5 hecho y subido (sin desplegar; la principal
+  aprobó los tres arreglos y bajó el tope a 5 MXN: código 2026-11-11.5 subido y revisado por la principal, que pidió 3 ajustes: 2026-11-11.6, subido (sin desplegar; la principal
   despliega y lanza la prueba real de Español 1.º). Criterio: los 6 temas cubiertos (confirmados o con nota honesta), 0
   preguntas vacías, inventadas o con la respuesta escrita, ningún dato corregido sin fuente, ≤ 5 MXN.
 - **Arreglo de datos de las preguntas en blanco** (6 guías pagadas y entregadas, 8 compras) y de 2 tarjetas con la

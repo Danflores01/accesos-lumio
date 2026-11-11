@@ -441,7 +441,9 @@ Responde SOLO con JSON: { "correcciones": [ { "ruta": "b1om3.pregunta", "texto":
 
 export const VERIFICADOR = `ERES EL VERIFICADOR DE DATOS DE "SPARKED". Un niño va a estudiar este cartucho para su
 examen: cada respuesta correcta y cada pista tienen que ser VERDAD.
-Recibes: las pistas y actividades de un bloque (JSON), el tipo de cada foto y el idioma.
+Recibes: una PARTE de la guía, una línea por pista o actividad («id [tipo] dato → respuesta correcta»; las parejas
+como «término = definición», las tarjetas como «Grupo: tarjeta, tarjeta» y los pasos en orden con «>»), el tipo de
+cada foto, el idioma y cuántas búsquedas tienes para esta parte.
 1. Saca la lista de AFIRMACIONES de hecho (respuestas correctas, definiciones, fechas,
    lugares, nombres, cifras, datos de las pistas). Ignora opiniones y preguntas abiertas.
 2. Según el tipo de foto:
@@ -449,13 +451,14 @@ Recibes: las pistas y actividades de un bloque (JSON), el tipo de cada foto y el
      "sospechas".
    - apuntes_a_mano, hoja_de_trabajo, pizarron, temario o investigación: busca las
      afirmaciones clave (prioriza las que más pesan en el examen).
-3. Busca SOLO en dominios confiables (los permitidos ya están filtrados). Regla: 1 fuente oficial o 2 confiables
-   que coincidan. No uses Wikipedia para confirmar datos.
+3. Busca SOLO en dominios confiables (los permitidos ya están filtrados). Para corregir basta 1 fuente oficial o 1
+   sitio confiable de la lista (por ejemplo Cambridge, Oxford, Merriam-Webster, RAE, SEP, UNAM) que haya salido en
+   TU búsqueda. No uses Wikipedia para confirmar datos.
 4. Decide para cada afirmación: "verificada" | "corregida" | "no_confirmada" |
    "contradice_libro" | "revisar_dato".
-   - corregida: SOLO si en ESTA verificación encontraste las fuentes (1 oficial o 2 confiables): escribe el dato
-     correcto, lo que decía la foto, las fuentes (la url EXACTA, tal como salió en tu búsqueda) y un mensaje amable
-     para el alumno. Sin esas fuentes, la guía no cambia: nunca corrijas de memoria.
+   - corregida: SOLO si en ESTA verificación encontraste la fuente: escribe el dato correcto, lo que decía la foto,
+     las fuentes (la url EXACTA, tal como salió en tu búsqueda) y un mensaje amable para el alumno. Sin esa fuente,
+     la guía no cambia: nunca corrijas de memoria.
    - revisar_dato: crees que hay un error de hecho, pero no lo encontraste en una fuente: escribe lo que crees en
      "dato_correcto"; NO se cambia nada y Daniel lo revisa.
    - no_confirmada: solo se anota en el reporte; la actividad NO se quita. Úsalo solo si de verdad no
@@ -481,6 +484,8 @@ export const DOMINIOS_CONFIABLES = [
   "britannica.com", "nationalgeographic.com", "nationalgeographic.es", "nasa.gov", "si.edu", "unesco.org", "who.int", "khanacademy.org",
   "noaa.gov", "usgs.gov", "nih.gov", "loc.gov", "europa.eu", "cambridge.org", "britishcouncil.org", "libretexts.org", "openstax.org",
   "stanford.edu", "mit.edu", "harvard.edu", "ox.ac.uk", "nature.com", "science.org", "scientificamerican.com", "isotopes.gov", "webelements.com",
+  // Diccionarios de inglés (2026-11-11.6: con 1 sitio confiable ya se corrige una palabra, como «herd» con «er»).
+  "merriam-webster.com", "oxfordlearnersdictionaries.com",
 ];
 // Fuentes oficiales: con una basta para confirmar un dato; con las demás de DOMINIOS_CONFIABLES hacen falta dos que
 // coincidan. Todo dominio que termina en .gob.mx o .gov también es oficial (SEP, Conaliteg, INAH, NASA…).

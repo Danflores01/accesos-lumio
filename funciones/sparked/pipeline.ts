@@ -575,9 +575,10 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     // que solo llevan la nota del temario no se muestran: ahí no hay nada confirmado con qué escribir preguntas.
     const conJuegos = (D.bloques as any[]).filter((b) => b && !b.solo_nota);
     const actuales = Object.fromEntries(conJuegos.map((b) => [b.id, { tipos: [...new Set(b.actividades.map((a: any) => a.tipo))], mini_examen: b.mini_examen.length, preguntas: [...b.actividades, ...b.mini_examen].map((a: any) => ({ id: a.id, tipo: a.tipo, pregunta: a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.instruccion, pares: a.pares?.map((p: any) => p.termino), grupos: a.grupos, tarjetas: a.elementos?.map((e: any) => ({ texto: e.texto, grupo: e.grupo })) })) }]));
-    // Inventario: solo el de los bloques que se reparan, y lo investigado sin sus urls (tope de 5 MXN, 11 nov 2026). Las
-    // notas «repásalo en tu libro» no reciben preguntas: no se ofrecen como pista.
-    const invRep = inventarioParaReparar(D, bloquesAReparar(D.huecos ?? [], largas));
+    // Inventario completo, como antes (2026-11-11.6: con solo el del bloque, un juego que no alcanzaba se borraba y, si
+    // era el único, la guía no se entregaba), pero lo investigado sin sus urls. Las notas «repásalo en tu libro» no
+    // reciben preguntas: no se ofrecen como pista.
+    const invRep = inventarioParaReparar(D);
     const contenido = [{ type: "text", text: `${notaR ? notaR + "\n" : ""}Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n") || "(ninguno)"}${textoLargas}\nPistas de cada bloque (cada actividad nueva lleva en "pista" una de las del bloque de su hueco): ${JSON.stringify(Object.fromEntries(conJuegos.map((b) => [b.id, b.pistas.filter((p: any) => !p?.nota_temario).map((p: any) => p.id)])))}\nJuegos que ya tiene cada bloque (no repitas sus preguntas): ${JSON.stringify(actuales)}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => [...b.actividades, ...b.mini_examen].map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(invRep)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
     let divididas: any[] = [];
     if ((D.huecos ?? []).length || largas.length) try {
@@ -642,40 +643,60 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
   if (t.paso === "verificar") {
     const plan = D.plan; const tipos = (D.fotos ?? []).map((f: any) => f.tipo);
     const hayApuntes = tipos.some((x: string) => x && x !== "libro_impreso");
-    const reporte: any[] = [];
-    // Lo que ya viene de fuentes confirmadas al investigar los temas no se vuelve a buscar (tope de 6 MXN, 11 nov 2026).
-    const { bloques: bloquesResumen, total, omitidos } = contenidoParaVerificar(D);
-    if (!bloquesResumen.length) reporte.push({ estado: "omitida", detalle: `No se llamó a la IA: todo el contenido (${total}) viene de fuentes confirmadas al investigar los temas del temario` });
-    else try {
-      const sospechas = Object.values(D.inventario as Record<string, any[]>).flat().filter((e: any) => e?.motivo);
-      const contenido = [{ type: "text", text: `Idioma: ${plan.idioma_guia}. Materia: ${plan.materia}. Grado: ${fuente.grado}. Tipos de foto: ${JSON.stringify(tipos)}. ${hayApuntes ? "Hay apuntes a mano o pizarrón: verifica las afirmaciones clave." : "Es libro impreso: verifica solo lo dudoso."}\nSospechas del extractor: ${JSON.stringify(sospechas)}\n\nCONTENIDO A VERIFICAR:\n${JSON.stringify(bloquesResumen)}` }];
-      // 10 búsquedas para apuntes a mano; 4 para libro impreso o si más de la mitad ya trae sus fuentes. Tope de 5 MXN
-      // por guía (11 nov 2026): las búsquedas salen de lo que le queda a la guía; sin presupuesto se verifica sin
-      // buscador (nada se corrige sin fuente: lo dudoso va a Reportes). Una guía normal no llega a ese límite.
-      const busquedas = Math.min(hayApuntes && omitidos * 2 <= total ? 10 : 4, busquedasQueAlcanzan(D));
-      const res = await llamar(supabase, t, fuente, "verificar", "verificar", { sistema: VERIFICADOR, contenido, maxTokens: 16000, herramientas: busquedas > 0 ? [{ type: "web_search_20260209", name: "web_search", max_uses: busquedas, allowed_domains: DOMINIOS_CONFIABLES }] : undefined });
-      if (res === REPETIR) return "verificar";
-      const r = res;
-      if (!Array.isArray(r.json?.resultados)) await diagnosticar(supabase, t, "verificar", r);
-      for (const res of r.json?.resultados ?? []) {
-        // Un id por entrada; si la IA juntó varios ("b2p2, b2vf3, b2c2"), cada uno se trata por separado.
-        const ids = idsDeVerificacion(D.bloques as any[], res.actividad);
-        // "no_confirmada" solo queda en el reporte: no quita actividades ni pistas (decisión del 8 nov 2026). Solo lo
-        // que la IA marcó como incorrecto Y corrigió CON FUENTE se modifica (Daniel, 11 nov 2026: «lápiz es esdrújula»,
-        // sin ninguna búsqueda, borró un juego y puso un «Dato corregido» falso). La fuente tiene que haber salido en
-        // ESTA búsqueda y cumplir la regla de siempre (1 oficial o 2 confiables); si no, nada cambia y va a Reportes.
-        const corrige = res?.estado === "corregida" && !!String(res.dato_correcto ?? "").trim();
-        const fuentes = corrige ? fuentesValidas(listaDeFuentes(res.fuentes), r.urls) : [];
-        if (corrige && !confirmaDato(fuentes)) {
-          reporte.push({ ...res, ids, estado: "revisar_dato", estado_ia: "corregida", sin_cambio: fuentes.length ? "solo 1 fuente confiable (hacen falta 1 oficial o 2 confiables)" : "sin fuente que haya salido en su búsqueda" });
-          continue;
+    const modeloV = ajusteDe("verificar", D.con_haiku?.verificar ? {} : fuente.opciones ?? {}).modelo;
+    // La verificación va POR PARTES (2026-11-11.6): cada llamada lleva máx. 3 búsquedas y solo SU parte del contenido,
+    // una línea por pista o actividad. En una sola llamada con hasta 10 búsquedas, cada búsqueda volvía a leer todo:
+    // 93 000 a 313 000 tokens, y arriba de 100 000 Haiku cobra 5 veces más. Las búsquedas son las mismas: 10 con apuntes a
+    // mano; 4 con libro impreso o si más de la mitad ya trae sus fuentes (lo investigado y confirmado no se vuelve a
+    // buscar). El tope de 5 MXN las ajusta con el precio real y deja rastro (anotarCandado). Nunca detiene la guía.
+    if (!D.verif || !Array.isArray(D.verif.partes)) {
+      const { bloques: bloquesResumen, total, omitidos } = contenidoParaVerificar(D);
+      D.verif = planVerificacion(lineasParaVerificar(bloquesResumen), hayApuntes && omitidos * 2 <= total ? 10 : 4);
+      D.verif.reporte = bloquesResumen.length ? [] : [{ estado: "omitida", detalle: `No se llamó a la IA: todo el contenido (${total}) viene de fuentes confirmadas al investigar los temas del temario` }];
+      ajustarVerificacion(D, modeloV, 0);
+    }
+    const v = D.verif;
+    v.reporte = Array.isArray(v.reporte) ? v.reporte : Array.isArray(D.verificacion) ? D.verificacion : [];
+    if (v.i < v.partes.length) {
+      const i = v.i;
+      // Antes de cada parte, el tope otra vez, con lo que de verdad se lleva gastado.
+      ajustarVerificacion(D, modeloV, i);
+      const busquedas = v.busquedas[i] ?? 0;
+      try {
+        const sospechas = i === 0 ? Object.values((D.inventario ?? {}) as Record<string, any[]>).flat().filter((e: any) => e?.motivo) : [];
+        const contenido = [{ type: "text", text: `Idioma: ${plan.idioma_guia}. Materia: ${plan.materia}. Grado: ${fuente.grado}. Tipos de foto: ${JSON.stringify(tipos)}. ${hayApuntes ? "Hay apuntes a mano o pizarrón: verifica las afirmaciones clave." : "Es libro impreso: verifica solo lo dudoso."} Parte ${i + 1} de ${v.partes.length}${busquedas ? ` (${busquedas} búsqueda${busquedas === 1 ? "" : "s"})` : " (sin buscador: lo que creas que está mal va como «revisar_dato»)"}.${sospechas.length ? `\nSospechas del extractor: ${JSON.stringify(sospechas)}` : ""}\n\nCONTENIDO A VERIFICAR (una línea por pista o actividad; empieza con su id):\n${v.partes[i].lineas.join("\n")}` }];
+        const res = await llamar(supabase, t, fuente, "verificar", `verificar ${i + 1}/${v.partes.length}`, { sistema: VERIFICADOR, contenido, maxTokens: 16000, herramientas: busquedas > 0 ? [{ type: "web_search_20260209", name: "web_search", max_uses: busquedas, allowed_domains: DOMINIOS_CONFIABLES }] : undefined });
+        if (res === REPETIR) return "verificar";
+        const r = res;
+        if (!Array.isArray(r.json?.resultados)) await diagnosticar(supabase, t, "verificar", r);
+        for (const res of r.json?.resultados ?? []) {
+          // Un id por entrada; si la IA juntó varios ("b2p2, b2vf3, b2c2"), cada uno se trata por separado.
+          const ids = idsDeVerificacion(D.bloques as any[], res.actividad);
+          // "no_confirmada" solo queda en el reporte: no quita actividades ni pistas (decisión del 8 nov 2026). Solo lo
+          // que la IA marcó como incorrecto Y corrigió CON FUENTE se modifica (Daniel, 11 nov 2026: «lápiz es
+          // esdrújula», sin ninguna búsqueda, borró un juego y puso un «Dato corregido» falso). Basta 1 fuente oficial
+          // o 1 sitio confiable de la lista (Cambridge, Oxford, Merriam-Webster, RAE…) que haya salido en ESTA búsqueda;
+          // sin ella, nada cambia y va a Reportes como «revisar_dato».
+          const corrige = res?.estado === "corregida" && !!String(res.dato_correcto ?? "").trim();
+          const fuentes = corrige ? fuentesValidas(listaDeFuentes(res.fuentes), r.urls) : [];
+          if (corrige && !fuentes.length) {
+            v.reporte.push({ ...res, ids, estado: "revisar_dato", estado_ia: "corregida", sin_cambio: "sin una fuente oficial o confiable que haya salido en su búsqueda" });
+            continue;
+          }
+          v.reporte.push({ ...res, ids, ...(corrige ? { fuentes: fuentes.map((f) => f.url) } : {}) });
+          if (!corrige) continue;
+          for (const id of ids) aplicarCorreccion(D.bloques as any[], id, { ...res, fuentes: fuentes.map((f) => ({ nombre: f.nombre, url: f.url })) });
         }
-        reporte.push({ ...res, ids, ...(corrige ? { fuentes: fuentes.map((f) => f.url) } : {}) });
-        if (!corrige) continue;
-        for (const id of ids) aplicarCorreccion(D.bloques as any[], id, { ...res, fuentes: fuentes.map((f) => ({ nombre: f.nombre, url: f.url })) });
+      } catch (e) { if ((e as any)?.reintentar) throw e; console.warn("Verificación falló, se marca para revisión:", (e as Error).message); v.reporte.push({ estado: "error", parte: i + 1, detalle: (e as Error).message }); }
+      v.i = i + 1;
+      if (v.i < v.partes.length) {
+        await guardar(supabase, t, { datos: D, costo_usd: t.costo_usd, tokens_entrada: t.tokens_entrada, tokens_salida: t.tokens_salida });
+        return "verificar";
       }
-    } catch (e) { if ((e as any)?.reintentar) throw e; console.warn("Verificación falló, se marca para revisión:", (e as Error).message); reporte.push({ estado: "error", detalle: (e as Error).message }); }
+    }
+    const reporte = v.reporte;
     D.verificacion = reporte;
+    delete v.reporte;
     // «contradice_libro» y las correcciones sin fuente («revisar_dato») (Daniel, 11 nov 2026): cada dato llega a Reportes
     // del panel para que Daniel decida, con su motivo y su bloque, sin datos de la familia. Una sola vez por trabajo (si
     // el paso se repite, no se duplican).
@@ -1569,7 +1590,7 @@ function revisarActividad(a: any, citas: string[], nivel: string, huecos: string
     if (!texto.trim()) return fuera("sin pregunta");
     const tope = (topePalabras[nivel] ?? 25) + 5;
     if (palabras(texto) > tope) return fuera(`pregunta de ${palabras(texto)} palabras (máx. ${tope})`);
-    if (!a.retro_incorrecta || !a.retro_correcta) { huecos.push(`Actividad ${a.id} sin retroalimentación`); return fuera("sin retroalimentación"); }
+    if (!a.retro_incorrecta || !a.retro_correcta) { huecos.push(`Actividad ${a.id} del bloque ${bloque} sin retroalimentación`); return fuera("sin retroalimentación"); }
     if (a.tipo === "opcion_multiple" || a.tipo === "duelo") {
       // 3 o 4 opciones: el reproductor muestra las que haya (en gramática a veces solo hay 3 formas posibles).
       if (!Array.isArray(a.opciones) || a.opciones.length < 3 || a.opciones.length > 4) return fuera(`${Array.isArray(a.opciones) ? a.opciones.length : 0} opciones (deben ser 3 o 4)`);
@@ -1743,22 +1764,96 @@ export const BUSQUEDAS_SEGUNDA = 2;
 // tema queda como nota para repasar en el libro. Nunca se corta una guía: solo se omite esa búsqueda extra.
 export const TOPE_GUIA_MXN = 5;
 export const MXN_POR_USD = 18.5;
-const COSTO_SEGUNDA_MXN = 0.5; // una llamada de un tema con 2 búsquedas (medido: 0.29 a 0.53)
-// Lo que falta después de escribir: reparar (0.48 en la v52; menos con su inventario recortado) + ortografía (0.37) +
-// los tokens de verificar con 1 búsqueda. Las demás búsquedas de verificar salen de lo que quede (busquedasQueAlcanzan).
-const RESERVA_FINAL_MXN = 1.2;
+// Lo que falta después de escribir, sin las búsquedas de verificar (esas se ajustan al final con lo que quede):
+// reparar (0.48 a 1.2 en las guías del 8 al 11 nov) + ortografía (0.33 a 0.66) + los tokens de verificar.
+const RESERVA_FINAL_MXN = 1.4;
 const RESERVA_POR_BLOQUE_MXN = 0.15; // escribir un bloque (medido: 0.11 a 0.15)
-const MXN_POR_BUSQUEDA = 0.01 * MXN_POR_USD + 0.02; // la búsqueda más sus tokens
+const FIJOS_INVESTIGAR = 1800; // tokens que relee cada vuelta de una llamada de investigación (instrucciones + tema)
+const FIJOS_VERIFICAR = 1100; // ídem en verificar, sin contar las líneas de su parte
 // Lo que lleva gastado la guía (las métricas del trabajo «resto» incluyen las de su vista previa).
 export function costoGuiaMxn(D: any): number {
   return (Array.isArray(D?.metricas) ? D.metricas : []).reduce((n: number, m: any) => n + (Number(m?.costo_usd) || 0), 0) * MXN_POR_USD;
 }
-export function puedeSegunda(D: any, bloquesPorEscribir: number): boolean {
-  return costoGuiaMxn(D) + COSTO_SEGUNDA_MXN + RESERVA_FINAL_MXN + RESERVA_POR_BLOQUE_MXN * Math.max(0, bloquesPorEscribir) <= TOPE_GUIA_MXN;
+// Costo estimado de una llamada con buscador, con el PRECIO REAL: cada búsqueda cuesta 0.01 USD y trae unos 15 000
+// tokens de páginas, cada vuelta vuelve a leer lo fijo, y arriba de 100 000 tokens Haiku cobra 5 veces más (precioDe).
+// Medido en 8 guías (8 a 11 nov 2026): 44 000 a 131 500 tokens con 3 a 6 búsquedas en una sola llamada.
+export function costoLlamadaMxn(modelo: string, busquedas: number, tokensFijos: number): number {
+  const entrada = (busquedas + 1) * tokensFijos + 15_000 * busquedas;
+  const salida = 2_500 + 1_500 * busquedas;
+  const [pe, ps] = precioDe(modelo, entrada);
+  return ((entrada * pe + salida * ps) / 1e6 + 0.01 * busquedas) * MXN_POR_USD;
 }
-// Búsquedas que le alcanzan a la verificación sin pasar del tope (0.15 MXN para sus tokens).
-export function busquedasQueAlcanzan(D: any): number {
-  return Math.max(0, Math.floor((TOPE_GUIA_MXN - costoGuiaMxn(D) - 0.15) / MXN_POR_BUSQUEDA));
+// Rastro del tope de 5 MXN: cada vez que quita búsquedas queda en datos.metricas (costo 0) y en el log («CANDADO»).
+export function anotarCandado(D: any, paso: string, detalle: string): void {
+  D.metricas = [...(Array.isArray(D.metricas) ? D.metricas : []), { paso: `candado ${TOPE_GUIA_MXN} MXN · ${paso}`, modelo: "—", esfuerzo: "—", entrada: 0, salida: 0, costo_usd: 0, ms: 0, parada: null, resultado: detalle, en: new Date().toISOString() }].slice(-80);
+  console.log("CANDADO", JSON.stringify({ tope_mxn: TOPE_GUIA_MXN, paso, detalle }));
+}
+export function puedeSegunda(D: any, bloquesPorEscribir: number, modelo = MODELO_HAIKU): boolean {
+  return costoGuiaMxn(D) + costoLlamadaMxn(modelo, BUSQUEDAS_SEGUNDA, FIJOS_INVESTIGAR) + RESERVA_FINAL_MXN + RESERVA_POR_BLOQUE_MXN * Math.max(0, bloquesPorEscribir) <= TOPE_GUIA_MXN;
+}
+
+// ---------- Verificación por partes (2026-11-11.6) ----------
+export const VERIF_BUSQUEDAS_POR_LLAMADA = 3;
+// Lo que se verifica, una línea por pista o actividad: solo el dato y su respuesta (las parejas, tarjetas y pasos en su
+// misma línea). Cada búsqueda vuelve a leer todo lo que se manda: en JSON eran 7 000 a 13 000 caracteres por guía.
+export function lineasParaVerificar(bloques: any[]): { bloque: string; id: string; texto: string }[] {
+  const c = (x: unknown) => String(x ?? "").replace(/\s+/g, " ").trim();
+  const out: { bloque: string; id: string; texto: string }[] = [];
+  for (const b of Array.isArray(bloques) ? bloques : []) {
+    for (const p of b?.pistas ?? []) out.push({ bloque: b.id, id: p.id, texto: `${p.id} [pista] ${c(p.titulo)}: ${(Array.isArray(p.ideas) ? p.ideas : []).map(c).filter(Boolean).join(" | ")}` });
+    for (const a of b?.actividades ?? []) {
+      const partes: string[] = [];
+      const resp = a?.tipo === "verdadero_falso" && (a.respuesta === "true" || a.respuesta === "false") ? (a.respuesta === "true" ? "verdadero" : "falso") : c(a?.respuesta);
+      const preg = c(a?.pregunta);
+      if (preg || resp) partes.push(resp ? `${preg} → ${resp}` : preg);
+      if (Array.isArray(a?.pares) && a.pares.length) partes.push(a.pares.map((x: any) => `${c(x?.termino)} = ${c(x?.definicion)}`).join("; "));
+      if (Array.isArray(a?.elementos) && a.elementos.length && Array.isArray(a?.grupos)) partes.push(a.grupos.map((g: unknown, gi: number) => `${c(g)}: ${a.elementos.filter((e: any) => e?.grupo === gi).map((e: any) => c(typeof e === "object" ? e?.texto : e)).join(", ")}`).join(" · "));
+      if (Array.isArray(a?.pasos) && a.pasos.length) partes.push(a.pasos.map((x: unknown) => c(typeof x === "object" ? (x as any)?.texto : x)).join(" > "));
+      out.push({ bloque: b.id, id: a.id, texto: `${a.id} [${c(a.tipo)}] ${partes.join(" · ")}` });
+    }
+  }
+  return out;
+}
+// Partes seguidas de tamaño parecido, con las búsquedas repartidas (máx. 3 por llamada).
+export function planVerificacion(lineas: { texto: string }[], base: number): any {
+  if (!lineas.length) return { i: 0, partes: [], busquedas: [], base, recortes: [] };
+  const n = Math.max(1, Math.min(Math.ceil(base / VERIF_BUSQUEDAS_POR_LLAMADA), lineas.length));
+  const total = lineas.reduce((s, l) => s + l.texto.length, 0);
+  const grupos: string[][] = [];
+  let actual: string[] = [], acum = 0;
+  for (const l of lineas) {
+    actual.push(l.texto); acum += l.texto.length;
+    if (grupos.length < n - 1 && acum >= (total * (grupos.length + 1)) / n) { grupos.push(actual); actual = []; }
+  }
+  if (actual.length) grupos.push(actual);
+  const partes = grupos.map((g) => ({ lineas: g, tokens: Math.ceil(g.join("\n").length / 3.5) }));
+  const busquedas = partes.map((_, k) => Math.min(VERIF_BUSQUEDAS_POR_LLAMADA, Math.floor(base / partes.length) + (k < base % partes.length ? 1 : 0)));
+  return { i: 0, partes, busquedas, original: [...busquedas], base, recortes: [] };
+}
+// Tope de 5 MXN para lo que falta de verificar (de la parte «desde» en adelante), con el precio real. Parte del plan
+// original (si una parte usó menos búsquedas, las siguientes las recuperan) y, si no alcanza, quita búsquedas (primero
+// a la parte que tiene más) y deja rastro. Sin búsquedas, la parte se verifica sin buscador. Cuenta todas las búsquedas
+// permitidas como usadas: la IA casi nunca las usa todas (en 8 guías, de 0 a 10 de 10), así que el costo real queda abajo.
+export function ajustarVerificacion(D: any, modelo: string, desde: number): string | null {
+  const v = D?.verif;
+  if (!v || !Array.isArray(v.partes) || desde >= v.partes.length) return null;
+  if (Array.isArray(v.original)) for (let k = desde; k < v.partes.length; k++) v.busquedas[k] = Number(v.original[k]) || 0;
+  const presupuesto = TOPE_GUIA_MXN - costoGuiaMxn(D) - 0.05;
+  const costo = () => v.partes.slice(desde).reduce((s: number, p: any, k: number) => s + costoLlamadaMxn(modelo, v.busquedas[desde + k] ?? 0, FIJOS_VERIFICAR + (Number(p?.tokens) || 0)), 0);
+  const suma = () => v.busquedas.slice(desde).reduce((s: number, x: number) => s + (Number(x) || 0), 0);
+  const antes = suma();
+  while (costo() > presupuesto) {
+    let k = -1;
+    for (let j = desde; j < v.busquedas.length; j++) if (v.busquedas[j] > 0 && (k < 0 || v.busquedas[j] >= v.busquedas[k])) k = j;
+    if (k < 0) break;
+    v.busquedas[k]--;
+  }
+  const despues = suma();
+  if (despues === antes) return null;
+  const detalle = `verificar: ${antes} → ${despues} búsquedas${desde ? ` (desde la parte ${desde + 1})` : ""}; la guía llevaba ${costoGuiaMxn(D).toFixed(2)} MXN`;
+  v.recortes = [...(Array.isArray(v.recortes) ? v.recortes : []), detalle];
+  anotarCandado(D, "verificar", detalle);
+  return detalle;
 }
 // Nota para el Planificador cuando la investigación está encendida: cada tema del temario lleva su pista (y su slide).
 const NOTA_PLAN_INVESTIGAR = "TEMAS DEL TEMARIO: SparkEd completará con fuentes confiables los temas_a_investigar. Pon cada uno en su bloque con su propia pista (un título de \"pistas\"; cuenta como slide). Si no se puede confirmar, esa pista se vuelve una nota para repasarlo en el libro.";
@@ -1964,10 +2059,15 @@ async function investigarTemas(supabase: Supa, t: Trabajo, fuente: Fuente, pb: a
   if (segunda) {
     const bi = (plan.bloques ?? []).findIndex((b: any) => b?.id === pb.id);
     const porEscribir = Math.max(1, (plan.bloques?.length ?? 1) - Math.max(0, bi));
-    // Nunca una tercera búsqueda (si por algo ya tuvo su segunda oportunidad) ni pasar del tope de la guía.
+    // Nunca una tercera búsqueda (si por algo ya tuvo su segunda oportunidad) ni pasar del tope de la guía (con el precio
+    // real; si el tope la quita, queda rastro en datos.metricas y en el log).
     const yaHecha = previa?.hecha === true;
-    if (yaHecha || !puedeSegunda(D, porEscribir)) {
-      if (!yaHecha) D.inv_segunda[clave] = { ...previa, hecha: false, omitida: "tope" };
+    const modeloI = ajusteDe("investigar", D.con_haiku?.investigar ? {} : fuente.opciones ?? {}).modelo;
+    if (yaHecha || !puedeSegunda(D, porEscribir, modeloI)) {
+      if (!yaHecha) {
+        D.inv_segunda[clave] = { ...previa, hecha: false, omitida: "tope" };
+        anotarCandado(D, "investigar", `sin segunda búsqueda para «${lote[0].tema}»; la guía llevaba ${costoGuiaMxn(D).toFixed(2)} MXN`);
+      }
       guardarInvestigacion(D, [{ ...lote[0], estado: "no_confirmado", datos: [], fuentes: [], motivo: `${previa?.motivo ?? "no se pudo confirmar"}${yaHecha ? "" : `; sin segunda búsqueda para no pasar del tope de ${TOPE_GUIA_MXN} MXN por guía`}`, ...(previa?.busqueda ? { busqueda: previa.busqueda } : {}) }]);
       await guardarTodo();
       return t.paso;
@@ -2058,30 +2158,13 @@ export const confirmaDato = (fs: FuenteInv[]) => fs.some((f) => f.oficial) || ne
 // Las fuentes del verificador llegan como urls sueltas ("https://…") o como { nombre, url }.
 export const listaDeFuentes = (x: unknown): { nombre: string; url: string }[] => (Array.isArray(x) ? x : []).map((f: any) => typeof f === "string" ? { nombre: "", url: f } : { nombre: String(f?.nombre ?? ""), url: String(f?.url ?? "") });
 
-// Los bloques que el reparador tiene que tocar: los que nombran sus huecos («Bloque b2: …», «(clasificar, bloque b2)»,
-// «… en el bloque b2») y los de las pistas largas.
-export function bloquesAReparar(huecos: string[], largas: { bloque: string }[]): Set<string> {
-  const ids = new Set<string>();
-  for (const h of huecos ?? []) for (const m of String(h).matchAll(/\bbloque\s+(b\d+)\b/gi)) ids.add(m[1]);
-  for (const l of largas ?? []) if (l?.bloque) ids.add(String(l.bloque));
-  return ids;
-}
-// El inventario que ve el reparador (tope de 5 MXN, 11 nov 2026: le llegaban 12 500 caracteres de inventario, 10 000 de
-// ellos de lo investigado con sus urls): solo el de los bloques que repara y lo investigado sin fuentes ni texto
-// repetido («cita» = «texto»). Si algún bloque que se repara no trae ids en el plan (el escritor recibió todo), o no se
-// sabe qué bloques son, va todo el inventario (lo investigado, igual de corto).
-export function inventarioParaReparar(D: any, ids: Set<string>): Record<string, any[]> {
-  const inv = (D?.inventario ?? {}) as Record<string, any[]>;
-  const planB = ((D?.plan?.bloques ?? []) as any[]).filter((b) => b && ids.has(String(b.id)));
-  const conIds = planB.length > 0 && planB.every((b) => ((b.ids_inventario ?? []) as unknown[]).some((x) => !String(x).startsWith("inv")));
-  const sel = new Set(planB.flatMap((b) => b.ids_inventario ?? []));
+// El inventario que ve el reparador: COMPLETO, como antes (2026-11-11.6), pero lo investigado sin sus fuentes ni texto
+// repetido («cita» = «texto»): en la prueba v52 eran 10 000 de sus 12 500 caracteres, casi todo urls.
+export function inventarioParaReparar(D: any): Record<string, any[]> {
   const out: Record<string, any[]> = {};
-  for (const [k, lista] of Object.entries(inv)) {
-    if (!Array.isArray(lista)) continue;
-    const elegidos = k === "investigado"
-      ? lista.filter((e) => !ids.size || ids.has(String(e?.bloque))).map((e: any) => ({ id: e?.id, bloque: e?.bloque, tema: e?.tema, cita: e?.cita ?? e?.texto }))
-      : conIds ? lista.filter((e) => sel.has(e?.id)) : lista;
-    if (elegidos.length) out[k] = elegidos;
+  for (const [k, lista] of Object.entries((D?.inventario ?? {}) as Record<string, any[]>)) {
+    if (!Array.isArray(lista) || !lista.length) continue;
+    out[k] = k === "investigado" ? lista.map((e: any) => ({ id: e?.id, bloque: e?.bloque, tema: e?.tema, cita: e?.cita ?? e?.texto })) : lista;
   }
   return out;
 }

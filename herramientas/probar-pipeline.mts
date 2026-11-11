@@ -252,6 +252,9 @@ let respuestas: any[] = [];
 const apiTexto = (j: unknown, urls: string[] = [], usadas?: number, extra: any[] = []) => ({ content: [
   ...(urls.length ? [{ type: "server_tool_use", id: "s1", name: "web_search", input: { query: "x" } }, { type: "web_search_tool_result", tool_use_id: "s1", content: urls.map((url) => ({ type: "web_search_result", url, title: "t" })) }] : []),
   ...extra, { type: "text", text: JSON.stringify(j) }], stop_reason: "end_turn", usage: { input_tokens: 1000, output_tokens: 400, server_tool_use: { web_search_requests: usadas ?? (urls.length ? 2 : 0) } } });
+// Corre un paso que va por partes (verificar, desde el 2026-11-11.6) hasta que pasa al siguiente.
+const hastaQueCambie = async (sb: any, t: any, f: any) => { const p = t.paso; let s = p; for (let n = 0; n < 12 && s === p; n++) s = await P.ejecutarPaso(sb, t, f); return s; };
+const vacia = () => apiTexto({ resultados: [] }, []);
 
 // 18. Qué es práctica del examen (no se investiga) y qué sí es contenido (la EXCEPCIÓN de las habilidades).
 ok(P.esPracticaDeExamen("Gapped text: textos de práctica con huecos (esl-lounge, engxam)") && P.esPracticaDeExamen("Listening – Sentence completion: audios de práctica (Test-English)") && P.esPracticaDeExamen("Reading Part 3") && P.esPracticaDeExamen("Speaking"), "práctica del examen: Gapped text, Listening, Reading Part 3 y Speaking no se investigan");
@@ -359,8 +362,8 @@ const tV: any = { id: "tv", guia_id: "g9", alcance: "resto", paso: "verificar", 
   bloques: [{ id: "b1", titulo: "Ortografía", pistas: [{ id: "b1p1", titulo: "Acentos", ideas: ["Agudas: llevan tilde si terminan en n, s o vocal."] }], actividades: [{ id: "b1om1", tipo: "opcion_multiple", pregunta: "¿Cuándo lleva tilde una aguda?", opciones: ["n, s o vocal", "siempre"], correcta: 0 }], mini_examen: [] }] } };
 respuestas = [apiTexto({ resultados: [
   { actividad: "b1om1", afirmacion: "Las agudas llevan tilde si terminan en n, s o vocal", estado: "contradice_libro", dato_correcto: "Según la RAE, así es; el libro dice otra cosa.", fuentes: ["https://www.rae.es/ortografia/agudas"] },
-  { actividad: "b1p1", afirmacion: "x", estado: "verificada" }] }, ["https://www.rae.es/ortografia/agudas"])];
-await P.ejecutarPaso(falsoR, tV, { archivos: [], grado: "1° Secundaria", materia: "Español", opciones: {} });
+  { actividad: "b1p1", afirmacion: "x", estado: "verificada" }] }, ["https://www.rae.es/ortografia/agudas"]), vacia()];
+await hastaQueCambie(falsoR, tV, { archivos: [], grado: "1° Secundaria", materia: "Español", opciones: {} });
 const rep1 = insertados.filter((x) => x.tabla === "reportes").flatMap((x) => x.filas);
 ok(rep1.length === 1 && rep1[0].guia_id === "g9" && rep1[0].slide === null && !("acceso_id" in rep1[0]) && /contradice el libro/.test(rep1[0].comentario) && /Bloque 1 «Ortografía» \(b1om1\)/.test(rep1[0].comentario) && /rae\.es/.test(rep1[0].comentario) && !/^AVISO AUTOM/.test(rep1[0].comentario), "contradice el libro: llega a Reportes con bloque, motivo y fuente, sin datos de la familia · " + rep1[0]?.comentario);
 tV.paso = "verificar";
@@ -502,11 +505,12 @@ ok(sigVo === "imagenes" && pedidos.length === 0 && tVo.datos.verificacion[0]?.es
 respuestas = [apiTexto({ resultados: [] }, [])];
 await P.ejecutarPaso(falsoR, tVm, fuenteG);
 const txtVm = pedidos[0]?.messages?.[0]?.content?.[0]?.text ?? "";
-ok(pedidos.length === 1 && pedidos[0].tools[0].max_uses === 4 && /b1p9/.test(txtVm) && !/b1p2|b1om1|b1nt1/.test(txtVm), "verificar: si más de la mitad ya trae sus fuentes, 4 búsquedas en vez de 10 y solo lo de los apuntes");
+ok(pedidos.length === 1 && pedidos[0].tools[0].max_uses === 3 && /b1p9/.test(txtVm) && !/b1p2|b1om1|b1nt1/.test(txtVm), "verificar: si más de la mitad ya trae sus fuentes, 4 búsquedas en vez de 10 (máx. 3 por llamada) y solo lo de los apuntes");
 const tVp: any = { id: "tvp", guia_id: null, alcance: "resto", paso: "verificar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "es", materia: "Español" }, fotos: [{ tipo: "apuntes_a_mano" }], inventario: {}, bloques: [blq("b1")] } };
-pedidos.length = 0; respuestas = [apiTexto({ resultados: [] }, [])];
-await P.ejecutarPaso(falsoR, tVp, fuenteG);
-ok(pedidos.length === 1 && pedidos[0].tools[0].max_uses === 10 && /b1om6/.test(pedidos[0].messages[0].content[0].text), "verificar sin investigación: igual que antes (10 búsquedas con apuntes a mano, todo el contenido)");
+pedidos.length = 0; respuestas = [vacia(), vacia(), vacia(), vacia()];
+const sigVp = await hastaQueCambie(falsoR, tVp, fuenteG);
+const textosVp = pedidos.map((p: any) => p.messages[0].content[0].text);
+ok(sigVp === "imagenes" && pedidos.length === 4 && pedidos.reduce((n: number, p: any) => n + p.tools[0].max_uses, 0) === 10 && pedidos.every((p: any) => p.tools[0].max_uses <= 3) && textosVp.filter((x: string) => /b1om6 /.test(x)).length === 1 && textosVp.every((x: string) => ["b1p1 ", "b1om1 ", "b1om6 "].filter((id) => x.includes(id)).length < 3), "verificar sin investigación: las mismas 10 búsquedas, en 4 partes de máx. 3, cada una con solo su parte del contenido");
 // h) Las guías de prueba y de la biblioteca se reanudan solas; la guía pagada sigue donde la vista previa se quedó.
 const idxTs = leerRepo("funciones/sparked/index.ts");
 const rutaTrab = idxTs.split('rec === "trabajos" && esUuid(id) && !accion && m === "GET"')[1]?.slice(0, 700) ?? "";
@@ -569,22 +573,33 @@ const tLap = (id: string): any => ({ id, guia_id: "g-" + id, alcance: "completa"
 const lapiz = { actividad: "b2cl1", afirmacion: "«lápiz» es palabra grave", estado: "corregida", dato_correcto: "«lápiz» es esdrújula", decia_la_foto: "lápiz es grave", fuentes: [] as string[], mensaje_para_alumno: "🔎 Estudia esta versión." };
 insertados.length = 0;
 const tL1 = tLap("l1");
-pedidos.length = 0; respuestas = [apiTexto({ resultados: [lapiz] }, [])];
-await P.ejecutarPaso(falsoR, tL1, fuenteG);
+pedidos.length = 0; respuestas = [apiTexto({ resultados: [lapiz] }, []), vacia()];
+await hastaQueCambie(falsoR, tL1, fuenteG);
 const repL1 = insertados.filter((x) => x.tabla === "reportes").flatMap((x) => x.filas);
 ok(tL1.datos.bloques[0].actividades.some((a: any) => a.id === "b2cl1") && !tL1.datos.bloques[0].pistas[0].correcciones && tL1.datos.verificacion[0]?.estado === "revisar_dato" && repL1.length === 1 && repL1[0].guia_id === "g-l1" && /REVISAR DATO/.test(repL1[0].comentario) && /no se cambió nada/.test(repL1[0].comentario) && /lápiz/.test(repL1[0].comentario), "lápiz → esdrújula sin fuente: la guía no cambia (ni se borra el juego ni sale «Dato corregido») y va a Reportes · " + repL1[0]?.comentario);
 const tL2 = tLap("l2");
-respuestas = [apiTexto({ resultados: [{ ...lapiz, fuentes: ["https://www.rae.es/inventada"] }] }, ["https://www.rae.es/otra"])];
-await P.ejecutarPaso(falsoR, tL2, fuenteG);
+respuestas = [apiTexto({ resultados: [{ ...lapiz, fuentes: ["https://www.rae.es/inventada"] }] }, ["https://www.rae.es/otra"]), vacia()];
+await hastaQueCambie(falsoR, tL2, fuenteG);
 ok(tL2.datos.bloques[0].actividades.length === 1 && !tL2.datos.bloques[0].pistas[0].correcciones && tL2.datos.verificacion[0].estado === "revisar_dato", "una url que no salió en la búsqueda (de memoria) no vale: la guía no cambia");
 const tL3 = tLap("l3");
-respuestas = [apiTexto({ resultados: [{ ...lapiz, fuentes: ["https://www.britannica.com/x"] }] }, ["https://www.britannica.com/x"])];
-await P.ejecutarPaso(falsoR, tL3, fuenteG);
-ok(tL3.datos.bloques[0].actividades.length === 1 && /1 fuente confiable/.test(tL3.datos.verificacion[0].sin_cambio ?? ""), "una sola fuente confiable que no es oficial: no basta para cambiar la guía");
+respuestas = [apiTexto({ resultados: [{ ...lapiz, fuentes: ["https://es.wikipedia.org/wiki/L%C3%A1piz"] }] }, ["https://es.wikipedia.org/wiki/L%C3%A1piz"]), vacia()];
+await hastaQueCambie(falsoR, tL3, fuenteG);
+ok(tL3.datos.bloques[0].actividades.length === 1 && !tL3.datos.bloques[0].pistas[0].correcciones && tL3.datos.verificacion[0].estado === "revisar_dato", "Wikipedia, aunque salga en la búsqueda, no vale para corregir: la guía no cambia");
 const tL4 = tLap("l4");
-respuestas = [apiTexto({ resultados: [{ actividad: "b2cl1", afirmacion: "«reloj» es esdrújula", estado: "corregida", dato_correcto: "«reloj» es aguda", decia_la_foto: "reloj es esdrújula", fuentes: ["https://www.rae.es/dpd/tilde"] }] }, ["https://www.rae.es/dpd/tilde"])];
-await P.ejecutarPaso(falsoR, tL4, fuenteG);
+respuestas = [apiTexto({ resultados: [{ actividad: "b2cl1", afirmacion: "«reloj» es esdrújula", estado: "corregida", dato_correcto: "«reloj» es aguda", decia_la_foto: "reloj es esdrújula", fuentes: ["https://www.rae.es/dpd/tilde"] }] }, ["https://www.rae.es/dpd/tilde"]), vacia()];
+await hastaQueCambie(falsoR, tL4, fuenteG);
 ok(tL4.datos.bloques[0].actividades.length === 0 && tL4.datos.bloques[0].pistas[0].correcciones?.[0]?.fuentes?.[0]?.url === "https://www.rae.es/dpd/tilde" && tL4.datos.verificacion[0].estado === "corregida", "con una fuente oficial que salió en la búsqueda: se corrige como antes (la pista lo muestra y se quita el juego con el dato malo)");
+// b2du4 (guía de inglés real, 2026-11-11.6): «herd» con clave «ur»; Cambridge dice «er». Con 1 sitio confiable que salió
+// en la búsqueda basta: la clave mala no se queda en la guía (con la regla de .5, de 11 correcciones reales solo 3).
+const urlHerd = "https://dictionary.cambridge.org/us/pronunciation/english/herd";
+const tHerd: any = { id: "therd", guia_id: "g-herd", alcance: "resto", paso: "verificar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "en", materia: "Inglés" }, fotos: [{ tipo: "hoja_de_trabajo" }], inventario: {},
+  bloques: [{ id: "b2", titulo: "Vowel sounds", pistas: [{ id: "b2p1", titulo: "The /ɜː/ sound", ideas: ["er, ir, ur: the same sound in her, bird, turn."] }],
+    actividades: [{ id: "b2du4", tipo: "duelo", pregunta: "Which letters spell the vowel sound in herd?", opciones: ["er", "ir", "ur", "or"], correcta: 2, pista: "b2p1", retro_correcta: "Yes!", retro_incorrecta: "It is ur." }], mini_examen: [] }] } };
+pedidos.length = 0;
+respuestas = [vacia(), apiTexto({ resultados: [{ actividad: "b2du4", afirmacion: "Sparky must choose: Which letters spell the vowel sound in herd? (respuesta: ur)", estado: "corregida", dato_correcto: "er. En la palabra herd, el sonido de vocal se escribe con las letras 'er'.", decia_la_foto: "ur", fuentes: [urlHerd] }] }, [urlHerd])];
+await hastaQueCambie(falsoR, tHerd, fuenteG);
+ok(!tHerd.datos.bloques[0].actividades.some((a: any) => a.id === "b2du4") && tHerd.datos.bloques[0].pistas[0].correcciones?.[0]?.fuentes?.[0]?.url === urlHerd && tHerd.datos.verificacion.some((r: any) => r.actividad === "b2du4" && r.estado === "corregida"), "b2du4: «herd» con clave «ur» y Cambridge en la búsqueda → se corrige (la pregunta con la clave mala sale de la guía y la pista muestra «er»)");
+ok(P.dominioPermitido("dictionary.cambridge.org") && P.dominioPermitido("www.merriam-webster.com") && P.dominioPermitido("www.oxfordlearnersdictionaries.com") && /1\s+sitio confiable/.test(PR.VERIFICADOR), "verificador: 1 fuente oficial o 1 sitio confiable (Cambridge, Oxford, Merriam-Webster, RAE…) que salió en su búsqueda");
 ok(/revisar_dato/.test(PR.VERIFICADOR) && /nunca corrijas de memoria/.test(PR.VERIFICADOR), "verificador: corrige solo con las fuentes de su búsqueda; si no, «revisar_dato»");
 // b) Error del buscador: el tema confirmado se queda; el otro espera su segunda oportunidad, él solo, con 2 búsquedas,
 //    el error y las consultas de la primera vez. Consultas y errores quedan en el log (claude) y en el reporte.
@@ -619,15 +634,39 @@ tTope.datos.metricas = [{ paso: "planear", costo_usd: 3.5 / P.MXN_POR_USD }];
 pedidos.length = 0; respuestas = [];
 const sigTope = await P.ejecutarPaso(falso, tTope, fuenteG);
 const rTope = tTope.datos.investigacion.find((r: any) => r.tema === "Tradición oral");
-ok(sigTope === "generar:0" && pedidos.length === 0 && rTope?.estado === "no_confirmado" && /tope de 5 MXN/.test(rTope?.motivo ?? "") && tTope.datos.inv_segunda["tradicion oral"].omitida === "tope", "tope: con 3.5 MXN gastados, la segunda búsqueda no se hace (sin llamar a la IA); el tema queda como nota · " + rTope?.motivo);
+ok(sigTope === "generar:0" && pedidos.length === 0 && rTope?.estado === "no_confirmado" && /tope de 5 MXN/.test(rTope?.motivo ?? "") && tTope.datos.inv_segunda["tradicion oral"].omitida === "tope" && tTope.datos.metricas.some((m: any) => m.paso === "candado 5 MXN · investigar" && m.costo_usd === 0 && /Tradición oral/.test(m.resultado)), "tope: con 3.5 MXN gastados, la segunda búsqueda no se hace (sin llamar a la IA) y queda rastro en datos.metricas; el tema queda como nota · " + rTope?.motivo);
 ok(P.TOPE_GUIA_MXN === 5 && P.puedeSegunda({ metricas: [{ costo_usd: 1.4 / P.MXN_POR_USD }] }, 3) && P.puedeSegunda({ metricas: [{ costo_usd: 2.9 / P.MXN_POR_USD }] }, 1) && !P.puedeSegunda({ metricas: [{ costo_usd: 3.3 / P.MXN_POR_USD }] }, 1) && Math.abs(P.costoGuiaMxn({ metricas: [{ costo_usd: 0.1 }, { costo_usd: 0.1 }] }) - 3.7) < 1e-9, "candado: con 1.4 MXN gastados (bloque 1) o 2.9 (último bloque, como la v52) sí hay segunda búsqueda; con 3.3 en el último, no");
-// Verificar: sus búsquedas salen de lo que le queda a la guía (una guía normal no llega a ese límite).
-ok(P.busquedasQueAlcanzan({ metricas: [] }) >= 10 && P.busquedasQueAlcanzan({ metricas: [{ costo_usd: 4.6 / P.MXN_POR_USD }] }) === 1 && P.busquedasQueAlcanzan({ metricas: [{ costo_usd: 4.9 / P.MXN_POR_USD }] }) === 0, "verificar: con 4.6 MXN gastados le alcanza 1 búsqueda; con 4.9, ninguna");
+// Verificar por partes (2026-11-11.6): 4 de 8 verificaciones reales usaron 93 000 a 131 524 tokens en UNA llamada (y una
+// prueba, 313 488); arriba de 100 000 Haiku cobra 5 veces más. En partes de máx. 3 búsquedas, cada una con solo sus
+// líneas, las mismas búsquedas cuestan menos y el cálculo del tope usa el precio real.
+const H = "claude-haiku-5-5";
+const unaLlamada = P.costoLlamadaMxn(H, 10, 3000), enPartes = [3, 3, 2, 2].reduce((s, b) => s + P.costoLlamadaMxn(H, b, 1800), 0);
+ok(unaLlamada > 4 && enPartes < 2.6, `precio real: 10 búsquedas en una llamada (más de 100 000 tokens) ≈ ${unaLlamada.toFixed(2)} MXN; en 4 partes ≈ ${enPartes.toFixed(2)} MXN`);
+const lin = P.lineasParaVerificar([{ id: "b1", pistas: [{ id: "b1p1", titulo: "Agudas", ideas: ["Agudas: tónica en la última.", "Llevan tilde con n, s o vocal."] }], actividades: [
+  { id: "b1om1", tipo: "opcion_multiple", pregunta: "¿Cuál es aguda?", respuesta: "canción" }, { id: "b1vf1", tipo: "verdadero_falso", pregunta: "«Lápiz» es aguda.", respuesta: "false" },
+  { id: "b1c1", tipo: "conceptos", pares: [{ termino: "Aguda", definicion: "tónica en la última" }, { termino: "Grave", definicion: "tónica en la penúltima" }] },
+  { id: "b1cl1", tipo: "clasificar", pregunta: "Clasifica", grupos: ["Agudas", "Graves"], elementos: [{ texto: "canción", grupo: 0 }, { texto: "lápiz", grupo: 1 }, { texto: "reloj", grupo: 0 }] },
+  { id: "b1or1", tipo: "ordenar", pregunta: "Ordena", pasos: ["sílaba", "tónica", "tilde"] }] }]).map((l: any) => l.texto);
+ok(lin.join("\n") === "b1p1 [pista] Agudas: Agudas: tónica en la última. | Llevan tilde con n, s o vocal.\nb1om1 [opcion_multiple] ¿Cuál es aguda? → canción\nb1vf1 [verdadero_falso] «Lápiz» es aguda. → falso\nb1c1 [conceptos] Aguda = tónica en la última; Grave = tónica en la penúltima\nb1cl1 [clasificar] Clasifica · Agudas: canción, reloj · Graves: lápiz\nb1or1 [ordenar] Ordena · sílaba > tónica > tilde", "verificar: una línea corta por pista o actividad, solo el dato y su respuesta · " + lin.join(" ⏎ "));
+const siete = Array.from({ length: 7 }, (_, k) => ({ texto: "x".repeat(100) + k }));
+const p10 = P.planVerificacion(siete, 10), p4 = P.planVerificacion(siete, 4), p2l = P.planVerificacion(siete.slice(0, 2), 10);
+ok(p10.partes.length === 4 && p10.busquedas.join() === "3,3,2,2" && p10.partes.flatMap((p: any) => p.lineas).length === 7 && p4.busquedas.join() === "2,2" && p2l.busquedas.join() === "3,3" && P.planVerificacion([], 10).partes.length === 0, "plan: 10 búsquedas → 4 partes (3, 3, 2, 2); 4 → (2, 2); con 2 líneas, 2 partes de 3; sin contenido, ninguna");
+const Dbaja: any = { metricas: [{ costo_usd: 2.0 / P.MXN_POR_USD }], verif: P.planVerificacion(siete, 10) };
+const Dalta: any = { metricas: [{ costo_usd: 4.0 / P.MXN_POR_USD }], verif: P.planVerificacion(siete, 10) };
+const notaAlta = P.ajustarVerificacion(Dalta, H, 0);
+ok(P.ajustarVerificacion(Dbaja, H, 0) === null && Dbaja.verif.busquedas.join() === "3,3,2,2" && Dbaja.metricas.length === 1, "tope: con 2 MXN gastados, verificar conserva sus 10 búsquedas y no deja rastro");
+ok(!!notaAlta && Dalta.verif.busquedas.reduce((s: number, b: number) => s + b, 0) < 10 && Dalta.metricas.some((m: any) => m.paso === "candado 5 MXN · verificar" && m.costo_usd === 0 && /10 → \d búsquedas/.test(m.resultado)) && Dalta.verif.recortes.length === 1, "tope: con 4 MXN gastados quita búsquedas (primero a la parte con más) y deja rastro en datos.metricas · " + notaAlta);
+const Dmedia: any = { metricas: [{ costo_usd: 3.0 / P.MXN_POR_USD }], verif: P.planVerificacion(siete, 10) };
+P.ajustarVerificacion(Dmedia, H, 0);
+const recortadas = Dmedia.verif.busquedas.join();
+Dmedia.metricas.push({ paso: "verificar 1/4", costo_usd: 0.03 / P.MXN_POR_USD });
+const notaMedia = P.ajustarVerificacion(Dmedia, H, 1);
+ok(recortadas !== "3,3,2,2" && Dmedia.verif.busquedas.slice(1).join() === "3,2,2" && notaMedia === null, `si una parte gasta menos de lo previsto, las siguientes recuperan sus búsquedas (${recortadas} → ${Dmedia.verif.busquedas.join()})`);
 const tVcara: any = JSON.parse(JSON.stringify(tLap("vc")));
 tVcara.datos.metricas = [{ paso: "planear", costo_usd: 4.9 / P.MXN_POR_USD }];
-pedidos.length = 0; respuestas = [apiTexto({ resultados: [lapiz] }, [])];
-await P.ejecutarPaso(falsoR, tVcara, fuenteG);
-ok(pedidos.length === 1 && !pedidos[0].tools && tVcara.datos.bloques[0].actividades.length === 1 && tVcara.datos.verificacion[0].estado === "revisar_dato", "verificar sin presupuesto: se verifica sin buscador y nada se corrige sin fuente (va a Reportes)");
+pedidos.length = 0; respuestas = [apiTexto({ resultados: [lapiz] }, []), vacia()];
+const sigCara = await hastaQueCambie(falsoR, tVcara, fuenteG);
+ok(sigCara === "imagenes" && pedidos.length === 2 && pedidos.every((p: any) => !p.tools) && tVcara.datos.bloques[0].actividades.length === 1 && tVcara.datos.verificacion[0].estado === "revisar_dato" && tVcara.datos.metricas.some((m: any) => m.paso === "candado 5 MXN · verificar"), "verificar sin presupuesto (4.9 MXN): se verifica sin buscador, queda rastro, nada se corrige sin fuente y la guía sigue");
 // e) Planificador: lo que el temario separa con «;» como tema distinto va aparte (temario real de Español 1.º).
 const invEs: any = { temas: [
   { id: "tem1", texto: "Reglamento: definición-función; contiene derechos, responsabilidades y sanciones; verbo (infinitivo y modos imperativo, indicativo y subjuntivo)" },
@@ -687,13 +726,22 @@ tSn.datos.inventario.temas.push({ id: "tem2", texto: "Acentos: agudas y graves" 
 pedidos.length = 0; respuestas = [];
 const sigSn = await P.ejecutarPaso(falso, tSn, fuenteG);
 ok(sigSn === "revisar" && pedidos.length === 0 && tSn.datos.bloques[1]?.solo_nota === true && tSn.datos.bloques[1].pistas.every((p: any) => p.nota_temario), "bloque solo con el temario y nada confirmado: no se escribe (nada inventado); solo notas");
-// g) Reparar: solo el inventario de los bloques que repara, y lo investigado sin urls.
+// g) Reparar ve el inventario COMPLETO, como antes de la .5 (con solo el de su bloque, un juego que no alcanzaba se
+//    borraba y, si era el único, la guía no se entregaba); lo investigado va sin urls. El hueco «sin retroalimentación»
+//    nombra su bloque.
 const Drep: any = { plan: { bloques: [{ id: "b1", ids_inventario: ["tem1", "dat1"] }, { id: "b2", ids_inventario: ["tem2", "cat6"] }] }, inventario: { temas: [{ id: "tem1", texto: "Reglamento" }, { id: "tem2", texto: "Acento" }], datos_clave: [{ id: "dat1", texto: "Reglamento: normas" }], categorias: [{ id: "cat6", grupo: "Acento", elementos: ["agudas"] }], investigado: [{ id: "inv1", bloque: "b1", tema: "Reglamento", texto: "R: x", cita: "R: x", fuentes: [{ nombre: "SEP", url: "https://www.sep.gob.mx/larga/url" }] }, { id: "inv2", bloque: "b2", tema: "Acento", texto: "A: y", cita: "A: y", fuentes: [{ nombre: "RAE", url: "https://www.rae.es/z" }] }] } };
-const idsRep = P.bloquesAReparar(["MÍNIMO · Actividad b2cl1 (clasificar, bloque b2): tiene 4 tarjetas; agrega 2 o más"], []);
-const invRep = P.inventarioParaReparar(Drep, idsRep);
-ok([...idsRep].join() === "b2" && JSON.stringify(invRep) === JSON.stringify({ temas: [{ id: "tem2", texto: "Acento" }], categorias: [{ id: "cat6", grupo: "Acento", elementos: ["agudas"] }], investigado: [{ id: "inv2", bloque: "b2", tema: "Acento", cita: "A: y" }] }), "reparar: solo el inventario del bloque que repara y lo investigado sin urls · " + JSON.stringify(invRep));
-const invTodo = P.inventarioParaReparar(Drep, new Set());
-ok(Object.keys(invTodo).length === 4 && !JSON.stringify(invTodo).includes("https://") && [...P.bloquesAReparar(["Bloque b1: quedaron 2 actividades", "Punto difícil pd1 'x' tiene 1 actividad(es) en el bloque b3: faltan 2"], [{ bloque: "b2" }])].sort().join() === "b1,b2,b3", "si no se sabe qué bloque es, va todo (lo investigado, sin urls); los bloques salen de los huecos y de las pistas largas");
+const invRep = P.inventarioParaReparar(Drep);
+ok(JSON.stringify(invRep) === JSON.stringify({ temas: Drep.inventario.temas, datos_clave: Drep.inventario.datos_clave, categorias: Drep.inventario.categorias, investigado: [{ id: "inv1", bloque: "b1", tema: "Reglamento", cita: "R: x" }, { id: "inv2", bloque: "b2", tema: "Acento", cita: "A: y" }] }), "reparar: el inventario completo (todos los bloques), lo investigado sin urls · " + JSON.stringify(invRep));
+const tRep: any = { id: "trep", alcance: "resto", paso: "reparar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { ...JSON.parse(JSON.stringify(Drep)), citas: [], huecos: ["MÍNIMO · Actividad b2cl1 (clasificar, bloque b2): tiene 4 tarjetas; agrega 2 o más"], pistas_largas: [], bloques: [{ id: "b2", pistas: [{ id: "b2p1", titulo: "A", ideas: ["A: x"] }], actividades: [{ id: "b2cl1", tipo: "clasificar", grupos: ["Agudas", "Graves"], elementos: [{ texto: "canción", grupo: 0 }, { texto: "árbol", grupo: 1 }] }], mini_examen: [] }] } };
+tRep.datos.plan = { ...tRep.datos.plan, idioma_guia: "es", perfil_edad: "juvenil", materia: "Español", puntos_dificiles: [] };
+pedidos.length = 0; respuestas = [apiTexto({ ampliaciones: [] }, [])];
+await P.ejecutarPaso(falso, tRep, fuenteG);
+const txtRep2 = pedidos[0]?.messages?.[0]?.content?.[0]?.text ?? "";
+ok(pedidos.length === 1 && /"Reglamento: normas"/.test(txtRep2) && /"R: x"/.test(txtRep2) && !/https:\/\//.test(txtRep2), "reparar: aunque el hueco sea del bloque 2, ve también el inventario del bloque 1 (y ninguna url)");
+const tRet: any = { id: "tret", alcance: "resto", paso: "revisar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "es", perfil_edad: "juvenil", materia: "Español", puntos_dificiles: [], bloques: [{ id: "b1", juegos: { opcion_multiple: 6 } }], presupuesto_slides: 25 }, inventario: {}, citas: [],
+  bloques: [{ id: "b1", titulo: "B1", pistas: [{ id: "b1p1", titulo: "A", ideas: ["A: x"] }], actividades: [1, 2, 3, 4, 5, 6].map((k) => ({ id: "b1om" + k, tipo: "opcion_multiple", pregunta: "¿Pregunta " + k + "?", opciones: ["a" + k, "b" + k, "c" + k, "d" + k], correcta: k === 6 ? 7 : 0, retro_correcta: "Sí", ...(k === 6 ? {} : { retro_incorrecta: "No" }), pista: "b1p1" })), mini_examen: [] }] } };
+await P.ejecutarPaso(falso, tRet, fuenteG);
+ok((tRet.datos.huecos ?? []).includes("Actividad b1om6 del bloque b1 sin retroalimentación"), "el hueco «sin retroalimentación» (cuando el código no puede escribirla: sin respuesta correcta legible) nombra su bloque · " + JSON.stringify(tRet.datos.huecos));
 // h) Costos: lectura de caché de Sonnet 5.5 a 0.10 USD; Haiku 5 veces más arriba de 100 000 tokens; ortografía sin notas.
 ok(JSON.stringify(P.precioDe("claude-sonnet-5-5", 5000)) === "[2,10,0.1]" && JSON.stringify(P.precioDe("claude-haiku-5-5", 120000)) === "[0.5,2.5,0.05]" && JSON.stringify(P.precioDe("claude-haiku-5-5", 50000)) === "[0.1,0.5,0.01]", "precios: lectura de caché de Sonnet 5.5 a 0.10; Haiku cobra 5 veces más arriba de 100 000 tokens");
 const regN = P.textosDeGuia({ plan: { materia: "Español", identidad: {} }, bloques: [{ id: "b1", pistas: [{ id: "b1p1", titulo: "A", ideas: ["A: x"] }, { id: "b1nt1", titulo: "Repásalo en tu libro", ideas: ["Verbo: este tema venía en tu temario; repásalo en tu libro."], nota_temario: true }], actividades: [], mini_examen: [] }] });
