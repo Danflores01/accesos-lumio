@@ -101,8 +101,13 @@ DECIDE, EN ESTE ORDEN:
    describe el examen sin contenido suficiente) o "mixto".
    "temas_a_investigar": SOLO los temas que aparecen ESCRITOS en las fotos (temario, índice o lista de temas) y cuyo
    contenido NO viene en el material. Nunca agregues un tema que no esté escrito en las fotos. Cada uno lleva "tema"
-   (como viene escrito, corto), "bloque" (el id del bloque donde se enseña) y "pagina" (la página, unidad o recurso
-   que el temario da para ese tema, tal cual; "" si no lo da).
+   (como viene escrito: su nombre y, después de «:», los detalles que da el temario; máx. 15 palabras; por ejemplo
+   «Reglamento: definición, función, derechos y sanciones»), "bloque" (el id del bloque donde se enseña) y "pagina"
+   (la página, unidad o recurso que el temario da para ese tema, tal cual; "" si no lo da).
+   Si una línea del temario junta temas DISTINTOS separados por «;» (por ejemplo «Reglamento: definición; verbo
+   (infinitivo y modos)»), cada tema distinto va como su propio elemento («Reglamento: definición» y «Verbo: infinitivo
+   y modos»), con su propia pista. Lo que solo detalla el mismo tema (definición; tipos; ejemplos) va junto, en el
+   mismo elemento.
    NO son temas a investigar: la práctica o el formato del examen ("Gapped text", "Listening", "Speaking", "Reading
    Part 3", "Use of English", partes, tiempos o instrucciones del examen).
    EXCEPCIÓN: si el material describe el examen pero el temario pide una HABILIDAD (por ejemplo, evaluar argumentos
@@ -447,9 +452,12 @@ Recibes: las pistas y actividades de un bloque (JSON), el tipo de cada foto y el
 3. Busca SOLO en dominios confiables (los permitidos ya están filtrados). Regla: 1 fuente oficial o 2 confiables
    que coincidan. No uses Wikipedia para confirmar datos.
 4. Decide para cada afirmación: "verificada" | "corregida" | "no_confirmada" |
-   "contradice_libro".
-   - corregida: escribe el dato correcto, lo que decía la foto y las fuentes, y un
-     mensaje amable para el alumno.
+   "contradice_libro" | "revisar_dato".
+   - corregida: SOLO si en ESTA verificación encontraste las fuentes (1 oficial o 2 confiables): escribe el dato
+     correcto, lo que decía la foto, las fuentes (la url EXACTA, tal como salió en tu búsqueda) y un mensaje amable
+     para el alumno. Sin esas fuentes, la guía no cambia: nunca corrijas de memoria.
+   - revisar_dato: crees que hay un error de hecho, pero no lo encontraste en una fuente: escribe lo que crees en
+     "dato_correcto"; NO se cambia nada y Daniel lo revisa.
    - no_confirmada: solo se anota en el reporte; la actividad NO se quita. Úsalo solo si de verdad no
      pudiste confirmar un dato duro; si la regla o el dato es correcto según tu conocimiento y el material, es
      "verificada".
@@ -495,10 +503,12 @@ temario y los otros temas de su bloque, para que entiendas el enfoque).
    (libros.conaliteg.gob.mx, conaliteg.sep.gob.mx) y los sitios oficiales (sep.gob.mx, gob.mx, INEGI, INAH, RAE);
    después, los académicos de la lista. Wikipedia NO cuenta como fuente. Busca con el nombre del tema, la materia y
    el grado; si el temario da una página o un recurso, úsalo para entender qué parte del tema piden.
-   CÓMO BUSCAR (tienes pocas búsquedas, unas 2 por tema): consultas CORTAS y sencillas, de 3 a 7 palabras (por
-   ejemplo: "ciclo del agua primaria SEP"); nunca uses site:, comillas, OR ni signos raros. Si una búsqueda
-   falla o no trae nada útil, intenta UNA vez con otras palabras. Si la primera ya trae una fuente oficial con el
-   contenido del tema, no busques más para ese tema: escribe sus datos con esa página.
+   CÓMO BUSCAR (tienes 1 búsqueda por tema; en una segunda oportunidad, 2): usa la búsqueda de cada tema para ESE
+   tema, con consultas CORTAS y sencillas, de 3 a 7 palabras, con el tema y la materia o el grado (por ejemplo:
+   "ciclo del agua primaria SEP"); nunca uses site:, comillas, OR ni signos raros. Si la búsqueda falla o no trae
+   nada útil, no inventes: marca el tema "no_confirmado" y di en "motivo" qué pasó (por ejemplo "el buscador dio
+   error"); el sistema le da una segunda oportunidad. Si una búsqueda ya trae una fuente oficial con el contenido del
+   tema, no busques más para ese tema: escribe sus datos con esa página.
 3. Regla de confirmación: un dato se queda solo si lo respalda 1 fuente oficial o 2 fuentes confiables distintas que
    dicen lo mismo. Cada dato lleva sus fuentes: el nombre de la página y su url EXACTA, tal como salió en tu
    búsqueda. Nada de memoria: si no lo encontraste en una fuente, no lo escribas.

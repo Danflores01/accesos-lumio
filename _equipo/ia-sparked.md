@@ -71,15 +71,15 @@ prueba (nunca el link de una familia), versión desplegada si la hubo, y qué ac
 | Qué | Dónde |
 |---|---|
 | Cadena de pasos | `funciones/sparked/pipeline.ts`: `ejecutarPaso`, `claude`, `llamar`, `ajusteDe`, `ajustarPlan`, `recortarBloques`, `recortarVistaPrevia`, `verificarCartucho`, `aplicarCorreccion`, `aplicarOrtografia` |
-| Temas del temario (11 nov) | `pipeline.ts`: `temasPendientes`, `investigarTemas`, `validarInvestigacion`, `marcarInvestigado`, `agregarNotasTemario`, `reportesContradice`, `bloqueSoloNota`, `contenidoParaVerificar`, `temasQueSeInvestigan` (6 subtemas, primero uno por tema del temario: `raizDeTema`), `temasDePista` (fuentes de su subtema), `sinGrupoEscrito` (tarjetas sin la respuesta); topes `MAX_TEMAS_INVESTIGAR` (6) y `BUSQUEDAS_POR_TEMA` (2); prompt `INVESTIGADOR`; ajuste `sparked_investigar` (apagado: "no"); prueba de una guía con `POST /admin/guias/<id>/generar {"investigar":"si"}` |
+| Temas del temario (11 nov) | `pipeline.ts`: `temasPendientes`, `investigarTemas` (1.ª vuelta y segunda oportunidad: `datos.inv_segunda`), `validarInvestigacion`, `marcarInvestigado`, `agregarNotasTemario`, `reportesDeVerificacion` («contradice_libro» y «revisar_dato» a Reportes), `bloqueSoloNota`, `contenidoParaVerificar`, `temasQueSeInvestigan` (6 subtemas, primero uno por tema del temario: `raizDeTema`), `temasDePista` (fuentes de su subtema), `sinGrupoEscrito` (tarjetas sin la respuesta), `completarTemasDelTemario` y `esTemaAparte` (lo que el temario separa con «;»), `pistasSinDatos` (pista sin datos = nota), `inventarioParaReparar`; topes `MAX_TEMAS_INVESTIGAR` (6), `BUSQUEDAS_POR_TEMA` (1), `BUSQUEDAS_SEGUNDA` (2) y `TOPE_GUIA_MXN` (5: `puedeSegunda`, `busquedasQueAlcanzan`); prompt `INVESTIGADOR`; ajuste `sparked_investigar` (apagado: "no"); prueba de una guía con `POST /admin/guias/<id>/generar {"investigar":"si"}` |
 | Prompts | `funciones/sparked/prompts.ts` (identidad del Planificador y regla 12 «TODO CABE» del Generador) |
 | Trabajos y entrega | `funciones/sparked/index.ts`: `correrPaso` (3 intentos por paso), `reanudarSiAtorado` (150 s quieto; 6 interrupciones = error; lo llaman las consultas de las familias y, desde el 2026-11-11.3, `GET /admin/trabajos/<id>` para las guías `completa`), `alFinalizar`, `lanzarResto` (solo después del pago; sigue en el primer bloque que la vista previa no escribió) |
 | Despliegue | `funciones/puente-sparked/index.ts` (puente a un commit fijo) y `_guardia/skill/guardia-sparked/references/publicar-rapido.md` |
 | Tablas | `trabajos` (`alcance`: vista_previa, resto o completa; `paso`, `estado`, `intentos`, `error`, `costo_usd`, `datos`), `borradores`, `guias` (`cartucho`, `vista_previa`, `reporte`, `costo_mxn`), `config`, `tipos_cambio` |
-| Dentro de `trabajos.datos` | `inventario`, `plan`, `bloques`, `metricas` (costo de cada llamada), `diagnostico(s)`, `intento_ia`, `descartes`, `ortografia`, `verificacion`, `no_leidas`, `huecos` |
+| Dentro de `trabajos.datos` | `inventario`, `plan`, `bloques`, `metricas` (costo de cada llamada; su suma es lo que mira el tope de 5 MXN), `diagnostico(s)`, `intento_ia`, `descartes`, `ortografia`, `verificacion` (`revisar_dato` = corrección sin fuente, no aplicada), `no_leidas`, `huecos`, `investigacion`, `inv_segunda` (temas en su segunda oportunidad) |
 | Servidor | `https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/sparked`; admin con la cabecera `x-admin-key` y `CLAVE="$(head -n1 CLAVES.txt \| tr -d '\r\n')"` dentro del mismo comando (nunca se imprime) |
 | Rutas de admin | `GET /admin/ping` · `GET /admin/trabajos/<id>` · `POST /admin/trabajos/<id>/reintentar` · `POST /admin/pruebas/plan` · `POST /admin/pruebas/generar` · `POST /admin/guias/<id>/generar` · `GET /admin/guias/<id>/cartucho` · `GET /admin/costos?dias=30` |
-| Registro | una línea `IA {etiqueta, modelo, esfuerzo, ms, entrada, salida, parada, …}` por llamada; consultas 3, 4 y 7 de `_guardia/skill/guardia-sparked/references/consultas.md` |
+| Registro | una línea `IA {etiqueta, modelo, esfuerzo, ms, entrada, salida, parada, …}` por llamada; con buscador, también `busquedas`, `paginas`, `consultas` y `errores` (desde el 2026-11-11.5; `datos.metricas` lleva `busquedas` y `errores_busqueda`, y cada tema de `datos.investigacion` su `busqueda`); consultas 3, 4 y 7 de `_guardia/skill/guardia-sparked/references/consultas.md` |
 | Pruebas | `herramientas/revisar-slides.mjs`, `probar-guia.mjs` (con `servir.js`), `abrir-guia.mjs`, `probar-rutas.mjs`; de la guardia, `ronda.mjs` y `lanzar.mjs` |
 | Criterios y demo | `docs/CRITERIOS-FASE-2.md` §0, 7–9, 11, 19, 21, 24, 27, 29; `docs/PRUEBA-MODELOS-2026-11-07.md`; `docs/COMENTARIOS-Y-COSTOS.md`; demo de la portada: `sparked/ejemplos/historia1.json` |
 
@@ -139,13 +139,16 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 - [ ] Compruebo: trabajo `listo`, ronda sin `FALLA` y `node herramientas/probar-guia.mjs <id de la guía>` sin errores.
 - [ ] Anoto la lección aquí y, si le pasó a una familia, en `references/incidentes.md` con su candado.
 
-### Checklist ANTES DE LLEVAR ALGO A PRODUCCIÓN: cabe en 6 MXN
-- [ ] Medí la guía de prueba por paso (`datos.metricas`): vista previa + resto ≤ 6 MXN, también con el máximo de cada
-      paso de los últimos 10 días (hoy: vista previa ≈ 1.7, resto ≈ 2.6, guía ≈ 4.3; peor caso ≈ 5.9).
+### Checklist ANTES DE LLEVAR ALGO A PRODUCCIÓN: cabe en 5 MXN
+- [ ] Medí la guía de prueba por paso (`datos.metricas`): vista previa + resto ≤ 5 MXN (Daniel bajó el tope el 11 nov),
+      también con el máximo de cada paso de los últimos 10 días (v52: leer 0.04 · planear 1.00 · investigar 1.66 ·
+      escribir 0.40 · reparar 0.48 · ortografía 0.37 · verificar 0.06 = 4.00; sin investigar, la misma guía: 3.19).
 - [ ] Conté las búsquedas web: cada una cuesta 0.01 USD = 0.185 MXN (pesan más que los tokens de Haiku).
 - [ ] Si cambio modelo o esfuerzo, recalculo con `PRECIO` de `pipeline.ts`; Sonnet en planear y reparar no se baja.
+      Haiku cobra 5 veces más si una llamada pasa de 100 000 tokens: nunca más de 2 búsquedas por llamada.
+- [ ] El candado del código (`puedeSegunda`, `busquedasQueAlcanzan`) solo quita búsquedas extra; si la guía igual
+      pasaría de 5, propongo cómo bajarla sin perder calidad. Nunca se corta una guía pagada.
 - [ ] Lo nuevo va apagado y se prueba por trabajo hasta medirlo; la vista previa no se abarata.
-- [ ] Si una guía puede pasar de 6, propongo cómo bajarla sin perder calidad; nunca se corta una guía pagada.
 
 ### Cómo pruebo un cambio sin gastar de más
 1. **Gratis:** prueba sin IA de `pipeline.ts`, `lanzar.mjs --revisar` y `revisar-slides.mjs` con cartuchos ya hechos.
@@ -172,10 +175,20 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Lo aprendido
 
-- 2026-11-11 · Daniel: **tope de costo de IA por guía en producción: 6 MXN** (vista previa + resto, con investigación
-  de temas incluida). Hoy el promedio es de 4 a 5 MXN. Las pruebas pueden gastar hasta 15 MXN cada una mientras se
-  aprende; lo que se lleve a producción tiene que caber en 6. Nunca se corta una guía pagada a medias por costo: si una
-  pasa de 6, se avisa y se ajusta el proceso.
+- 2026-11-11 · Daniel: **tope de costo de IA por guía en producción: 5 MXN** (lo bajó de 6 el mismo día; vista previa
+  + resto, con investigación de temas incluida). Las pruebas pueden gastar hasta 15 MXN cada una mientras se aprende;
+  lo que se lleve a producción tiene que caber en 5. Nunca se corta una guía pagada a medias por costo: si una pasa
+  de 5, se avisa y se ajusta el proceso.
+- **11 nov · Código 2026-11-11.5 (los tres arreglos de la v52, aprobados por Daniel):** (1) la verificación solo cambia
+  la guía con una fuente que salió en SU búsqueda y cumple la regla (1 oficial o 2 confiables); si no, nada cambia y va a
+  Reportes como «REVISAR DATO» (`revisar_dato`). (2) 1 búsqueda por tema; si el tema no se confirma porque el buscador
+  dio error, no devolvió páginas o se acabaron las búsquedas, tiene una segunda oportunidad él solo con 2 búsquedas y
+  las consultas de la primera; consultas y errores quedan en el log. (3) Lo que el temario separa con «;» como tema
+  distinto va aparte (prompt y `completarTemasDelTemario`), y en un bloque sin contenido propio una pista que no se
+  parece a ningún dato confirmado se vuelve nota (`pistasSinDatos`). Para caber en 5 MXN: el reparador recibe solo el
+  inventario de los bloques que repara (lo investigado sin urls), la ortografía no revisa las notas del código y un
+  candado deja la segunda búsqueda y las búsquedas de verificar solo si la guía no pasa del tope. Los datos de la hoja
+  («Maestra: …», «Fecha de aplicación…», «Temario del…») ya no cuentan como contenido propio.
 
 - **11 nov · Temas del temario sin contenido (Daniel: «no podemos inventar temas, pero sí es necesario hacer las guías lo
   más completas posibles»).** Solo los temas escritos en las fotos; 1 fuente oficial o 2 sitios confiables; una fuente
@@ -193,6 +206,9 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
   revisar. Ningún revisor lo vio: el de slides no lee contenido y la revisión final no miraba el texto. Lección: cada
   prompt que pide JSON muestra el formato exacto; el código acomoda los nombres desde que se escribe; y una consulta
   a la base («¿cuántas preguntas en blanco hay?») vale más que revisar una guía a ojo.
+- **11 nov · Prueba v52: la verificación también puede inventar.** Sin ninguna fuente, «corrigió» que «lápiz» es
+  esdrújula; el código lo aplicó (caja «✓ Dato corregido» falsa, rotulada «De tus notas», y un juego borrado). Una
+  corrección sin fuente no es una corrección: o trae su página o va a Reportes para Daniel.
 - **11 nov · Prueba v51:** el planificador no parte igual el mismo temario dos veces (6 subtemas en una corrida, 8
   en otra): un tope que cuenta lo que decide la IA no es estable; hay que contar algo del material (los temas del
   temario). Y el reparador copia el formato de lo que el código le resume (`texto → grupo` terminó dentro de las
@@ -248,10 +264,13 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
   subtemas confirmados y 5.87 MXN. Segunda (v51, guía `37905365…`): los 6 subtemas investigados confirmados, 0
   preguntas en blanco o inventadas, 5.24 MXN y sin trabarse; pero el planificador partió el temario en 8 subtemas y el
   tope de 6 cuenta subtemas: 2 temas quedaron como nota sin investigarse. La jefe eligió la opción «segura» (6
-  subtemas, primero uno por tema del temario; ≈ 5.2 MXN). Código 2026-11-11.4 (sin desplegar): ese tope, tarjetas de
-  clasificar sin la respuesta escrita y la fuente exacta en cada pista. Falta: despliegue y la misma prueba otra vez
-  (`probar-temario.mjs` ya exige el .4). Criterio: los 6 temas del temario cubiertos (confirmados o con nota honesta),
-  0 preguntas vacías, inventadas o con la respuesta escrita, ≤ 6 MXN.
+  subtemas, primero uno por tema del temario; ≈ 5.2 MXN). v52 = 2026-11-11.4 (ese tope, tarjetas sin la respuesta
+  y fuente exacta por pista), prueba final (guía `85647e7c…`): 4.00 MXN, 0 en blanco y 0 tarjetas con la respuesta,
+  pero NO cumple: la verificación aplicó sin fuente un dato falso («lápiz es esdrújula») y borró un juego; Verbo quedó
+  sin investigar ni nota (el planificador lo juntó con Reglamento); 2 temas, nota por errores del buscador. Daniel
+  aprobó los tres arreglos y bajó el tope a 5 MXN: código 2026-11-11.5 hecho y subido (sin desplegar; la principal
+  despliega y lanza la prueba real de Español 1.º). Criterio: los 6 temas cubiertos (confirmados o con nota honesta), 0
+  preguntas vacías, inventadas o con la respuesta escrita, ningún dato corregido sin fuente, ≤ 5 MXN.
 - **Arreglo de datos de las preguntas en blanco** (6 guías pagadas y entregadas, 8 compras) y de 2 tarjetas con la
   respuesta escrita (guía pagada `0882fef5`): SQL con respaldo, arreglo y comprobación en la nota
   `ia-arreglo-preguntas-en-blanco.sql` de la carpeta de notas de la principal (pruebas en seco: 22 → 0, 1 → 0 y

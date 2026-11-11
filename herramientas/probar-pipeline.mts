@@ -248,9 +248,10 @@ let respuestas: any[] = [];
   const r = respuestas.shift();
   return r instanceof Response ? r : new Response(JSON.stringify(r), { status: 200, headers: { "content-type": "application/json" } });
 };
-const apiTexto = (j: unknown, urls: string[] = []) => ({ content: [
+// usadas: búsquedas que cobra el API (por omisión 2 si hubo páginas); extra: bloques antes del texto (p. ej. un error).
+const apiTexto = (j: unknown, urls: string[] = [], usadas?: number, extra: any[] = []) => ({ content: [
   ...(urls.length ? [{ type: "server_tool_use", id: "s1", name: "web_search", input: { query: "x" } }, { type: "web_search_tool_result", tool_use_id: "s1", content: urls.map((url) => ({ type: "web_search_result", url, title: "t" })) }] : []),
-  { type: "text", text: JSON.stringify(j) }], stop_reason: "end_turn", usage: { input_tokens: 1000, output_tokens: 400, server_tool_use: { web_search_requests: urls.length ? 2 : 0 } } });
+  ...extra, { type: "text", text: JSON.stringify(j) }], stop_reason: "end_turn", usage: { input_tokens: 1000, output_tokens: 400, server_tool_use: { web_search_requests: usadas ?? (urls.length ? 2 : 0) } } });
 
 // 18. Qué es práctica del examen (no se investiga) y qué sí es contenido (la EXCEPCIÓN de las habilidades).
 ok(P.esPracticaDeExamen("Gapped text: textos de práctica con huecos (esl-lounge, engxam)") && P.esPracticaDeExamen("Listening – Sentence completion: audios de práctica (Test-English)") && P.esPracticaDeExamen("Reading Part 3") && P.esPracticaDeExamen("Speaking"), "práctica del examen: Gapped text, Listening, Reading Part 3 y Speaking no se investigan");
@@ -301,11 +302,11 @@ const fuenteG = { archivos: [], grado: "1° Secundaria", materia: "Español", op
 pedidos.length = 0;
 respuestas = [apiTexto({ temas: [
   { tema: "Figuras retóricas", estado: "confirmado", datos: [{ texto: datosF[0], fuentes: [{ nombre: "SEP · Lenguajes 1", url: vistasF[0] }] }, { texto: datosF[1], fuentes: [{ nombre: "RAE · Diccionario panhispánico", url: vistasF[1] }] }] },
-  { tema: "Tradición oral", estado: "confirmado", datos: [{ texto: "Coplas: versos breves para cantar.", fuentes: [{ nombre: "INAH", url: "https://www.inah.gob.mx/coplas" }] }, { texto: "Refranes: dichos con una enseñanza.", fuentes: [{ nombre: "INAH", url: "https://www.inah.gob.mx/refranes" }] }] }] }, vistasF)];
+  { tema: "Tradición oral", estado: "confirmado", datos: [{ texto: "Coplas: versos breves para cantar.", fuentes: [{ nombre: "INAH", url: "https://www.inah.gob.mx/coplas" }] }, { texto: "Refranes: dichos con una enseñanza.", fuentes: [{ nombre: "INAH", url: "https://www.inah.gob.mx/refranes" }] }] }] }, vistasF, 1)];
 const sig1 = await P.ejecutarPaso(falso, tG, fuenteG);
 const inv = tG.datos.investigacion ?? [];
 const pedInv = pedidos[0];
-ok(sig1 === "generar:0" && pedidos.length === 1 && /ERES EL INVESTIGADOR/.test(pedInv.system[0].text) && pedInv.tools[0].max_uses === 2 * P.BUSQUEDAS_POR_TEMA && P.BUSQUEDAS_POR_TEMA === 2 && pedInv.tools[0].allowed_domains.includes("conaliteg.sep.gob.mx") && !/Gapped/.test(pedInv.messages[0].content[0].text), "paso: una llamada de investigación (2 búsquedas por tema) en dominios confiables y sin la práctica del examen");
+ok(sig1 === "generar:0" && pedidos.length === 1 && /ERES EL INVESTIGADOR/.test(pedInv.system[0].text) && pedInv.tools[0].max_uses === 2 * P.BUSQUEDAS_POR_TEMA && P.BUSQUEDAS_POR_TEMA === 1 && pedInv.tools[0].allowed_domains.includes("conaliteg.sep.gob.mx") && !/Gapped/.test(pedInv.messages[0].content[0].text), "paso: una llamada de investigación (1 búsqueda por tema) en dominios confiables y sin la práctica del examen");
 ok(inv.find((r: any) => /Gapped/.test(r.tema))?.estado === "practica_examen" && inv.find((r: any) => r.tema === "Figuras retóricas")?.estado === "confirmado" && inv.find((r: any) => r.tema === "Tradición oral")?.estado === "no_confirmado", "paso: práctica del examen ignorada; tema con fuentes confirmado; tema con páginas que el buscador no dio, sin confirmar · " + inv.map((r: any) => `${r.tema}=${r.estado}`).join(" | "));
 ok((tG.datos.inventario.investigado ?? []).length === 2 && tG.datos.inventario.investigado.every((e: any) => e.bloque === "b1" && e.fuentes.length) && tG.datos.citas.includes(datosF[1]), "paso: lo confirmado entra al inventario del bloque como «investigado» y vale como cita");
 respuestas = [apiTexto({ bloque: "b1", pistas: [
@@ -366,7 +367,7 @@ tV.paso = "verificar";
 respuestas = [apiTexto({ resultados: [{ actividad: "b1om1", afirmacion: "x", estado: "contradice_libro" }] }, [])];
 await P.ejecutarPaso(falsoR, tV, { archivos: [], grado: "1° Secundaria", materia: "Español", opciones: {} });
 ok(insertados.filter((x) => x.tabla === "reportes").length === 1, "contradice el libro: si el paso se repite, el reporte no se duplica");
-ok(P.reportesContradice([{ estado: "corregida" }, { estado: "no_confirmada" }], []).length === 0, "solo «contradice_libro» va a Reportes (corregida y no_confirmada, no)");
+ok(P.reportesDeVerificacion([{ estado: "corregida" }, { estado: "no_confirmada" }, { estado: "verificada" }], []).length === 0 && P.reportesDeVerificacion([{ estado: "revisar_dato", afirmacion: "x" }], []).length === 1, "a Reportes van «contradice_libro» y «revisar_dato» (la corregida con fuente, la no confirmada y la verificada, no)");
 
 // 24. El reproductor muestra la marca: caja azul en la pista y la fuente en las preguntas (nunca «De tus notas»).
 const leerRepo = (r: string) => readFileSync(join(repo, r), "utf8");
@@ -452,25 +453,36 @@ const tE: any = { ...JSON.parse(JSON.stringify(tP)), id: "te", paso: "generar:0"
 let errE = "";
 try { await P.ejecutarPaso(falso, tE, fuenteG); } catch (e) { errE = (e as Error).message; }
 ok(/no se hace para no inventar/.test(errE), "sin nada confirmado ni contenido en toda la guía: error claro en vez de una guía inventada o vacía");
-// f) Búsqueda que no devolvió ninguna página: se reintenta una vez, pidiendo consultas más cortas.
+// f) Búsqueda que no devolvió ninguna página: el tema tiene su segunda oportunidad, él solo, con 2 búsquedas
+// (2026-11-11.5; antes se repetía la misma llamada).
 const tR: any = { id: "tr", guia_id: "gr", alcance: "completa", paso: "generar:0", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, progreso: { pct: 40 }, datos: { inventario: JSON.parse(JSON.stringify(invS)), citas: [], fotos: [{ indice: 1, tipo: "temario" }], plan: JSON.parse(JSON.stringify(planP)), bloques: [] } };
 const tR2: any = JSON.parse(JSON.stringify(tR));
+const tR3: any = JSON.parse(JSON.stringify(tR));
 const urlRae = "https://www.rae.es/dpd/tilde";
 const respAcento = { temas: [{ tema: "Acento normativo", estado: "confirmado", datos: [{ texto: "Acento normativo: reglas para poner la tilde.", fuentes: [{ nombre: "RAE", url: urlRae }] }, { texto: "Agudas: llevan tilde si terminan en n, s o vocal.", fuentes: [{ nombre: "RAE", url: urlRae }] }] }] };
 pedidos.length = 0;
 respuestas = [apiTexto({ temas: [{ tema: "Acento normativo", estado: "no_confirmado", motivo: "el buscador dio error", datos: [] }] }, [])];
-let errR = "";
-try { await P.ejecutarPaso(falso, tR, fuenteG); } catch (e) { errR = (e as Error).message; }
-ok(/se reintenta/.test(errR) && tR.datos.intento_inv?.n === 1 && !(tR.datos.investigacion ?? []).some((r: any) => r.tema === "Acento normativo"), "búsqueda sin ninguna página: su «no confirmado» no se acepta; se reintenta · " + errR);
+const sigR1 = await P.ejecutarPaso(falso, tR, fuenteG);
+ok(sigR1 === "generar:0" && !!tR.datos.inv_segunda?.["acento normativo"] && /ninguna página/.test(tR.datos.inv_segunda["acento normativo"].motivo) && !(tR.datos.investigacion ?? []).some((r: any) => r.tema === "Acento normativo"), "búsqueda sin ninguna página: el tema no se da por perdido; espera su segunda oportunidad");
 respuestas = [apiTexto(respAcento, [urlRae])];
 await P.ejecutarPaso(falso, tR, fuenteG);
 const txtR = pedidos[1]?.messages?.[0]?.content?.[0]?.text ?? "";
-ok(/INTENTO ANTERIOR FALLIDO/.test(txtR) && /MÁS CORTAS/.test(txtR) && tR.datos.investigacion.find((r: any) => r.tema === "Acento normativo")?.estado === "confirmado" && !tR.datos.intento_inv, "reintento: pide consultas más cortas y, con páginas de verdad, el tema se confirma");
+const rAc = tR.datos.investigacion.find((r: any) => r.tema === "Acento normativo");
+ok(/SEGUNDA OPORTUNIDAD/.test(txtR) && /ninguna página/.test(txtR) && pedidos[1].tools[0].max_uses === P.BUSQUEDAS_SEGUNDA && rAc?.estado === "confirmado" && rAc?.busqueda?.segunda === true && !tR.datos.intento_inv, "segunda oportunidad: él solo, con 2 búsquedas, sabe qué falló y, con páginas de verdad, el tema se confirma");
+pedidos.length = 0;
 respuestas = [apiTexto({ temas: [{ tema: "Acento normativo", estado: "no_confirmado", datos: [] }] }, []), apiTexto({ temas: [{ tema: "Acento normativo", estado: "no_confirmado", datos: [] }] }, [])];
-try { await P.ejecutarPaso(falso, tR2, fuenteG); } catch { /* primer intento: se reintenta */ }
 await P.ejecutarPaso(falso, tR2, fuenteG);
-ok(tR2.datos.investigacion.find((r: any) => r.tema === "Acento normativo")?.estado === "no_confirmado" && !tR2.datos.intento_inv, "si el reintento tampoco trae páginas, el tema queda como nota (la guía nunca se detiene)");
-ok(/consultas CORTAS/.test(PR.INVESTIGADOR) && /nunca uses site:, comillas, OR/.test(PR.INVESTIGADOR) && /no busques más/.test(PR.INVESTIGADOR), "investigador: consultas cortas y sin operadores; con una fuente oficial, no busca más");
+await P.ejecutarPaso(falso, tR2, fuenteG);
+ok(pedidos.length === 2 && tR2.datos.investigacion.find((r: any) => r.tema === "Acento normativo")?.estado === "no_confirmado" && tR2.datos.inv_segunda["acento normativo"].hecha === true, "si la segunda oportunidad tampoco trae páginas, el tema queda como nota (sin tercera búsqueda; la guía nunca se detiene)");
+// La IA que no responde JSON se reintenta una vez (como antes) y, si vuelve a fallar, el tema queda como nota.
+pedidos.length = 0;
+const sinJson = { content: [{ type: "text", text: "no es json" }], stop_reason: "end_turn", usage: { input_tokens: 10, output_tokens: 5 } };
+respuestas = [sinJson, sinJson];
+let errR = "";
+try { await P.ejecutarPaso(falso, tR3, fuenteG); } catch (e) { errR = (e as Error).message; }
+await P.ejecutarPaso(falso, tR3, fuenteG);
+ok(/se reintenta/.test(errR) && pedidos.length === 2 && tR3.datos.investigacion.find((r: any) => r.tema === "Acento normativo")?.estado === "no_confirmado" && !tR3.datos.inv_segunda?.["acento normativo"], "sin JSON: se reintenta una vez y queda como nota (eso no es falla del buscador: sin segunda oportunidad)");
+ok(/consultas CORTAS/.test(PR.INVESTIGADOR) && /nunca uses site:, comillas, OR/.test(PR.INVESTIGADOR) && /no busques más/.test(PR.INVESTIGADOR) && /1 búsqueda por tema/.test(PR.INVESTIGADOR), "investigador: 1 búsqueda por tema, consultas cortas y sin operadores; con una fuente oficial, no busca más");
 // g) Verificar no vuelve a buscar lo que ya trae fuentes (1 oficial o 2 confiables).
 const pistaF = { id: "b1p2", titulo: "Figuras retóricas", ideas: datosF, completado_con_fuentes: { fuentes: [] } };
 const notaF = { id: "b1nt1", titulo: "Repásalo en tu libro", ideas: ["X: nota"], nota_temario: true };
@@ -547,6 +559,145 @@ ok(!pNo.completado_con_fuentes, "una pista que no se parece a ningún subtema no
 ok(nombresDe(pA) === fA.nombre && nombresDe(pE) === fE.nombre && nombresDe(pS) === fE.nombre && nombresDe(pAmb) === `${fA.nombre} + ${fE.nombre}`, `pistas: cada una con las fuentes de su subtema (agudas → ${nombresDe(pA)}; esdrújulas → ${nombresDe(pE)}; por sus ideas → ${nombresDe(pS)}; empate → ${nombresDe(pAmb)})`);
 P.marcarInvestigado(bAE, confAE);
 ok(nombresDe(bAE.pistas[1]) === fE.nombre && bAE.pistas[1].tema_investigado === "Acento normativo" && bAE.actividades[0].fuente.nombre === fE.nombre, "al volver a marcar (armar) sale lo mismo; la pregunta sin cita lleva la fuente del subtema de su pista");
+
+// 27. Código 2026-11-11.5 (Daniel aprobó los tres arreglos de la prueba v52 y bajó el tope a 5 MXN por guía).
+// a) Verificar corrige SOLO con una fuente que salió en SU búsqueda (1 oficial o 2 confiables). Caso real de la prueba
+//    v52: «lápiz es esdrújula», sin ninguna búsqueda, borró el Super sort y puso un «Dato corregido» falso.
+const bloqueLapiz = () => ({ id: "b2", titulo: "Acento normativo", pistas: [{ id: "b2p2", titulo: "Palabras graves", ideas: ["Graves: tónica en la penúltima; llevan tilde si no terminan en n, s o vocal (lápiz, árbol)."] }],
+  actividades: [{ id: "b2cl1", tipo: "clasificar", instruccion: "Clasifica", grupos: ["Agudas", "Graves"], elementos: ["canción", "reloj", "jamás", "lápiz", "árbol", "mesa"].map((texto, i) => ({ texto, grupo: i < 3 ? 0 : 1 })), pista: "b2p2" }], mini_examen: [] });
+const tLap = (id: string): any => ({ id, guia_id: "g-" + id, alcance: "completa", paso: "verificar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "es", materia: "Español" }, fotos: [{ tipo: "temario" }], inventario: {}, bloques: [bloqueLapiz()] } });
+const lapiz = { actividad: "b2cl1", afirmacion: "«lápiz» es palabra grave", estado: "corregida", dato_correcto: "«lápiz» es esdrújula", decia_la_foto: "lápiz es grave", fuentes: [] as string[], mensaje_para_alumno: "🔎 Estudia esta versión." };
+insertados.length = 0;
+const tL1 = tLap("l1");
+pedidos.length = 0; respuestas = [apiTexto({ resultados: [lapiz] }, [])];
+await P.ejecutarPaso(falsoR, tL1, fuenteG);
+const repL1 = insertados.filter((x) => x.tabla === "reportes").flatMap((x) => x.filas);
+ok(tL1.datos.bloques[0].actividades.some((a: any) => a.id === "b2cl1") && !tL1.datos.bloques[0].pistas[0].correcciones && tL1.datos.verificacion[0]?.estado === "revisar_dato" && repL1.length === 1 && repL1[0].guia_id === "g-l1" && /REVISAR DATO/.test(repL1[0].comentario) && /no se cambió nada/.test(repL1[0].comentario) && /lápiz/.test(repL1[0].comentario), "lápiz → esdrújula sin fuente: la guía no cambia (ni se borra el juego ni sale «Dato corregido») y va a Reportes · " + repL1[0]?.comentario);
+const tL2 = tLap("l2");
+respuestas = [apiTexto({ resultados: [{ ...lapiz, fuentes: ["https://www.rae.es/inventada"] }] }, ["https://www.rae.es/otra"])];
+await P.ejecutarPaso(falsoR, tL2, fuenteG);
+ok(tL2.datos.bloques[0].actividades.length === 1 && !tL2.datos.bloques[0].pistas[0].correcciones && tL2.datos.verificacion[0].estado === "revisar_dato", "una url que no salió en la búsqueda (de memoria) no vale: la guía no cambia");
+const tL3 = tLap("l3");
+respuestas = [apiTexto({ resultados: [{ ...lapiz, fuentes: ["https://www.britannica.com/x"] }] }, ["https://www.britannica.com/x"])];
+await P.ejecutarPaso(falsoR, tL3, fuenteG);
+ok(tL3.datos.bloques[0].actividades.length === 1 && /1 fuente confiable/.test(tL3.datos.verificacion[0].sin_cambio ?? ""), "una sola fuente confiable que no es oficial: no basta para cambiar la guía");
+const tL4 = tLap("l4");
+respuestas = [apiTexto({ resultados: [{ actividad: "b2cl1", afirmacion: "«reloj» es esdrújula", estado: "corregida", dato_correcto: "«reloj» es aguda", decia_la_foto: "reloj es esdrújula", fuentes: ["https://www.rae.es/dpd/tilde"] }] }, ["https://www.rae.es/dpd/tilde"])];
+await P.ejecutarPaso(falsoR, tL4, fuenteG);
+ok(tL4.datos.bloques[0].actividades.length === 0 && tL4.datos.bloques[0].pistas[0].correcciones?.[0]?.fuentes?.[0]?.url === "https://www.rae.es/dpd/tilde" && tL4.datos.verificacion[0].estado === "corregida", "con una fuente oficial que salió en la búsqueda: se corrige como antes (la pista lo muestra y se quita el juego con el dato malo)");
+ok(/revisar_dato/.test(PR.VERIFICADOR) && /nunca corrijas de memoria/.test(PR.VERIFICADOR), "verificador: corrige solo con las fuentes de su búsqueda; si no, «revisar_dato»");
+// b) Error del buscador: el tema confirmado se queda; el otro espera su segunda oportunidad, él solo, con 2 búsquedas,
+//    el error y las consultas de la primera vez. Consultas y errores quedan en el log (claude) y en el reporte.
+const errBloque = [{ type: "server_tool_use", id: "s2", name: "web_search", input: { query: "tradición oral coplas secundaria" } }, { type: "web_search_tool_result", tool_use_id: "s2", content: { type: "web_search_tool_result_error", error_code: "invalid_tool_input" } }];
+const dB = P.detalleBusqueda({ content: [...errBloque, { type: "server_tool_use", id: "s3", name: "web_search", input: { query: "refranes secundaria SEP" } }, { type: "web_search_tool_result", tool_use_id: "s3", content: [{ type: "web_search_result", url: "https://www.sep.gob.mx/x" }] }, { type: "bash_code_execution_tool_result", content: { type: "bash_code_execution_result", stdout: "ok" } }] });
+ok(dB.consultas.join(" | ") === "tradición oral coplas secundaria | refranes secundaria SEP" && dB.errores.join() === "invalid_tool_input" && /consultas: busqueda\.consultas\.slice\(0, 8\), errores: busqueda\.errores\.slice\(0, 8\)/.test(src), "registro: cada llamada con buscador anota sus consultas y los errores del buscador (un resultado normal no es error)");
+const planSeg = { idioma_guia: "es", perfil_edad: "caricatura", materia: "Español", apoyo: null, puntos_dificiles: [], temas_a_investigar: [{ tema: "Figuras retóricas", bloque: "b1", pagina: "" }, { tema: "Tradición oral", bloque: "b1", pagina: "" }], bloques: [{ id: "b1", titulo: "Literatura", temas: ["Figuras retóricas", "Tradición oral"], ids_inventario: ["tem1"], pistas: ["Figuras retóricas", "Tradición oral"], juegos: { opcion_multiple: 5 }, mini_examen: 0 }] };
+const nuevoSeg = (): any => ({ id: "tseg", guia_id: "gseg", alcance: "completa", paso: "generar:0", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, progreso: { pct: 40 }, datos: { inventario: { temas: [{ id: "tem1", foto: 1, texto: "Figuras retóricas; tradición oral", cita: "x" }] }, citas: [], fotos: [{ indice: 1, tipo: "temario" }], plan: JSON.parse(JSON.stringify(planSeg)), bloques: [] } });
+const figConf = { tema: "Figuras retóricas", estado: "confirmado", datos: [{ texto: datosF[0], fuentes: [{ nombre: "SEP", url: vistasF[0] }] }, { texto: datosF[1], fuentes: [{ nombre: "RAE", url: vistasF[1] }] }] };
+const tSeg = nuevoSeg();
+pedidos.length = 0;
+respuestas = [apiTexto({ temas: [figConf, { tema: "Tradición oral", estado: "no_confirmado", motivo: "la búsqueda dio error de entrada inválida", datos: [] }] }, vistasF, 1, errBloque)];
+await P.ejecutarPaso(falso, tSeg, fuenteG);
+const invSeg = tSeg.datos.investigacion;
+ok(pedidos[0].tools[0].max_uses === 2 && invSeg.length === 1 && invSeg[0].estado === "confirmado" && /invalid_tool_input/.test(tSeg.datos.inv_segunda?.["tradicion oral"]?.motivo ?? "") && invSeg[0].busqueda?.errores?.includes("invalid_tool_input") && invSeg[0].busqueda?.consultas?.includes("tradición oral coplas secundaria"), "buscador con error: el tema confirmado se queda; el otro espera su segunda oportunidad (consultas y error anotados)");
+const urlTr = "https://www.sep.gob.mx/tradicion";
+respuestas = [apiTexto({ temas: [{ tema: "Tradición oral", estado: "confirmado", datos: [{ texto: "Coplas: versos breves para cantar.", fuentes: [{ nombre: "SEP", url: urlTr }] }, { texto: "Refranes: dichos con una enseñanza.", fuentes: [{ nombre: "SEP", url: urlTr }] }] }] }, [urlTr])];
+await P.ejecutarPaso(falso, tSeg, fuenteG);
+const txtSeg = pedidos[1]?.messages?.[0]?.content?.[0]?.text ?? "";
+const temasSeg = txtSeg.split("TEMAS A INVESTIGAR")[1] ?? "";
+ok(pedidos[1].tools[0].max_uses === 2 && P.BUSQUEDAS_SEGUNDA === 2 && /SEGUNDA OPORTUNIDAD/.test(txtSeg) && /invalid_tool_input/.test(txtSeg) && /«tradición oral coplas secundaria»/.test(txtSeg) && !/Figuras/.test(temasSeg), "segunda oportunidad: él solo, con 2 búsquedas; sabe qué error dio y qué consultas ya se hicieron");
+ok(tSeg.datos.investigacion.find((r: any) => r.tema === "Tradición oral")?.estado === "confirmado" && tSeg.datos.investigacion.find((r: any) => r.tema === "Tradición oral")?.busqueda?.segunda === true && tSeg.datos.inv_segunda["tradicion oral"].hecha === true, "con páginas de verdad en la segunda oportunidad, el tema se confirma");
+// c) Se acabaron las búsquedas (sin error): también hay segunda oportunidad. Sin error ni tope: no (como antes).
+const tLim = nuevoSeg();
+respuestas = [apiTexto({ temas: [figConf, { tema: "Tradición oral", estado: "no_confirmado", motivo: "sin fuentes", datos: [] }] }, vistasF, 2)];
+await P.ejecutarPaso(falso, tLim, fuenteG);
+ok(tLim.datos.inv_segunda?.["tradicion oral"]?.motivo === "se acabaron las búsquedas (2)" && tLim.datos.investigacion.length === 1, "se acabaron las búsquedas: el tema sin confirmar tiene su segunda oportunidad");
+// d) Tope de 5 MXN: si la segunda búsqueda haría pasar la guía del tope (con lo que falta), no se hace; el tema queda
+//    como nota y la guía sigue.
+const tTope = JSON.parse(JSON.stringify(tLim));
+tTope.datos.metricas = [{ paso: "planear", costo_usd: 3.5 / P.MXN_POR_USD }];
+pedidos.length = 0; respuestas = [];
+const sigTope = await P.ejecutarPaso(falso, tTope, fuenteG);
+const rTope = tTope.datos.investigacion.find((r: any) => r.tema === "Tradición oral");
+ok(sigTope === "generar:0" && pedidos.length === 0 && rTope?.estado === "no_confirmado" && /tope de 5 MXN/.test(rTope?.motivo ?? "") && tTope.datos.inv_segunda["tradicion oral"].omitida === "tope", "tope: con 3.5 MXN gastados, la segunda búsqueda no se hace (sin llamar a la IA); el tema queda como nota · " + rTope?.motivo);
+ok(P.TOPE_GUIA_MXN === 5 && P.puedeSegunda({ metricas: [{ costo_usd: 1.4 / P.MXN_POR_USD }] }, 3) && P.puedeSegunda({ metricas: [{ costo_usd: 2.9 / P.MXN_POR_USD }] }, 1) && !P.puedeSegunda({ metricas: [{ costo_usd: 3.3 / P.MXN_POR_USD }] }, 1) && Math.abs(P.costoGuiaMxn({ metricas: [{ costo_usd: 0.1 }, { costo_usd: 0.1 }] }) - 3.7) < 1e-9, "candado: con 1.4 MXN gastados (bloque 1) o 2.9 (último bloque, como la v52) sí hay segunda búsqueda; con 3.3 en el último, no");
+// Verificar: sus búsquedas salen de lo que le queda a la guía (una guía normal no llega a ese límite).
+ok(P.busquedasQueAlcanzan({ metricas: [] }) >= 10 && P.busquedasQueAlcanzan({ metricas: [{ costo_usd: 4.6 / P.MXN_POR_USD }] }) === 1 && P.busquedasQueAlcanzan({ metricas: [{ costo_usd: 4.9 / P.MXN_POR_USD }] }) === 0, "verificar: con 4.6 MXN gastados le alcanza 1 búsqueda; con 4.9, ninguna");
+const tVcara: any = JSON.parse(JSON.stringify(tLap("vc")));
+tVcara.datos.metricas = [{ paso: "planear", costo_usd: 4.9 / P.MXN_POR_USD }];
+pedidos.length = 0; respuestas = [apiTexto({ resultados: [lapiz] }, [])];
+await P.ejecutarPaso(falsoR, tVcara, fuenteG);
+ok(pedidos.length === 1 && !pedidos[0].tools && tVcara.datos.bloques[0].actividades.length === 1 && tVcara.datos.verificacion[0].estado === "revisar_dato", "verificar sin presupuesto: se verifica sin buscador y nada se corrige sin fuente (va a Reportes)");
+// e) Planificador: lo que el temario separa con «;» como tema distinto va aparte (temario real de Español 1.º).
+const invEs: any = { temas: [
+  { id: "tem1", texto: "Reglamento: definición-función; contiene derechos, responsabilidades y sanciones; verbo (infinitivo y modos imperativo, indicativo y subjuntivo)" },
+  { id: "tem2", texto: "Acento normativo: teoría y práctica; palabras agudas, graves, esdrújulas y sobresdrújulas" },
+  { id: "tem3", texto: "Tradición oral: definición; coplas, pregones, refranes y dichos" },
+  { id: "tem4", texto: "Lenguaje literal y figurado: práctica" },
+  { id: "tem5", texto: "Figuras retóricas: definición; metáfora, hipérbole, repetición y símil (comparación)" }],
+  categorias: [{ id: "cat6", grupo: "Clasificación de palabras por acento", elementos: ["agudas", "graves", "esdrújulas", "sobresdrújula"] }],
+  datos_clave: [{ id: "dat9", texto: "Temario del primer trimestre" }, { id: "dat10", texto: "Fecha de aplicación del examen: 4 de noviembre de 2026" }, { id: "dat11", texto: "Maestra: Luz Divina" }] };
+const bloquesEs = [
+  { id: "b1", titulo: "El reglamento y el verbo", temas: ["Reglamento", "Verbo y modos"], ids_inventario: ["tem1"], pistas: ["Función del reglamento", "Derechos, deberes y sanciones", "Verbo: infinitivo y modos"] },
+  { id: "b2", titulo: "Acento normativo", temas: ["Acento normativo"], ids_inventario: ["tem2", "cat6"], pistas: ["Palabras agudas y graves", "Esdrújulas y sobresdrújulas"] },
+  { id: "b3", titulo: "Tradición oral y figuras", temas: ["Tradición oral", "Lenguaje literal y figurado", "Figuras retóricas"], ids_inventario: ["tem3", "tem4", "tem5"], pistas: ["Tradición oral", "Literal y figurado", "Figuras retóricas"] }];
+const temasV52 = ["Reglamento", "Acento normativo", "Tradición oral", "Lenguaje literal y figurado", "Figuras retóricas"].map((tema, i) => ({ tema, bloque: ["b1", "b2", "b3", "b3", "b3"][i], pagina: "" }));
+const tV52 = P.completarTemasDelTemario({ bloques: bloquesEs, temas_a_investigar: temasV52 }, invEs);
+ok(tV52.length === 6 && tV52.some((t: any) => /^Verbo \(infinitivo/.test(t.tema) && t.bloque === "b1") && !tV52.some((t: any) => /palabras agudas|coplas|metáfora|derechos|teoría/i.test(t.tema)), "temario de Español 1.º (plan de la v52): «verbo» va como tema aparte en el bloque 1; los detalles (agudas…, coplas…, metáfora…, derechos…) no · " + tV52.map((t: any) => t.tema).join(" | "));
+const temasJuntos = [{ tema: "Reglamento: definición, función, derechos, responsabilidades y sanciones; verbo (infinitivo, imperativo, indicativo y subjuntivo)", bloque: "b1", pagina: "" }, ...temasV52.slice(1)];
+const tJ = P.completarTemasDelTemario({ bloques: bloquesEs, temas_a_investigar: temasJuntos }, invEs);
+ok(tJ[0].tema === "Reglamento: definición, función, derechos, responsabilidades y sanciones" && tJ[1].tema === "Verbo (infinitivo, imperativo, indicativo y subjuntivo)" && tJ[1].bloque === "b1" && tJ.filter((t: any) => /verbo/i.test(t.tema)).length === 1, "un tema del plan que junta dos con «;» se parte (y no se duplica con el del temario) · " + tJ.slice(0, 2).map((t: any) => t.tema).join(" | "));
+const DvEs: any = { plan: { bloques: bloquesEs, temas_a_investigar: tV52 } };
+const pendEs = ["b1", "b2", "b3"].flatMap((b) => P.temasPendientes(DvEs, b).map((x: any) => x.tema));
+ok(pendEs.length === 6 && DvEs.investigacion.length === 0, "los 6 temas del temario de Español 1.º se investigan (dentro del tope de 6)");
+ok(P.esTemaAparte("verbo (infinitivo y modos)", "Reglamento") && !P.esTemaAparte("contiene derechos, responsabilidades y sanciones", "Reglamento") && !P.esTemaAparte("teoría y práctica", "Acento normativo") && !P.esTemaAparte("definición-función", "Reglamento") && !P.esTemaAparte("acento diacrítico", "Acento normativo") && !P.esTemaAparte("coplas, pregones, refranes y dichos", "Tradición oral"), "qué va aparte: un tema nuevo sí; un detalle, una lista o el mismo tema, no");
+const invConNotas = { ...invEs, reglas: [{ id: "reg1", texto: "Verbo: palabra que expresa una acción." }] };
+ok(!P.completarTemasDelTemario({ bloques: bloquesEs.map((b) => b.id === "b1" ? { ...b, ids_inventario: ["tem1", "reg1"] } : b), temas_a_investigar: temasV52 }, invConNotas).some((t: any) => /^Verbo/.test(t.tema)), "si ese bloque trae contenido en los apuntes, no se agrega (el escritor lo convierte como siempre)");
+ok(/temas DISTINTOS separados por «;»/.test(PR.PLANIFICADOR) && /if \(investigacionActiva\(fuente\)\) plan\.temas_a_investigar = completarTemasDelTemario\(plan, D\.inventario\);/.test(src), "planificador: cada tema distinto va aparte; el código lo asegura solo con la investigación encendida");
+// f) Pista sin datos = nota «repásalo en tu libro» (en un bloque sin contenido propio, con la investigación encendida).
+const datosReg = ["Reglamento: conjunto de reglas que organiza la convivencia en un espacio.", "Propósito: explica para qué sirve el reglamento.", "Numeración: cada apartado lleva un número."];
+const confReg: any[] = [{ tema: "Reglamento", bloque: "b1", pagina: "", estado: "confirmado", datos: datosReg.map((texto) => ({ texto, fuentes: [] })), fuentes: [{ nombre: "SEP", url: "https://www.sep.gob.mx/r" }], motivo: "" }];
+const sd = P.pistasSinDatos(["Función del reglamento", "Derechos, deberes y sanciones", "Verbo: infinitivo y modos"], confReg, []);
+ok(sd.join(" | ") === "Derechos, deberes y sanciones | Verbo: infinitivo y modos", "pistas sin datos: «Derechos…» y «Verbo…» no aparecen en lo confirmado; «Función del reglamento» sí · " + sd.join(" | "));
+ok(P.pistasSinDatos(["Refrán"], [{ ...confReg[0], datos: [{ texto: "Refranes: dichos con una enseñanza.", fuentes: [] }] }], []).length === 0 && P.pistasSinDatos(["Tradición oral"], [], [{ tema: "Tradición oral", estado: "no_confirmado" }]).length === 0, "«Refrán» encuentra «Refranes»; la pista de un tema sin confirmar ya es nota por su tema");
+ok(P.esDatoAdministrativo("Fecha de aplicación del examen: 4 de noviembre de 2026") && P.esDatoAdministrativo("Maestra: Luz Divina") && P.esDatoAdministrativo("Temario del primer trimestre") && !P.esDatoAdministrativo("Grado de un polinomio: el mayor exponente") && !P.tieneContenidoPropio({ datos_clave: invEs.datos_clave }) && P.tieneContenidoPropio({ datos_clave: [{ texto: "Grado de un polinomio: el mayor exponente" }] }), "maestra, fecha y «Temario del…» no son contenido de estudio; «Grado de un polinomio» sí");
+const tSd: any = { id: "tsd", guia_id: "gsd", alcance: "completa", paso: "generar:0", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, progreso: { pct: 40 }, datos: {
+  inventario: { temas: [invEs.temas[0]], datos_clave: invEs.datos_clave, investigado: datosReg.map((texto, i) => ({ id: "inv" + (i + 1), bloque: "b1", tema: "Reglamento", texto, cita: texto, fuentes: [{ nombre: "SEP", url: "https://www.sep.gob.mx/r" }] })) },
+  citas: [...datosReg], fotos: [{ indice: 1, tipo: "temario" }],
+  plan: { idioma_guia: "es", perfil_edad: "caricatura", materia: "Español", apoyo: null, puntos_dificiles: [], identidad: { titulo: "T" }, primera_actividad: "calentamiento", reto_final: 16, temas_a_investigar: [{ tema: "Reglamento", bloque: "b1", pagina: "" }],
+    bloques: [{ id: "b1", titulo: "El reglamento y el verbo", temas: ["Reglamento", "Verbo"], ids_inventario: ["tem1", "dat9", "dat10", "dat11"], pistas: ["Función del reglamento", "Derechos, deberes y sanciones", "Verbo: infinitivo y modos"], juegos: { opcion_multiple: 5 }, mini_examen: 0, orden_actividades: ["opcion_multiple"] }] },
+  investigacion: confReg, bloques: [] } };
+pedidos.length = 0;
+respuestas = [apiTexto({ bloque: "b1", pistas: [{ id: "b1p1", titulo: "Función del reglamento", emoji: "📜", ideas: [datosReg[0], datosReg[1]], tema_investigado: "Reglamento" }], actividades: { opcion_multiple: [1, 2, 3, 4, 5].map((n) => ({ id: "b1om" + n, pregunta: "¿Pregunta " + n + " sobre el reglamento?", opciones: ["a" + n, "b" + n, "c" + n, "d" + n], correcta: 0, retro_correcta: "Sí", retro_incorrecta: "No", pista: "b1p1", fuente: { foto: 0, tipo: "investigado", cita: datosReg[n % 3] } })) }, duelo: [], mini_examen: [] })];
+await P.ejecutarPaso(falso, tSd, fuenteG);
+const txtSd = pedidos[0]?.messages?.[0]?.content?.[0]?.text ?? "";
+const planSd = txtSd.split("Plan del bloque:")[1]?.split("Inventario del bloque")[0] ?? "";
+const notasSd = tSd.datos.bloques[0].pistas.filter((p: any) => p.nota_temario).flatMap((p: any) => p.ideas);
+ok(pedidos.length === 1 && /PISTAS SIN DATOS[^\n]*«Derechos, deberes y sanciones», «Verbo: infinitivo y modos»/.test(txtSd) && !/Verbo: infinitivo/.test(planSd) && !/Derechos/.test(planSd) && /Función del reglamento/.test(planSd), "escritor: no se le piden las pistas sin datos (y sabe por qué)");
+ok(notasSd.includes("Verbo infinitivo y modos: este tema venía en tu temario; repásalo en tu libro.") && notasSd.includes("Derechos, deberes y sanciones: este tema venía en tu temario; repásalo en tu libro.") && tSd.datos.bloques[0].pistas.some((p: any) => p.completado_con_fuentes), "las pistas sin datos quedan como nota «repásalo en tu libro» y la del tema confirmado lleva sus fuentes · " + notasSd.join(" | "));
+tSd.paso = "armar";
+await P.ejecutarPaso(falso, tSd, fuenteG);
+const bSdC = tSd.datos.cartucho.bloques[0];
+ok(bSdC.temas_para_repasar.map((x: any) => x.tema).join(" | ") === "Derechos, deberes y sanciones | Verbo: infinitivo y modos" && !("pistas_sin_datos" in bSdC), "armar: el bloque lista para repasar las pistas sin datos (y el campo interno no llega al cartucho)");
+// Un bloque solo con el temario, sin temas que investigar ni nada confirmado: no se llama al escritor; solo notas.
+const tSn: any = JSON.parse(JSON.stringify(tSd));
+tSn.paso = "generar:1"; tSn.datos.bloques = [tSd.datos.bloques[0]]; delete tSn.datos.cartucho;
+tSn.datos.plan.bloques.push({ id: "b2", titulo: "Ortografía", temas: ["Acentos"], ids_inventario: ["tem2"], pistas: ["Agudas", "Graves"], juegos: { opcion_multiple: 5 }, mini_examen: 0 });
+tSn.datos.inventario.temas.push({ id: "tem2", texto: "Acentos: agudas y graves" });
+pedidos.length = 0; respuestas = [];
+const sigSn = await P.ejecutarPaso(falso, tSn, fuenteG);
+ok(sigSn === "revisar" && pedidos.length === 0 && tSn.datos.bloques[1]?.solo_nota === true && tSn.datos.bloques[1].pistas.every((p: any) => p.nota_temario), "bloque solo con el temario y nada confirmado: no se escribe (nada inventado); solo notas");
+// g) Reparar: solo el inventario de los bloques que repara, y lo investigado sin urls.
+const Drep: any = { plan: { bloques: [{ id: "b1", ids_inventario: ["tem1", "dat1"] }, { id: "b2", ids_inventario: ["tem2", "cat6"] }] }, inventario: { temas: [{ id: "tem1", texto: "Reglamento" }, { id: "tem2", texto: "Acento" }], datos_clave: [{ id: "dat1", texto: "Reglamento: normas" }], categorias: [{ id: "cat6", grupo: "Acento", elementos: ["agudas"] }], investigado: [{ id: "inv1", bloque: "b1", tema: "Reglamento", texto: "R: x", cita: "R: x", fuentes: [{ nombre: "SEP", url: "https://www.sep.gob.mx/larga/url" }] }, { id: "inv2", bloque: "b2", tema: "Acento", texto: "A: y", cita: "A: y", fuentes: [{ nombre: "RAE", url: "https://www.rae.es/z" }] }] } };
+const idsRep = P.bloquesAReparar(["MÍNIMO · Actividad b2cl1 (clasificar, bloque b2): tiene 4 tarjetas; agrega 2 o más"], []);
+const invRep = P.inventarioParaReparar(Drep, idsRep);
+ok([...idsRep].join() === "b2" && JSON.stringify(invRep) === JSON.stringify({ temas: [{ id: "tem2", texto: "Acento" }], categorias: [{ id: "cat6", grupo: "Acento", elementos: ["agudas"] }], investigado: [{ id: "inv2", bloque: "b2", tema: "Acento", cita: "A: y" }] }), "reparar: solo el inventario del bloque que repara y lo investigado sin urls · " + JSON.stringify(invRep));
+const invTodo = P.inventarioParaReparar(Drep, new Set());
+ok(Object.keys(invTodo).length === 4 && !JSON.stringify(invTodo).includes("https://") && [...P.bloquesAReparar(["Bloque b1: quedaron 2 actividades", "Punto difícil pd1 'x' tiene 1 actividad(es) en el bloque b3: faltan 2"], [{ bloque: "b2" }])].sort().join() === "b1,b2,b3", "si no se sabe qué bloque es, va todo (lo investigado, sin urls); los bloques salen de los huecos y de las pistas largas");
+// h) Costos: lectura de caché de Sonnet 5.5 a 0.10 USD; Haiku 5 veces más arriba de 100 000 tokens; ortografía sin notas.
+ok(JSON.stringify(P.precioDe("claude-sonnet-5-5", 5000)) === "[2,10,0.1]" && JSON.stringify(P.precioDe("claude-haiku-5-5", 120000)) === "[0.5,2.5,0.05]" && JSON.stringify(P.precioDe("claude-haiku-5-5", 50000)) === "[0.1,0.5,0.01]", "precios: lectura de caché de Sonnet 5.5 a 0.10; Haiku cobra 5 veces más arriba de 100 000 tokens");
+const regN = P.textosDeGuia({ plan: { materia: "Español", identidad: {} }, bloques: [{ id: "b1", pistas: [{ id: "b1p1", titulo: "A", ideas: ["A: x"] }, { id: "b1nt1", titulo: "Repásalo en tu libro", ideas: ["Verbo: este tema venía en tu temario; repásalo en tu libro."], nota_temario: true }], actividades: [], mini_examen: [] }] });
+ok(Object.keys(regN).some((k) => k.startsWith("b1p1")) && !Object.keys(regN).some((k) => k.startsWith("b1nt1")), "ortografía: las notas «repásalo en tu libro» no se mandan a revisar (las escribe el código)");
 
 console.log(fallos ? `\n${fallos} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);
