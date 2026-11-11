@@ -159,6 +159,8 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Lo aprendido
 
+- 2026-11-11 · Daniel: **la vista previa NO se abarata.** «La calidad es primero y al cliente le tenemos que mostrar lo que
+  está comprando»: misma calidad y modelos en la vista previa que en la guía pagada. No volver a proponerlo.
 - **7 nov · El pensamiento de la IA cuenta dentro del tope de tokens.** Con esfuerzo medio, Haiku gastaba el tope y el
   plan o el bloque 1 salían sin JSON. Arreglo: esquema JSON en el plan, esfuerzo bajo y topes de 16 000 (plan y
   lectura) y 20 000 (cada bloque, ≈ 80 s). Si subo el esfuerzo, subo el tope.
@@ -197,8 +199,6 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 - **Temas que faltan en los apuntes:** el Planificador anota `temas_a_investigar`, pero ningún paso los investiga ni
   los completa con fuentes (§9, Prompts D y E; `temas_completados` del §11 no existe). ¿Lo construimos?
 - **«contradice_libro»** debería ir a revisión humana, pero solo queda en el reporte: no hay cola «Revisar» en el panel.
-- **Vista previa más barata:** ¿planear con Haiku y volver a planear con Sonnet al pagar? La guía pagada podría no
-  coincidir con lo que se vio. Decide Daniel.
 - **Modelos:** confirmar con 2 o 3 corridas más y probar aparte «escribir» (con Sonnet, unos 10 pesos más por guía).
 - **Banco de pruebas fijo** (§12c): Civics III, Química 3.º (6 errores conocidos) e Historia de México 2, con
   inventarios que no caduquen y 3 corridas por caso. No existe.

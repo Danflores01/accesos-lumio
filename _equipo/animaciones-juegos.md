@@ -131,6 +131,9 @@ Aviso corto a Daniel, en español simple y de tú, primero lo que él ve: **Qué
 
 ## Lo aprendido
 
+- 2026-11-11 · Daniel: esta sesión es dueña de Sparky interactivo y de renovar los juegos constantemente. Tú haces el
+  prompt, el código y las muestras; **la publicación la hace una sesión de alta potencia** (la jefe): entrégale los
+  archivos probados y ella publica con la guardia.
 **Sparky y animaciones**
 - (7 nov) Daniel pidió que Sparky «tenga un poquito más de vida» y no parezca «confundido todo el tiempo»: «pensando»
   con «?» ya no sale en ninguna pantalla; sin cachetes rosas, para que se note la lengüita; al tocarlo suena un
@@ -186,8 +189,8 @@ Aviso corto a Daniel, en español simple y de tú, primero lo que él ve: **Qué
 - `probar-guia.mjs` recorre las pantallas pero no juega: los juegos los juego yo (a mano o con `javascript_exec`).
 
 ## Pendientes de mi tema
-- **Arte 3.0 completo** (§ 20): hoja de 3 o 4 muestras para que Daniel elija y luego aplicarlo a juegos y reproductor. Hoy
-  solo están realistas los carros de F1, los caballos y los dragones. ¿Empiezo por las muestras o por juegos nuevos?
+- **Arte 3.0 y juegos (confirmado por Daniel, 11 nov):** te tocan Sparky que juega e interactúa con la gente y la
+  mejora constante de los juegos «para no aburrir al público». Empieza por la hoja de 3 o 4 muestras para que Daniel elija.
 - **Rendimiento en celulares modestos:** no hay prueba automática. Propuesta: una copia de `probar-guia.mjs` con CPU lenta
   (`Emulation.setCPUThrottlingRate`) que mida cuadros, y preguntar a Daniel cuál es el celular o iPad más viejo de sus
   alumnos. Si los filtros pesan en iPad, pasar el arte a PNG/WebP prerenderizado (§ 20).

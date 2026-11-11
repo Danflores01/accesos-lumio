@@ -154,7 +154,10 @@ de Daniel se usa o se publica.
 - [ ] Actualicé las notas en `NOTAS` y «Lo aprendido»; mi aviso a Daniel cabe en 6 líneas con una sola pregunta.
 
 ## Lo aprendido
-- **(7 nov 2026) Edge sin ventana:** el navegador integrado no guarda capturas; se usa Edge + DevTools desde Node.
+
+- 2026-11-11 · Daniel: **los pósters ya no se necesitan.** Eran para promocionar el servicio cuando lo hacía a mano;
+  ahora todo es en función de la app. No actualizarlos ni proponer pósters o stories de promoción salvo que él los pida.
+- 2026-11-11 · El arte tipo 3D, Sparky que juega e interactúa con la gente y los juegos son de Animaciones y Juegos.- **(7 nov 2026) Edge sin ventana:** el navegador integrado no guarda capturas; se usa Edge + DevTools desde Node.
   `--disable-lcd-text` evita franjas de color en el texto.
 - **(9 nov 2026) Fuga de procesos:** `proc.kill()` no cierra los hijos de Edge; tras ~60 renders había 420 procesos y cada
   render tardaba casi 2 min. `render.mjs` cierra con `Browser.close` antes de cerrar el WebSocket; solo se limpia lo que
@@ -193,16 +196,14 @@ de Daniel se usa o se publica.
   El WhatsApp de ventas de Daniel está solo en los pósters, no en este archivo.
 
 ## Pendientes de mi tema
-1. ¿Actualizo los pósters del 7 nov? Dicen 75 pesos y el precio vigente es $100 MXN, IVA incluido (§19). Los del Escritorio de
-   Daniel además tienen las botas viejas: se le preguntó el 9 nov y no contestó; no repetir la pregunta.
+1. (Cerrado 11 nov) Pósters y stories de promoción: descartados, ver «Lo aprendido».
 2. Tarjetas: no hay registro de su aprobación final ni de que se hayan mandado a imprenta; la versión de color conserva el
    texto viejo del reverso.
 3. Logotipo (opción A): Daniel no ha dicho dónde usarlo; el sitio sigue con el rayo y Outfit. Falta enseñarle una muestra del
    sitio con el logotipo antes de cambiar nada.
 4. Fase 1 (`accesos/`, `entrar.html`, `icons/`) sigue con el rayo: ¿quiere a Sparky ahí? Necesita su sí explícito.
-5. Dirección de arte 3.0 (§20, «pendiente de hacer»): falta la hoja de 3 o 4 estilos tipo render 3D. ¿Me toca a mí (pósters y
-   portada) o a Animaciones y Juegos?
-6. ¿Siguen vigentes las stories «Próximamente» / «Coming soon» ahora que SparkEd ya vende?
+5. (Cerrado 11 nov) Arte tipo 3D, Sparky que juega e interactúa y los juegos: le tocan a Animaciones y Juegos.
+6. (Cerrado 11 nov) Stories «Próximamente»: descartadas junto con los pósters.
 7. `prueba-imagen.mjs` lee con jsQR el QR que arma el código del servidor; ¿alguien lo ha leído también con ZXing?
 8. ¿Puedo publicar yo en `sparked/img/` con la guardia (tras el sí de Daniel) o lo hace siempre la principal? ¿Quién redacta
    los textos de las plantillas de mensajes de WhatsApp del panel?

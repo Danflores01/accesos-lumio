@@ -2,6 +2,13 @@
 
 Lo más nuevo arriba. Cada entrada: qué cambió, por qué, a quién se avisó y qué secciones de su manual.
 
+## 2026-11-11 · Decisiones de Daniel sobre los pendientes
+- Qué: pósters y stories de promoción descartados; la vista previa no se abarata (calidad primero); arte 3D, Sparky
+  interactivo y los juegos son de Animaciones y Juegos, y lo publica la sesión jefe; prueba de códigos arreglada;
+  «ventas de hoy» corta a las 11 pm de México (código 2026-11-11.1, falta desplegar con el sí de Daniel).
+- A quién: Visuales (Pendientes 1, 5, 6 y Lo aprendido), IA (Pendientes y Lo aprendido), Pagos (Pendientes y Lo
+  aprendido), Animaciones (Pendientes y Lo aprendido).
+
 ## 2026-11-11 · Jefe de Seguridad y compactación al 75 %
 - Qué: nueva sesión Jefe de Seguridad (Opus 5.5, manual `seguridad.md`); el contexto de todas las sesiones se
   compacta solo a ~75 % (`autoCompactWindow` 775000 en la configuración de usuario de Claude Code).

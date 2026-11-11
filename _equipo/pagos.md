@@ -132,7 +132,9 @@ impuestos estimados). Si alguien pagó y no recibió, aquí se rastrea el pago.
 - [ ] Cierro con causa, arreglo o fecha, y entrada en `references/incidentes.md` si fue un fallo nuestro.
 
 ## Lo aprendido
-- 7 nov · Un permiso automático rechaza migraciones y despliegues pedidos por otra sesión. No se busca la vuelta: se
+
+- 2026-11-11 · Daniel: el día de ventas del Resumen termina a las **11 pm** de México («a las 6 de la tarde es cuando los
+  niños generan estas guías»).- 7 nov · Un permiso automático rechaza migraciones y despliegues pedidos por otra sesión. No se busca la vuelta: se
   deja todo en una rama aparte y Daniel da su sí en esta sesión.
 - 7 nov · Probar sin cobrar: código gratis de prueba y copia (con ids nuevos) de una vista previa. Para forzar una
   falla sin gastar IA se le quita `plan` al trabajo copiado (falla en «revisar»). Terminar el resto de una guía de
@@ -159,11 +161,12 @@ impuestos estimados). Si alguien pagó y no recibió, aquí se rastrea el pago.
   RESICO (o la tasa fija de su contador), solo sobre lo cobrado.
 
 ## Pendientes de mi tema
-- `herramientas/probar-codigos.ts` falla desde el código 2026-11-10.2: `motivoCodigo` usa `codigoBorrado` (de
-  `extras.ts`) y la prueba no lo carga. Arreglo de una línea; mientras tanto ese candado no sirve.
+- (Hecho 11 nov, sesión jefe) `probar-codigos.ts` vuelve a correr: 26 de 26; la compuerta `lanzar.mjs` ya lo corre al subir
+  código del servidor. Los códigos en producción nunca dejaron de aplicar el descuento (el fallo era solo de la prueba).
 - El correo de avisos de Daniel sigue vacío: «guía pagada sin terminar» y «una guía no abrió» solo salen en el panel.
-- En el Resumen, «hoy» y «mes» se cortan a medianoche UTC (6 pm de México); Costos ya usa el día de México.
-- ¿El precio es 100 (Ajustes y sitio) o 75 (pósters del 7 nov)? Confirmar con Daniel y con Visuales.
+- (Hecho 11 nov, código 2026-11-11.1) El Resumen corta «hoy» y «mes» a las 11 pm de México (`inicioDiaVentas` en
+  `extras.ts`); Costos e impuestos siguen con el día de calendario. Desplegarlo necesita el sí de Daniel.
+- (Cerrado 11 nov) El precio es 100 MXN; los pósters de 75 se descartaron.
 - Un descuento muy alto (por ejemplo 99 %) puede dejar un monto que Mercado Pago rechace y la compra cae a modo
   manual: ¿un mínimo, o tratarlo como gratis?
 - Si una familia abrió el pago de Mercado Pago y luego usa un código gratis en la misma compra, el link viejo sigue
