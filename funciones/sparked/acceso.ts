@@ -119,7 +119,10 @@ export async function fijarAdministrador(c: CtxBase, correo: string, contrasena:
 export async function rutasAcceso(c: CtxRutas & { conClave: () => Promise<boolean> }): Promise<Response | null> {
   const [r0, r1, r2] = c.ruta;
 
-  if (r0 === "acceso" && r1 && !r2) {
+  // OJO: /acceso/<clave de la familia> es la ruta con la que el reproductor abre una guía pagada (index.ts). Este módulo
+  // solo puede quedarse con sus tres rutas exactas; cualquier otra /acceso/… debe seguir de largo (null). El 10 nov 2026
+  // se quedaba con todas y respondía «Ruta no encontrada»: durante unas horas ninguna familia pudo abrir su guía.
+  if (r0 === "acceso" && !r2 && (r1 === "entrar" || r1 === "renovar" || r1 === "salir")) {
     if (c.m !== "POST") return c.error("Ruta no encontrada", 404);
     if (r1 === "entrar") {
       const b = await c.leerJson(c.req);
