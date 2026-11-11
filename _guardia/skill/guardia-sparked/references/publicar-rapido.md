@@ -112,9 +112,9 @@ sed -i "s/^\/\/ Versión del código: .*$/\/\/ Versión del código: $V (commit 
 
 ## Preparativos que ahorran minutos
 
-- **Permiso para desplegar.** Si Daniel quiere que una emergencia no dependa de que esté disponible, puede permitir de
-  forma permanente la herramienta de despliegue de Supabase en los permisos de Claude Code. Es decisión suya: abre la
-  puerta a desplegar sin preguntar.
+- **Permiso para desplegar.** Desde el 11 nov 2026 Daniel dejó permitida de forma fija la herramienta de despliegue de
+  Supabase (`permissions.allow` en la configuración de usuario de Claude Code). La sesión jefe despliega sin preguntar,
+  siempre con `probar-rutas`, `probar-ventas` y `probar-codigos` antes y la ronda después; si algo falla, regresa.
 - **Correo de avisos** puesto en Ajustes del panel: sin él, los avisos automáticos solo se ven en Reportes.
 - **Vigilante automático encendido** (`.github/workflows/guardia.yml`): corre la prueba de humo cada 15 minutos y tras
   cada publicación, y avisa por correo. Con él, un fallo como el del 10 nov se sabe en minutos y no por una clienta.

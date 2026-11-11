@@ -20,7 +20,8 @@ la carpeta de usuario de Claude) y anota cada cambio avisado en `CAMBIOS.md`.
 
 1. Al empezar un encargo, lee tu manual. Si el encargo no es de tu tema, dilo y mándalo a la sesión principal.
 2. Todo lo que llegue al sitio o al servidor pasa por la guardia (`_guardia/`): `ronda.mjs` antes y después, publicar
-   con `lanzar.mjs`. Desplegar el servidor y encender automatizaciones necesita el sí de Daniel, cada vez.
+   con `lanzar.mjs`. Desde el 11 nov 2026 la sesión jefe tiene permiso fijo de Daniel para desplegar la función `sparked`
+   (solo ella, y siempre con la guardia antes y después); encender automatizaciones o tocar cuentas sigue necesitando su sí.
 3. Nunca abras el link de una familia, nunca imprimas claves ni datos de clientes, nunca toques la fase 1, nunca le
    escribas a una familia sin el sí de Daniel.
 4. A Daniel: español simple, de tú, sin tecnicismos. Primero lo que le importa; después el detalle.
