@@ -87,6 +87,8 @@ const nombres = ["CODIGO_NO_VALIDO", "CODIGO_INTENTOS_MAX", "MSG_REVISANDO", "Co
 const funciones = ["motivoCodigo", "precioConCodigo", "anotarIntento", "revisarCodigo", "usarCodigo", "contarUsoCodigo", "entregarConCodigo", "avanceDeGuia"];
 const modulo = [
   "const { supabase, ahora, json, error, sitio, confirmarPago, reanudarSiAtorado } = (globalThis as any).__ctx;",
+  // Desde el código 2026-11-10.2, motivoCodigo usa codigoBorrado, que vive en extras.ts: se copia de ahí tal cual.
+  (readFileSync(join(raiz, "funciones", "sparked", "extras.ts"), "utf8").match(/^export const codigoBorrado = .*$/m)?.[0] ?? "").replace(/^export /, ""),
   ...nombres.map(linea), ...funciones.map(extraer),
   `export { ${nombres.filter((n) => !["Codigo", "Quien"].includes(n)).concat(funciones).join(", ")} };`,
 ].join("\n");

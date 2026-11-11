@@ -11,7 +11,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const { ventaCobrada, tipoSinCobro, confirmadaAMano, calcularCostos, impuestosDelMes } = await import(pathToFileURL(path.join(REPO, "funciones", "sparked", "extras.ts")).href);
+const { ventaCobrada, tipoSinCobro, confirmadaAMano, calcularCostos, impuestosDelMes, inicioDiaVentas } = await import(pathToFileURL(path.join(REPO, "funciones", "sparked", "extras.ts")).href);
 let mal = 0;
 const revisar = (cond, texto) => { console.log((cond ? "ok   " : "FALLA") + " " + texto); if (!cond) mal++; };
 
@@ -52,6 +52,15 @@ revisar(imp.cobrado_mxn === 300 && imp.iva_mxn === 41.38, `los impuestos se calc
 // Con una confirmada a mano que sí se cobró por fuera, esa sí suma.
 const r2 = calcularCostos({ ...base, compras: [...compras, { estado: "pagada", monto_mxn: "100.00", metodo_pago: "manual", mp_estado: null, pagada_en: "2026-11-10T18:00:00Z" }] });
 revisar(r2.ingresos.mes.ventas === 4 && r2.ingresos.mes.mxn === 400, "una guía cobrada por fuera y confirmada a mano sí suma como venta (4 y $400)");
+
+// ---------- El «día de ventas» del Resumen termina a las 11 pm de México (pedido de Daniel, 11 nov 2026) ----------
+// Horas en UTC; México = UTC−6. 22:59 de México (04:59 UTC del día siguiente) todavía es «hoy»; 23:00 ya es mañana.
+const dv = (iso) => inicioDiaVentas(Date.parse(iso));
+revisar(dv("2026-11-11T00:30:00Z").hoy === "2026-11-10T05:00:00.000Z", "una venta a las 6:30 pm de México sigue contando como de hoy (antes se cortaba a las 6 pm)");
+revisar(dv("2026-11-11T04:59:00Z").hoy === "2026-11-10T05:00:00.000Z", "a las 10:59 pm de México todavía es el mismo día de ventas");
+revisar(dv("2026-11-11T05:00:00Z").hoy === "2026-11-11T05:00:00.000Z", "a las 11:00 pm de México empieza el día siguiente");
+revisar(dv("2026-12-01T04:30:00Z").mes === "2026-11-01T05:00:00.000Z" && dv("2026-12-01T05:30:00Z").mes === "2026-12-01T05:00:00.000Z", "el mes también cambia a las 11 pm de México del último día");
+revisar(/inicioDiaVentas\(Date\.now\(\)\)/.test(fs.readFileSync(path.join(REPO, "funciones", "sparked", "index.ts"), "utf8")), "el Resumen usa ese corte (inicioDiaVentas)");
 
 // ---------- Que el servidor pida los datos que la regla necesita ----------
 // Si una consulta no trae mp_estado, ventaCobrada diría que nada se cobró y el panel mostraría 0 ventas.

@@ -17,13 +17,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, verificarCartucho, type Trabajo } from "./pipeline.ts";
 import type { CtxBase, CtxRutas } from "./tipos.ts";
-import { rutasExtras, codigoBorrado, ventaCobrada, tipoSinCobro, confirmadaAMano } from "./extras.ts";
+import { rutasExtras, codigoBorrado, ventaCobrada, tipoSinCobro, confirmadaAMano, inicioDiaVentas } from "./extras.ts";
 import { rutasWhatsApp, avisarPorWhatsApp, motorWhatsApp } from "./whatsapp.ts";
 import { imagenEntrega, imagenCompartir } from "./imagen-wa.ts";
 import { matrizQr } from "./qr.ts";
 import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 
-const VERSION = "2026-11-10.8";
+const VERSION = "2026-11-11.1";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -1226,8 +1226,11 @@ Deno.serve(async (req: Request) => {
         return json({ ok: true, config: await config() });
       }
       if (rec === "resumen" && m === "GET") {
-        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-        const mes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString();
+        // El «día de ventas» del Resumen termina a las 11 de la noche de Ciudad de México (pedido de Daniel, 11 nov 2026:
+        // por la tarde es cuando las familias generan guías). México es UTC−6 todo el año, así que las 11 pm de México son
+        // la medianoche en UTC−5: «hoy» empieza a las 05:00 UTC y el mes, el día 1 a las 05:00 UTC. Antes se cortaba a la
+        // medianoche UTC (6 pm de México). Prueba: herramientas/probar-ventas.mjs.
+        const { hoy, mes } = inicioDiaVentas(Date.now());
         const [guias, compras, solicitudes, reportes, trabajos, borradores, fallidos] = await Promise.all([
           supabase.from("guias").select("estado, origen"),
           supabase.from("compras").select("estado, monto_mxn, pagada_en, creada_en, metodo_pago, mp_estado, stripe_session_id").gte("creada_en", new Date(Date.now() - 45 * 86400 * 1000).toISOString()),
@@ -1245,7 +1248,7 @@ Deno.serve(async (req: Request) => {
         const venta = (c: any) => ventaCobrada(c);
         const gratis = (c: any) => tipoSinCobro(c) === "codigo";
         const cortesia = (c: any) => tipoSinCobro(c) === "cortesia";
-        const hoyIso = hoy.toISOString();
+        const hoyIso = hoy;
         // Guías pagadas cuyo trabajo "resto" falló y siguen sin terminar (aviso en el Resumen del panel).
         const F = fallidos.data ?? [];
         const { data: gF } = F.length ? await supabase.from("guias").select("id, titulo, completo:cartucho->completo").in("id", F.map((t) => t.guia_id).filter(Boolean)) : { data: [] as any[] };

@@ -121,7 +121,7 @@ async function revisar(archivos) {
   if (revisados === archivos.length) bien(`sintaxis de ${archivos.length} archivo(s)`);
   if (archivos.some((f) => f.startsWith("funciones/sparked/"))) {
     // Los candados del servidor: cada uno nació de un fallo real y debe pasar antes de subir código del servidor.
-    for (const [prueba, queCuida] of [["probar-rutas.mjs", "ningún módulo tapa una ruta ajena"], ["probar-ventas.mjs", "solo cuenta como venta lo que de verdad se cobró"]]) {
+    for (const [prueba, queCuida] of [["probar-rutas.mjs", "ningún módulo tapa una ruta ajena"], ["probar-ventas.mjs", "solo cuenta como venta lo que de verdad se cobró"], ["probar-codigos.ts", "los códigos de descuento cobran lo que deben"]]) {
       if (!fs.existsSync(path.join(REPO, "herramientas", prueba))) continue;
       const r = await correr(path.join(REPO, "herramientas", prueba), [], true);
       if (r.codigo === 0) bien(`servidor: ${queCuida} (${prueba})`);

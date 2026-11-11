@@ -278,6 +278,13 @@ export type CompraCobro = { estado?: string | null; metodo_pago?: string | null;
 export const ventaCobrada = (c: CompraCobro): boolean => c.estado === "pagada" && (c.mp_estado === "approved" || c.metodo_pago === "manual" || !!c.stripe_session_id);
 /** Para una compra pagada que no es venta: "codigo" (código gratis) o "cortesia" (confirmada a mano sin cobro). */
 export const tipoSinCobro = (c: CompraCobro): "codigo" | "cortesia" | null => c.estado !== "pagada" || ventaCobrada(c) ? null : c.metodo_pago === "codigo" ? "codigo" : "cortesia";
+/** Inicio del «día de ventas» y del mes para el Resumen del panel: el día termina a las 11 pm de Ciudad de México
+ *  (UTC−6 todo el año), o sea a la medianoche de UTC−5. Devuelve fechas ISO en UTC (hoy y mes empiezan a las 05:00 UTC). */
+export function inicioDiaVentas(ahoraMs: number): { hoy: string; mes: string } {
+  const d = new Date(ahoraMs - 5 * 3600_000);
+  const y = d.getUTCFullYear(), m = d.getUTCMonth();
+  return { hoy: new Date(Date.UTC(y, m, d.getUTCDate(), 5)).toISOString(), mes: new Date(Date.UTC(y, m, 1, 5)).toISOString() };
+}
 /** ¿Se confirmó a mano? (ni Mercado Pago ni Stripe ni código): solo a estas se les puede cambiar «cobrada por fuera» ↔ «cortesía». */
 export const confirmadaAMano = (c: CompraCobro): boolean => c.estado === "pagada" && c.mp_estado !== "approved" && !c.stripe_session_id && c.metodo_pago !== "codigo";
 
