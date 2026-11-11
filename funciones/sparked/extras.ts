@@ -237,6 +237,7 @@ export function etiquetaPaso(p: unknown): string {
   if (s.startsWith("generar") || s.startsWith("escribir")) return "Escribir los bloques";
   if (s.startsWith("reparar")) return "Reparar";
   if (s.startsWith("verificar")) return "Verificar datos";
+  if (s.startsWith("investigar")) return "Investigar temas del temario";
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : "Otro";
 }
 

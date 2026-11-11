@@ -2,6 +2,11 @@
 
 Lo más nuevo arriba. Cada entrada: qué cambió, por qué, a quién se avisó y qué secciones de su manual.
 
+## 2026-11-11 · Tope de costo de IA: 6 MXN por guía
+- Qué: en producción cada guía (vista previa + resto) debe costar 6 MXN o menos de IA; pruebas hasta 15 MXN.
+- Por qué: Daniel ve un promedio de 4 a 5 MXN y quiere que 6 sea el máximo.
+- A quién: IA de SPARKED («Lo aprendido» y encargo para medirlo y dejarlo vigilado).
+
 ## 2026-11-11 · Permiso fijo para desplegar
 - Qué: Daniel autorizó de forma fija que la sesión jefe despliegue la función `sparked` (regla 2 de `LEEME.md`).
   Primer despliegue: v49, código 2026-11-11.1 (ventas de hoy cortan a las 11 pm). Las demás sesiones siguen sin desplegar.

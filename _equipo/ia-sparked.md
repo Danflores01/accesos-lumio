@@ -135,6 +135,14 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 - [ ] Compruebo: trabajo `listo`, ronda sin `FALLA` y `node herramientas/probar-guia.mjs <id de la guía>` sin errores.
 - [ ] Anoto la lección aquí y, si le pasó a una familia, en `references/incidentes.md` con su candado.
 
+### Checklist ANTES DE LLEVAR ALGO A PRODUCCIÓN: cabe en 6 MXN
+- [ ] Medí la guía de prueba por paso (`datos.metricas`): vista previa + resto ≤ 6 MXN, también con el máximo de cada
+      paso de los últimos 10 días (hoy: vista previa ≈ 1.7, resto ≈ 2.6, guía ≈ 4.3; peor caso ≈ 5.9).
+- [ ] Conté las búsquedas web: cada una cuesta 0.01 USD = 0.185 MXN (pesan más que los tokens de Haiku).
+- [ ] Si cambio modelo o esfuerzo, recalculo con `PRECIO` de `pipeline.ts`; Sonnet en planear y reparar no se baja.
+- [ ] Lo nuevo va apagado y se prueba por trabajo hasta medirlo; la vista previa no se abarata.
+- [ ] Si una guía puede pasar de 6, propongo cómo bajarla sin perder calidad; nunca se corta una guía pagada.
+
 ### Cómo pruebo un cambio sin gastar de más
 1. **Gratis:** prueba sin IA de `pipeline.ts`, `lanzar.mjs --revisar` y `revisar-slides.mjs` con cartuchos ya hechos.
 2. **Un plan (≈ 1.5 MXN con Sonnet):** `POST /admin/pruebas/plan {trabajo_origen, modelo, esfuerzo}`; no guarda nada.
@@ -160,11 +168,20 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Lo aprendido
 
+- 2026-11-11 · Daniel: **tope de costo de IA por guía en producción: 6 MXN** (vista previa + resto, con investigación
+  de temas incluida). Hoy el promedio es de 4 a 5 MXN. Las pruebas pueden gastar hasta 15 MXN cada una mientras se
+  aprende; lo que se lleve a producción tiene que caber en 6. Nunca se corta una guía pagada a medias por costo: si una
+  pasa de 6, se avisa y se ajusta el proceso.
+
 - **11 nov · Temas del temario sin contenido (Daniel: «no podemos inventar temas, pero sí es necesario hacer las guías lo
   más completas posibles»).** Solo los temas escritos en las fotos; 1 fuente oficial o 2 sitios confiables; una fuente
   vale solo si su página salió en la búsqueda de esa misma llamada (así la IA no cita de memoria). Lo que no se confirma
   queda como nota «repásalo en tu libro»; la práctica del examen se ignora. Lo nuevo va apagado y se prueba por trabajo:
   probar con IA exige desplegar, porque la llave solo vive en Supabase.
+- **11 nov · Prueba real de la investigación:** un proceso del servidor se apagó a media búsqueda sin dejar error y
+  el trabajo quedó trabado 22 min: los de las familias se reanudan solos cuando su página pregunta, los del
+  administrador no. Las búsquedas fallidas («entrada inválida», tope agotado) dejaron sin confirmar temas fáciles. El
+  revisor de slides no ve preguntas vacías: revisar también el contenido.
 - **11 nov · Banco de pruebas que no caduca:** una guía de biblioteca (`POST /admin/guias` + subir las páginas +
   `/generar`) no es de ninguna familia, no se publica y su material dura 365 días.
 - 2026-11-11 · Daniel: **la vista previa NO se abarata.** «La calidad es primero y al cliente le tenemos que mostrar lo que
@@ -204,10 +221,12 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Pendientes de mi tema
 
-- **Temas del temario completados con fuentes y «contradice_libro» → Reportes:** construidos el 11 nov (código
-  2026-11-11.2), sin desplegar. Falta: despliegue (principal, con el sí de Daniel), corrida real con el temario de
-  Español 1.º de Green Oaks (scratchpad `investigar/probar-temario.mjs`, tope propuesto 15 MXN) y que Daniel lo encienda
-  (`sparked_investigar` = "si").
+- **Temas del temario con fuentes (v50, apagado).** Prueba real del 11 nov (temario de Español 1.º, guía
+  `7e590167…`): 3 de 6 subtemas confirmados (SEP), 3 como nota, 5.87 MXN. Antes de encenderlo: (1) reintentar cuando
+  la búsqueda no devolvió páginas y pedir búsquedas simples; (2) un bloque sin nada confirmado no se escribe (su nota
+  pasa al bloque vecino); (3) `normalizarActividad`: `texto` → `pregunta` y `fuente` en texto → objeto (el reparador
+  dejó preguntas vacías), y la revisión final rechaza preguntas sin texto; (4) `GET /admin/trabajos/:id` reanuda un
+  trabajo atorado; (5) lo de costos de la nota `ia-tope-6-mxn.md`. Luego, la misma prueba otra vez.
 - Solo las preguntas muestran la fuente investigada; Mix & match, Super sort y los demás juegos no (Animaciones y Juegos,
   si Daniel lo quiere). La ayuda de Reportes en el panel solo habla de la banderita y la ronda cuenta estos reportes
   como «de familias» (principal).
