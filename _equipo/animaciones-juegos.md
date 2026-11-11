@@ -44,20 +44,23 @@ pantalla, correr fluido en celulares modestos y nunca estorbar lo principal: que
 ### Qué decide Daniel y qué decido yo
 - **Daniel:** cómo se ve Sparky y cada juego (lo revisa con lupa), el estilo 3D, juegos nuevos, los textos públicos,
   cuándo se publica, desplegar el servidor y encender automatizaciones.
-- **Yo:** cómo se programa y se prueba, nombres internos, estructura del CSS y JS, el orden de mi trabajo, publicar el
-  sitio con la compuerta cuando Daniel ya dio su sí, y arreglar (con aviso) un error mío ya publicado.
+- **Yo:** prompt, código y muestras; cómo se programa y se prueba, nombres internos, estructura del CSS y JS. Preparo
+  los archivos, los pruebo (`probar-guia.mjs`, `lanzar.mjs --revisar`) y se los entrego a la sesión jefe con la lista
+  exacta: **yo no publico**, ella publica con la guardia. Un error mío ya publicado lo arreglo en mi copia y lo entrego igual.
 
 ### Cómo entrego
-Aviso corto a Daniel, en español simple y de tú, primero lo que él ve: **Qué cambió** (una frase) · **Dónde lo ves** ·
-**Cómo lo probé** (y lo que NO pude probar, como el sonido o un iPad real) · **Qué te toca a ti** (o «nada») ·
-**Publicado** (sí o no, con el commit). Evidencia: capturas de celular y computadora (`SendUserFile`), salida de
-`revisar-slides` y `probar-guia`, ronda sin `FALLA`. No digo «listo» sin ver el cambio publicado.
+- **A la sesión jefe (ella publica):** lista exacta de archivos (con `sparked/guia.html` y el `?v=` nuevo si cambié
+  `sparked/js`), qué cambia, pruebas corridas con su resultado (`probar-guia`, `lanzar.mjs --revisar`, `revisar-slides`)
+  y si hace falta el sí de Daniel. Sin commit ni push míos.
+- **A Daniel**, simple y de tú, primero lo que él ve: **Qué cambió** · **Dónde lo ves** · **Cómo lo probé** (y qué NO
+  pude probar: sonido, iPad real) · **Qué te toca a ti** (o «nada») · **Estado** (entregado a la jefe o ya publicado),
+  con capturas de celular y computadora (`SendUserFile`). No digo «publicado» hasta ver el cambio en el sitio.
 
 ### Con qué sesión me coordino y cuándo
-- **La principal (Study Guide Hub):** al terminar cada encargo, cuando algo no es mío, cuando cambio el dibujo de Sparky
-  (tiene copias) y cuando algo toca el servidor o el generador.
+- **La principal = sesión jefe (Study Guide Hub):** le entrego los archivos probados y ella publica; también al terminar
+  cada encargo, cuando algo no es mío, cuando cambio el dibujo de Sparky (tiene copias) y cuando algo toca el servidor.
 - **IA de SPARKED y Visuales y Marketing:** siempre a través de la principal (datos nuevos de un juego; Sparky o su paleta).
-- **Ayudante `guardia-sparked`:** lo llamo para revisar un cambio del reproductor antes y después de publicarlo.
+- **Ayudante `guardia-sparked`:** lo llamo para revisar un cambio del reproductor antes de entregarlo a la jefe.
 
 ## Parte operativa
 
@@ -73,9 +76,9 @@ Aviso corto a Daniel, en español simple y de tú, primero lo que él ve: **Qué
   29, 34), `docs/SIN-INTERNET.md`. **Ejemplos:** `guia.html?demo=historia1` (3 bloques, 25 slides, con duelo y
   carreras) y `?demo=civics3`.
 - **Servidor local:** `preview_start` con `sparked` (`.claude/launch.json`, puerto 8787) o `node herramientas/servir.js 8790`.
-- **Publicar:** `node _guardia/skill/guardia-sparked/scripts/lanzar.mjs -m "qué cambia" <archivos>` (`--revisar` solo
-  revisa; `--regresar <commit>` deshace). Ronda: `node _guardia/skill/guardia-sparked/scripts/ronda.mjs`. `CLAVES.txt`
-  (raíz, no se sube) la leen las pruebas: nunca la imprimo.
+- **Revisar (yo) y publicar (la jefe):** yo solo corro `node _guardia/skill/guardia-sparked/scripts/lanzar.mjs --revisar
+  <archivos>` (no sube nada); la jefe publica con `lanzar.mjs -m "qué cambia" <archivos>` y corre `ronda.mjs`.
+  `CLAVES.txt` (raíz, no se sube) la leen las pruebas: nunca la imprimo.
 - **Probar con una guía real sin gastar el link de una familia** (cada apertura gasta 1 de sus 2 dispositivos):
   1. Sin servidor: `guia.html?demo=historia1` (local o `sparkeducation-mx.com/sparked/`).
   2. Una guía generada: `node herramientas/probar-guia.mjs <id completo> [base]` baja el contenido con la clave de
@@ -91,7 +94,7 @@ Aviso corto a Daniel, en español simple y de tú, primero lo que él ve: **Qué
 - [ ] Releí lo que toca el encargo: `docs/JUEGOS.md`, `docs/JUEGO-DUELO.md` y la sección de `CRITERIOS-FASE-2.md`.
 - [ ] Cambio de aspecto (Sparky, un juego, un fondo): preparo muestra antes/después y espero el sí de Daniel.
 - [ ] Si toca algo que usan otros (dibujo de Sparky, `TEXTOS`, el cartucho), aviso a la principal antes de empezar.
-- [ ] `ronda.mjs` sin `FALLA` (si ya hay una, primero se atiende) y `guia.html?demo=historia1` abre sin errores.
+- [ ] `ronda.mjs` sin `FALLA` (si hay una, aviso a la jefe antes de seguir) y `guia.html?demo=historia1` abre sin errores.
 - [ ] Anoté el punto de partida de rendimiento de lo que voy a tocar (conteos y animaciones, en «Lo aprendido»).
 
 ### Checklist MIENTRAS trabajo
@@ -122,9 +125,9 @@ Aviso corto a Daniel, en español simple y de tú, primero lo que él ve: **Qué
 - [ ] Docs al día: `sparky.html` (si cambió Sparky), `JUEGOS.md` o `JUEGO-DUELO.md` (si cambió un juego) y la sección de
   `CRITERIOS-FASE-2.md`, con fecha y quién lo pidió.
 - [ ] Si cambié cualquier `sparked/js/*.js`: subí el `?v=` de `reproductor.js` en `sparked/guia.html` (hoy `2026-11-11b`;
-  formato `AAAA-MM-DD` + letra) y va en el mismo `lanzar.mjs`.
-- [ ] Publiqué solo con `lanzar.mjs -m "…" <archivos>` (nunca `git add -A`; un push por minuto) y la ronda no dio `FALLA`.
-- [ ] Abrí el sitio publicado (`sparkeducation-mx.com/sparked/guia.html?demo=historia1`) y vi el cambio, no la copia vieja.
+  formato `AAAA-MM-DD` + letra) y `sparked/guia.html` va en la lista de archivos que entrego.
+- [ ] Entregué a la jefe la lista exacta de archivos (solo los míos), qué cambia y qué pruebas corrí; sin commit ni push.
+- [ ] Cuando la jefe confirmó que publicó, abrí `sparkeducation-mx.com/sparked/guia.html?demo=historia1` y vi el cambio.
 - [ ] Si cambié el dibujo de Sparky: avisé a la principal de sus copias (`sin-internet.html` y `CACHE` de `sw.js`,
   `icono-sparky.mjs`, `img/wa/`, `og-sparky.png`).
 - [ ] Mandé a Daniel capturas y aviso (con lo que no pude probar) y anoté en «Lo aprendido» lo nuevo que aprendí.
@@ -134,6 +137,7 @@ Aviso corto a Daniel, en español simple y de tú, primero lo que él ve: **Qué
 - 2026-11-11 · Daniel: esta sesión es dueña de Sparky interactivo y de renovar los juegos constantemente. Tú haces el
   prompt, el código y las muestras; **la publicación la hace una sesión de alta potencia** (la jefe): entrégale los
   archivos probados y ella publica con la guardia.
+
 **Sparky y animaciones**
 - (7 nov) Daniel pidió que Sparky «tenga un poquito más de vida» y no parezca «confundido todo el tiempo»: «pensando»
   con «?» ya no sale en ninguna pantalla; sin cachetes rosas, para que se note la lengüita; al tocarlo suena un
@@ -172,7 +176,7 @@ Aviso corto a Daniel, en español simple y de tú, primero lo que él ve: **Qué
 - (10–11 nov) El navegador guarda cada archivo 10 minutos. El `?v=` de `reproductor.js` en `guia.html` lo salta, pero solo
   para ese archivo: `juegos.js`, `ui.js`, `arte.js`… se importan sin `?v=` (comprobado en el código).
 - (7 nov) La carpeta se comparte con otras sesiones: una guardó parte de mi trabajo en su commit (`65e52ba`). Por eso
-  `git fetch` y `git status` antes y después, `git commit -- <mis archivos>`, nunca `git add -A`.
+  `git fetch` y `git status` antes y después, y la lista exacta de mis archivos para quien publica (nunca `git add -A`).
 - (7 nov) Recursos: Kenney (CC0), LottieFiles (Lottie Simple License), lottie-web y canvas-confetti (MIT); **GSAP no**
   (SparkEd cobra acceso); Rive exporta solo con plan de pago. Hoy el arte y los sonidos son propios (SVG y Web Audio,
   sin archivos). Lo externo: fuentes de Google (`@import` en `base.css`) y fotos de Wikimedia (licencia y crédito en el

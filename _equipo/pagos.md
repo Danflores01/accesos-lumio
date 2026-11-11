@@ -134,7 +134,8 @@ impuestos estimados). Si alguien pagó y no recibió, aquí se rastrea el pago.
 ## Lo aprendido
 
 - 2026-11-11 · Daniel: el día de ventas del Resumen termina a las **11 pm** de México («a las 6 de la tarde es cuando los
-  niños generan estas guías»).- 7 nov · Un permiso automático rechaza migraciones y despliegues pedidos por otra sesión. No se busca la vuelta: se
+  niños generan estas guías»).
+- 7 nov · Un permiso automático rechaza migraciones y despliegues pedidos por otra sesión. No se busca la vuelta: se
   deja todo en una rama aparte y Daniel da su sí en esta sesión.
 - 7 nov · Probar sin cobrar: código gratis de prueba y copia (con ids nuevos) de una vista previa. Para forzar una
   falla sin gastar IA se le quita `plan` al trabajo copiado (falla en «revisar»). Terminar el resto de una guía de

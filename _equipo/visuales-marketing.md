@@ -157,7 +157,8 @@ de Daniel se usa o se publica.
 
 - 2026-11-11 · Daniel: **los pósters ya no se necesitan.** Eran para promocionar el servicio cuando lo hacía a mano;
   ahora todo es en función de la app. No actualizarlos ni proponer pósters o stories de promoción salvo que él los pida.
-- 2026-11-11 · El arte tipo 3D, Sparky que juega e interactúa con la gente y los juegos son de Animaciones y Juegos.- **(7 nov 2026) Edge sin ventana:** el navegador integrado no guarda capturas; se usa Edge + DevTools desde Node.
+- 2026-11-11 · El arte tipo 3D, Sparky que juega e interactúa con la gente y los juegos son de Animaciones y Juegos.
+- **(7 nov 2026) Edge sin ventana:** el navegador integrado no guarda capturas; se usa Edge + DevTools desde Node.
   `--disable-lcd-text` evita franjas de color en el texto.
 - **(9 nov 2026) Fuga de procesos:** `proc.kill()` no cierra los hijos de Edge; tras ~60 renders había 420 procesos y cada
   render tardaba casi 2 min. `render.mjs` cierra con `Browser.close` antes de cerrar el WebSocket; solo se limpia lo que
