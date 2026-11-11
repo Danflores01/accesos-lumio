@@ -48,7 +48,7 @@ const DE_INDEX = [
   ["POST", ["pago", "crear"]], ["GET", ["pago", "estado", UUID]], ["POST", ["pago", "reintentar", UUID]], ["POST", ["pago", "mercadopago"]], ["POST", ["pago", "webhook"]],
   ["POST", ["reporte"]], ["GET", ["datos-curiosos"]], ["GET", ["colegios"]], ["POST", ["buscar"]], ["POST", ["solicitud"]],
   ["POST", ["trabajo", UUID, "paso"]], ["GET", ["trabajo", UUID]],
-  ["GET", ["admin", "ping"]], ["GET", ["admin", "resumen"]], ["GET", ["admin", "compras"]], ["POST", ["admin", "compras", UUID, "pagar"]], ["POST", ["admin", "compras", UUID, "revisar"]],
+  ["GET", ["admin", "ping"]], ["GET", ["admin", "resumen"]], ["GET", ["admin", "compras"]], ["POST", ["admin", "compras", UUID, "pagar"]], ["POST", ["admin", "compras", UUID, "cobro"]], ["POST", ["admin", "compras", UUID, "revisar"]],
   ["GET", ["admin", "codigos"]], ["POST", ["admin", "codigos"]], ["PATCH", ["admin", "codigos", UUID]], ["GET", ["admin", "reportes"]], ["PATCH", ["admin", "reportes", UUID]],
   ["GET", ["admin", "config"]], ["POST", ["admin", "config"]], ["POST", ["admin", "limpiar"]], ["POST", ["admin", "trabajos", UUID, "reintentar"]], ["GET", ["admin", "guias"]],
 ];

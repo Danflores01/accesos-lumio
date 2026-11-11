@@ -526,7 +526,7 @@
       <div class="caja-clave" style="margin-bottom:12px">
         <b>Cómo funciona cada compra</b>
         <p style="margin:6px 0 0">Cada compra tiene su propio link privado para esa familia, que se puede abrir en 2 dispositivos durante 7 días. La guía se envía (por correo y, si está conectado, por WhatsApp) solo cuando está 100 % lista. Estas guías ya no aparecen en la app de clases (fase 1).</p>
-        <p class="ayuda" style="margin:6px 0 0">Con Mercado Pago encendido, el pago se confirma solo (tarjeta, OXXO o SPEI). Sin cobro en línea, aquí confirmas los pagos a mano con "Marcar pagada".</p>
+        <p class="ayuda" style="margin:6px 0 0">Con Mercado Pago encendido, el pago se confirma solo (tarjeta, OXXO o SPEI). Sin cobro en línea, aquí confirmas los pagos a mano con "Marcar pagada".<span id="notaCobro"></span></p>
       </div>
       <div id="listaCompras"></div>
     </section>
@@ -742,13 +742,36 @@ for (const d of $$("details.plegable")) {
 }
 
 // ---------- Resumen ----------
+// Venta = guía que de verdad se cobró (Mercado Pago, o cobrada por fuera y confirmada a mano). Las de código gratis y
+// las cortesías no son ventas. El servidor lo distingue desde el código 2026-11-10.8 y lo dice en cada respuesta: el
+// Resumen trae «cortesias_mes» y cada compra trae «cobro» y «a_mano». Con un servidor anterior esos datos no vienen y
+// el panel se queda como estaba; por eso lo nuevo siempre pregunta primero si el dato llegó.
+// Al marcar una compra como pagada a mano hay que decir si se cobró: solo lo cobrado cuenta como venta y entra en los impuestos.
+function preguntarCobro() {
+  return new Promise((listo) => {
+    const d = modal(`<h2>¿Cómo se pagó esta guía?</h2>
+      <p>Al confirmar, la guía se termina y se envía sola a la familia.</p>
+      <div style="display:grid;gap:10px;margin-top:14px">
+        <button class="boton" data-cobro="por_fuera">💵 La cobré por fuera (efectivo o transferencia)</button>
+        <button class="boton linea" data-cobro="cortesia">🎁 Es una cortesía: no la cobré</button>
+      </div>
+      <p class="ayuda" style="margin-top:12px">Solo lo que cobras cuenta como venta y entra en el cálculo de tus impuestos.</p>`);
+    let elegido = null;
+    d.querySelectorAll("[data-cobro]").forEach((x) => x.onclick = () => { elegido = x.dataset.cobro; d.close(); });
+    d.addEventListener("close", () => listo(elegido), { once: true });
+  });
+}
 async function cargarResumen() {
   const r = await api("/resumen");
+  const SERVIDOR_CON_COBRO = r.compras?.cortesias_mes !== undefined;
   // Sin «guías publicadas», «borradores por revisar» ni «generaciones en curso» (pedido de Daniel, 10 nov 2026):
   // SparkEd ya solo genera guías personalizadas que cada familia pide y paga por su cuenta; él no publica ni revisa borradores.
   $("#numeros").innerHTML = [
     [r.guias.personalizadas, "guías personalizadas vivas"],
-    [r.compras.pendientes, "compras pendientes de pago"], [r.compras.pagadas_hoy + " · " + dinero(r.compras.ingresos_hoy), "ventas de hoy"], [r.compras.pagadas_mes + " · " + dinero(r.compras.ingresos_mes), "ventas del mes"], [r.compras.con_codigo_mes ?? 0, "guías con código gratis este mes (no son ventas)"],
+    [r.compras.pendientes, "compras pendientes de pago"], [r.compras.pagadas_hoy + " · " + dinero(r.compras.ingresos_hoy), SERVIDOR_CON_COBRO ? "ventas cobradas hoy" : "ventas de hoy"], [r.compras.pagadas_mes + " · " + dinero(r.compras.ingresos_mes), SERVIDOR_CON_COBRO ? "ventas cobradas este mes" : "ventas del mes"],
+    SERVIDOR_CON_COBRO
+      ? [(r.compras.con_codigo_mes ?? 0) + (r.compras.cortesias_mes ?? 0), `guías sin cobro este mes: ${r.compras.con_codigo_mes ?? 0} con código y ${r.compras.cortesias_mes ?? 0} de cortesía (no son ventas)`]
+      : [r.compras.con_codigo_mes ?? 0, "guías con código gratis este mes (no son ventas)"],
     [r.reportes_nuevos, "reportes nuevos"], ["US$" + r.ia.costo_usd_mes.toFixed(2), "gasto de IA este mes"],
   ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
   // Guías pagadas que la IA no pudo terminar: la familia ve "Estamos revisando tu guía" hasta que se reintente.
@@ -1054,27 +1077,42 @@ const ESTADOS_MP = { approved: "aprobado", pending: "esperando el pago", in_proc
 async function cargarCompras() {
   const f = $("#filtroCompras").value;
   const lista = await api("/compras" + (f ? `?estado=${f}` : ""));
+  // La nota sobre cobro o cortesía solo aparece cuando el servidor ya lo distingue (cada compra trae «cobro»).
+  if (lista.length) $("#notaCobro").textContent = "cobro" in lista[0] ? " Al marcarla eliges si la cobraste por fuera o si es una cortesía: solo lo cobrado cuenta como venta." : "";
   $("#listaCompras").innerHTML = lista.map((c) => `<div class="fila-g"><div class="info"><b class="cliente">${esc(c.nombre || "Sin nombre")}</b>${chip(c.estado)}
-      <div class="ayuda">Folio <b>${esc(c.folio)}</b> · ${esc(fecha(c.creada_en))} · ${dinero(c.monto_mxn)} MXN${c.pagada_en ? " · pagada " + esc(fecha(c.pagada_en)) : ""}</div>
+      <div class="ayuda">Folio <b>${esc(c.folio)}</b> · ${esc(fecha(c.creada_en))} · ${c.cobro === "cortesia" ? "sin cobro" : dinero(c.monto_mxn) + " MXN"}${c.pagada_en ? (c.cobro === "cortesia" ? " · confirmada " : " · pagada ") + esc(fecha(c.pagada_en)) : ""}</div>
       <div class="ayuda">📞 <a href="${esc(waLink(c.telefono ?? "", ""))}" target="_blank" rel="noopener">${esc(c.telefono ?? "")}</a> · ✉️ <a href="mailto:${esc(c.correo ?? "")}">${esc(c.correo ?? "")}</a></div>
       ${c.codigo ? `<div class="ayuda">🎟️ Código <b>${esc(c.codigo)}</b>${c.metodo_pago === "codigo" ? " · guía gratis (no cuenta como venta)" : ` · descuento de ${dinero(c.descuento_mxn)}`}</div>` : ""}
+      ${c.a_mano ? `<div class="ayuda">${c.cobro === "por_fuera" ? "💵 Confirmada a mano · cobrada por fuera (cuenta como venta)" : "🎁 Confirmada a mano · cortesía, sin cobro (no cuenta como venta)"}</div>
+        <div><button class="boton linea chico" style="width:auto;display:inline-block;margin-top:6px" data-act="cobro" data-id="${c.id}" data-cobro="${c.cobro === "por_fuera" ? "cortesia" : "por_fuera"}">${c.cobro === "por_fuera" ? "Cambiar a cortesía" : "Cambiar a cobrada por fuera"}</button></div>` : ""}
       ${c.mp_preferencia_id || c.mp_estado ? `<div class="ayuda">Mercado Pago: ${esc(METODOS_MP[c.metodo_pago] ?? c.metodo_pago ?? "todavía sin pago")}${c.mp_estado ? " · " + esc(ESTADOS_MP[c.mp_estado] ?? c.mp_estado) : ""}${c.mp_vence_en && c.estado === "pendiente" ? " · se puede pagar hasta el " + esc(fecha(c.mp_vence_en)) : ""}${c.mp_pago_id ? " · pago " + esc(c.mp_pago_id) : ""}${c.mp_ficha_url ? ` · <a href="${esc(c.mp_ficha_url)}" target="_blank" rel="noopener">ver ficha</a>` : ""}</div>` : ""}
       ${c.estado === "pagada" ? estadoEntrega(c) : ""}
       ${c.link && c.guia_lista !== false ? `<div class="link-caja ayuda" style="margin-top:6px">${esc(c.link)}</div>` : ""}
     </div><div class="acciones">
       ${c.estado === "pendiente" && c.mp_preferencia_id ? `<button class="boton linea" data-act="revisar" data-id="${c.id}">🔄 Revisar en Mercado Pago</button>` : ""}
-      ${c.estado === "pendiente" ? `<button class="boton" data-act="pagar" data-id="${c.id}">✅ Marcar pagada</button><button class="boton linea" data-act="cancelar" data-id="${c.id}">✖ Cancelar</button>` : ""}
+      ${c.estado === "pendiente" ? `<button class="boton" data-act="pagar" data-id="${c.id}" data-pregunta="${"cobro" in c ? "1" : ""}">✅ Marcar pagada</button><button class="boton linea" data-act="cancelar" data-id="${c.id}">✖ Cancelar</button>` : ""}
       ${c.link && c.guia_lista !== false ? `<button class="boton linea" data-act="copiar" data-link="${esc(c.link)}">📋 Copiar link</button><a class="boton linea" target="_blank" rel="noopener" href="${esc(waLink(c.telefono ?? "", mensajeWhatsApp(c.titulo ?? "Tu guía", c.link)))}">💬 WhatsApp</a><button class="boton linea" data-act="reenviar" data-id="${c.id}">✉️ Reenviar correo</button>` : ""}
       ${c.estado === "pagada" && c.guia_lista === true ? `<button class="boton linea" data-act="wa-reenviar" data-id="${c.id}">📲 Reenviar por WhatsApp</button>` : ""}
     </div></div>`).join("") || "<p class='ayuda'>No hay compras en esta lista.</p>";
   $$("#listaCompras [data-act]").forEach((b) => b.onclick = async () => {
     try {
       if (b.dataset.act === "pagar") {
-        if (!confirm("¿Confirmas que esta compra ya se pagó? Se termina la guía y se envía sola cuando esté lista.")) return;
-        const r = await api(`/compras/${b.dataset.id}/pagar`, { method: "POST" }); aviso("Pago confirmado."); cargarCompras(); cargarResumen();
+        // Con el servidor nuevo (la compra trae «cobro») se pregunta cómo se pagó: cobrada por fuera o cortesía. Con el anterior, como antes.
+        let cobro = null;
+        if (b.dataset.pregunta) { cobro = await preguntarCobro(); if (!cobro) return; }
+        else if (!confirm("¿Confirmas que esta compra ya se pagó? Se termina la guía y se envía sola cuando esté lista.")) return;
+        const r = await api(`/compras/${b.dataset.id}/pagar`, { method: "POST", ...(cobro ? { body: { cobro } } : {}) });
+        const hecho = cobro === "cortesia" ? "Cortesía confirmada 🎁" : "Pago confirmado 🎉";
+        aviso(cobro === "cortesia" ? "Cortesía confirmada: no cuenta como venta." : "Pago confirmado."); cargarCompras(); cargarResumen();
         modal(r.lista
-          ? `<h2>Pago confirmado 🎉</h2><p>La guía ya está completa y se envió a la familia.</p>${r.link ? `<div class="link-caja ayuda">${esc(r.link)}</div><a class="boton" style="margin-top:10px" target="_blank" rel="noopener" href="${esc(waLink(r.compra?.telefono ?? "", mensajeWhatsApp(r.compra?.titulo ?? "Tu guía", r.link)))}">💬 Mandar también por WhatsApp</a>` : ""}`
-          : `<h2>Pago confirmado 🎉</h2><p>La IA está terminando la guía. Se envía sola a la familia cuando esté 100 % lista; no hace falta mandar nada a mano.</p><p class="ayuda">Puedes ver el avance aquí mismo, en Compras.</p>`);
+          ? `<h2>${hecho}</h2><p>La guía ya está completa y se envió a la familia.</p>${r.link ? `<div class="link-caja ayuda">${esc(r.link)}</div><a class="boton" style="margin-top:10px" target="_blank" rel="noopener" href="${esc(waLink(r.compra?.telefono ?? "", mensajeWhatsApp(r.compra?.titulo ?? "Tu guía", r.link)))}">💬 Mandar también por WhatsApp</a>` : ""}`
+          : `<h2>${hecho}</h2><p>La IA está terminando la guía. Se envía sola a la familia cuando esté 100 % lista; no hace falta mandar nada a mano.</p><p class="ayuda">Puedes ver el avance aquí mismo, en Compras.</p>`);
+      }
+      if (b.dataset.act === "cobro") {
+        const aCobrada = b.dataset.cobro === "por_fuera";
+        if (!confirm(aCobrada ? "¿Esta guía sí la cobraste por fuera, en efectivo o transferencia? Contará como venta." : "¿Esta guía fue una cortesía, sin cobro? Dejará de contar como venta.")) return;
+        await api(`/compras/${b.dataset.id}/cobro`, { method: "POST", body: { cobro: b.dataset.cobro } });
+        aviso(aCobrada ? "Listo: ahora cuenta como venta." : "Listo: ya no cuenta como venta."); cargarCompras(); cargarResumen();
       }
       if (b.dataset.act === "revisar") { b.disabled = true; const r = await api(`/compras/${b.dataset.id}/revisar`, { method: "POST" }); aviso(r.compra?.estado === "pagada" ? "Pagada en Mercado Pago: la guía se termina y se envía sola cuando esté lista." : r.resultado === "sin_pagos" ? "Mercado Pago todavía no tiene ningún pago de esta compra." : "Mercado Pago dice: " + (ESTADOS_MP[r.compra?.mp_estado] ?? r.resultado), false, 6000); cargarCompras(); cargarResumen(); }
       if (b.dataset.act === "cancelar") { if (!confirm("¿Cancelar esta compra pendiente?")) return; await api(`/compras/${b.dataset.id}/cancelar`, { method: "POST" }); cargarCompras(); }
@@ -1267,7 +1305,9 @@ async function cargarCostos() {
     </div>
     <h2 style="margin:22px 0 10px">Lo que entra y lo que sale</h2>
     <div class="grandes" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">${balance("Este mes", b.mes, r.ingresos.mes.ventas)}${balance(`Últimos ${r.dias} días`, b.periodo, r.ingresos.periodo.ventas)}</div>
-    <p class="ayuda">Las guías con código gratis no son ventas${r.ingresos.periodo.con_codigo ? ` (en estos ${r.dias} días: ${r.ingresos.periodo.con_codigo})` : ""}. No incluye la comisión de Mercado Pago ni impuestos. En "Últimos ${r.dias} días", los servicios fijos son la parte proporcional de esos días.</p>
+    <p class="ayuda">${r.ingresos.periodo.cortesias !== undefined
+      ? `Solo cuentan como ventas las guías que se cobraron. Las de código gratis y las de cortesía no son ventas${r.ingresos.periodo.con_codigo || r.ingresos.periodo.cortesias ? ` (en estos ${r.dias} días: ${r.ingresos.periodo.con_codigo} con código y ${r.ingresos.periodo.cortesias} de cortesía)` : ""}`
+      : `Las guías con código gratis no son ventas${r.ingresos.periodo.con_codigo ? ` (en estos ${r.dias} días: ${r.ingresos.periodo.con_codigo})` : ""}`}. No incluye la comisión de Mercado Pago ni impuestos. En "Últimos ${r.dias} días", los servicios fijos son la parte proporcional de esos días.</p>
     <h2 style="margin:22px 0 10px">Promedios</h2>
     <div class="grandes">
       <div class="grande"><span>Cada vista previa</span><b>${p.vista_previa.n ? pesos(p.vista_previa.mxn) : "—"}</b><small>${p.vista_previa.n ? `${dolares(p.vista_previa.usd, 3)} · promedio de ${p.vista_previa.n}` : "Sin vistas previas en estos días"}</small></div>

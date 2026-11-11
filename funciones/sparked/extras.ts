@@ -263,7 +263,23 @@ export function validarServicios(lista: unknown): Servicio[] | string {
 }
 
 type TrabajoCosto = { id: string; alcance: string; estado: string; costo_usd: number | string | null; creado_en: string; guia_id: string | null; metricas: any[] | null };
-type CompraCosto = { estado: string; monto_mxn: number | string | null; pagada_en: string | null; metodo_pago: string | null };
+type CompraCosto = { estado: string; monto_mxn: number | string | null; pagada_en: string | null; metodo_pago: string | null; mp_estado?: string | null; stripe_session_id?: string | null };
+
+// ---------- ¿Qué cuenta como venta? ----------
+// Una compra «pagada» solo es VENTA (ingreso, impuestos) si de verdad se cobró:
+//   · Mercado Pago la aprobó (mp_estado "approved"; si después se reembolsa o hay contracargo, deja de contar);
+//   · Stripe la cobró (hoy dormido), o
+//   · Daniel la confirmó a mano en el panel diciendo que la cobró por fuera, en efectivo o transferencia (metodo_pago "manual").
+// NO es venta lo que se entregó sin cobro: guía con código gratis (metodo_pago "codigo"), cortesía ("cortesia") o
+// confirmada a mano sin decir cómo se cobró (metodo_pago vacío: así quedaron las anteriores al 11 nov 2026).
+// Nació del 10 nov 2026: el panel decía 5 ventas y $500 cuando Mercado Pago solo había cobrado 3; las otras 2 eran
+// compras marcadas como pagadas a mano, sin cobro. Prueba: herramientas/probar-ventas.mjs.
+export type CompraCobro = { estado?: string | null; metodo_pago?: string | null; mp_estado?: string | null; stripe_session_id?: string | null };
+export const ventaCobrada = (c: CompraCobro): boolean => c.estado === "pagada" && (c.mp_estado === "approved" || c.metodo_pago === "manual" || !!c.stripe_session_id);
+/** Para una compra pagada que no es venta: "codigo" (código gratis) o "cortesia" (confirmada a mano sin cobro). */
+export const tipoSinCobro = (c: CompraCobro): "codigo" | "cortesia" | null => c.estado !== "pagada" || ventaCobrada(c) ? null : c.metodo_pago === "codigo" ? "codigo" : "cortesia";
+/** ¿Se confirmó a mano? (ni Mercado Pago ni Stripe ni código): solo a estas se les puede cambiar «cobrada por fuera» ↔ «cortesía». */
+export const confirmadaAMano = (c: CompraCobro): boolean => c.estado === "pagada" && c.mp_estado !== "approved" && !c.stripe_session_id && c.metodo_pago !== "codigo";
 
 /** Cálculo puro de la ficha de costos (se prueba sin base de datos). */
 export function calcularCostos(e: {
@@ -325,18 +341,21 @@ export function calcularCostos(e: {
     }
   }
 
-  // Ingresos: compras pagadas con dinero (las de código gratis no son ventas).
-  const ingresos = { periodo: { mxn: 0, ventas: 0, con_codigo: 0 }, mes: { mxn: 0, ventas: 0, con_codigo: 0 }, d7: { mxn: 0, ventas: 0, con_codigo: 0 }, hoy: { mxn: 0, ventas: 0, con_codigo: 0 } };
+  // Ingresos: solo las compras que de verdad se cobraron (ventaCobrada). Las de código gratis y las cortesías
+  // (confirmadas a mano sin cobro) no son ventas: se cuentan aparte.
+  type Ingreso = { mxn: number; ventas: number; con_codigo: number; cortesias: number };
+  const cero = (): Ingreso => ({ mxn: 0, ventas: 0, con_codigo: 0, cortesias: 0 });
+  const ingresos = { periodo: cero(), mes: cero(), d7: cero(), hoy: cero() };
   for (const c of e.compras) {
     if (c.estado !== "pagada" || !c.pagada_en) continue;
     const dia = diaMx(c.pagada_en);
-    const gratis = c.metodo_pago === "codigo";
-    const monto = gratis ? 0 : Number(c.monto_mxn ?? 0) || 0;
-    const sumar = (p: { mxn: number; ventas: number; con_codigo: number }) => { if (gratis) p.con_codigo++; else { p.mxn += monto; p.ventas++; } };
+    const cobrada = ventaCobrada(c), sinCobro = tipoSinCobro(c);
+    const monto = cobrada ? Number(c.monto_mxn ?? 0) || 0 : 0;
+    const sumar = (p: Ingreso) => { if (cobrada) { p.mxn += monto; p.ventas++; } else if (sinCobro === "codigo") p.con_codigo++; else p.cortesias++; };
     if (dia === hoy) sumar(ingresos.hoy);
     if (dia >= d7 && dia <= hoy) sumar(ingresos.d7);
     if (dia >= mes && dia <= hoy) sumar(ingresos.mes);
-    if (dia >= desdeTabla && dia <= hoy) { sumar(ingresos.periodo); if (!gratis) { dias_[dia].ingresos_mxn += monto; dias_[dia].ventas++; } }
+    if (dia >= desdeTabla && dia <= hoy) { sumar(ingresos.periodo); if (cobrada) { dias_[dia].ingresos_mxn += monto; dias_[dia].ventas++; } }
   }
 
   const fijos = e.servicios.map((s) => ({ ...s, mxn_mes: r2(s.moneda === "USD" ? s.monto * tcHoy : s.monto) }));
@@ -496,7 +515,7 @@ async function adminCostos(c: CtxRutas): Promise<Response> {
   const [{ tipos, consulta, fallo }, trab, comp, serv, cfg] = await Promise.all([
     tiposDeCambio(c, desde, hoy),
     c.supabase.from("trabajos").select("id, alcance, estado, costo_usd, creado_en, guia_id, metricas:datos->metricas").gte("creado_en", desdeIso).order("creado_en").limit(5000),
-    c.supabase.from("compras").select("estado, monto_mxn, pagada_en, metodo_pago").eq("estado", "pagada").gte("pagada_en", desdeIso).limit(5000),
+    c.supabase.from("compras").select("estado, monto_mxn, pagada_en, metodo_pago, mp_estado, stripe_session_id").eq("estado", "pagada").gte("pagada_en", desdeIso).limit(5000),
     leerServicios(c),
     c.config(),
   ]);
@@ -518,9 +537,9 @@ async function adminCostos(c: CtxRutas): Promise<Response> {
   const fuente = tc ? tc.fuente : "ajuste";
   // Impuestos estimados: lo que va del mes y el mes anterior completo (el que toca declarar).
   const inicioMes = hoy.slice(0, 8) + "01", finAnterior = sumarDias(inicioMes, -1), inicioAnterior = finAnterior.slice(0, 8) + "01";
-  const ant = await c.supabase.from("compras").select("monto_mxn, metodo_pago").eq("estado", "pagada").gte("pagada_en", inicioDiaIso(inicioAnterior)).lt("pagada_en", inicioDiaIso(inicioMes)).limit(5000);
+  const ant = await c.supabase.from("compras").select("estado, monto_mxn, metodo_pago, mp_estado, stripe_session_id").eq("estado", "pagada").gte("pagada_en", inicioDiaIso(inicioAnterior)).lt("pagada_en", inicioDiaIso(inicioMes)).limit(5000);
   let cobradoAnt = 0, ventasAnt = 0;
-  for (const x of (ant.data ?? []) as any[]) { const m = x.metodo_pago === "codigo" ? 0 : Number(x.monto_mxn ?? 0) || 0; if (m > 0) { cobradoAnt += m; ventasAnt++; } }
+  for (const x of (ant.data ?? []) as any[]) { const m = ventaCobrada(x) ? Number(x.monto_mxn ?? 0) || 0 : 0; if (m > 0) { cobradoAnt += m; ventasAnt++; } }
   const ajusteImp = leerAjusteImpuestos(cfg);
   const impuestos = { ...calcularImpuestos(ajusteImp, r.ingresos.mes.mxn, r.ingresos.mes.ventas, Number(cfg.sparked_precio) || 100), mes_desde: inicioMes, mes_anterior: { desde: inicioAnterior, hasta: finAnterior, ...impuestosDelMes(ajusteImp, cobradoAnt, ventasAnt) } };
   return c.json({

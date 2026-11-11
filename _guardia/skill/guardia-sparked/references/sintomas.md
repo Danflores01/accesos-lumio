@@ -56,6 +56,7 @@ necesitan el visto bueno de Daniel (ver «Quién decide»).
 |---|---|---|---|
 | No puede entrar con correo y contraseña | Contraseña mal, cuenta sin crear o demasiados intentos (freno de 15 min). | `POST /acceso/entrar` responde 401 o 429. | Entrar con la clave de administrador (respaldo) y crear la contraseña en Ajustes. |
 | «Los chats todavía no están disponibles» / no cargan | El servidor desplegado no trae esa ruta, o Green API no respondió. | `/admin/ping` → versión; `/admin/whatsapp`. | Desplegar la versión pendiente o esperar a Green API. |
+| «El panel dice más ventas (o más pesos) de los que cobré» | Una compra solo es venta si de verdad se cobró: Mercado Pago aprobado, o confirmada a mano como «cobrada por fuera». Las de código y las cortesías (confirmadas a mano sin cobro) no cuentan. El 10 nov 2026 el panel decía 5 ventas y $500 porque sumaba 2 compras marcadas a mano que nadie pagó. | Compras pagadas con su método y estado de Mercado Pago (`metodo_pago`, `mp_estado`); `node herramientas/probar-ventas.mjs`. La versión desplegada debe ser 2026-11-10.8 o más nueva. | En Compras, cada confirmada a mano tiene un botón para decir si fue cortesía o cobrada por fuera: lo decide Daniel. |
 | Un número del Resumen se ve raro | Datos, no un fallo de cliente. | `/admin/resumen`. | Fuera de la guardia, salvo que esconda compras sin entregar. |
 
 ## Quién decide

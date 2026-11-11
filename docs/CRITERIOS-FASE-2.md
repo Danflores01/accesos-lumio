@@ -890,3 +890,27 @@ ni a un solo cliente más». Todo vive en la carpeta `_guardia/` (GitHub no la p
    una familia o cambiar su acceso sin el sí de Daniel, tocar la fase 1, rodear un permiso rechazado.
 6. La skill y el agente se instalan en la computadora con `node _guardia/instalar.mjs`. La versión que manda es la
    del repositorio; la ronda avisa si la copia instalada quedó atrasada.
+
+## 36. Qué cuenta como venta: solo lo que de verdad se cobró (Daniel, 10 de noviembre de 2026)
+
+Daniel: «dices que se hicieron 5 compras, en total 500 pesos, pero en realidad solo tengo 3 ventas registradas con
+cobro». Tenía razón: el panel contaba como venta toda compra «pagada» que no fuera con código, y 2 de esas 5 eran
+compras marcadas como pagadas a mano en el panel (botón «Marcar pagada»), sin cobro. Reglas desde el código
+2026-11-10.8:
+
+1. **Es venta** (ingreso, balance, impuestos) solo la compra que se cobró: Mercado Pago la aprobó (`mp_estado`
+   `approved`; si se reembolsa deja de contar), o Daniel la confirmó a mano diciendo que la cobró por fuera, en
+   efectivo o transferencia (`metodo_pago` `manual`).
+2. **No es venta** lo que se entregó sin cobro: guía con código gratis (`codigo`), cortesía (`cortesia`) o confirmada
+   a mano sin decir cómo se cobró (las anteriores a este cambio). Se cuentan aparte: «guías sin cobro este mes: N con
+   código y M de cortesía».
+3. La regla vive en un solo lugar (`ventaCobrada`, en `funciones/sparked/extras.ts`) y la usan el Resumen, Costos y
+   los impuestos. Candado: `node herramientas/probar-ventas.mjs` repite las compras de noviembre de 2026 y exige
+   3 ventas y $300 (con el código anterior daba 5 y $500). La compuerta lo corre al subir código del servidor.
+4. **Al marcar una compra como pagada**, el panel pregunta: «La cobré por fuera (efectivo o transferencia)» o «Es una
+   cortesía: no la cobré». En Compras, cada confirmada a mano dice cómo quedó y trae un botón para cambiarlo
+   (`POST /admin/compras/<id>/cobro`). Las de Mercado Pago y las de código no se pueden cambiar: su cobro ya está
+   registrado.
+5. El correo a la familia de una cortesía dice «Tu acceso se activó» y «Acceso de cortesía», no «Tu pago se confirmó».
+6. El panel funciona con el servidor anterior y con el nuevo: lo nuevo solo aparece cuando el servidor manda los
+   datos (`cortesias_mes` en el Resumen, `cobro` y `a_mano` en cada compra).

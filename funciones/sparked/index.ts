@@ -17,13 +17,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, verificarCartucho, type Trabajo } from "./pipeline.ts";
 import type { CtxBase, CtxRutas } from "./tipos.ts";
-import { rutasExtras, codigoBorrado } from "./extras.ts";
+import { rutasExtras, codigoBorrado, ventaCobrada, tipoSinCobro, confirmadaAMano } from "./extras.ts";
 import { rutasWhatsApp, avisarPorWhatsApp, motorWhatsApp } from "./whatsapp.ts";
 import { imagenEntrega, imagenCompartir } from "./imagen-wa.ts";
 import { matrizQr } from "./qr.ts";
 import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 
-const VERSION = "2026-11-10.7";
+const VERSION = "2026-11-10.8";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -587,13 +587,17 @@ async function avanceDeGuia(guiaId: string, desde = 0): Promise<{ revision: bool
   return { revision: false, avance: t.progreso ?? null };
 }
 
-async function confirmarPago(compraId: string, extra: { stripe_session_id?: string; monto?: number; manual?: boolean } = {}) {
+async function confirmarPago(compraId: string, extra: { stripe_session_id?: string; monto?: number; manual?: boolean; cobro?: "por_fuera" | "cortesia" } = {}) {
   const { data: compra } = await supabase.from("compras").select("*").eq("id", compraId).maybeSingle();
   if (!compra) throw new Error("Esa compra no existe");
   if (compra.estado !== "pagada") {
     const cambios: Record<string, unknown> = { estado: "pagada", pagada_en: ahora() };
     if (extra.stripe_session_id) cambios.stripe_session_id = extra.stripe_session_id;
     if (extra.monto) cambios.monto_mxn = extra.monto;
+    // Confirmada a mano en el panel: queda dicho si Daniel la cobró por fuera ("manual": cuenta como venta) o si es
+    // una cortesía ("cortesia": no cuenta). Sin ese dato se toma como cortesía, para no inventar ingresos (el 10 nov
+    // 2026 el panel sumaba como ventas de $100 dos compras marcadas a mano que nadie pagó).
+    if (extra.manual) cambios.metodo_pago = extra.cobro === "por_fuera" ? "manual" : "cortesia";
     const { error: e } = await supabase.from("compras").update(cambios).eq("id", compraId);
     if (e) throw e;
     Object.assign(compra, cambios);
@@ -771,14 +775,14 @@ async function enviarCorreo(compra: any, titulo: string, link: string, expira: s
   if (!Deno.env.get("RESEND_API_KEY") || !esCorreo(compra.correo)) return;
   const esc = escHtml;
   const fecha = new Date(expira).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short", timeZone: "America/Mexico_City" });
-  const conCodigo = compra.metodo_pago === "codigo";
+  const conCodigo = compra.metodo_pago === "codigo", cortesia = compra.metodo_pago === "cortesia";
   // El correo se escribe como lo escribiría una persona (saludo con nombre, párrafos cortos, el link como texto y sin
   // banners ni botones grandes): así Gmail lo deja en la bandeja principal y no en "Notificaciones" o "Promociones".
   const nombre = String(compra.nombre ?? "").trim().split(/[ ]+/)[0] || "Hola";
   const saludo = nombre === "Hola" ? "Hola:" : `Hola, ${esc(nombre)}:`;
-  const primera = `${conCodigo ? "Tu código se aplicó" : "Tu pago se confirmó"} y tu guía <b>${esc(titulo)}</b> ya está lista. Ábrela con este link:`;
+  const primera = `${conCodigo ? "Tu código se aplicó" : cortesia ? "Tu acceso se activó" : "Tu pago se confirmó"} y tu guía <b>${esc(titulo)}</b> ya está lista. Ábrela con este link:`;
   const nota = "";
-  const pago = conCodigo ? `Acceso con código${compra.codigo ? " " + esc(compra.codigo) : ""}` : `$${esc(compra.monto_mxn)} MXN, IVA incluido`;
+  const pago = conCodigo ? `Acceso con código${compra.codigo ? " " + esc(compra.codigo) : ""}` : cortesia ? "Acceso de cortesía" : `$${esc(compra.monto_mxn)} MXN, IVA incluido`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#1b1b1f;max-width:560px;margin:auto">
     <p>${saludo}</p>
     <p>${primera}</p>
@@ -797,7 +801,8 @@ async function avisarVenta(compra: any, titulo: string) {
   const conCodigo = compra.metodo_pago === "codigo";
   const quien = `<p>${esc(compra.nombre)} · ${esc(compra.telefono)} · ${esc(compra.correo)}</p>`;
   if (conCodigo) await avisarDaniel(`Guía con código SparkEd: ${titulo}`, `<p>Acceso con el código <b>${esc(compra.codigo ?? "")}</b> (sin costo; no cuenta como venta): <b>${esc(titulo)}</b></p>${quien}<p>Folio ${esc(folioDe(compra.id))}</p>`);
-  else await avisarDaniel(`Venta SparkEd: ${titulo}`, `<p>Compra pagada: <b>${esc(titulo)}</b></p>${quien}<p>Folio ${esc(folioDe(compra.id))} · $${esc(compra.monto_mxn)} MXN${compra.codigo ? ` (con el código ${esc(compra.codigo)})` : ""}</p>`);
+  else if (compra.metodo_pago === "cortesia") await avisarDaniel(`Guía de cortesía SparkEd: ${titulo}`, `<p>Acceso de cortesía, confirmado a mano en el panel (sin cobro; no cuenta como venta): <b>${esc(titulo)}</b></p>${quien}<p>Folio ${esc(folioDe(compra.id))}</p>`);
+  else await avisarDaniel(`Venta SparkEd: ${titulo}`, `<p>Compra pagada: <b>${esc(titulo)}</b></p>${quien}<p>Folio ${esc(folioDe(compra.id))} · $${esc(compra.monto_mxn)} MXN${compra.codigo ? ` (con el código ${esc(compra.codigo)})` : ""}${compra.metodo_pago === "manual" ? " · cobrada por fuera y confirmada a mano en el panel" : ""}</p>`);
 }
 
 // La guía de una compra pagada no se pudo terminar (falla definitiva o verificación final): la familia recibe UN correo,
@@ -1225,7 +1230,7 @@ Deno.serve(async (req: Request) => {
         const mes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString();
         const [guias, compras, solicitudes, reportes, trabajos, borradores, fallidos] = await Promise.all([
           supabase.from("guias").select("estado, origen"),
-          supabase.from("compras").select("estado, monto_mxn, pagada_en, creada_en, metodo_pago").gte("creada_en", new Date(Date.now() - 45 * 86400 * 1000).toISOString()),
+          supabase.from("compras").select("estado, monto_mxn, pagada_en, creada_en, metodo_pago, mp_estado, stripe_session_id").gte("creada_en", new Date(Date.now() - 45 * 86400 * 1000).toISOString()),
           supabase.from("solicitudes").select("id", { count: "exact", head: true }).eq("estado", "sin_guia"),
           supabase.from("reportes").select("id", { count: "exact", head: true }).eq("estado", "nuevo"),
           supabase.from("trabajos").select("estado, costo_usd, creado_en").gte("creado_en", mes),
@@ -1235,9 +1240,11 @@ Deno.serve(async (req: Request) => {
         const cuenta = (arr: any[], f: (x: any) => boolean) => arr.filter(f).length;
         const suma = (arr: any[], f: (x: any) => boolean) => arr.filter(f).reduce((n, x) => n + Number(x.monto_mxn ?? 0), 0);
         const C = compras.data ?? [], T = trabajos.data ?? [], G = guias.data ?? [];
-        // Las guías con código gratis no son ventas ni ingresos: se cuentan aparte.
-        const venta = (c: any) => c.estado === "pagada" && c.metodo_pago !== "codigo";
-        const gratis = (c: any) => c.estado === "pagada" && c.metodo_pago === "codigo";
+        // Venta = compra que de verdad se cobró (ventaCobrada, en extras.ts). Las guías con código gratis y las
+        // cortesías (confirmadas a mano sin cobro) no son ventas ni ingresos: se cuentan aparte.
+        const venta = (c: any) => ventaCobrada(c);
+        const gratis = (c: any) => tipoSinCobro(c) === "codigo";
+        const cortesia = (c: any) => tipoSinCobro(c) === "cortesia";
         const hoyIso = hoy.toISOString();
         // Guías pagadas cuyo trabajo "resto" falló y siguen sin terminar (aviso en el Resumen del panel).
         const F = fallidos.data ?? [];
@@ -1245,7 +1252,7 @@ Deno.serve(async (req: Request) => {
         const entregasConError = F.map((t) => ({ t, g: (gF ?? []).find((x: any) => x.id === t.guia_id) })).filter(({ g }) => g && g.completo !== true).map(({ t, g }) => ({ trabajo_id: t.id, guia_id: t.guia_id, titulo: g.titulo, paso: t.paso, error: t.error, desde: t.actualizado_en }));
         return json({
           guias: { publicadas: cuenta(G, (g) => g.estado === "publicada" && g.origen === "biblioteca"), borradores: cuenta(G, (g) => g.estado === "borrador" && g.origen === "biblioteca"), personalizadas: cuenta(G, (g) => g.origen === "personalizada" && g.estado !== "archivada"), archivadas: cuenta(G, (g) => g.estado === "archivada") },
-          compras: { pendientes: cuenta(C, (c) => c.estado === "pendiente"), pagadas_hoy: cuenta(C, (c) => venta(c) && c.pagada_en >= hoyIso), ingresos_hoy: suma(C, (c) => venta(c) && c.pagada_en >= hoyIso), pagadas_mes: cuenta(C, (c) => venta(c) && c.pagada_en >= mes), ingresos_mes: suma(C, (c) => venta(c) && c.pagada_en >= mes), con_codigo_hoy: cuenta(C, (c) => gratis(c) && c.pagada_en >= hoyIso), con_codigo_mes: cuenta(C, (c) => gratis(c) && c.pagada_en >= mes) },
+          compras: { pendientes: cuenta(C, (c) => c.estado === "pendiente"), pagadas_hoy: cuenta(C, (c) => venta(c) && c.pagada_en >= hoyIso), ingresos_hoy: suma(C, (c) => venta(c) && c.pagada_en >= hoyIso), pagadas_mes: cuenta(C, (c) => venta(c) && c.pagada_en >= mes), ingresos_mes: suma(C, (c) => venta(c) && c.pagada_en >= mes), con_codigo_hoy: cuenta(C, (c) => gratis(c) && c.pagada_en >= hoyIso), con_codigo_mes: cuenta(C, (c) => gratis(c) && c.pagada_en >= mes), cortesias_hoy: cuenta(C, (c) => cortesia(c) && c.pagada_en >= hoyIso), cortesias_mes: cuenta(C, (c) => cortesia(c) && c.pagada_en >= mes) },
           entregas_con_error: entregasConError,
           solicitudes_sin_guia: solicitudes.count ?? 0, reportes_nuevos: reportes.count ?? 0, borradores_activos: borradores.count ?? 0,
           ia: { trabajos_mes: T.length, corriendo: cuenta(T, (t) => ["pendiente", "corriendo"].includes(t.estado)), errores: cuenta(T, (t) => t.estado === "error"), costo_usd_mes: T.reduce((n, t) => n + Number(t.costo_usd ?? 0), 0) },
@@ -1402,11 +1409,31 @@ Deno.serve(async (req: Request) => {
         const { data: gs } = gids.length ? await supabase.from("guias").select("id, completo:cartucho->completo").in("id", gids) : { data: [] as any[] };
         const completas = new Set((gs ?? []).filter((g: any) => g.completo === true).map((g: any) => g.id));
         // guia_lista = la guía está 100 % completa; entregada_en = cuándo se le mandó a la familia (link, correo y WhatsApp).
-        return json((data ?? []).map((c) => { const a = (acc ?? []).find((x) => x.id === c.acceso_id); return { ...c, folio: String(c.id).slice(0, 8).toUpperCase(), guia_lista: completas.has(c.guia_id), entregada_en: c.entregada_en ?? null, link: a ? linkDe(base, a.token) : null, acceso: a ? { estado: a.estado, expira_en: a.expira_en, usos: a.usos, dispositivos: a.dispositivos ?? 0, max_dispositivos: a.max_dispositivos ?? null, primer_uso_en: a.primer_uso_en ?? null, ultimo_uso_en: a.ultimo_uso_en ?? null } : null }; }));
+        // cobro = cómo cuenta la compra: "linea" (Mercado Pago la cobró) o "por_fuera" (confirmada a mano y cobrada en
+        // efectivo o transferencia) son ventas; "codigo" y "cortesia" no lo son; null = todavía no está pagada.
+        // a_mano = se confirmó a mano en el panel (solo a esas se les puede cambiar por_fuera ↔ cortesia).
+        const cobroDe = (c: any) => c.estado !== "pagada" ? null : ventaCobrada(c) ? (c.metodo_pago === "manual" ? "por_fuera" : "linea") : tipoSinCobro(c);
+        return json((data ?? []).map((c) => { const a = (acc ?? []).find((x) => x.id === c.acceso_id); return { ...c, cobro: cobroDe(c), a_mano: confirmadaAMano(c), folio: String(c.id).slice(0, 8).toUpperCase(), guia_lista: completas.has(c.guia_id), entregada_en: c.entregada_en ?? null, link: a ? linkDe(base, a.token) : null, acceso: a ? { estado: a.estado, expira_en: a.expira_en, usos: a.usos, dispositivos: a.dispositivos ?? 0, max_dispositivos: a.max_dispositivos ?? null, primer_uso_en: a.primer_uso_en ?? null, ultimo_uso_en: a.ultimo_uso_en ?? null } : null }; }));
       }
       if (rec === "compras" && esUuid(id) && accion === "pagar" && m === "POST") {
-        const r = await confirmarPago(id, { manual: true });
+        // El panel dice cómo se pagó: { cobro: "por_fuera" } = Daniel la cobró en efectivo o transferencia (cuenta como
+        // venta); { cobro: "cortesia" }, o nada, = sin cobro (no cuenta como venta).
+        const b = await leerJson(req);
+        const r = await confirmarPago(id, { manual: true, cobro: b.cobro === "por_fuera" ? "por_fuera" : "cortesia" });
         return json({ ok: true, compra: r.compra, link: r.link, token: r.token, expira_en: r.expira_en, lista: r.lista });
+      }
+      // Corregir después cómo quedó una compra confirmada a mano: cobrada por fuera ↔ cortesía. No toca las de
+      // Mercado Pago ni las de código: en esas el cobro (o su falta) ya está registrado.
+      if (rec === "compras" && esUuid(id) && accion === "cobro" && m === "POST") {
+        const b = await leerJson(req);
+        if (b.cobro !== "por_fuera" && b.cobro !== "cortesia") return error("Di cómo se pagó: por_fuera o cortesia");
+        const { data: c } = await supabase.from("compras").select("id, estado, metodo_pago, mp_estado, stripe_session_id").eq("id", id).maybeSingle();
+        if (!c) return error("Esa compra no existe", 404);
+        if (!confirmadaAMano(c)) return error("Solo se puede cambiar en compras confirmadas a mano, no en las de Mercado Pago ni en las de código");
+        const metodo = b.cobro === "por_fuera" ? "manual" : "cortesia";
+        const { error: e } = await supabase.from("compras").update({ metodo_pago: metodo }).eq("id", id);
+        if (e) throw e;
+        return json({ ok: true, metodo_pago: metodo });
       }
       if (rec === "compras" && esUuid(id) && accion === "revisar" && m === "POST") {
         // Botón del panel: pregunta a Mercado Pago por los pagos de esta compra y aplica lo que encuentre.

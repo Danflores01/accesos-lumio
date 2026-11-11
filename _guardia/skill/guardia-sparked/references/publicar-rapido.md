@@ -71,7 +71,8 @@ sigue con el archivo viejo. Pídele a Daniel que le diga a la familia que recarg
 
 ## Desplegar el servidor (por el puente)
 
-1. `node herramientas/probar-rutas.mjs` (y las pruebas del módulo tocado). Si falla, no se despliega.
+1. `node herramientas/probar-rutas.mjs` y `node herramientas/probar-ventas.mjs` (y las pruebas del módulo tocado).
+   La compuerta ya los corre al subir código del servidor. Si alguno falla, no se despliega.
 2. Sube el código (`git push`). GitHub debe servirlo:
    `curl -s -o /dev/null -w "%{http_code}" https://raw.githubusercontent.com/Danflores01/accesos-lumio/$(git rev-parse HEAD)/funciones/sparked/index.ts` → 200.
 3. Que no haya una guía generándose: `select count(*) from trabajos where estado not in ('listo','fallido')` → 0.

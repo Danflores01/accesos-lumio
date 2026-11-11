@@ -120,9 +120,13 @@ async function revisar(archivos) {
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch {}
   if (revisados === archivos.length) bien(`sintaxis de ${archivos.length} archivo(s)`);
   if (archivos.some((f) => f.startsWith("funciones/sparked/"))) {
-    const r = await correr(path.join(REPO, "herramientas", "probar-rutas.mjs"), [], true);
-    if (r.codigo === 0) bien("rutas del servidor: ningún módulo tapa una ruta ajena (probar-rutas)");
-    else falla("probar-rutas falló:\n" + r.sale.split(/\r?\n/).filter((l) => /FALLA|falla|Error/.test(l)).slice(0, 8).join("\n"));
+    // Los candados del servidor: cada uno nació de un fallo real y debe pasar antes de subir código del servidor.
+    for (const [prueba, queCuida] of [["probar-rutas.mjs", "ningún módulo tapa una ruta ajena"], ["probar-ventas.mjs", "solo cuenta como venta lo que de verdad se cobró"]]) {
+      if (!fs.existsSync(path.join(REPO, "herramientas", prueba))) continue;
+      const r = await correr(path.join(REPO, "herramientas", prueba), [], true);
+      if (r.codigo === 0) bien(`servidor: ${queCuida} (${prueba})`);
+      else falla(`${prueba} falló:\n` + r.sale.split(/\r?\n/).filter((l) => /FALLA|falla|Error/.test(l)).slice(0, 8).join("\n"));
+    }
     console.log("nota  va código del servidor: subirlo NO lo despliega. Falta apuntar el puente y desplegar (references/publicar-rapido.md).");
   }
   const tocaSitio = archivos.some((f) => f.startsWith("sparked/"));
