@@ -324,7 +324,10 @@ async function arrancar() {
   try {
     if (esToken) {
       // Acceso real: pide la guía al servidor con la clave y la marca del dispositivo.
-      const r = await fetch(`${CONFIG.api}/acceso/${token}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ dispositivo: leerSecreto() || undefined }) });
+      // La dirección termina en /abrir (11 nov 2026): del 10 al 11 de noviembre el servidor respondía «Ruta no
+      // encontrada» a POST /acceso/<clave>, porque la entrada con correo del panel se quedaba con esa dirección, y
+      // ninguna familia podía abrir su guía. Con /abrir la petición llega siempre a la ruta de las guías.
+      const r = await fetch(`${CONFIG.api}/acceso/${token}/abrir`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ dispositivo: leerSecreto() || undefined }) });
       const d = await r.json().catch(() => ({ estado: "error" }));
       if (d.dispositivo) guardarSecreto(d.dispositivo);
       if (d.estado === "generando") {
