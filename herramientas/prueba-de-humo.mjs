@@ -17,7 +17,7 @@ const revisar = (cond, texto) => { console.log((cond ? "ok   " : "FALLA") + " " 
 const corto = (s) => String(s ?? "").replace(/\s+/g, " ").slice(0, 110);
 async function pedir(url, init = {}) {
   try {
-    const r = await fetch(url, { ...init, headers: { "content-type": "application/json", ...(init.headers ?? {}) }, signal: AbortSignal.timeout(20000) });
+    const r = await fetch(url, { ...init, headers: { "content-type": "application/json", "user-agent": "guardia-sparked/prueba-de-humo", ...(init.headers ?? {}) }, signal: AbortSignal.timeout(20000) });
     const texto = await r.text(); let json = null; try { json = JSON.parse(texto); } catch {}
     return { st: r.status, texto, json };
   } catch (e) { return { st: 0, texto: "sin respuesta: " + e.message, json: null }; }
@@ -50,8 +50,11 @@ if (cola !== undefined) {
   revisar(r.st === 404 && r.json?.estado === "inexistente", `abrir una guía · GET /acceso/<clave>/estado (HTTP ${r.st} ${corto(r.texto)})`);
   const p = await pedir(`${API}/progreso/${CLAVE}`, { method: "POST", body: JSON.stringify({ dispositivo: "x", datos: {} }) });
   revisar(!tapada(p), `abrir una guía · POST /progreso/<clave> está atendida (HTTP ${p.st} ${corto(p.texto)})`);
+  // Defensa extra, no es FALLA: el reproductor publicado ya no usa la dirección sin /abrir. Si sale AVISO, el servidor
+  // desplegado todavía no trae el arreglo de fondo del 10 nov 2026 (código 2026-11-10.6 o más nuevo).
   const viejo = await pedir(`${API}/acceso/${CLAVE}`, { method: "POST", body: JSON.stringify({}) });
-  revisar(viejo.st === 404 && viejo.json?.estado === "inexistente", `abrir una guía · la dirección anterior, POST /acceso/<clave>, también llega a su ruta (HTTP ${viejo.st} ${corto(viejo.texto)})`);
+  const bien = viejo.st === 404 && viejo.json?.estado === "inexistente";
+  console.log(`${bien ? "ok   " : "AVISO"} servidor · la dirección anterior, POST /acceso/<clave>, ${bien ? "también llega a su ruta" : "sigue tapada: falta desplegar el arreglo de fondo (el reproductor publicado ya no la usa)"} (HTTP ${viejo.st} ${corto(viejo.texto)})`);
 }
 
 // ---------- 3. El camino de una compra ----------

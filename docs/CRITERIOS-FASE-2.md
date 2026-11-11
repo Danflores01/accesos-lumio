@@ -864,3 +864,29 @@ se pudo abrir la guía». Pidió encontrar la causa y que no vuelva a pasar («e
 5. **Una guía real, sin gastar accesos.** Para comprobar que una guía guardada se ve bien no se usa el link de la
    familia (gastaría uno de sus 2 dispositivos): se baja con `GET /admin/guias/<id>/cartucho` y se abre con
    `guia.html?local=…`.
+
+## 35. La guardia de SparkEd: skill, agente y vigilante automático (Daniel, 10 de noviembre de 2026)
+
+Daniel, después del fallo de la sección 34: «necesito a alguien que esté al tiro para que a esto no le vuelva a pasar
+ni a un solo cliente más». Todo vive en la carpeta `_guardia/` (GitHub no la publica en el sitio) y se explica en
+`_guardia/LEEME.md`. Reglas:
+
+1. **Todo lanzamiento pasa por la compuerta.** `node _guardia/skill/guardia-sparked/scripts/lanzar.mjs -m "…" <archivos>`
+   revisa (copia al día, nada privado ni de la fase 1, sintaxis, `probar-rutas`, y la prueba de humo de la copia
+   contra el servidor real), sube una sola vez, espera a GitHub Pages y corre la ronda. Si la ronda encuentra una
+   falla nueva del camino del cliente, primero se regresa (`--regresar <commit>`) y después se investiga.
+2. **La ronda** (`scripts/ronda.mjs`) es lo primero ante cualquier duda o reporte: prueba de humo, versión y motores,
+   compras recientes, la llave de cada compra entregada (con `GET /acceso/<clave>/estado`, que no gasta el acceso),
+   guías a medias, avisos automáticos, publicación y vigilante. `FALLA` = un cliente lo sufre; se atiende primero.
+3. **Vigilante automático** (GitHub Actions): GitHub corre la prueba de humo cada 15 minutos y después de cada
+   publicación. Si falla dos veces seguidas abre un aviso en Issues («🚨 SparkEd: falló el vigilante automático») y
+   GitHub manda un correo a Daniel; al volver a pasar lo cierra solo. No usa llaves ni escribe nada. Sus peticiones
+   se identifican como `guardia-sparked/…` para no confundirlas con las de una familia. **Al 10 de noviembre está
+   escrito y apagado** (`_guardia/vigilante/guardia.yml`): es una automatización permanente en la cuenta de GitHub
+   de Daniel y solo se enciende con su sí (pasos en `_guardia/LEEME.md`).
+4. **Cada fallo deja bitácora y candado.** `_guardia/skill/guardia-sparked/references/incidentes.md` guarda qué pasó,
+   por qué, cómo se resolvió, qué estuvo lento y la prueba nueva que lo impide (debe fallar con el código viejo).
+5. **Lo que la guardia nunca hace:** abrir el link de una familia, imprimir claves o datos de clientes, escribirle a
+   una familia o cambiar su acceso sin el sí de Daniel, tocar la fase 1, rodear un permiso rechazado.
+6. La skill y el agente se instalan en la computadora con `node _guardia/instalar.mjs`. La versión que manda es la
+   del repositorio; la ronda avisa si la copia instalada quedó atrasada.

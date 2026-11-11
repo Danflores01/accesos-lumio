@@ -1,0 +1,106 @@
+name: Guardia SparkEd
+
+# Vigilante automático. Cada 15 minutos, y después de cada publicación del sitio, prueba en producción el camino de
+# una familia: que el sitio abra, que el reproductor publicado pida la dirección que el servidor atiende («ABRIR UNA
+# GUÍA»), y que comprar, pagar y el panel respondan. No usa llaves, no gasta accesos y no escribe nada.
+#
+# Si falla dos veces seguidas (con 90 segundos entre una y otra), abre un aviso en la pestaña Issues del repositorio y
+# GitHub le manda un correo a Daniel. Cuando vuelve a pasar, cierra el aviso solo.
+#
+# Nació del fallo del 10 nov 2026: durante 9 horas ninguna familia pudo abrir su guía y nadie se enteró hasta que una
+# clienta avisó. Lo que hay que hacer cuando falla está en _guardia/ (skill «guardia-sparked»).
+#
+# Este archivo solo trabaja cuando está en .github/workflows/guardia.yml. Aquí, en _guardia/vigilante/, está guardado
+# y apagado. Encenderlo crea una automatización permanente en la cuenta de GitHub de Daniel: necesita su sí expreso
+# (pasos en _guardia/LEEME.md). Apagarlo: pestaña Actions → Guardia SparkEd → «Disable workflow». La ronda de la
+# guardia avisa si está apagado.
+
+on:
+  schedule:
+    - cron: "3,18,33,48 * * * *"
+  workflow_run:
+    workflows: ["pages-build-deployment", "pages build and deployment"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      simulacro:
+        description: "Simulacro: finge una falla para probar que el aviso llega (se cierra solo en la siguiente revisión)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: guardia-sparked
+  cancel-in-progress: false
+
+jobs:
+  humo:
+    name: Prueba de humo en producción
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Probar el camino de una familia (con un reintento)
+        id: humo
+        env:
+          SIMULACRO: ${{ inputs.simulacro }}
+        run: |
+          set -o pipefail
+          if [ "$SIMULACRO" = "true" ]; then
+            echo "FALLA SIMULACRO · esto es una prueba del aviso: no hay ningún fallo real" | tee humo.txt
+            exit 1
+          fi
+          if node herramientas/prueba-de-humo.mjs | tee humo.txt; then exit 0; fi
+          echo "::warning::Falló la primera vez. Se repite en 90 segundos por si fue algo pasajero."
+          sleep 90
+          node herramientas/prueba-de-humo.mjs | tee humo.txt
+
+      - name: Avisar si falló
+        if: failure() && steps.humo.conclusion == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CORRIDA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SIMULACRO: ${{ inputs.simulacro }}
+        run: |
+          titulo="🚨 SparkEd: falló el vigilante automático"
+          if [ "$SIMULACRO" = "true" ]; then titulo="🧪 SIMULACRO (no es real) · SparkEd: falló el vigilante automático"; fi
+          {
+            if [ "$SIMULACRO" = "true" ]; then
+              echo "**Esto es un simulacro para probar que el aviso llega. No hay ningún fallo real y no tienes que hacer nada.** Se cierra solo en la siguiente revisión."
+              echo
+              echo "Así se vería un aviso de verdad:"
+              echo
+            fi
+            echo "La prueba de humo de SparkEd falló dos veces seguidas. **Puede haber familias que no pueden abrir o comprar su guía.**"
+            echo
+            echo "Qué falló:"
+            echo '```'
+            grep -E '^(FALLA|AVISO)' humo.txt || tail -n 15 humo.txt
+            echo '```'
+            echo "Corrida: $CORRIDA"
+            echo
+            echo "Qué hacer: abre Claude y escribe «guardia: falló el vigilante automático». Los pasos están en \`_guardia/\`."
+          } > aviso.md
+          abierto=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --limit 50 --json number,title --jq '[.[] | select(.title | contains("falló el vigilante"))][0].number // empty')
+          if [ -n "$abierto" ]; then
+            gh issue comment "$abierto" -R "$GITHUB_REPOSITORY" --body-file aviso.md
+          else
+            gh issue create -R "$GITHUB_REPOSITORY" --title "$titulo" --body-file aviso.md
+          fi
+
+      - name: Cerrar el aviso cuando vuelve a pasar
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          abierto=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --limit 50 --json number,title --jq '[.[] | select(.title | contains("falló el vigilante"))][0].number // empty')
+          if [ -n "$abierto" ]; then
+            gh issue close "$abierto" -R "$GITHUB_REPOSITORY" --comment "La prueba de humo volvió a pasar: el camino de las familias responde bien."
+          fi
