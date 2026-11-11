@@ -10,10 +10,9 @@ name: Guardia SparkEd
 # Nació del fallo del 10 nov 2026: durante 9 horas ninguna familia pudo abrir su guía y nadie se enteró hasta que una
 # clienta avisó. Lo que hay que hacer cuando falla está en _guardia/ (skill «guardia-sparked»).
 #
-# Este archivo solo trabaja cuando está en .github/workflows/guardia.yml. Aquí, en _guardia/vigilante/, está guardado
-# y apagado. Encenderlo crea una automatización permanente en la cuenta de GitHub de Daniel: necesita su sí expreso
-# (pasos en _guardia/LEEME.md). Apagarlo: pestaña Actions → Guardia SparkEd → «Disable workflow». La ronda de la
-# guardia avisa si está apagado.
+# Encendido el 10 nov 2026 con el sí expreso de Daniel. Es una automatización permanente en su cuenta de GitHub:
+# cambiarla o volver a encenderla necesita su sí. Apagarlo: pestaña Actions → Guardia SparkEd → «Disable workflow».
+# La ronda de la guardia avisa si está apagado.
 
 on:
   schedule:

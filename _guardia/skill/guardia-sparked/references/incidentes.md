@@ -95,7 +95,7 @@ Por qué no se detectó en nueve horas:
 - `acceso.ts` solo atiende sus tres rutas; `index.ts` acepta de forma explícita `/acceso/<clave>` y `/acceso/<clave>/abrir`.
 - Vigilante automático (GitHub Actions): la prueba de humo corre sola cada 15 minutos y tras cada publicación; si
   falla dos veces, aviso en Issues y correo a Daniel. Con él, este fallo se habría sabido a las 11:00 y no a las
-  19:24. **Quedó escrito y apagado** en `_guardia/vigilante/guardia.yml`: encenderlo necesita el sí de Daniel.
+  19:24. Encendido el 10 nov por la noche, con el sí de Daniel (`.github/workflows/guardia.yml`).
 - Compuerta de lanzamiento (`scripts/lanzar.mjs`): no sube nada si la copia, servida en local, no pasa la prueba de
   humo contra el servidor real; después de subir corre la ronda.
 - La ronda (`scripts/ronda.mjs`) pregunta al servidor por la llave de cada compra entregada, sin gastarla.
@@ -111,12 +111,11 @@ publicación mirando una lista de GitHub que anotó el commit anterior y se qued
 corrida de ese commit y compara lo publicado con la copia.
 
 ### Pendiente al cerrar
-- Desplegar el código 2026-11-10.7 (necesita el visto bueno de Daniel; el permiso fue rechazado). Mientras no se
-  despliegue, la dirección anterior sigue tapada: quien tenga la página abierta desde antes de las 19:30 del 10 nov
-  tiene que recargarla.
-- Encender el vigilante automático (necesita el visto bueno de Daniel; el permiso para subirlo fue rechazado). Pasos
-  en `_guardia/LEEME.md`.
-- Daniel no tenía puesto su «correo de avisos» en Ajustes.
+- ✔ Hecho el 10 nov a las 21:42, con el sí de Daniel: desplegado el código 2026-11-10.8 (función v48, puente a
+  `fa70c47`). La dirección anterior, `POST /acceso/<clave>`, vuelve a llegar a su ruta y la ronda quedó sin fallas.
+  (El despliegue y la subida del vigilante habían sido rechazados por el sistema de permisos hasta tener su sí.)
+- ✔ Hecho el 10 nov por la noche, con el sí de Daniel: vigilante automático encendido y probado con un simulacro.
+- Sigue pendiente: Daniel no tiene puesto su «correo de avisos» en Ajustes.
 
 ---
 

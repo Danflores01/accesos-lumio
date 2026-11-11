@@ -881,9 +881,9 @@ ni a un solo cliente más». Todo vive en la carpeta `_guardia/` (GitHub no la p
 3. **Vigilante automático** (GitHub Actions): GitHub corre la prueba de humo cada 15 minutos y después de cada
    publicación. Si falla dos veces seguidas abre un aviso en Issues («🚨 SparkEd: falló el vigilante automático») y
    GitHub manda un correo a Daniel; al volver a pasar lo cierra solo. No usa llaves ni escribe nada. Sus peticiones
-   se identifican como `guardia-sparked/…` para no confundirlas con las de una familia. **Al 10 de noviembre está
-   escrito y apagado** (`_guardia/vigilante/guardia.yml`): es una automatización permanente en la cuenta de GitHub
-   de Daniel y solo se enciende con su sí (pasos en `_guardia/LEEME.md`).
+   se identifican como `guardia-sparked/…` para no confundirlas con las de una familia. **Encendido el 10 de
+   noviembre de 2026 por la noche, con el sí de Daniel** (`.github/workflows/guardia.yml`). Es una automatización
+   permanente en su cuenta de GitHub: cambiarla o volver a encenderla necesita su sí (`_guardia/LEEME.md`).
 4. **Cada fallo deja bitácora y candado.** `_guardia/skill/guardia-sparked/references/incidentes.md` guarda qué pasó,
    por qué, cómo se resolvió, qué estuvo lento y la prueba nueva que lo impide (debe fallar con el código viejo).
 5. **Lo que la guardia nunca hace:** abrir el link de una familia, imprimir claves o datos de clientes, escribirle a

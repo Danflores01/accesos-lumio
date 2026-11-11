@@ -207,7 +207,7 @@ else {
 // El vigilante automático (.github/workflows/guardia.yml) corre la prueba de humo cada 15 minutos y después de cada
 // publicación, aunque nadie tenga abierta una sesión. Aquí se revisa que siga encendido y cómo le fue la última vez.
 const vig = spawnSync("gh", ["api", "repos/Danflores01/accesos-lumio/actions/workflows/guardia.yml", "--jq", ".state"], { encoding: "utf8", shell: false });
-if (vig.status !== 0) aviso("el vigilante automático todavía no está encendido en GitHub (o no pude preguntar): nadie revisa el sitio entre sesiones. Está listo en _guardia/vigilante/ y encenderlo necesita el sí de Daniel (pasos en _guardia/LEEME.md)");
+if (vig.status !== 0) aviso("el vigilante automático no aparece en GitHub (o no pude preguntar): nadie revisa el sitio entre sesiones. Debería estar en .github/workflows/guardia.yml; volver a subirlo necesita el sí de Daniel (_guardia/LEEME.md)");
 else if (vig.stdout.trim() !== "active") falla(`el vigilante automático está apagado («${vig.stdout.trim()}»): nadie revisa el sitio entre sesiones. Encenderlo: gh workflow enable guardia.yml -R Danflores01/accesos-lumio`);
 else {
   const u = spawnSync("gh", ["api", "repos/Danflores01/accesos-lumio/actions/workflows/guardia.yml/runs?per_page=1&status=completed", "--jq", ".workflow_runs[0] | \"\\(.conclusion) \\(.created_at) \\(.event)\""], { encoding: "utf8", shell: false });

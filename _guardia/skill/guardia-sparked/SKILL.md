@@ -133,9 +133,9 @@ en claro. Cada `AVISO`, en una línea, con lo que significa y si a él le toca h
 - El **vigilante automático** (`.github/workflows/guardia.yml`): cada 15 minutos y después de cada publicación corre
   la prueba de humo en GitHub. Si falla dos veces seguidas abre el aviso «🚨 SparkEd: falló el vigilante automático»
   en la pestaña Issues del repositorio y GitHub le manda un correo a Daniel. Ese aviso es una `FALLA`: caso B.
-  Trabaja solo en la cuenta de GitHub de Daniel, así que **encenderlo o cambiarlo necesita su sí expreso**. Si la
-  ronda dice que todavía no está encendido, recuérdaselo: el archivo espera en `_guardia/vigilante/` y los pasos
-  están en `_guardia/LEEME.md`.
+  Trabaja solo en la cuenta de GitHub de Daniel (lo encendió con su sí el 10 nov 2026), así que **cambiarlo o volver
+  a encenderlo necesita su sí expreso**. Si la ronda dice que está apagado o que no aparece, avísale: es la pieza
+  que vigila cuando no hay nadie (`_guardia/LEEME.md`).
 - El **aviso automático del reproductor**: si una guía pagada no abre por un fallo nuestro, queda un reporte que
   empieza con `AVISO AUTOMÁTICO` (panel → Reportes) y, con el «correo de avisos» puesto en Ajustes, un correo a Daniel.
 - La página de espera (`listo.html`) repara sola las entregas interrumpidas, y el Resumen del panel muestra en rosa
