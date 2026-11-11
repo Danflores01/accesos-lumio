@@ -23,7 +23,7 @@ import { imagenEntrega, imagenCompartir } from "./imagen-wa.ts";
 import { matrizQr } from "./qr.ts";
 import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 
-const VERSION = "2026-11-11.1";
+const VERSION = "2026-11-11.2";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -97,6 +97,11 @@ const CONFIG_DEF: Record<string, string> = {
   sparked_modelo_escribir: "haiku", sparked_esfuerzo_escribir: "low",
   sparked_modelo_reparar: "haiku", sparked_esfuerzo_reparar: "low",
   sparked_modelo_verificar: "haiku", sparked_esfuerzo_verificar: "medium",
+  sparked_modelo_investigar: "haiku", sparked_esfuerzo_investigar: "medium",
+  // Temas del temario sin contenido (Daniel, 11 nov 2026): "si" = se investigan en fuentes confiables y la guía los marca
+  // «Completado con fuentes» (lo que no se confirma queda como nota para repasar en el libro); "no" = como antes. Se
+  // enciende cuando pase la prueba real con un temario.
+  sparked_investigar: "no",
 };
 let configCache: { en: number; valores: Record<string, string> } | null = null;
 async function config(): Promise<Record<string, string>> {
@@ -144,7 +149,7 @@ async function fuenteDe(t: Trabajo) {
   // Modelo y esfuerzo por paso: los de la tabla config y, encima, los del trabajo (pruebas).
   const cfg = await config();
   const opciones: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(cfg)) if (/^sparked_(modelo|esfuerzo)_/.test(k)) opciones[k.slice(8)] = v;
+  for (const [k, v] of Object.entries(cfg)) if (/^sparked_((modelo|esfuerzo)_|investigar$)/.test(k)) opciones[k.slice(8)] = v;
   Object.assign(opciones, (t.datos as any)?.opciones ?? {});
   return { archivos: (b.archivos ?? []) as { ruta: string; nombre: string }[], grado: b.grado ?? "", materia: b.materia ?? "", colegio: b.colegio_texto ?? "", idioma_alumno: "es", opciones };
 }
@@ -213,7 +218,7 @@ async function alFinalizar(t: Trabajo) {
     const { data: g, error: e } = await supabase.from("guias").insert({
       ...base, estado: "borrador", origen: "personalizada", colegio_id: borrador?.colegio_id ?? null, grado: borrador?.grado ?? null, materia: borrador?.materia ?? null,
       borrador_id: t.borrador_id, costo_mxn: costoMxn.toFixed(2),
-      reporte: { etapa: "vista_previa", costo_usd: Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, bloques_plan: plan.bloques_plan?.length ?? 0, paginas_no_leidas: D.no_leidas ?? [], metricas: D.metricas ?? [] },
+      reporte: { etapa: "vista_previa", costo_usd: Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, bloques_plan: plan.bloques_plan?.length ?? 0, paginas_no_leidas: D.no_leidas ?? [], metricas: D.metricas ?? [], investigacion: D.investigacion ?? [] },
     }).select("id").single();
     if (e) throw e;
     await supabase.from("borradores").update({ estado: "vista_previa", guia_id: g.id }).eq("id", t.borrador_id);
@@ -230,7 +235,7 @@ async function alFinalizar(t: Trabajo) {
   const costoPrevio = Number(g?.reporte?.costo_usd ?? 0);
   const cambios: Record<string, unknown> = {
     ...base, costo_mxn: (Number(g?.costo_mxn ?? 0) + costoMxn).toFixed(2),
-    reporte: { etapa: "completa", costo_usd: costoPrevio + Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, verificacion: D.verificacion ?? [], huecos: D.huecos ?? [], fotos: D.fotos ?? [], tipo_material: D.tipo_material ?? [], imagenes: Object.keys(D.imagenes ?? {}).length, terminado_en: ahora(), metricas: D.metricas ?? [] },
+    reporte: { etapa: "completa", costo_usd: costoPrevio + Number(t.costo_usd ?? 0), tokens: { entrada: t.tokens_entrada, salida: t.tokens_salida }, verificacion: D.verificacion ?? [], huecos: D.huecos ?? [], fotos: D.fotos ?? [], tipo_material: D.tipo_material ?? [], imagenes: Object.keys(D.imagenes ?? {}).length, terminado_en: ahora(), metricas: D.metricas ?? [], investigacion: D.investigacion ?? [], reportes_contradice: D.reportes_contradice ?? 0 },
   };
   if (g?.origen === "personalizada" && !problemas.length) cambios.estado = "publicada";
   if (problemas.length) (cambios.reporte as any).verificacion_final = problemas;
@@ -1335,8 +1340,12 @@ Deno.serve(async (req: Request) => {
         if (!archivos.length) return error("No hay páginas subidas todavía");
         const { data: enCurso } = await supabase.from("trabajos").select("id").eq("guia_id", id).in("estado", ["pendiente", "corriendo"]).limit(1);
         if (enCurso?.length) return error("Ya hay una generación en curso para esta guía");
-        const idiomaG = idiomaValido((await leerJson(req)).idioma);
-        const { data: t, error: e } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: bo.id, guia_id: id, alcance: "completa", paso: "inicio", estado: "pendiente", datos: idiomaG ? { opciones: { idioma_guia: idiomaG } } : {}, progreso: { pct: 1, mensaje: "Preparando las páginas 📖", paso: "inicio" } }).select("id").single();
+        const cuerpoG = await leerJson(req);
+        const idiomaG = idiomaValido(cuerpoG.idioma);
+        // Prueba del administrador (11 nov 2026): {"investigar": "si"} investiga los temas del temario sin contenido aunque
+        // el ajuste sparked_investigar esté apagado para las familias.
+        const opcionesG: Record<string, unknown> = { ...(idiomaG ? { idioma_guia: idiomaG } : {}), ...(["si", "sí", true].includes(cuerpoG.investigar) ? { investigar: "si" } : {}) };
+        const { data: t, error: e } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: bo.id, guia_id: id, alcance: "completa", paso: "inicio", estado: "pendiente", datos: Object.keys(opcionesG).length ? { opciones: opcionesG } : {}, progreso: { pct: 1, mensaje: "Preparando las páginas 📖", paso: "inicio" } }).select("id").single();
         if (e) throw e;
         await supabase.from("borradores").update({ estado: "generando", trabajo_id: t.id, archivos, paginas: archivos.length }).eq("id", bo.id);
         disparar(t.id);
@@ -1531,7 +1540,7 @@ Deno.serve(async (req: Request) => {
         const { data: bo } = await supabase.from("borradores").select("*").eq("id", t0.borrador_id).maybeSingle();
         if (!bo) return error("No existe el borrador de ese trabajo", 404);
         const etiqueta = texto(b.etiqueta, 40) || "prueba";
-        const opciones: Record<string, unknown> = Object.fromEntries(Object.entries(b.opciones ?? {}).filter(([k, v]) => /^(modelo|esfuerzo)_(extraer|plan|escribir|reparar|verificar)$/.test(k) && typeof v === "string").map(([k, v]) => [k, texto(v, 10)]));
+        const opciones: Record<string, unknown> = Object.fromEntries(Object.entries(b.opciones ?? {}).filter(([k, v]) => /^(modelo|esfuerzo)_(extraer|plan|escribir|reparar|verificar|investigar)$|^investigar$/.test(k) && typeof v === "string").map(([k, v]) => [k, texto(v, 10)]));
         const idiomaP = idiomaValido(b.opciones?.idioma_guia ?? b.idioma);
         if (idiomaP) opciones.idioma_guia = idiomaP;
         const bid = crypto.randomUUID(); const clave = nuevoToken(24);
@@ -1539,7 +1548,9 @@ Deno.serve(async (req: Request) => {
         if (eb) throw eb;
         const { data: g, error: eg } = await supabase.from("guias").insert({ estado: "borrador", origen: "personalizada", titulo: `Prueba ${etiqueta}`, colegio_id: bo.colegio_id, grado: bo.grado, materia: bo.materia, examen: `Prueba de modelos ${etiqueta}`, borrador_id: bid }).select("id").single();
         if (eg) throw eg;
-        const datos = { inventario: D0.inventario, fotos: D0.fotos, citas: D0.citas, tipo_material: D0.tipo_material, opciones, prueba: { etiqueta, origen: t0.id } };
+        // Lo investigado en otra corrida no se copia: cada prueba investiga de nuevo con su propio plan.
+        const inventarioP = Object.fromEntries(Object.entries(D0.inventario ?? {}).filter(([k]) => k !== "investigado"));
+        const datos = { inventario: inventarioP, fotos: D0.fotos, citas: D0.citas, tipo_material: D0.tipo_material, opciones, prueba: { etiqueta, origen: t0.id } };
         const { data: nt, error: et } = await supabase.from("trabajos").insert({ tipo: "generar", borrador_id: bid, guia_id: g.id, alcance: "completa", paso: "planear", estado: "pendiente", datos, progreso: { pct: 32, mensaje: "Planeando tu guía 🧭", paso: "planear" } }).select("id").single();
         if (et) throw et;
         await supabase.from("borradores").update({ trabajo_id: nt.id, guia_id: g.id }).eq("id", bid);

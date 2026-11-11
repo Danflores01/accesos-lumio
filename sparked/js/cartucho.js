@@ -27,7 +27,7 @@ export const TEXTOS = {
     mover: "Avanza y regresa", abajo: "Flecha abajo = siguiente slide", arriba: "Flecha arriba = slide anterior", barrita: "Usa la barrita", cuadritos: "Cuadritos = ver todas las slides",
     lupa: "Arrastra con el dedo o el mouse", juega: "¡Juega!", start: "Presiona START y arrastra o toca", reintenta: "Jugar de nuevo para mejorar tu marca", importante: "Importante:", termina: "termina cada juego antes de pasar a la siguiente slide.",
     a_jugar: "¡A jugar!", siguiente: "Siguiente slide ↓", de_nuevo: "Jugar de nuevo", cuidado: "⚠️ Ojo con esto", claves: "🔑 Palabras clave", calentamiento: "Calentamiento", mini: "Mini-examen", reto: "Reto final", resultados: "Mis resultados",
-    ejemplo: "Ej.:", corregido: "✓ Dato corregido:", de_tus_notas: "De tus notas", pregunta: "Pregunta", de: "de", correctas: "aciertos", puntos: "puntos", calificacion: "Tu calificación", repasa: "⚠️ Repasa esto", perfecto: "¡Perfecto, sin errores!", nada_repasar: "Nada que repasar todavía. ¡Juega primero!",
+    ejemplo: "Ej.:", corregido: "✓ Dato corregido:", de_tus_notas: "De tus notas", con_fuentes: "Completado con fuentes:", pregunta: "Pregunta", de: "de", correctas: "aciertos", puntos: "puntos", calificacion: "Tu calificación", repasa: "⚠️ Repasa esto", perfecto: "¡Perfecto, sin errores!", nada_repasar: "Nada que repasar todavía. ¡Juega primero!",
     primer_intento: "al primer intento", salir_pantalla: "Salir de pantalla completa", verdadero: "Verdadero", falso: "Falso", revisar: "Revisar mi orden", banco: "Banco de palabras · arrastra cada una a su hueco", elige_coche: "Elige tu coche", listo: "¡Listo!", vidas: "Vidas", nivel: "Nivel", tiempo: "¡Se acabó el tiempo!", respuesta: "La respuesta era",
     ganaste: "¡Ganaste la carrera!", segundo: "¡Segundo lugar!", tercero: "Tercer lugar", sigue: "Sigue practicando", cima: "¡Llegaste a la cima!", buen_intento: "Buen intento", castillo_ok: "¡Defendiste el castillo!", castillo_mal: "Cayó el castillo…", game_over: "GAME OVER", suerte: "Better luck next time!", press_start: "PRESS START",
     gira: "Gira la ruleta con el dedo", o_toca: "O toca aquí para girar", vale: "Esta pregunta vale", ronda: "Ronda", cargando: "Generando tu guía…", sabias: "¿Sabías que…?", otro_dato: "¡Otro dato!", desbloquea: "Desbloquea tu guía entera", vista_previa: "Vista previa", slide: "slide",
@@ -74,7 +74,7 @@ export const TEXTOS = {
     mover: "Move forward and back", abajo: "Down arrow = next slide", arriba: "Up arrow = previous slide", barrita: "Use the toolbar", cuadritos: "Squares = see all slides",
     lupa: "Drag with your finger or mouse", juega: "Play!", start: "Press START, then drag or tap", reintenta: "Play again to beat your score", importante: "Important:", termina: "finish each game before you move to the next slide.",
     a_jugar: "Your turn!", siguiente: "Next slide ↓", de_nuevo: "Play again", cuidado: "⚠️ Watch out", claves: "🔑 Key words", calentamiento: "Warm-up", mini: "Mini-exam", reto: "Final challenge", resultados: "My results",
-    ejemplo: "E.g.:", corregido: "✓ Corrected fact:", de_tus_notas: "From your notes", pregunta: "Question", de: "of", correctas: "correct", puntos: "points", calificacion: "Your grade", repasa: "⚠️ Review these", perfecto: "Perfect, no mistakes!", nada_repasar: "Nothing to review yet. Play first!",
+    ejemplo: "E.g.:", corregido: "✓ Corrected fact:", de_tus_notas: "From your notes", con_fuentes: "Completed with sources:", pregunta: "Question", de: "of", correctas: "correct", puntos: "points", calificacion: "Your grade", repasa: "⚠️ Review these", perfecto: "Perfect, no mistakes!", nada_repasar: "Nothing to review yet. Play first!",
     primer_intento: "on the first try", salir_pantalla: "Exit full screen", verdadero: "True", falso: "False", revisar: "Check my order", banco: "Word bank · drag each word into its gap", elige_coche: "Choose your car", listo: "Ready!", vidas: "Lives", nivel: "Level", tiempo: "Time's up!", respuesta: "The answer was",
     ganaste: "You won the race!", segundo: "Second place!", tercero: "Third place", sigue: "Keep practicing", cima: "You reached the top!", buen_intento: "Good try", castillo_ok: "You defended the castle!", castillo_mal: "The castle fell…", game_over: "GAME OVER", suerte: "Better luck next time!", press_start: "PRESS START",
     gira: "Spin the wheel with your finger", o_toca: "Or tap here to spin", vale: "This question is worth", ronda: "Round", cargando: "Building your guide…", sabias: "Did you know…?", otro_dato: "Another one!", desbloquea: "Unlock your full guide", vista_previa: "Preview", slide: "slide",
@@ -118,7 +118,7 @@ export const TEXTOS = {
     mover: "Avance et recule", abajo: "Flèche en bas = slide suivante", arriba: "Flèche en haut = slide précédente", barrita: "Utilise la barre", cuadritos: "Carrés = voir toutes les slides",
     lupa: "Glisse avec le doigt ou la souris", juega: "Joue !", start: "Appuie sur START, puis glisse ou touche", reintenta: "Rejoue pour battre ton score", importante: "Important :", termina: "termine chaque jeu avant de passer à la slide suivante.",
     a_jugar: "À toi de jouer !", siguiente: "Slide suivante ↓", de_nuevo: "Rejouer", cuidado: "⚠️ Attention", claves: "🔑 Mots-clés", calentamiento: "Échauffement", mini: "Mini-examen", reto: "Défi final", resultados: "Mes résultats",
-    ejemplo: "Ex. :", corregido: "✓ Donnée corrigée :", de_tus_notas: "De tes notes", pregunta: "Question", de: "sur", correctas: "bonnes réponses", puntos: "points", calificacion: "Ta note", repasa: "⚠️ À revoir", perfecto: "Parfait, aucune erreur !", nada_repasar: "Rien à revoir pour l'instant. Joue d'abord !",
+    ejemplo: "Ex. :", corregido: "✓ Donnée corrigée :", de_tus_notas: "De tes notes", con_fuentes: "Complété avec des sources :", pregunta: "Question", de: "sur", correctas: "bonnes réponses", puntos: "points", calificacion: "Ta note", repasa: "⚠️ À revoir", perfecto: "Parfait, aucune erreur !", nada_repasar: "Rien à revoir pour l'instant. Joue d'abord !",
     primer_intento: "du premier coup", salir_pantalla: "Quitter le plein écran", verdadero: "Vrai", falso: "Faux", revisar: "Vérifier mon ordre", banco: "Banque de mots · glisse chaque mot dans son trou", elige_coche: "Choisis ta voiture", listo: "Prêt !", vidas: "Vies", nivel: "Niveau", tiempo: "Temps écoulé !", respuesta: "La réponse était",
     ganaste: "Tu as gagné la course !", segundo: "Deuxième place !", tercero: "Troisième place", sigue: "Continue à t'entraîner", cima: "Tu es au sommet !", buen_intento: "Bel essai", castillo_ok: "Tu as défendu le château !", castillo_mal: "Le château est tombé…", game_over: "GAME OVER", suerte: "Better luck next time!", press_start: "PRESS START",
     gira: "Fais tourner la roue avec le doigt", o_toca: "Ou touche ici pour tourner", vale: "Cette question vaut", ronda: "Manche", cargando: "Création de ton guide…", sabias: "Le savais-tu ?", otro_dato: "Un autre !", desbloquea: "Débloque ton guide complet", vista_previa: "Aperçu", slide: "slide",
@@ -425,13 +425,15 @@ export function pesoPista(p) {
   if (p.dato_rapido) n += 90;
   if ((p.imagenes ?? []).some((x) => x?.url)) n += 240;
   if (p.esquema?.tipo) n += 140 + (p.esquema.elementos ?? []).reduce((a, e) => a + largo(e.nombre) + largo(e.detalle) + 35, 0);
+  if (p.completado_con_fuentes) n += 90 + (p.completado_con_fuentes.fuentes ?? []).slice(0, 2).reduce((a, f) => a + largo(f?.nombre), 0);
   return n;
 }
 // Separa un texto en frases completas (nunca a media frase).
 const frases = (x) => String(x ?? "").split(/(?<=[.!?;])\s+(?=\S)/).map((f) => f.trim()).filter(Boolean);
 // Lo que va al final de la pista (síntesis y cajas) y lo que va al principio (imágenes y dato rápido).
 const COLA = ["ejemplo", "correcciones", "clave", "conclusion", "esquema"];
-const CABEZA = ["imagenes", "dato_rapido", "ideas_apoyo"];
+// La caja «Completado con fuentes» va con la primera parte de una pista dividida (no se repite en cada parte).
+const CABEZA = ["imagenes", "dato_rapido", "ideas_apoyo", "completado_con_fuentes"];
 const tieneCola = (p) => COLA.some((k) => p[k] && (!Array.isArray(p[k]) || p[k].length));
 function parteDe(p, ideas, cabeza, cola) {
   const q = { ...p, ideas, partida: true };

@@ -238,5 +238,140 @@ ok(P.recortarVistaPrevia(pesada).bloques[0].pistas[0].id === "corta", "vista4 pr
 const sinQuiz = JSON.parse(JSON.stringify(cBueno)); sinQuiz.bloques[0].actividades = sinQuiz.bloques[0].actividades.filter((a: any) => a.tipo !== "opcion_multiple").concat([{ id: "vf1", tipo: "verdadero_falso" }]);
 ok(new Set(P.recortarVistaPrevia(sinQuiz).bloques[0].actividades.map((a: any) => a.tipo)).size === 2, "vista4 previa: sin juego de preguntas, dos formatos distintos");
 
+// ---------- Temas del temario completados con fuentes (Daniel, 11 nov 2026) ----------
+// Sin IA de verdad: la API de Claude y la base de datos son de mentira; se revisa lo que el código hace con sus respuestas.
+(globalThis as any).Deno = { env: { get: (k: string) => (k === "ANTHROPIC_API_KEY" ? "prueba-sin-llave" : undefined) } };
+const pedidos: any[] = [];
+let respuestas: any[] = [];
+(globalThis as any).fetch = async (_url: string, init: any) => {
+  const cuerpo = JSON.parse(init.body); pedidos.push(cuerpo);
+  const r = respuestas.shift();
+  return r instanceof Response ? r : new Response(JSON.stringify(r), { status: 200, headers: { "content-type": "application/json" } });
+};
+const apiTexto = (j: unknown, urls: string[] = []) => ({ content: [
+  ...(urls.length ? [{ type: "server_tool_use", id: "s1", name: "web_search", input: { query: "x" } }, { type: "web_search_tool_result", tool_use_id: "s1", content: urls.map((url) => ({ type: "web_search_result", url, title: "t" })) }] : []),
+  { type: "text", text: JSON.stringify(j) }], stop_reason: "end_turn", usage: { input_tokens: 1000, output_tokens: 400, server_tool_use: { web_search_requests: urls.length ? 2 : 0 } } });
+
+// 18. Qué es práctica del examen (no se investiga) y qué sí es contenido (la EXCEPCIÓN de las habilidades).
+ok(P.esPracticaDeExamen("Gapped text: textos de práctica con huecos (esl-lounge, engxam)") && P.esPracticaDeExamen("Listening – Sentence completion: audios de práctica (Test-English)") && P.esPracticaDeExamen("Reading Part 3") && P.esPracticaDeExamen("Speaking"), "práctica del examen: Gapped text, Listening, Reading Part 3 y Speaking no se investigan");
+ok(!P.esPracticaDeExamen("Writing: opinion essays") && !P.esPracticaDeExamen("Exam skills: How to answer open questions") && !P.esPracticaDeExamen("Acento normativo") && !P.esPracticaDeExamen("Figuras retóricas"), "contenido: Writing de ensayos, Exam skills (habilidad), Acento normativo y Figuras retóricas sí son temas");
+// 19. Temas del plan con su bloque: textos sueltos de planes viejos, repetidos y bloques que no existen.
+const planT: any = { bloques: [{ id: "b1", titulo: "Lenguaje figurado", temas: ["Figuras retóricas"], pistas: ["Metáfora"] }, { id: "b2", titulo: "Ortografía", temas: ["Acentos"], pistas: ["Agudas y graves"] }],
+  temas_a_investigar: ["Acento normativo: agudas, graves y esdrújulas", { tema: "Figuras retóricas", bloque: "b9", pagina: "45" }, { tema: "figuras retoricas", bloque: "b1", pagina: "" }, { tema: "", bloque: "b1", pagina: "" }] };
+const tn = P.normalizarTemas(planT);
+ok(tn.length === 2 && tn[0].bloque === "b2" && tn[1].bloque === "b1" && tn[1].pagina === "45", "temas del plan: cada uno con su bloque (por parecido si no existe), sin repetidos ni vacíos · " + JSON.stringify(tn));
+ok(PR.ESQUEMA_PLAN.properties.temas_a_investigar.items.required.join(",") === "tema,bloque,pagina" && /Nunca agregues un tema que no esté escrito en las fotos/.test(PR.PLANIFICADOR), "planificador: temas_a_investigar = {tema, bloque, pagina}, solo temas escritos en las fotos");
+ok(/1 fuente oficial o 2 fuentes confiables/.test(PR.INVESTIGADOR) && /Wikipedia NO cuenta/.test(PR.INVESTIGADOR) && /libros de texto gratuitos de la SEP/.test(PR.INVESTIGADOR) && /practica_examen/.test(PR.INVESTIGADOR), "investigador: SEP primero, 1 oficial o 2 confiables, sin Wikipedia, ignora la práctica del examen");
+ok(P.investigacionActiva({ opciones: { investigar: "si" } }) && !P.investigacionActiva({ opciones: {} }) && !P.investigacionActiva({ opciones: { investigar: "no" } }), "investigación: apagada por omisión; se enciende con investigar = si");
+// 20. Fuentes: oficiales, dos sitios distintos, nunca Wikipedia y solo páginas que el buscador devolvió.
+const vistas = ["https://www.sep.gob.mx/lenguajes/figuras", "https://www.britannica.com/art/metaphor", "https://www.nationalgeographic.com/x", "https://kids.britannica.com/y", "https://es.wikipedia.org/wiki/Metafora"];
+const resV = P.validarInvestigacion({ temas: [
+  { tema: "Figuras retóricas", estado: "confirmado", datos: [
+    { texto: "Metáfora: identifica un término real con otro imaginario.", fuentes: [{ nombre: "SEP", url: "https://www.sep.gob.mx/lenguajes/figuras/" }] },
+    { texto: "Hipérbole: exagera una cualidad para dar énfasis.", fuentes: [{ nombre: "Britannica", url: "https://www.britannica.com/art/metaphor" }, { nombre: "Nat Geo", url: "https://www.nationalgeographic.com/x" }] },
+    { texto: "Símil: compara dos cosas usando como.", fuentes: [{ nombre: "Britannica", url: "https://www.britannica.com/art/metaphor" }, { nombre: "Britannica Kids", url: "https://kids.britannica.com/y" }] },
+    { texto: "Repetición: repite palabras para dar ritmo.", fuentes: [{ nombre: "Wikipedia", url: "https://es.wikipedia.org/wiki/Metafora" }] },
+    { texto: "Personificación: da rasgos humanos a cosas.", fuentes: [{ nombre: "RAE", url: "https://www.rae.es/inventada" }] }] },
+  { tema: "Tradición oral", estado: "confirmado", datos: [{ texto: "Coplas: versos breves para cantar.", fuentes: [{ nombre: "SEP", url: "https://www.sep.gob.mx/lenguajes/figuras" }] }] },
+  { tema: "Reglamento", estado: "practica_examen", datos: [] }] },
+  [{ tema: "Figuras retóricas", bloque: "b1", pagina: "" }, { tema: "Tradición oral", bloque: "b1", pagina: "" }, { tema: "Reglamento", bloque: "b1", pagina: "" }, { tema: "Acento normativo", bloque: "b2", pagina: "" }], vistas);
+const [rF, rT, rR, rA] = resV;
+ok(rF.estado === "confirmado" && rF.datos.length === 2 && rF.datos[0].fuentes[0].oficial && rF.fuentes.length === 3, "fuentes: 1 oficial basta; 2 sitios distintos también; mismo sitio dos veces, Wikipedia o una página que el buscador no dio, no · " + rF.datos.map((d: any) => d.texto.split(":")[0]).join(", "));
+ok(rT.estado === "no_confirmado" && rT.datos.length === 0, "tema con un solo dato confirmado: no se confirma (nota para repasar)");
+ok(rR.estado === "no_confirmado" && /práctica/.test(rR.motivo), "la IA dice «práctica del examen» de un tema de contenido: queda como nota, nunca desaparece");
+ok(rA.estado === "no_confirmado" && /no respondió/.test(rA.motivo), "tema sin respuesta de la IA: no se confirma");
+ok(P.confirmaDato([{ nombre: "a", url: "u", oficial: false, sitio: "britannica.com" }, { nombre: "b", url: "v", oficial: false, sitio: "britannica.com" }]) === false && P.sitioDe("libros.conaliteg.gob.mx") === "conaliteg.gob.mx" && P.esOficial("libros.conaliteg.gob.mx") && P.esOficial("nasa.gov") && !P.esOficial("britannica.com") && !P.dominioPermitido("es.wikipedia.org"), "regla de dos fuentes por sitio; SEP, Conaliteg y .gov son oficiales; Wikipedia no se permite");
+ok(P.dominiosRechazados("Error 400: The following domains are not accessible to our user agent: ['bbc.co.uk', 'fundeu.es']").join(",") === "bbc.co.uk,fundeu.es" && P.urlsDeBusqueda(apiTexto({}, ["https://www.rae.es/a"])).join() === "https://www.rae.es/a", "buscador: lee los dominios rechazados y las páginas devueltas");
+// 21. Un dominio que el buscador no puede consultar ya no tumba la búsqueda: se quita y se pide otra vez.
+pedidos.length = 0;
+respuestas = [new Response("The following domains are not accessible to our user agent: ['ejemplo.mx']", { status: 400 }), apiTexto({ ok: true }, ["https://www.rae.es/a"])];
+const rD = await P.claude({ sistema: "x", contenido: [{ type: "text", text: "y" }], herramientas: [{ type: "web_search_20260209", name: "web_search", max_uses: 2, allowed_domains: ["rae.es", "ejemplo.mx"] }] });
+ok(pedidos.length === 2 && pedidos[1].tools[0].allowed_domains.join() === "rae.es" && rD.json?.ok === true && rD.urls.length === 1, "buscador: el dominio rechazado se quita y la búsqueda sigue");
+
+// 22. El paso completo, con la IA de mentira: investiga 2 temas, ignora la práctica del examen y escribe el bloque.
+const vistasF = ["https://www.sep.gob.mx/lenguajes/figuras", "https://www.rae.es/dpd/hiperbole"];
+const datosF = ["Metáfora: identifica un término real con otro imaginario.", "Hipérbole: exagera una cualidad para dar énfasis."];
+const tG: any = { id: "tg", guia_id: "g1", alcance: "completa", paso: "generar:0", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, progreso: { pct: 40 }, datos: {
+  inventario: { temas: [{ id: "tem1", foto: 1, texto: "Reglamento", cita: "Reglamento" }], datos_clave: [{ id: "dat2", foto: 1, texto: "Reglamento: normas de un grupo", cita: "normas de un grupo" }] }, citas: ["normas de un grupo"], fotos: [{ indice: 1, tipo: "temario" }],
+  plan: { idioma_guia: "es", perfil_edad: "caricatura", materia: "Español", apoyo: null, puntos_dificiles: [], temas_a_investigar: [
+    { tema: "Figuras retóricas", bloque: "b1", pagina: "45" }, { tema: "Tradición oral", bloque: "b1", pagina: "" }, { tema: "Gapped text: textos de práctica", bloque: "b1", pagina: "" }],
+    bloques: [{ id: "b1", titulo: "Lengua y literatura", temas: ["Reglamento"], ids_inventario: ["tem1", "dat2"], pistas: ["Reglamento", "Figuras retóricas", "Tradición oral"], juegos: { opcion_multiple: 5 }, mini_examen: 0 }, { id: "b2", titulo: "B2", ids_inventario: [], pistas: ["X"], juegos: {} }] },
+  bloques: [] } };
+const fuenteG = { archivos: [], grado: "1° Secundaria", materia: "Español", opciones: { investigar: "si" } };
+pedidos.length = 0;
+respuestas = [apiTexto({ temas: [
+  { tema: "Figuras retóricas", estado: "confirmado", datos: [{ texto: datosF[0], fuentes: [{ nombre: "SEP · Lenguajes 1", url: vistasF[0] }] }, { texto: datosF[1], fuentes: [{ nombre: "RAE · Diccionario panhispánico", url: vistasF[1] }] }] },
+  { tema: "Tradición oral", estado: "confirmado", datos: [{ texto: "Coplas: versos breves para cantar.", fuentes: [{ nombre: "INAH", url: "https://www.inah.gob.mx/coplas" }] }, { texto: "Refranes: dichos con una enseñanza.", fuentes: [{ nombre: "INAH", url: "https://www.inah.gob.mx/refranes" }] }] }] }, vistasF)];
+const sig1 = await P.ejecutarPaso(falso, tG, fuenteG);
+const inv = tG.datos.investigacion ?? [];
+const pedInv = pedidos[0];
+ok(sig1 === "generar:0" && pedidos.length === 1 && /ERES EL INVESTIGADOR/.test(pedInv.system[0].text) && pedInv.tools[0].max_uses === 6 && pedInv.tools[0].allowed_domains.includes("conaliteg.sep.gob.mx") && !/Gapped/.test(pedInv.messages[0].content[0].text), "paso: una llamada de investigación con búsqueda en dominios confiables y sin la práctica del examen");
+ok(inv.find((r: any) => /Gapped/.test(r.tema))?.estado === "practica_examen" && inv.find((r: any) => r.tema === "Figuras retóricas")?.estado === "confirmado" && inv.find((r: any) => r.tema === "Tradición oral")?.estado === "no_confirmado", "paso: práctica del examen ignorada; tema con fuentes confirmado; tema con páginas que el buscador no dio, sin confirmar · " + inv.map((r: any) => `${r.tema}=${r.estado}`).join(" | "));
+ok((tG.datos.inventario.investigado ?? []).length === 2 && tG.datos.inventario.investigado.every((e: any) => e.bloque === "b1" && e.fuentes.length) && tG.datos.citas.includes(datosF[1]), "paso: lo confirmado entra al inventario del bloque como «investigado» y vale como cita");
+respuestas = [apiTexto({ bloque: "b1", pistas: [
+  { id: "b1p1", titulo: "Reglamento", emoji: "📜", ideas: ["Reglamento: normas de un grupo."], tema_investigado: null },
+  { id: "b1p2", titulo: "Figuras retóricas", emoji: "🎭", ideas: datosF, tema_investigado: "Figuras retóricas" }],
+  actividades: { opcion_multiple: [
+    { id: "b1om1", pregunta: "¿Qué figura exagera una cualidad?", opciones: ["hipérbole", "metáfora", "símil", "repetición"], correcta: 0, retro_correcta: "¡Sí!", retro_incorrecta: "Es la hipérbole.", pista: "b1p2", fuente: { foto: 0, tipo: "investigado", cita: datosF[1] } },
+    { id: "b1om2", pregunta: "¿Qué tiene un reglamento?", opciones: ["normas", "versos", "rimas", "mapas"], correcta: 0, retro_correcta: "¡Sí!", retro_incorrecta: "Tiene normas.", pista: "b1p1", fuente: { foto: 1, tipo: "textual", cita: "normas de un grupo" } }] },
+  duelo: [], mini_examen: [] })];
+const sig2 = await P.ejecutarPaso(falso, tG, fuenteG);
+const pedGen = pedidos[1]?.messages?.[0]?.content?.[0]?.text ?? "";
+const bG = tG.datos.bloques[0];
+ok(sig2 === "generar:1" && /"investigado":\[/.test(pedGen) && /SIN CONFIRMAR: «Tradición oral»/.test(pedGen) && !/"Tradición oral"\]/.test(pedGen.split("Plan del bloque:")[1].split("Inventario")[0]), "escritor: recibe lo investigado, sabe qué temas no se confirmaron y ya no se le pide la pista de esos");
+const pF = bG.pistas.find((p: any) => p.id === "b1p2");
+ok(pF?.completado_con_fuentes?.fuentes?.[0]?.nombre === "SEP · Lenguajes 1" && !bG.pistas.find((p: any) => p.id === "b1p1").completado_con_fuentes, "pista del tema investigado marcada «Completado con fuentes» (con sus fuentes); la de los apuntes, no");
+ok(bG.actividades.find((a: any) => a.id === "b1om1").fuente.tipo === "investigado" && bG.actividades.find((a: any) => a.id === "b1om1").fuente.nombre === "RAE · Diccionario panhispánico" && bG.actividades.find((a: any) => a.id === "b1om2").fuente.tipo === "textual", "actividad con dato investigado: lleva su fuente (el reproductor ya no dice «De tus notas»)");
+const nota = bG.pistas.find((p: any) => p.nota_temario);
+ok(nota && nota.ideas.length === 1 && nota.ideas[0] === "Tradición oral: este tema venía en tu temario; repásalo en tu libro." && !bG.pistas.some((p: any) => /Gapped/.test(JSON.stringify(p))), "tema sin confirmar → nota «Este tema venía en tu temario: repásalo en tu libro»; la práctica del examen no aparece");
+ok(P.textoNotaTemario({ tema: "Acento normativo", pagina: "45" }) === "Acento normativo: este tema venía en tu temario; repásalo en tu libro (pág. 45)." && P.textoNotaTemario({ tema: "Word order", pagina: "Unit 3" }, "en") === "Word order: this topic was in your syllabus; review it in your textbook (Unit 3)." && P.textoNotaTemario({ tema: "Les nombres", pagina: "12-13" }, "fr") === "Les nombres : ce thème était dans ton programme ; révise-le dans ton manuel (p. 12-13).", "nota del temario con la página que da el temario, en español, inglés y francés");
+// Investigación apagada: el bloque se escribe como antes, sin buscar nada.
+const tOff: any = JSON.parse(JSON.stringify({ ...tG, paso: "generar:0", datos: { ...tG.datos, investigacion: undefined, bloques: [] } }));
+delete tOff.datos.inventario.investigado;
+pedidos.length = 0;
+respuestas = [apiTexto({ bloque: "b1", pistas: [{ id: "b1p1", titulo: "Reglamento", ideas: ["Reglamento: normas."] }], actividades: {}, duelo: [], mini_examen: [] })];
+await P.ejecutarPaso(falso, tOff, { ...fuenteG, opciones: {} });
+ok(pedidos.length === 1 && /ERES EL GENERADOR/.test(pedidos[0].system[0].text) && !tOff.datos.bloques[0].pistas.some((p: any) => p.nota_temario), "investigación apagada: nada se busca y la guía sale como antes");
+// Tope de temas por guía: los que pasan del tope quedan como nota sin gastar.
+const muchos: any = { plan: { bloques: [{ id: "b1" }], temas_a_investigar: Array.from({ length: 11 }, (_, i) => ({ tema: "Tema número " + (i + 1), bloque: "b1", pagina: "" })) } };
+const pendM = P.temasPendientes(muchos, "b1");
+ok(pendM.length === P.MAX_TEMAS_INVESTIGAR && muchos.investigacion.length === 3 && muchos.investigacion.every((r: any) => r.estado === "no_confirmado"), `tope: se investigan ${P.MAX_TEMAS_INVESTIGAR} temas por guía; los demás quedan como nota`);
+// Las pistas que la reparación divide conservan la marca al armar; cada bloque lleva lo completado y lo que se repasa.
+tG.datos.bloques[0].pistas.push({ id: "b1p2_2", titulo: "Figuras retóricas (2)", ideas: ["Símil: compara dos cosas."] });
+tG.datos.bloques[0].actividades.push(...[3, 4, 5].map((n) => ({ id: "b1om" + n, tipo: "opcion_multiple", pregunta: "¿P" + n + "?", opciones: ["a" + n, "b", "c", "d"], correcta: 0, retro_correcta: "s", retro_incorrecta: "n", pista: "b1p1", fuente: { foto: 1, tipo: "textual", cita: "normas de un grupo" } })));
+tG.datos.bloques[1] = { id: "b2", titulo: "B2", pistas: [{ id: "b2p1", titulo: "X", ideas: ["X: y."] }], actividades: [1, 2, 3, 4, 5].map((n) => ({ id: "b2om" + n, tipo: "opcion_multiple", pregunta: "¿Q" + n + "?", opciones: ["a", "b", "c", "d"], correcta: 1, retro_correcta: "s", retro_incorrecta: "n", pista: "b2p1", fuente: {} })), mini_examen: [] };
+tG.datos.plan.identidad = { titulo: "T" }; tG.datos.plan.primera_actividad = "calentamiento"; tG.datos.plan.reto_final = 16;
+tG.paso = "armar";
+await P.ejecutarPaso(falso, tG, fuenteG);
+const cG = tG.datos.cartucho;
+ok(cG.bloques[0].pistas.find((p: any) => p.id === "b1p2_2")?.completado_con_fuentes && cG.bloques[0].temas_completados.length === 1 && cG.bloques[0].temas_para_repasar[0].tema === "Tradición oral", "armar: la parte (2) de la pista también va marcada; el bloque lista lo completado y lo que se repasa en el libro");
+const vpG = P.recortarVistaPrevia({ ...cG, bloques: [{ ...cG.bloques[0], pistas: [cG.bloques[0].pistas.find((p: any) => p.nota_temario), ...cG.bloques[0].pistas.filter((p: any) => !p.nota_temario)] }] });
+ok(!vpG.bloques[0].pistas[0].nota_temario, "vista previa: la pista de muestra es de contenido, nunca la nota del temario");
+const bFus: any[] = [{ id: "b1", pistas: [{ id: "a", titulo: "A", ideas: ["A: x"] }, { id: "n", titulo: "Repásalo en tu libro", ideas: ["T: nota"], nota_temario: true }, { id: "c", titulo: "C", ideas: ["C: y"], completado_con_fuentes: { fuentes: [] } }], actividades: [], mini_examen: [] }];
+P.recortarBloques(bFus, 3);
+ok(bFus[0].pistas.length === 3 && bFus[0].pistas.some((p: any) => p.nota_temario) && bFus[0].pistas.some((p: any) => p.completado_con_fuentes), "recorte de slides: nunca junta una nota del temario ni una pista con fuentes con otra pista");
+
+// 23. «contradice_libro» → un reporte nuevo en el panel, con su bloque y su motivo, sin datos de la familia, una vez.
+const insertados: any[] = [];
+const falsoR: any = { from: (tabla: string) => ({ update: () => ({ eq: async () => ({ error: null }) }), insert: async (filas: any) => { insertados.push({ tabla, filas }); return { error: null }; } }) };
+const tV: any = { id: "tv", guia_id: "g9", alcance: "resto", paso: "verificar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "es", materia: "Español" }, fotos: [{ tipo: "apuntes_a_mano" }], inventario: {},
+  bloques: [{ id: "b1", titulo: "Ortografía", pistas: [{ id: "b1p1", titulo: "Acentos", ideas: ["Agudas: llevan tilde si terminan en n, s o vocal."] }], actividades: [{ id: "b1om1", tipo: "opcion_multiple", pregunta: "¿Cuándo lleva tilde una aguda?", opciones: ["n, s o vocal", "siempre"], correcta: 0 }], mini_examen: [] }] } };
+respuestas = [apiTexto({ resultados: [
+  { actividad: "b1om1", afirmacion: "Las agudas llevan tilde si terminan en n, s o vocal", estado: "contradice_libro", dato_correcto: "Según la RAE, así es; el libro dice otra cosa.", fuentes: ["https://www.rae.es/ortografia/agudas"] },
+  { actividad: "b1p1", afirmacion: "x", estado: "verificada" }] }, ["https://www.rae.es/ortografia/agudas"])];
+await P.ejecutarPaso(falsoR, tV, { archivos: [], grado: "1° Secundaria", materia: "Español", opciones: {} });
+const rep1 = insertados.filter((x) => x.tabla === "reportes").flatMap((x) => x.filas);
+ok(rep1.length === 1 && rep1[0].guia_id === "g9" && rep1[0].slide === null && !("acceso_id" in rep1[0]) && /contradice el libro/.test(rep1[0].comentario) && /Bloque 1 «Ortografía» \(b1om1\)/.test(rep1[0].comentario) && /rae\.es/.test(rep1[0].comentario) && !/^AVISO AUTOM/.test(rep1[0].comentario), "contradice el libro: llega a Reportes con bloque, motivo y fuente, sin datos de la familia · " + rep1[0]?.comentario);
+tV.paso = "verificar";
+respuestas = [apiTexto({ resultados: [{ actividad: "b1om1", afirmacion: "x", estado: "contradice_libro" }] }, [])];
+await P.ejecutarPaso(falsoR, tV, { archivos: [], grado: "1° Secundaria", materia: "Español", opciones: {} });
+ok(insertados.filter((x) => x.tabla === "reportes").length === 1, "contradice el libro: si el paso se repite, el reporte no se duplica");
+ok(P.reportesContradice([{ estado: "corregida" }, { estado: "no_confirmada" }], []).length === 0, "solo «contradice_libro» va a Reportes (corregida y no_confirmada, no)");
+
+// 24. El reproductor muestra la marca: caja azul en la pista y la fuente en las preguntas (nunca «De tus notas»).
+const leerRepo = (r: string) => readFileSync(join(repo, r), "utf8");
+const cartJs = leerRepo("sparked/js/cartucho.js"), teoJs = leerRepo("sparked/js/teoria.js"), uiJs = leerRepo("sparked/js/ui.js");
+ok((cartJs.match(/con_fuentes: "/g) ?? []).length === 3 && /"completado_con_fuentes"\]/.test(cartJs) && /caja-fuentes/.test(teoJs) && /fuente\?\.tipo === "investigado"/.test(uiJs) && /\.caja-fuentes/.test(leerRepo("sparked/css/base.css")), "reproductor: «Completado con fuentes» en español, inglés y francés; caja en la pista y fuente en las preguntas");
+
 console.log(fallos ? `\n${fallos} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);

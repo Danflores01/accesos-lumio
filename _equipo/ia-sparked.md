@@ -71,6 +71,7 @@ prueba (nunca el link de una familia), versión desplegada si la hubo, y qué ac
 | Qué | Dónde |
 |---|---|
 | Cadena de pasos | `funciones/sparked/pipeline.ts`: `ejecutarPaso`, `claude`, `llamar`, `ajusteDe`, `ajustarPlan`, `recortarBloques`, `recortarVistaPrevia`, `verificarCartucho`, `aplicarCorreccion`, `aplicarOrtografia` |
+| Temas del temario (11 nov) | `pipeline.ts`: `temasPendientes`, `investigarTemas`, `validarInvestigacion`, `marcarInvestigado`, `agregarNotasTemario`, `reportesContradice`; prompt `INVESTIGADOR`; ajuste `sparked_investigar` (apagado: "no"); prueba de una guía con `POST /admin/guias/<id>/generar {"investigar":"si"}` |
 | Prompts | `funciones/sparked/prompts.ts` (identidad del Planificador y regla 12 «TODO CABE» del Generador) |
 | Trabajos y entrega | `funciones/sparked/index.ts`: `correrPaso` (3 intentos por paso), `reanudarSiAtorado` (150 s quieto; 6 interrupciones = error), `alFinalizar`, `lanzarResto` (solo después del pago) |
 | Despliegue | `funciones/puente-sparked/index.ts` (puente a un commit fijo) y `_guardia/skill/guardia-sparked/references/publicar-rapido.md` |
@@ -159,6 +160,13 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Lo aprendido
 
+- **11 nov · Temas del temario sin contenido (Daniel: «no podemos inventar temas, pero sí es necesario hacer las guías lo
+  más completas posibles»).** Solo los temas escritos en las fotos; 1 fuente oficial o 2 sitios confiables; una fuente
+  vale solo si su página salió en la búsqueda de esa misma llamada (así la IA no cita de memoria). Lo que no se confirma
+  queda como nota «repásalo en tu libro»; la práctica del examen se ignora. Lo nuevo va apagado y se prueba por trabajo:
+  probar con IA exige desplegar, porque la llave solo vive en Supabase.
+- **11 nov · Banco de pruebas que no caduca:** una guía de biblioteca (`POST /admin/guias` + subir las páginas +
+  `/generar`) no es de ninguna familia, no se publica y su material dura 365 días.
 - 2026-11-11 · Daniel: **la vista previa NO se abarata.** «La calidad es primero y al cliente le tenemos que mostrar lo que
   está comprando»: misma calidad y modelos en la vista previa que en la guía pagada. No volver a proponerlo.
 - **7 nov · El pensamiento de la IA cuenta dentro del tope de tokens.** Con esfuerzo medio, Haiku gastaba el tope y el
@@ -196,9 +204,14 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Pendientes de mi tema
 
-- **Temas que faltan en los apuntes:** el Planificador anota `temas_a_investigar`, pero ningún paso los investiga ni
-  los completa con fuentes (§9, Prompts D y E; `temas_completados` del §11 no existe). ¿Lo construimos?
-- **«contradice_libro»** debería ir a revisión humana, pero solo queda en el reporte: no hay cola «Revisar» en el panel.
+- **Temas del temario completados con fuentes y «contradice_libro» → Reportes:** construidos el 11 nov (código
+  2026-11-11.2), sin desplegar. Falta: despliegue (principal, con el sí de Daniel), corrida real con el temario de
+  Español 1.º de Green Oaks (scratchpad `investigar/probar-temario.mjs`, tope propuesto 15 MXN) y que Daniel lo encienda
+  (`sparked_investigar` = "si").
+- Solo las preguntas muestran la fuente investigada; Mix & match, Super sort y los demás juegos no (Animaciones y Juegos,
+  si Daniel lo quiere). La ayuda de Reportes en el panel solo habla de la banderita y la ronda cuenta estos reportes
+  como «de familias» (principal).
+- Si en un bloque ningún tema se confirma y no hay más contenido, el bloque queda sin juegos y la guía va a revisión.
 - **Modelos:** confirmar con 2 o 3 corridas más y probar aparte «escribir» (con Sonnet, unos 10 pesos más por guía).
 - **Banco de pruebas fijo** (§12c): Civics III, Química 3.º (6 errores conocidos) e Historia de México 2, con
   inventarios que no caduquen y 3 corridas por caso. No existe.

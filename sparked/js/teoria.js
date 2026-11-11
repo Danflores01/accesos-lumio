@@ -48,12 +48,19 @@ export function tutorial(s, ctx) {
 }
 
 // ---------- Teoría ----------
+// Tema del temario que no venía en los apuntes y SparkEd completó con fuentes confiables (Daniel, 11 nov 2026): la
+// pista lo dice a la vista, con sus fuentes, para que la familia sepa que no salió de sus notas.
+function cajaFuentes(p, ctx) {
+  if (!p?.completado_con_fuentes) return "";
+  const nombres = (p.completado_con_fuentes.fuentes ?? []).map((f) => f?.nombre).filter(Boolean).slice(0, 2);
+  return `<div class="caja-fuentes"><b>📚 ${esc(ctx.t("con_fuentes"))}</b> ${esc(nombres.join(" · "))}</div>`;
+}
 function tarjeta(p, i, ctx, opciones = {}) {
   const col = TONOS[(i + (opciones.desfase ?? 0)) % TONOS.length];
   const ideas = (p.ideas ?? []).map((x) => `<li>${idea(x)}</li>`).join("");
   const apoyo = p.ideas_apoyo?.length ? `<p class="apoyo">${p.ideas_apoyo.map(esc).join(" · ")}</p>` : "";
   const ej = p.ejemplo ? `<div class="caja-ej"><b>${esc(ctx.t("ejemplo"))}</b> ${esc(p.ejemplo)}</div>` : "";
-  const corr = (p.correcciones ?? []).map((cr) => `<div class="caja-corregido"><b>${esc(ctx.t("corregido"))}</b> ${esc(cr.dato_correcto ?? cr.mensaje ?? "")}${cr.dato_apuntes ? ` <span style="color:var(--gris)">(${esc(ctx.t("de_tus_notas"))}: “${esc(cr.dato_apuntes)}”)</span>` : ""}</div>`).join("");
+  const corr = (p.correcciones ?? []).map((cr) => `<div class="caja-corregido"><b>${esc(ctx.t("corregido"))}</b> ${esc(cr.dato_correcto ?? cr.mensaje ?? "")}${cr.dato_apuntes ? ` <span style="color:var(--gris)">(${esc(ctx.t("de_tus_notas"))}: “${esc(cr.dato_apuntes)}”)</span>` : ""}</div>`).join("") + cajaFuentes(p, ctx);
   const img = opciones.conImagen && p.imagenes?.find((x) => x.tipo !== "retrato" && x.url);
   const imgHtml = img ? `<div class="img"><img src="${esc(img.url)}" alt="${esc(img.pie ?? "")}"${attrsFoto(img.url)}></div><div class="pie">${esc(img.pie ?? img.credito ?? "")}</div>` : "";
   const rapido = p.dato_rapido ? `<div class="dato-rapido" style="--c:${col}">${esc(p.dato_rapido.titulo ?? "")}<b>${esc(p.dato_rapido.valor ?? "")}</b></div>` : "";
@@ -103,7 +110,7 @@ export function teoria(s, ctx) {
       <div class="tarjetas" style="grid-template-columns:1fr">${pistas.map((p, i) => tarjeta(p, i, ctx, { desfase })).join("")}</div>
       ${lateral ? `<div class="lado-img"><div class="cuadro"><img src="${esc(lateral.url)}" alt="${esc(lateral.pie ?? "")}"${attrsFoto(lateral.url)}><div class="pie">${esc(lateral.pie ?? lateral.credito ?? "")}</div></div></div>` : ""}</div>`;
   } else if (defin) {
-    cuerpoHtml = `<div class="definiciones">${pistas.map((p, i) => `<div class="tcard" style="--c:${TONOS[(i + desfase) % TONOS.length]}"><div class="em-grande">${esc(p.emoji ?? "💡")}</div><div class="th">${esc(p.titulo ?? "")}</div><ul style="padding:0;list-style:none;text-align:center">${(p.ideas ?? []).map((x) => `<li>${idea(x)}</li>`).join("")}</ul>${p.ejemplo ? `<div class="caja-ej"><b>${esc(ctx.t("ejemplo"))}</b> ${esc(p.ejemplo)}</div>` : ""}${(p.correcciones ?? []).map((cr) => `<div class="caja-corregido"><b>${esc(ctx.t("corregido"))}</b> ${esc(cr.dato_correcto ?? "")}</div>`).join("")}</div>`).join("")}</div>`;
+    cuerpoHtml = `<div class="definiciones">${pistas.map((p, i) => `<div class="tcard" style="--c:${TONOS[(i + desfase) % TONOS.length]}"><div class="em-grande">${esc(p.emoji ?? "💡")}</div><div class="th">${esc(p.titulo ?? "")}</div><ul style="padding:0;list-style:none;text-align:center">${(p.ideas ?? []).map((x) => `<li>${idea(x)}</li>`).join("")}</ul>${p.ejemplo ? `<div class="caja-ej"><b>${esc(ctx.t("ejemplo"))}</b> ${esc(p.ejemplo)}</div>` : ""}${(p.correcciones ?? []).map((cr) => `<div class="caja-corregido"><b>${esc(ctx.t("corregido"))}</b> ${esc(cr.dato_correcto ?? "")}</div>`).join("")}${cajaFuentes(p, ctx)}</div>`).join("")}</div>`;
   } else {
     const cols = Math.max(1, pistas.length);
     const conImagen = otrasImgs.length > 0;

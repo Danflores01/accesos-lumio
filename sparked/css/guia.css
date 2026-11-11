@@ -402,7 +402,7 @@ body.reproductor::after { content: ""; position: fixed; left: 0; right: 0; botto
 .teoria-sl .tcard ul, .teoria-sl .tcard p { font-size: var(--letra); }
 .teoria-sl .tcard .th { font-size: calc(var(--letra) + 5px); }
 .teoria-sl .tcard p.apoyo { font-size: calc(var(--letra) - 2px); color: var(--gris); font-style: italic; }
-.teoria-sl .caja-ej, .teoria-sl .caja-corregido, .teoria-sl .caja-clave, .teoria-sl .banda, .teoria-sl .ojo, .teoria-sl .categorias .cat,
+.teoria-sl .caja-ej, .teoria-sl .caja-corregido, .teoria-sl .caja-fuentes, .teoria-sl .caja-clave, .teoria-sl .banda, .teoria-sl .ojo, .teoria-sl .categorias .cat,
 .teoria-sl .lista-iconos .fila, .teoria-sl .comparacion ul, .teoria-sl .dato-rapido { font-size: calc(var(--letra) - 1px); }
 .teoria-sl .linea-tiempo .hito small { font-size: calc(var(--letra) - 3px); }
 .teoria-sl .comparacion .col h3 { font-size: calc(var(--letra) + 4px); }

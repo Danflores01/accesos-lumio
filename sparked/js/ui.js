@@ -190,7 +190,9 @@ export function panelPregunta(a, ctx, onAns) {
     };
     el.appendChild(b);
   });
-  if (a.fuente?.cita) el.appendChild(h(`<div class="fuente-cita" style="font-size:13px;color:var(--gris)">📎 ${esc(ctx.t("de_tus_notas"))}${a.fuente.foto ? ` (${esc(String(a.fuente.foto))})` : ""}: “${esc(a.fuente.cita)}”</div>`));
+  // Un dato que no venía en los apuntes (tema del temario completado con fuentes) nunca dice «De tus notas».
+  if (a.fuente?.tipo === "investigado") el.appendChild(h(`<div class="fuente-cita" style="font-size:13px;color:var(--gris)">📚 ${esc(ctx.t("con_fuentes"))}${a.fuente.nombre ? ` ${esc(a.fuente.nombre)}` : ""}</div>`));
+  else if (a.fuente?.cita) el.appendChild(h(`<div class="fuente-cita" style="font-size:13px;color:var(--gris)">📎 ${esc(ctx.t("de_tus_notas"))}${a.fuente.foto ? ` (${esc(String(a.fuente.foto))})` : ""}: “${esc(a.fuente.cita)}”</div>`));
   el.agotar = () => { if (listo) return; listo = true; el.querySelectorAll(".opt").forEach((x, j) => { x.disabled = true; if (j === buena) x.classList.add("ok"); }); ctx.registrar(a.id, false); onAns(false, `${ctx.t("tiempo")} ${ctx.t("respuesta")}: ${ops[buena]}`, a); };
   return el;
 }

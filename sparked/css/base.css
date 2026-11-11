@@ -71,6 +71,8 @@ img, svg { display: block; max-width: 100%; }
 .tarjeta.borde-arriba { border-top: 6px solid var(--p); }
 .caja-ej { background: var(--oro-suave); border-left: 5px solid var(--oro); border-radius: 10px; padding: 8px 12px; font-size: 16px; }
 .caja-corregido { background: var(--ok-suave); border: 2px solid var(--ok-borde); border-radius: 12px; padding: 8px 12px; font-size: 16px; }
+/* Tema del temario completado con fuentes (11 nov 2026): azul, distinto del verde de «Dato corregido». */
+.caja-fuentes { background: #e0f2fe; border: 2px solid #7dd3fc; border-radius: 12px; padding: 8px 12px; font-size: 16px; color: #0c4a6e; }
 .caja-clave { background: var(--oro-suave); border: 2px solid var(--oro-borde); border-radius: 14px; padding: 10px 14px; }
 .banda { background: var(--marino); color: #fff; border-radius: 14px; padding: 12px 18px; font-size: 17px; }
 .banda b { color: var(--amarillo); }
