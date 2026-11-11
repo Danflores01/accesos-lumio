@@ -543,7 +543,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     // Lo que ya tiene cada bloque (tipos y textos), para completar con el mismo tipo y sin repetir preguntas. Los bloques
     // que solo llevan la nota del temario no se muestran: ahí no hay nada confirmado con qué escribir preguntas.
     const conJuegos = (D.bloques as any[]).filter((b) => b && !b.solo_nota);
-    const actuales = Object.fromEntries(conJuegos.map((b) => [b.id, { tipos: [...new Set(b.actividades.map((a: any) => a.tipo))], mini_examen: b.mini_examen.length, preguntas: [...b.actividades, ...b.mini_examen].map((a: any) => ({ id: a.id, tipo: a.tipo, pregunta: a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.instruccion, pares: a.pares?.map((p: any) => p.termino), tarjetas: a.elementos?.map((e: any) => `${e.texto} → ${a.grupos?.[e.grupo]}`) })) }]));
+    const actuales = Object.fromEntries(conJuegos.map((b) => [b.id, { tipos: [...new Set(b.actividades.map((a: any) => a.tipo))], mini_examen: b.mini_examen.length, preguntas: [...b.actividades, ...b.mini_examen].map((a: any) => ({ id: a.id, tipo: a.tipo, pregunta: a.pregunta ?? a.afirmacion ?? a.enunciado ?? a.instruccion, pares: a.pares?.map((p: any) => p.termino), grupos: a.grupos, tarjetas: a.elementos?.map((e: any) => ({ texto: e.texto, grupo: e.grupo })) })) }]));
     const contenido = [{ type: "text", text: `${notaR ? notaR + "\n" : ""}Idioma de la guía: ${plan.idioma_guia}. Nivel: ${nivel}. Perfil: ${plan.perfil_edad}.\nHuecos a reparar:\n${(D.huecos ?? []).map((h: string) => "- " + h).join("\n") || "(ninguno)"}${textoLargas}\nPistas de cada bloque (cada actividad nueva lleva en "pista" una de las del bloque de su hueco): ${JSON.stringify(Object.fromEntries(conJuegos.map((b) => [b.id, b.pistas.map((p: any) => p.id)])))}\nJuegos que ya tiene cada bloque (no repitas sus preguntas): ${JSON.stringify(actuales)}\nIds que ya existen: ${JSON.stringify((D.bloques as any[]).flatMap((b) => [...b.actividades, ...b.mini_examen].map((a: any) => a.id)))}\nInventario:\n${JSON.stringify(D.inventario)}\nPuntos difíciles: ${JSON.stringify(plan.puntos_dificiles)}` }];
     let divididas: any[] = [];
     if ((D.huecos ?? []).length || largas.length) try {
@@ -1182,7 +1182,7 @@ export function aplicarReparacion(bloques: any[], j: any, citas: string[], nivel
       colocadas.push(`${id}: ${act.pares.length} parejas`);
     }
     if (act.tipo === "clasificar" && Array.isArray(am.elementos)) {
-      const nuevos = am.elementos.filter((e: any) => e && typeof e === "object" && String(e.texto ?? "").trim()).map((e: any) => ({ ...e, grupo: Number(e.grupo) }));
+      const nuevos = am.elementos.filter((e: any) => e && typeof e === "object" && String(e.texto ?? "").trim()).map((e: any) => ({ ...e, texto: sinGrupoEscrito(e.texto, act.grupos), grupo: Number(e.grupo) }));
       const todos = [...(act.elementos ?? []), ...nuevos.filter((e: any) => e.grupo === 0 || e.grupo === 1)];
       act.elementos = todos.filter((e: any, i: number) => todos.findIndex((q: any) => normaliza(q.texto) === normaliza(e.texto)) === i).slice(0, 12);
       colocadas.push(`${id}: ${act.elementos.length} tarjetas`);
@@ -1368,6 +1368,22 @@ function planPorCodigo(D: any, fuente: { grado: string; materia: string }): any 
 // Juegos de clasificar: el reproductor muestra solo dos grupos. La IA a veces arma tres (la revisión borraba las
 // tarjetas del tercero y ese grupo quedaba vacío), numera los grupos desde 1 o pone el nombre del grupo. Aquí cada
 // tarjeta pasa al número de su grupo (desde 0) y, si hay más de dos grupos, se quedan los dos con más tarjetas.
+// Una tarjeta nunca dice su grupo (11 nov 2026: el reparador escribió «mesa → Graves» y el alumno veía la respuesta).
+// Quita el nombre de un grupo escrito después del texto («mesa → Graves», «mesa -> Graves», «mesa: Graves», «mesa —
+// Graves», «mesa (Graves)») o antes («Graves: mesa»). Solo si lo escrito es exactamente uno de los grupos.
+export function sinGrupoEscrito(texto: string, grupos: unknown[]): string {
+  const t = String(texto ?? "").trim();
+  const nombres = (Array.isArray(grupos) ? grupos : []).map((g) => normaliza(String(g ?? ""))).filter(Boolean);
+  if (!t || !nombres.length) return t;
+  const esGrupo = (s: string) => nombres.includes(normaliza(s));
+  const despues = t.match(/^(.+?)\s*(?:→|->|=>|⇒|:|\s[-–—]\s)\s*([^→:]+)$/);
+  if (despues && despues[1].trim() && esGrupo(despues[2])) return despues[1].trim();
+  const parentesis = t.match(/^(.+?)\s*[([]\s*([^)\]]+?)\s*[)\]]$/);
+  if (parentesis && parentesis[1].trim() && esGrupo(parentesis[2])) return parentesis[1].trim();
+  const antes = t.match(/^([^→:]+?)\s*(?:→|->|=>|⇒|:)\s*(.+)$/);
+  if (antes && antes[2].trim() && esGrupo(antes[1])) return antes[2].trim();
+  return t;
+}
 export function normalizarClasificar(a: any): void {
   if (!a || a.tipo !== "clasificar" || !Array.isArray(a.grupos) || !Array.isArray(a.elementos)) return;
   const nombres = a.grupos.map((g: unknown) => String(g ?? "").trim().toLowerCase());
@@ -1380,7 +1396,7 @@ export function normalizarClasificar(a: any): void {
     if (n === null) return nombres.indexOf(String(g ?? "").trim().toLowerCase());
     return Number.isInteger(n) ? (desdeUno ? n - 1 : n) : -1;
   };
-  let elementos = a.elementos.filter((e: any) => e && typeof e === "object").map((e: any) => ({ ...e, grupo: indice(e.grupo) })).filter((e: any) => e.grupo >= 0 && e.grupo < a.grupos.length);
+  let elementos = a.elementos.filter((e: any) => e && typeof e === "object").map((e: any) => ({ ...e, ...(typeof e.texto === "string" ? { texto: sinGrupoEscrito(e.texto, a.grupos) } : {}), grupo: indice(e.grupo) })).filter((e: any) => e.grupo >= 0 && e.grupo < a.grupos.length);
   if (a.grupos.length > 2) {
     const cuenta = a.grupos.map((_: unknown, i: number) => elementos.filter((e: any) => e.grupo === i).length);
     const dos = cuenta.map((n: number, i: number) => [n, i]).sort((x: number[], y: number[]) => y[0] - x[0] || x[1] - y[1]).slice(0, 2).map((x: number[]) => x[1]).sort((x: number, y: number) => x - y);
@@ -1641,6 +1657,11 @@ export function verificarCartucho(c: any): string[] {
     // Nunca una pregunta vacía (11 nov 2026): ver textoPregunta.
     const sinTexto = [...acts.filter((a: any) => TIPOS_PREGUNTA.includes(a?.tipo)), ...(b.mini_examen ?? []), ...(b.duelo ?? [])].filter((a: any) => !textoPregunta(a));
     if (sinTexto.length) out.push(`Bloque ${id}: ${sinTexto.length} pregunta(s) sin texto (${sinTexto.slice(0, 3).map((a: any) => a?.id).join(", ")})`);
+    // Nunca una tarjeta de clasificar que diga su grupo (sería la respuesta escrita).
+    for (const a of acts.filter((x: any) => x?.tipo === "clasificar")) {
+      const reveladas = (Array.isArray(a.elementos) ? a.elementos : []).filter((e: any) => typeof e?.texto === "string" && sinGrupoEscrito(e.texto, a.grupos) !== e.texto.trim());
+      if (reveladas.length) out.push(`Bloque ${id}: ${reveladas.length} tarjeta(s) de ${a.id} con la respuesta escrita («${reveladas[0].texto}»)`);
+    }
     // Mínimos: los mismos del generador (el duelo ya vive en su lista propia).
     const conDuelo = { ...b, actividades: [...acts, ...(b.duelo ?? []).map((x: any) => ({ ...x, tipo: "duelo" }))] };
     for (const f of faltasDeBloque(conDuelo)) out.push(`Bloque ${id}: ${f.juego}${f.id ? " " + f.id : ""} tiene ${f.tiene} ${f.unidad} (mínimo ${f.minimo})`);
@@ -1660,8 +1681,9 @@ export function verificarCartucho(c: any): string[] {
 export type TemaInv = { tema: string; bloque: string; pagina: string };
 export type FuenteInv = { nombre: string; url: string; oficial?: boolean; sitio?: string };
 export type ResultadoInv = TemaInv & { estado: "confirmado" | "no_confirmado" | "practica_examen"; datos: { texto: string; fuentes: FuenteInv[] }[]; fuentes: { nombre: string; url: string }[]; motivo: string };
-// Tope de 6 MXN por guía (Daniel, 11 nov 2026): hasta 6 temas por guía y 2 búsquedas por tema (antes 8 y 3).
-export const MAX_TEMAS_INVESTIGAR = 6; // por guía; los que sigan quedan como nota para repasar en el libro
+// Tope de 6 MXN por guía (Daniel, 11 nov 2026): hasta 6 subtemas por guía, repartidos entre los temas del temario
+// (ver temasQueSeInvestigan), y 2 búsquedas por subtema (antes 8 y 3).
+export const MAX_TEMAS_INVESTIGAR = 6; // subtemas por guía; los que sigan quedan como nota para repasar en el libro
 export const BUSQUEDAS_POR_TEMA = 2;
 // Nota para el Planificador cuando la investigación está encendida: cada tema del temario lleva su pista (y su slide).
 const NOTA_PLAN_INVESTIGAR = "TEMAS DEL TEMARIO: SparkEd completará con fuentes confiables los temas_a_investigar. Pon cada uno en su bloque con su propia pista (un título de \"pistas\"; cuenta como slide). Si no se puede confirmar, esa pista se vuelve una nota para repasarlo en el libro.";
@@ -1744,18 +1766,43 @@ export function contenidoParaVerificar(D: any): { bloques: any[]; total: number;
 export function resultadosDeBloque(D: any, bloqueId: string): ResultadoInv[] {
   return (Array.isArray(D?.investigacion) ? D.investigacion : []).filter((r: any) => r?.bloque === bloqueId);
 }
+// El tema del temario al que pertenece un subtema: lo que va antes de «:» («Acento normativo: esdrújulas» → «acento
+// normativo»); sin «:», el subtema entero.
+export function raizDeTema(tema: string): string {
+  const t = String(tema ?? "");
+  const i = t.indexOf(":");
+  return normaliza(i > 0 ? t.slice(0, i) : t);
+}
+// Los subtemas que se investigan (opción «segura» de la jefe, 11 nov 2026): hasta MAX_TEMAS_INVESTIGAR, primero uno
+// de cada tema del temario, en el orden del plan, y luego los segundos, y así. El planificador no parte igual el mismo
+// temario dos veces (6 subtemas en una corrida y 8 en otra): así ningún tema del temario se queda sin investigar
+// mientras otro investiga su segundo subtema. Lo que no entra queda como nota para repasar en el libro.
+export function temasQueSeInvestigan(todos: TemaInv[]): Set<string> {
+  const porRaiz = new Map<string, TemaInv[]>();
+  for (const x of todos.filter((t) => !esPracticaDeExamen(t.tema))) {
+    const r = raizDeTema(x.tema);
+    porRaiz.set(r, [...(porRaiz.get(r) ?? []), x]);
+  }
+  const dentro = new Set<string>();
+  for (let vuelta = 0; dentro.size < MAX_TEMAS_INVESTIGAR; vuelta++) {
+    const deEstaVuelta = [...porRaiz.values()].map((lista) => lista[vuelta]).filter(Boolean);
+    if (!deEstaVuelta.length) break;
+    for (const x of deEstaVuelta) if (dentro.size < MAX_TEMAS_INVESTIGAR) dentro.add(normaliza(x.tema));
+  }
+  return dentro;
+}
 // Temas de un bloque que todavía no tienen resultado. La práctica del examen y los que pasan del tope de la guía se
 // resuelven aquí mismo, sin gastar: la primera se ignora y los segundos quedan como nota.
 export function temasPendientes(D: any, bloqueId: string): TemaInv[] {
   const todos = normalizarTemas(D?.plan);
   D.investigacion = Array.isArray(D.investigacion) ? D.investigacion : [];
   const hecho = new Set(D.investigacion.map((r: any) => normaliza(r.tema)));
-  const dentro = new Set(todos.filter((x) => !esPracticaDeExamen(x.tema)).slice(0, MAX_TEMAS_INVESTIGAR).map((x) => normaliza(x.tema)));
+  const dentro = temasQueSeInvestigan(todos);
   const pend: TemaInv[] = [];
   for (const tm of todos) {
     if (tm.bloque !== bloqueId || hecho.has(normaliza(tm.tema))) continue;
     if (esPracticaDeExamen(tm.tema)) D.investigacion.push({ ...tm, estado: "practica_examen", datos: [], fuentes: [], motivo: "práctica o formato del examen: no es contenido" });
-    else if (!dentro.has(normaliza(tm.tema))) D.investigacion.push({ ...tm, estado: "no_confirmado", datos: [], fuentes: [], motivo: `la guía ya tenía ${MAX_TEMAS_INVESTIGAR} temas por investigar` });
+    else if (!dentro.has(normaliza(tm.tema))) D.investigacion.push({ ...tm, estado: "no_confirmado", datos: [], fuentes: [], motivo: `tope de ${MAX_TEMAS_INVESTIGAR} subtemas por guía (primero se investiga uno de cada tema del temario)` });
     else pend.push(tm);
   }
   return pend;
@@ -1915,15 +1962,36 @@ export function notaDeTemas(confirmados: ResultadoInv[], sinConfirmar: Resultado
 
 // Marca «Completado con fuentes»: en la pista del tema (con sus fuentes) y en cada actividad cuyo dato salió de la
 // investigación (el reproductor muestra la fuente en lugar de «De tus notas»). Se puede aplicar varias veces.
+// El subtema (o los subtemas) de una pista: primero el que la IA anotó tal cual en tema_investigado; si no, entre los
+// que se parecen, el que comparte más palabras que lo distinguen de los otros (sin «acento normativo», que comparten
+// todos), mirando el título y las palabras clave de las ideas. Si quedan empatados, la pista lleva las fuentes de todos.
+export function temasDePista(p: any, conf: ResultadoInv[]): ResultadoInv[] {
+  const ti = String(p?.tema_investigado ?? "").trim();
+  const exacto = ti ? conf.find((x) => normaliza(x.tema) === normaliza(ti)) : undefined;
+  if (exacto) return [exacto];
+  const titulo = String(p?.titulo ?? "").replace(/\s*\(\d+\)\s*$/, "");
+  const candidatos = conf.filter((x) => (ti && seParece(ti, x.tema)) || seParece(titulo, x.tema));
+  if (candidatos.length <= 1) return candidatos;
+  const palabras = (s: string) => normaliza(s).split(" ").filter((w) => w.length > 3);
+  const comunes = new Set(palabras(candidatos[0].tema).filter((w) => candidatos.every((x) => palabras(x.tema).includes(w))));
+  const deLaPista = new Set([ti, titulo, ...(Array.isArray(p?.ideas) ? p.ideas : []).map((i: unknown) => String(i ?? "").split(":")[0])].flatMap(palabras));
+  const puntos = candidatos.map((x) => new Set(palabras(x.tema).filter((w) => !comunes.has(w) && deLaPista.has(w))).size);
+  const max = Math.max(...puntos);
+  return max > 0 ? candidatos.filter((_, i) => puntos[i] === max) : candidatos;
+}
 export function marcarInvestigado(b: any, resultados: ResultadoInv[]): void {
   const conf = (resultados ?? []).filter((r) => r?.estado === "confirmado" && r.datos?.length);
   if (!b || !conf.length) return;
-  const marca = (r: ResultadoInv) => ({ fuentes: (r.fuentes ?? []).slice(0, 3).map((f) => ({ nombre: f.nombre, url: f.url })) });
+  // Las fuentes de SU subtema (11 nov 2026: la pista de esdrújulas mostraba las de agudas, porque los dos empiezan con
+  // «Acento normativo:»). tema_investigado no se sobreescribe: así, al volver a marcar al armar, sale lo mismo.
+  const marca = (rs: ResultadoInv[]) => {
+    const vistas = new Set<string>();
+    return { fuentes: rs.flatMap((r) => r.fuentes ?? []).filter((f) => f?.url && !vistas.has(f.url) && vistas.add(f.url)).slice(0, 3).map((f) => ({ nombre: f.nombre, url: f.url })) };
+  };
   for (const p of b.pistas ?? []) {
     if (!p || p.nota_temario) continue;
-    const r = (p.tema_investigado ? conf.find((x) => seParece(String(p.tema_investigado), x.tema)) : null)
-      ?? conf.find((x) => seParece(String(p.titulo ?? "").replace(/\s*\(\d+\)\s*$/, ""), x.tema));
-    if (r) { p.completado_con_fuentes = marca(r); p.tema_investigado = r.tema; }
+    const rs = temasDePista(p, conf);
+    if (rs.length) p.completado_con_fuentes = marca(rs);
   }
   // Cada actividad lleva la fuente de SU dato (la del tema, si la IA la marcó como investigada sin citar el dato).
   const textos = conf.flatMap((r) => r.datos.map((d) => ({ r, t: d.texto, nombre: d.fuentes?.[0]?.nombre ?? "" })));
@@ -1931,7 +1999,9 @@ export function marcarInvestigado(b: any, resultados: ResultadoInv[]): void {
     if (!a || typeof a !== "object") continue;
     const cita = String(a.fuente?.cita ?? "");
     const hit = cita ? textos.find((x) => citaExiste(cita, [x.t])) : null;
-    const r = hit?.r ?? (a.fuente?.tipo === "investigado" ? conf[0] : null);
+    // Sin cita que coincida: el subtema de la pista de la actividad (y, si no hay, el primero del bloque).
+    const pista = (b.pistas ?? []).find((p: any) => p?.id && p.id === a.pista);
+    const r = hit?.r ?? (a.fuente?.tipo === "investigado" ? ((pista ? temasDePista(pista, conf)[0] : undefined) ?? conf[0]) : null);
     if (r) a.fuente = { ...(a.fuente ?? {}), tipo: "investigado", foto: 0, nombre: hit?.nombre || r.fuentes?.[0]?.nombre || "" };
   }
 }

@@ -501,5 +501,52 @@ const rutaTrab = idxTs.split('rec === "trabajos" && esUuid(id) && !accion && m =
 ok(/if \(t\.alcance === "completa"\) await reanudarSiAtorado\(t\);/.test(rutaTrab), "guías de prueba y de la biblioteca: al consultar su trabajo, se reanuda si se trabó (las de las familias, igual que antes)");
 ok(/const desde = Math\.max\(1, Array\.isArray\(datos\.bloques\) \? datos\.bloques\.length : 1\);/.test(idxTs) && /const paso = desde < nBloques \? `generar:\$\{desde\}` : "revisar";/.test(idxTs), "guía pagada: el trabajo «resto» empieza en el primer bloque que la vista previa no escribió (casi siempre el 2, como antes)");
 
+// 26. Tras la prueba v51 (11 nov 2026): tope repartido por tema del temario, tarjetas sin la respuesta escrita y la
+// fuente exacta de cada pista.
+// a) El planificador partió el temario de Español 1.º en 8 subtemas: se investigan 6, primero uno de cada tema.
+const temasV51 = ["Reglamento: definición y función", "Reglamento: derechos, responsabilidades y sanciones", "Verbo: infinitivo y modos imperativo, indicativo y subjuntivo", "Acento normativo: palabras agudas y graves", "Acento normativo: esdrújulas y sobresdrújulas", "Tradición oral: coplas, pregones, refranes y dichos", "Lenguaje literal y figurado", "Figuras retóricas: metáfora, hipérbole, repetición y símil"];
+const bloqueV51 = (t: string) => /Reglamento|Verbo/.test(t) ? "b1" : /Acento/.test(t) ? "b2" : "b3";
+const Dv51: any = { plan: { bloques: [{ id: "b1" }, { id: "b2" }, { id: "b3" }], temas_a_investigar: temasV51.map((tema) => ({ tema, bloque: bloqueV51(tema), pagina: "" })) } };
+const pendV51 = ["b1", "b2", "b3"].flatMap((b) => P.temasPendientes(Dv51, b).map((x: any) => x.tema));
+const fueraV51 = Dv51.investigacion.filter((r: any) => r.estado === "no_confirmado").map((r: any) => r.tema);
+ok(pendV51.length === 6 && fueraV51.join(" | ") === "Reglamento: derechos, responsabilidades y sanciones | Acento normativo: esdrújulas y sobresdrújulas" && Dv51.investigacion.every((r: any) => /tope de 6 subtemas/.test(r.motivo)), "tope «seguro»: de 8 subtemas se investigan 6, primero uno de cada tema del temario; los segundos subtemas quedan como nota · fuera: " + fueraV51.join(" | "));
+ok(P.raizDeTema("Acento normativo: esdrújulas") === "acento normativo" && P.raizDeTema("Lenguaje literal y figurado") === "lenguaje literal y figurado" && P.temasQueSeInvestigan(["A: 1", "A: 2", "A: 3", "B"].map((tema) => ({ tema, bloque: "b1", pagina: "" }))).size === 4, "tema del temario = lo que va antes de «:»; con menos de 6 subtemas se investigan todos");
+// b) Las tarjetas de clasificar nunca dicen su grupo.
+const gruposAG = ["Agudas", "Graves"];
+ok(P.sinGrupoEscrito("mesa → Graves", gruposAG) === "mesa" && P.sinGrupoEscrito("jamás -> Agudas", gruposAG) === "jamás" && P.sinGrupoEscrito("mesa (Graves)", gruposAG) === "mesa" && P.sinGrupoEscrito("Graves: mesa", gruposAG) === "mesa" && P.sinGrupoEscrito("césped — graves", gruposAG) === "césped", "tarjeta con su grupo escrito («mesa → Graves», «(Graves)», «Graves: mesa», «— graves»): se queda solo la palabra");
+ok(P.sinGrupoEscrito("H2O → agua", ["Sustancias", "Mezclas"]) === "H2O → agua" && P.sinGrupoEscrito("Pre-Graves", gruposAG) === "Pre-Graves" && P.sinGrupoEscrito("canción", gruposAG) === "canción", "una flecha o un guion que no nombran un grupo no se tocan");
+const clGen: any = { id: "b2cl1", tipo: "clasificar", grupos: gruposAG, elementos: [{ texto: "canción → Agudas", grupo: 0 }, { texto: "árbol", grupo: 1 }] };
+P.normalizarClasificar(clGen);
+ok(clGen.elementos.map((e: any) => e.texto).join(",") === "canción,árbol", "escribir: las tarjetas del escritor también se limpian");
+const bCl: any[] = [{ id: "b2", pistas: [{ id: "b2p1" }], actividades: [{ id: "b2cl1", tipo: "clasificar", grupos: gruposAG, elementos: [{ texto: "canción", grupo: 0 }, { texto: "árbol", grupo: 1 }] }], mini_examen: [] }];
+P.aplicarReparacion(bCl, { ampliaciones: [{ id: "b2cl1", elementos: [{ texto: "jamás → Agudas", grupo: 0 }, { texto: "mesa → Graves", grupo: 1 }] }] }, [], "secundaria", "es", []);
+ok(bCl[0].actividades[0].elementos.map((e: any) => e.texto).join(",") === "canción,árbol,jamás,mesa", "reparar: las tarjetas nuevas llegan sin el grupo escrito · " + bCl[0].actividades[0].elementos.map((e: any) => e.texto).join(","));
+const cCl: any = { completo: true, plan: { presupuesto_slides: 25 }, bloques: [{ id: "b2", pistas: [{ id: "b2p1", titulo: "A", ideas: ["A: x"] }], actividades: [{ id: "b2cl1", tipo: "clasificar", instruccion: "Clasifica", grupos: gruposAG, elementos: ["canción", "reloj", "jamás → Agudas", "árbol", "lápiz", "mesa"].map((texto, i) => ({ texto, grupo: i < 3 ? 0 : 1 })) }], mini_examen: [], duelo: [] }] };
+ok(P.verificarCartucho(cCl).some((x: string) => /1 tarjeta\(s\) de b2cl1 con la respuesta escrita/.test(x)), "revisión final: una tarjeta con la respuesta escrita detiene la entrega");
+const tCl: any = { id: "tcl", alcance: "completa", paso: "reparar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "es", perfil_edad: "juvenil", materia: "Español", puntos_dificiles: [] }, inventario: {}, citas: [], huecos: ["MÍNIMO · Actividad b2cl1 (clasificar, bloque b2): tiene 4 tarjetas; agrega 2 o más"], pistas_largas: [], bloques: [{ id: "b2", pistas: [{ id: "b2p1", titulo: "A", ideas: ["A: x"] }], actividades: [{ id: "b2cl1", tipo: "clasificar", grupos: gruposAG, elementos: [{ texto: "canción", grupo: 0 }, { texto: "árbol", grupo: 1 }] }], mini_examen: [] }] } };
+pedidos.length = 0; respuestas = [apiTexto({ ampliaciones: [] }, [])];
+await P.ejecutarPaso(falso, tCl, fuenteG);
+const txtCl = pedidos[0]?.messages?.[0]?.content?.[0]?.text ?? "";
+ok(pedidos.length === 1 && !/→/.test(txtCl) && /"tarjetas":\[\{"texto":"canción","grupo":0\}/.test(txtCl) && /nunca el nombre del grupo/.test(pedidos[0].system[0].text), "reparar: las tarjetas se le resumen como {texto, grupo} (sin «→ Grupo» que copiar) y el prompt lo prohíbe");
+// c) Cada pista muestra las fuentes de SU subtema (dos subtemas que empiezan igual).
+const fA = { nombre: "RAE · reglas generales", url: "https://www.rae.es/agudas" }, fE = { nombre: "SEP · Un acento muy agudo", url: "https://nuevaescuelamexicana.sep.gob.mx/esdrujulas" };
+const confAE: any[] = [
+  { tema: "Acento normativo: palabras agudas y graves", bloque: "b2", pagina: "", estado: "confirmado", datos: [{ texto: "Palabras agudas: llevan tilde al terminar en n, s o vocal.", fuentes: [fA] }, { texto: "Palabras graves: tónica en la penúltima.", fuentes: [fA] }], fuentes: [fA], motivo: "" },
+  { tema: "Acento normativo: esdrújulas y sobresdrújulas", bloque: "b2", pagina: "", estado: "confirmado", datos: [{ texto: "Palabras esdrújulas: siempre llevan tilde.", fuentes: [fE] }, { texto: "Palabras sobresdrújulas: tónica antes de la antepenúltima.", fuentes: [fE] }], fuentes: [fE], motivo: "" }];
+const nombresDe = (p: any) => (p.completado_con_fuentes?.fuentes ?? []).map((f: any) => f.nombre).join(" + ");
+const bAE: any = { id: "b2", pistas: [
+  { id: "b2p1", titulo: "Palabras agudas y graves", ideas: ["Agudas: x"], tema_investigado: "Acento normativo: palabras agudas y graves" },
+  { id: "b2p2", titulo: "Esdrújulas y sobresdrújulas", ideas: ["Esdrújulas: y"], tema_investigado: "Acento normativo" },
+  { id: "b2p3", titulo: "Acento normativo (2)", ideas: ["Sobresdrújulas: z"], tema_investigado: null },
+  { id: "b2p4", titulo: "Acento normativo", ideas: ["Tilde: w"], tema_investigado: null }],
+  actividades: [{ id: "b2om9", tipo: "opcion_multiple", pregunta: "¿?", opciones: ["a", "b"], correcta: 0, pista: "b2p2", fuente: { tipo: "investigado", cita: "algo que no coincide con ningún dato" } }], mini_examen: [] };
+bAE.pistas.push({ id: "b2p5", titulo: "Reglas de acentuación", ideas: ["Sobresdrújulas: z"], tema_investigado: null });
+P.marcarInvestigado(bAE, confAE);
+const [pA, pE, pS, pAmb, pNo] = bAE.pistas;
+ok(!pNo.completado_con_fuentes, "una pista que no se parece a ningún subtema no se marca (como antes: podría venir de los apuntes)");
+ok(nombresDe(pA) === fA.nombre && nombresDe(pE) === fE.nombre && nombresDe(pS) === fE.nombre && nombresDe(pAmb) === `${fA.nombre} + ${fE.nombre}`, `pistas: cada una con las fuentes de su subtema (agudas → ${nombresDe(pA)}; esdrújulas → ${nombresDe(pE)}; por sus ideas → ${nombresDe(pS)}; empate → ${nombresDe(pAmb)})`);
+P.marcarInvestigado(bAE, confAE);
+ok(nombresDe(bAE.pistas[1]) === fE.nombre && bAE.pistas[1].tema_investigado === "Acento normativo" && bAE.actividades[0].fuente.nombre === fE.nombre, "al volver a marcar (armar) sale lo mismo; la pregunta sin cita lleva la fuente del subtema de su pista");
+
 console.log(fallos ? `\n${fallos} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);

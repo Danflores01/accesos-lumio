@@ -71,7 +71,7 @@ prueba (nunca el link de una familia), versión desplegada si la hubo, y qué ac
 | Qué | Dónde |
 |---|---|
 | Cadena de pasos | `funciones/sparked/pipeline.ts`: `ejecutarPaso`, `claude`, `llamar`, `ajusteDe`, `ajustarPlan`, `recortarBloques`, `recortarVistaPrevia`, `verificarCartucho`, `aplicarCorreccion`, `aplicarOrtografia` |
-| Temas del temario (11 nov) | `pipeline.ts`: `temasPendientes`, `investigarTemas`, `validarInvestigacion`, `marcarInvestigado`, `agregarNotasTemario`, `reportesContradice`, `bloqueSoloNota`, `contenidoParaVerificar`; topes `MAX_TEMAS_INVESTIGAR` (6) y `BUSQUEDAS_POR_TEMA` (2); prompt `INVESTIGADOR`; ajuste `sparked_investigar` (apagado: "no"); prueba de una guía con `POST /admin/guias/<id>/generar {"investigar":"si"}` |
+| Temas del temario (11 nov) | `pipeline.ts`: `temasPendientes`, `investigarTemas`, `validarInvestigacion`, `marcarInvestigado`, `agregarNotasTemario`, `reportesContradice`, `bloqueSoloNota`, `contenidoParaVerificar`, `temasQueSeInvestigan` (6 subtemas, primero uno por tema del temario: `raizDeTema`), `temasDePista` (fuentes de su subtema), `sinGrupoEscrito` (tarjetas sin la respuesta); topes `MAX_TEMAS_INVESTIGAR` (6) y `BUSQUEDAS_POR_TEMA` (2); prompt `INVESTIGADOR`; ajuste `sparked_investigar` (apagado: "no"); prueba de una guía con `POST /admin/guias/<id>/generar {"investigar":"si"}` |
 | Prompts | `funciones/sparked/prompts.ts` (identidad del Planificador y regla 12 «TODO CABE» del Generador) |
 | Trabajos y entrega | `funciones/sparked/index.ts`: `correrPaso` (3 intentos por paso), `reanudarSiAtorado` (150 s quieto; 6 interrupciones = error; lo llaman las consultas de las familias y, desde el 2026-11-11.3, `GET /admin/trabajos/<id>` para las guías `completa`), `alFinalizar`, `lanzarResto` (solo después del pago; sigue en el primer bloque que la vista previa no escribió) |
 | Despliegue | `funciones/puente-sparked/index.ts` (puente a un commit fijo) y `_guardia/skill/guardia-sparked/references/publicar-rapido.md` |
@@ -113,8 +113,9 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 - [ ] Pasó la revisión final: el cartucho dice `completo: true` y el `reporte` no trae `verificacion_final`.
 - [ ] La verificación de datos corrió (`reporte.verificacion` con resultados) y cada «✓ Dato corregido» sale una vez.
 - [ ] Revisé `datos.descartes` y `datos.no_leidas`: nada se perdió sin motivo.
-- [ ] Ninguna pregunta en blanco: `verificarCartucho` sin «sin texto» y, si cambié prompts o el reparador, la consulta de
-      preguntas en blanco sobre las guías de los últimos 30 días (nota `ia-arreglo-preguntas-en-blanco-prueba-en-seco.sql`).
+- [ ] Ninguna pregunta en blanco ni tarjeta con la respuesta: `verificarCartucho` sin «sin texto» ni «respuesta
+      escrita» y, si cambié prompts o el reparador, la consulta de preguntas en blanco sobre las guías de los últimos 30
+      días (nota `ia-arreglo-preguntas-en-blanco-prueba-en-seco.sql`).
 - [ ] Leí a mano 10 preguntas al azar contra el inventario: respuesta correcta, nada inventado, tono y largo del grado.
 - [ ] Cobertura: cada parte de los apuntes quedó en un bloque; reviso `inventario_no_usado` y `temas_a_investigar`.
 - [ ] `node herramientas/revisar-slides.mjs <cartucho.json>` y `<cartucho.json>:previa` en 0 y fotos al 100 %
@@ -192,6 +193,11 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
   revisar. Ningún revisor lo vio: el de slides no lee contenido y la revisión final no miraba el texto. Lección: cada
   prompt que pide JSON muestra el formato exacto; el código acomoda los nombres desde que se escribe; y una consulta
   a la base («¿cuántas preguntas en blanco hay?») vale más que revisar una guía a ojo.
+- **11 nov · Prueba v51:** el planificador no parte igual el mismo temario dos veces (6 subtemas en una corrida, 8
+  en otra): un tope que cuenta lo que decide la IA no es estable; hay que contar algo del material (los temas del
+  temario). Y el reparador copia el formato de lo que el código le resume (`texto → grupo` terminó dentro de las
+  tarjetas, con la respuesta a la vista): todo resumen que se le manda a la IA usa los mismos nombres de campo del
+  cartucho.
 - **11 nov · Arreglos antes de encender la investigación (código 2026-11-11.3):** un bloque sin nada confirmado y sin
   contenido propio no se escribe ni se repara (solo lleva su nota, que al armar pasa al bloque vecino; en la vista
   previa se escribe el bloque siguiente); si en toda la guía no hay nada confirmado ni contenido, la guía falla con
@@ -238,15 +244,18 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Pendientes de mi tema
 
-- **Temas del temario con fuentes (v50, apagado).** Prueba real del 11 nov (temario de Español 1.º, guía
-  `7e590167…`): 3 de 6 subtemas confirmados (SEP), 3 como nota, 5.87 MXN. Los 4 arreglos (preguntas vacías o
-  inventadas, reintento de búsquedas, reanudar pruebas trabadas y costo) están en el código 2026-11-11.3, probados sin
-  IA y SIN desplegar. Falta: despliegue (principal, con el sí de Daniel) y la misma prueba otra vez
-  (`scratchpad/investigar/probar-temario.mjs`, máx. 15 MXN). Se enciende si confirma ≥ 5 de 6, sin preguntas
-  inventadas ni vacías y en ≤ 6 MXN.
-- **Arreglo de datos de las preguntas en blanco** (6 guías pagadas y entregadas, 8 compras): SQL con respaldo,
-  arreglo y comprobación en la nota `ia-arreglo-preguntas-en-blanco.sql` de la carpeta de notas de la principal
-  (prueba en seco: 22 → 0 y 1 → 0). Se corre solo con el sí de Daniel; si se avisa a las familias, lo decide él.
+- **Temas del temario con fuentes (v51 = 2026-11-11.3, apagado).** Primera prueba (v50, guía `7e590167…`): 3 de 6
+  subtemas confirmados y 5.87 MXN. Segunda (v51, guía `37905365…`): los 6 subtemas investigados confirmados, 0
+  preguntas en blanco o inventadas, 5.24 MXN y sin trabarse; pero el planificador partió el temario en 8 subtemas y el
+  tope de 6 cuenta subtemas: 2 temas quedaron como nota sin investigarse. La jefe eligió la opción «segura» (6
+  subtemas, primero uno por tema del temario; ≈ 5.2 MXN). Código 2026-11-11.4 (sin desplegar): ese tope, tarjetas de
+  clasificar sin la respuesta escrita y la fuente exacta en cada pista. Falta: despliegue y la misma prueba otra vez
+  (`probar-temario.mjs` ya exige el .4). Criterio: los 6 temas del temario cubiertos (confirmados o con nota honesta),
+  0 preguntas vacías, inventadas o con la respuesta escrita, ≤ 6 MXN.
+- **Arreglo de datos de las preguntas en blanco** (6 guías pagadas y entregadas, 8 compras) y de 2 tarjetas con la
+  respuesta escrita (guía pagada `0882fef5`): SQL con respaldo, arreglo y comprobación en la nota
+  `ia-arreglo-preguntas-en-blanco.sql` de la carpeta de notas de la principal (pruebas en seco: 22 → 0, 1 → 0 y
+  2 → 0). Se corre solo con el sí de Daniel (la principal lo está consultando); si se avisa a las familias, lo decide él.
 - **Guardar lo investigado para reutilizarlo** (materia + grado + tema, 30 días; tabla nueva): Daniel dijo «no
   todavía»; proponerlo aparte después de la prueba.
 - Solo las preguntas muestran la fuente investigada; Mix & match, Super sort y los demás juegos no (Animaciones y Juegos,

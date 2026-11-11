@@ -398,6 +398,8 @@ FORMATO DE CADA PREGUNTA NUEVA (los nombres exactos: el juego solo muestra estos
   "retro_incorrecta", "fuente" }
 - completar: { "id", "enunciado" (con ___ en el hueco), "respuesta", "distractores": [3], "dificultad", "pista",
   "retro_correcta", "retro_incorrecta", "fuente" }
+- tarjetas de clasificar (en "ampliaciones"): { "texto", "grupo": 0 o 1 }; "texto" lleva SOLO la palabra o frase,
+  nunca el nombre del grupo (eso sería la respuesta escrita).
 
 PISTAS DEMASIADO LARGAS (si te mandamos alguna): cada slide debe caber completa. Divide
 cada pista larga en DOS pistas de continuación, cada una con sentido completo por sí
