@@ -8,6 +8,7 @@
 | Visuales y Marketing SparkEd | `local_5ef3ed09-0bd8-4c0c-9e76-a4f7ef07a1aa` | Sonnet 5.5 | `visuales-marketing.md` | Pósters, imágenes de WhatsApp, logotipo, tarjetas, portada, textos de venta, precio y lenguaje oficial |
 | Animaciones y Juegos | `local_0b331df4-3d84-4017-931c-bc89b055300d` | Sonnet 5.5 | `animaciones-juegos.md` | Sparky animado, juegos y pantallas del reproductor (`sparked/js`) |
 | Jefe de Seguridad | `local_f3283672-b594-44ef-a59c-aea41cb46589` | Opus 5.5 | `seguridad.md` | Cuentas y 2FA, Supabase (RLS, advisors, registros), GitHub (rama, secretos, Dependabot), quién intenta entrar, y revisión de código que pueda romper el producto |
+| Legal y Privacidad | `local_2639dd74-ba6a-4b89-8567-fb1ad2855cc7` | Opus 5.5 | `legal-privacidad.md` | Aviso de privacidad, términos de uso, inventario de datos personales y qué se le dice al cliente; borradores en `_equipo/legal/`, no publica |
 
 Sesión «PDF solo teoría» (Lumio): la app la reporta inexistente desde el 11 nov 2026.
 

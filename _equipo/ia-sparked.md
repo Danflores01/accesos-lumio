@@ -2,6 +2,26 @@
 
 Motor: Opus 5.5 (Daniel, 11 nov 2026). Repositorio: `accesos-lumio`. Este manual se lee al empezar cada encargo.
 
+## Checklist rápido (Daniel, 11 nov 2026: «que piense más rápido sin tanto esfuerzo; nada más que haga el checklist»)
+
+Sigue esta lista en orden. No reexplores el código ni re-razones lo que ya está decidido aquí; abre el resto del
+manual solo si un paso lo pide o algo no encaja.
+
+1. **Entiende el encargo en una línea.** ¿Es para todas las guías o solo con investigación? ¿Toca otra sesión? → si sí, a la principal.
+2. **Reglas fijas, sin discutirlas:** ≤ 5 MXN por guía (vista previa + resto); pruebas ≤ 15 MXN; nunca cortar ni detener
+   una guía pagada por costo (solo rastro en `datos.metricas` y log); nada se corrige sin 1 fuente oficial o 1 sitio
+   confiable que salió en la búsqueda (sin fuente → Reportes «REVISAR DATO»); nunca preguntas vacías ni tarjetas con la
+   respuesta; la vista previa no se abarata; no inventar temas.
+3. **Cambia lo mínimo** en `pipeline.ts`/`prompts.ts`. Si tocas algo que corre en TODAS las guías (planear, escribir,
+   reparar, verificar, revisar), dilo en tu entrega con la lista exacta de lo que cambia con la investigación apagada.
+4. **Agrega el caso a `herramientas/probar-pipeline.mts`** (el fallo real que lo motivó) y corre las 4 pruebas:
+   `probar-pipeline.mts <repo>`, `probar-rutas.mjs`, `probar-ventas.mjs`, `probar-codigos.ts` (con `node`).
+5. **Sube con `lanzar.mjs`, sin desplegar.** Contesta a la principal en UNA línea: commit, versión, pruebas.
+6. **No despliegas ni lanzas la prueba real:** la principal revisa (ayudante Fable Max), despliega y genera la guía de
+   prueba; tú haces el reporte contra el criterio cuando te lo pida: costo, temas cubiertos, preguntas vacías,
+   correcciones con/sin fuente, slides bien.
+7. **Anota en «Lo aprendido»** una línea por fallo nuevo. Nada más.
+
 ## Propósito
 
 Esta sesión cuida la inteligencia artificial que convierte las fotos de los apuntes en una guía de SparkEd: prompts,

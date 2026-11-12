@@ -2,6 +2,15 @@
 
 Lo más nuevo arriba. Cada entrada: qué cambió, por qué, a quién se avisó y qué secciones de su manual.
 
+## 2026-11-11 · Investigación de temas ENCENDIDA para clientes (v53, código 2026-11-11.6)
+- Qué: `config.sparked_investigar = 'si'`. Los temas del temario sin contenido se completan con fuentes (SEP, RAE…)
+  o quedan como nota «repásalo en tu libro». Para apagarla: poner 'no' (el servidor la lee en 1 minuto).
+- Prueba antes de encender: con investigación 4.24 MXN, 4/6 temas confirmados, 0 correcciones sin fuente, 22 pantallas
+  bien; sin investigación 2.86 MXN, 17 pantallas bien. Revisión previa con ayudante Fable Max: segura.
+- A vigilar en las primeras guías reales: costo ≤ 5 MXN, `verificacion` sin «error (parte n)», y el aviso «El buscador
+  no puede consultar estos dominios» en el log.
+- A quién: IA de SPARKED.
+
 ## 2026-11-11 · Tope baja a 5 MXN y nada se corrige sin fuente
 - Qué: cada guía en producción ≤ 5 MXN de IA (antes 6); la verificación solo cambia la guía con una fuente que salió en
   la búsqueda, si no va a Reportes. Arreglos del código 2026-11-11.5 (verificación, segunda búsqueda, «;» en el planificador).
