@@ -406,7 +406,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     // Tope de slides, orden variado de los juegos y primera actividad (ver ajustarPlan).
     const slidesIa = plan.slides_estimados ?? null;
     // Universidad (Daniel, 12 nov 2026: «que las actividades no sean tan infantiles»): el perfil lo fija el grado, no la IA.
-    if (perfilDe(fuente.grado) === "universitario") plan.perfil_edad = "universitario";
+    fijarPerfil(plan, fuente.grado);
     const recortesPlan = ajustarPlan(plan, semillaDe(t.borrador_id ?? t.id));
     const forzado = idiomaForzado(fuente);
     if (forzado) {
@@ -1411,6 +1411,12 @@ function planDe(j: any): any {
 export const JUEGOS_UNIVERSIDAD = ["opcion_multiple", "completar", "verdadero_falso", "conceptos", "ordenar", "clasificar", "super_dato", "quien_es_quien"];
 export const MECANICAS_UNIVERSIDAD = ["carrera", "montana", "castillo"];
 export const esUniversidad = (grado: string) => /universi|licenciatura|ingenier|maestr[ií]a|doctorado|posgrado/.test(String(grado ?? "").toLowerCase());
+// El perfil «universitario» solo con grado de universidad (12 nov 2026): si la IA lo pone a otro grado, vuelve a «sobrio»
+// (una guía de prepa no pierde su duelo); con grado de universidad, siempre «universitario».
+export function fijarPerfil(plan: any, grado: string): void {
+  if (perfilDe(grado) === "universitario") plan.perfil_edad = "universitario";
+  else if (plan?.perfil_edad === "universitario") plan.perfil_edad = "sobrio";
+}
 export function perfilDe(grado: string): string {
   const g = String(grado ?? "").toLowerCase(); const n = Number((g.match(/\d/) ?? ["0"])[0]);
   if (esUniversidad(g)) return "universitario";
