@@ -171,7 +171,7 @@ async function llamar(supabase: Supa, t: Trabajo, fuente: Fuente, paso: string, 
 
 // Prueba de velocidad: una sola llamada del planificador con el modelo y el esfuerzo dados, sobre el inventario de un
 // trabajo ya leído. No guarda nada; devuelve tiempo, tokens, costo y un resumen del plan.
-const contenidoPlan = (D: any, fuente: Fuente, variedad = "") => [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${NIVEL_LECTURA(fuente.grado)} · idioma del alumno ${fuente.idioma_alumno ?? "es"} · fotos subidas ${fuente.archivos.length} · materia indicada ${fuente.materia} · tipo de material ${JSON.stringify(D.tipo_material)}.${variedad ? "\n" + variedad : ""}\n\nINVENTARIO:\n${JSON.stringify(D.inventario)}` }];
+const contenidoPlan = (D: any, fuente: Fuente, variedad = "") => [{ type: "text", text: `Datos: grado ${fuente.grado} · nivel ${NIVEL_LECTURA(fuente.grado)} · idioma del alumno ${fuente.idioma_alumno ?? "es"} · fotos subidas ${fuente.archivos.length} · materia indicada ${String(fuente.materia ?? "").slice(0, 60)}${esUniversidad(fuente.grado) ? " (texto libre de lo que cursa)" : ""} · tipo de material ${JSON.stringify(D.tipo_material)}.${variedad ? "\n" + variedad : ""}\n\nINVENTARIO:\n${JSON.stringify(D.inventario)}` }];
 export async function medirPlan(D: any, fuente: Fuente, modelo: string, esfuerzo: string) {
   const a = ajusteDe("plan", { modelo_plan: modelo, esfuerzo_plan: esfuerzo });
   try {
@@ -405,6 +405,8 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     plan.bloques = plan.bloques.slice(0, 5).map((pb: any, i: number) => ({ ...pb, id: pb.id || `b${i + 1}`, juegos: pb.juegos ?? {}, ids_inventario: (Array.isArray(pb.ids_inventario) ? pb.ids_inventario : []).filter((x: unknown) => idsValidos.has(x)) }));
     // Tope de slides, orden variado de los juegos y primera actividad (ver ajustarPlan).
     const slidesIa = plan.slides_estimados ?? null;
+    // Universidad (Daniel, 12 nov 2026: «que las actividades no sean tan infantiles»): el perfil lo fija el grado, no la IA.
+    if (perfilDe(fuente.grado) === "universitario") plan.perfil_edad = "universitario";
     const recortesPlan = ajustarPlan(plan, semillaDe(t.borrador_id ?? t.id));
     const forzado = idiomaForzado(fuente);
     if (forzado) {
@@ -939,13 +941,13 @@ function juegoParaB1(pb: any, semilla: number): string {
 // Mecánica visual de las preguntas de cada bloque: la del planificador si cumple (no "carrera" en el bloque 1, no la
 // misma en dos bloques seguidos, no "duelo" si el bloque ya tiene juego de duelo); si no, una al azar, de preferencia
 // una que la guía no haya usado.
-export function ajustarMecanicas(bloques: any[], semilla: number): string[] {
+export function ajustarMecanicas(bloques: any[], semilla: number, permitidas: string[] = MECANICAS_QUIZ): string[] {
   const notas: string[] = [];
-  const lista = barajar(MECANICAS_QUIZ, azar(semilla ^ 0x27d4eb2f));
+  const lista = barajar(permitidas, azar(semilla ^ 0x27d4eb2f));
   const usadas = new Set<string>();
   bloques.forEach((pb, i) => {
     const prev = i ? bloques[i - 1].mecanica_quiz : null;
-    const valida = (m: string) => MECANICAS_QUIZ.includes(m) && m !== prev && !(i === 0 && m === "carrera") && !(m === "duelo" && ent(pb.juegos?.duelo) > 0);
+    const valida = (m: string) => permitidas.includes(m) && m !== prev && !(i === 0 && m === "carrera") && !(m === "duelo" && ent(pb.juegos?.duelo) > 0);
     let m = normaliza(String(pb.mecanica_quiz ?? "")).replace(/\s/g, "_");
     if (!valida(m)) {
       const nueva = lista.find((x) => valida(x) && !usadas.has(x)) ?? lista.find(valida) ?? "montana";
@@ -963,12 +965,16 @@ export function ajustarMecanicas(bloques: any[], semilla: number): string[] {
 export function ajustarPlan(plan: any, semilla = 0): string[] {
   const notas: string[] = [];
   const tope = topeDe(plan);
+  const uni = plan.perfil_edad === "universitario";
+  if (uni && juegoDe(String(plan.primera_actividad ?? "")) === "duelo") plan.primera_actividad = "calentamiento";
   for (const pb of plan.bloques) {
     pb.pistas = (Array.isArray(pb.pistas) ? pb.pistas : []).map((x: unknown) => String(x ?? "").trim()).filter(Boolean).slice(0, 4);
     if (!pb.pistas.length) pb.pistas = (Array.isArray(pb.temas) && pb.temas.length ? pb.temas : [pb.titulo]).slice(0, 2).map(String);
     pb.juegos = Object.fromEntries(TIPOS_JUEGO.map((k) => [k, ent(pb.juegos?.[k])]));
     for (const k of POR_PIEZA) if (k !== "conceptos" && pb.juegos[k] > 1) pb.juegos[k] = 1;
     pb.mini_examen = ent(pb.mini_examen);
+    // Universidad: el duelo contra el dragón se ve infantil; sus preguntas pasan al mini-examen.
+    if (uni) { for (const k of Object.keys(pb.juegos)) if (!JUEGOS_UNIVERSIDAD.includes(k)) { if (k === "duelo" && pb.juegos.duelo > 0 && !pb.mini_examen) pb.mini_examen = Math.max(MIN_PREGUNTAS, pb.juegos.duelo); pb.juegos[k] = 0; } if (Array.isArray(pb.orden_actividades)) pb.orden_actividades = pb.orden_actividades.filter((x: string) => x === "mini_examen" || JUEGOS_UNIVERSIDAD.includes(x)); }
     // Mínimos: 5 preguntas por juego de preguntas, 4 parejas en conceptos; el duelo, de 5 a 7.
     const j = pb.juegos;
     if (j.opcion_multiple + j.completar > 0 && j.opcion_multiple + j.completar < MIN_PREGUNTAS) j.opcion_multiple = MIN_PREGUNTAS - j.completar;
@@ -1020,7 +1026,7 @@ export function ajustarPlan(plan: any, semilla = 0): string[] {
   // Orden al azar con la semilla de la guía (nunca dos juegos del mismo tipo seguidos, tampoco entre bloques).
   const ordenes = ordenarJuegos(plan.bloques.map((pb: any) => juegosDelPlan(pb)), semilla, plan.primera_actividad === "calentamiento" ? null : primera);
   plan.bloques.forEach((pb: any, i: number) => { pb.orden_actividades = ordenes[i]; });
-  notas.push(...ajustarMecanicas(plan.bloques, semilla));
+  notas.push(...ajustarMecanicas(plan.bloques, semilla, plan.perfil_edad === "universitario" ? MECANICAS_UNIVERSIDAD : MECANICAS_QUIZ));
   plan.presupuesto_slides = tope;
   plan.slides_estimados = estimarSlidesPlan(plan);
   return notas;
@@ -1399,15 +1405,22 @@ function planDe(j: any): any {
   const bloques = (p?.bloques ?? []).filter((b: any) => b && typeof b === "object" && typeof b.titulo === "string" && b.titulo.trim());
   return bloques.length ? { ...p, bloques, identidad: { ...(p.identidad ?? {}) } } : null;
 }
-function perfilDe(grado: string): string {
+// Juegos y mecánicas que no se ven infantiles para universidad (12 nov 2026): quizzes, completar, verdadero o falso,
+// conceptos, ordenar, clasificar, súper dato y quién es quién; sin duelo contra el dragón. Mecánicas: carrera, montaña y
+// castillo (sin pingüino, enemigos ni duelo).
+export const JUEGOS_UNIVERSIDAD = ["opcion_multiple", "completar", "verdadero_falso", "conceptos", "ordenar", "clasificar", "super_dato", "quien_es_quien"];
+export const MECANICAS_UNIVERSIDAD = ["carrera", "montana", "castillo"];
+export const esUniversidad = (grado: string) => /universi|licenciatura|ingenier|maestr[ií]a|doctorado|posgrado/.test(String(grado ?? "").toLowerCase());
+export function perfilDe(grado: string): string {
   const g = String(grado ?? "").toLowerCase(); const n = Number((g.match(/\d/) ?? ["0"])[0]);
+  if (esUniversidad(g)) return "universitario";
   if (g.includes("primaria")) return n <= 3 ? "infantil" : "caricatura";
   if (g.includes("secundaria")) return n <= 1 ? "caricatura" : "juvenil";
   return "sobrio";
 }
-function paletaDe(materia: string): string {
+export function paletaDe(materia: string): string {
   const m = String(materia ?? "").toLowerCase().normalize("NFD").replace(/[^a-z ]/g, "");
-  const reglas: [RegExp, string][] = [[/histor/, "historia_azul"], [/espanol|lengua|literatura|lectura/, "espanol_rojo"], [/mate|algebra|geometr|calculo/, "mate_naranja"], [/cienc|quimic|fisic|biolog/, "ciencias_verde"], [/frances|french/, "frances_cielo"], [/civic|etica/, "civica_morado"], [/ingles|english/, "ingles_mostaza"], [/geograf/, "geo_turquesa"]];
+  const reglas: [RegExp, string][] = [[/derecho|juridic|constitucional|civic|\betica|filosof|sociolog|politic|psicolog/, "civica_morado"], [/econom|contab|finanz|estadist|actuar/, "mate_naranja"], [/anatom|medicin|enfermer|fisiolog|farmac|odontolog|veterinar|nutric|biomedic|ingenieri/, "ciencias_verde"], [/histor/, "historia_azul"], [/espanol|lengua|literatura|lectura/, "espanol_rojo"], [/mate|algebra|geometr|calculo/, "mate_naranja"], [/cienc|quimic|fisic|biolog/, "ciencias_verde"], [/frances|french/, "frances_cielo"], [/civic|\betica/, "civica_morado"], [/ingles|english/, "ingles_mostaza"], [/geograf/, "geo_turquesa"]];
   return reglas.find(([re]) => re.test(m))?.[1] ?? "otra";
 }
 // Plan de respaldo armado por código cuando la IA no devolvió un plan válido: hasta 3 bloques en el orden de las fotos,

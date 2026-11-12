@@ -197,6 +197,11 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Lo aprendido
 
+- **12 nov · Universidad (código 2026-11-12.1):** «Universidad» caía en «sobrio» como prepa. Ahora universidad,
+  licenciatura, ingeniería o maestría → perfil «universitario» (lo fija el código por el grado): tono académico, más
+  quizzes de aplicación y casos, sin duelo (pasa a mini-examen) y solo mecánicas carrera, montaña o castillo. La materia
+  es texto libre (máx. 60) y la IA deduce área y nivel. `/admin/pruebas/generar` acepta `opciones.grado` y `opciones.materia`.
+
 - 2026-11-11 · Daniel: **tope de costo de IA por guía en producción: 5 MXN** (lo bajó de 6 el mismo día; vista previa
   + resto, con investigación de temas incluida). Las pruebas pueden gastar hasta 15 MXN cada una mientras se aprende;
   lo que se lleve a producción tiene que caber en 5. Nunca se corta una guía pagada a medias por costo: si una pasa

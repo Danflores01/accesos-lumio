@@ -747,5 +747,21 @@ ok(JSON.stringify(P.precioDe("claude-sonnet-5-5", 5000)) === "[2,10,0.1]" && JSO
 const regN = P.textosDeGuia({ plan: { materia: "Español", identidad: {} }, bloques: [{ id: "b1", pistas: [{ id: "b1p1", titulo: "A", ideas: ["A: x"] }, { id: "b1nt1", titulo: "Repásalo en tu libro", ideas: ["Verbo: este tema venía en tu temario; repásalo en tu libro."], nota_temario: true }], actividades: [], mini_examen: [] }] });
 ok(Object.keys(regN).some((k) => k.startsWith("b1p1")) && !Object.keys(regN).some((k) => k.startsWith("b1nt1")), "ortografía: las notas «repásalo en tu libro» no se mandan a revisar (las escribe el código)");
 
+// 28. Universidad (Daniel, 12 nov 2026: «si la persona pone universidad, que las actividades no sean tan infantiles…
+// y en materia, que escriba qué está cursando y la IA identifique por dónde va el tiro»). Código 2026-11-12.1.
+ok(P.perfilDe("1° Universidad") === "universitario" && P.perfilDe("Licenciatura en Economía") === "universitario" && P.perfilDe("Ingeniería civil, 3er semestre") === "universitario" && P.perfilDe("Maestría") === "universitario" && P.perfilDe("3° Preparatoria") === "sobrio" && P.perfilDe("5° Primaria") === "caricatura" && P.perfilDe("2° Secundaria") === "juvenil", "perfil: universidad, licenciatura, ingeniería y maestría → «universitario»; prepa sigue «sobrio»");
+const planU: any = { perfil_edad: "universitario", presupuesto_slides: 22, slides_estimados: 22, justificacion_slides: "", primera_actividad: "duelo",
+  bloques: [1, 2, 3].map((i) => ({ id: "b" + i, titulo: "B" + i, pistas: ["a", "b"], ids_inventario: ["x"], juegos: { opcion_multiple: 6, completar: 2, verdadero_falso: 0, super_dato: 0, conceptos: 5, ordenar: 0, clasificar: 0, quien_es_quien: 0, duelo: 6 }, mini_examen: 0, orden_actividades: ["opcion_multiple", "duelo", "conceptos"], mecanica_quiz: "pinguino" })) };
+P.ajustarPlan(planU, 7);
+ok(planU.bloques.every((pb: any) => pb.juegos.duelo === 0 && pb.mini_examen >= 5 && !pb.orden_actividades.includes("duelo") && P.MECANICAS_UNIVERSIDAD.includes(pb.mecanica_quiz)) && planU.primera_actividad !== "duelo", "universidad: sin duelo contra el dragón (sus preguntas pasan al mini-examen) y solo mecánicas carrera, montaña o castillo · " + planU.bloques.map((pb: any) => pb.mecanica_quiz).join(", "));
+const planS2: any = JSON.parse(JSON.stringify({ ...planU, perfil_edad: "sobrio", primera_actividad: "calentamiento" }));
+planS2.bloques.forEach((pb: any) => { pb.juegos.duelo = 6; pb.mini_examen = 0; pb.orden_actividades = ["opcion_multiple", "duelo"]; });
+P.ajustarPlan(planS2, 7);
+ok(planS2.bloques.some((pb: any) => pb.juegos.duelo > 0), "prepa («sobrio») sigue igual: conserva el duelo");
+ok(/if \(perfilDe\(fuente\.grado\) === "universitario"\) plan\.perfil_edad = "universitario";/.test(readFileSync(join(dir, "pipeline.ts"), "utf8")) && PR.ESQUEMA_PLAN.properties.perfil_edad.enum.includes("universitario") && /UNIVERSITARIO: tono adulto/.test(PR.PLANIFICADOR) && /universitario → hasta 5 ideas con el vocabulario técnico/.test(PR.GENERADOR) && /texto libre de lo que el alumno cursa/.test(PR.PLANIFICADOR), "planificador y escritor conocen el perfil universitario; el código lo fija por el grado aunque la IA diga otro");
+ok(P.paletaDe("Microeconomía II") === "mate_naranja" && P.paletaDe("Anatomía humana") === "ciencias_verde" && P.paletaDe("Derecho constitucional") === "civica_morado" && P.paletaDe("Genética") !== "civica_morado" && P.paletaDe("Diseño gráfico") === "otra" && P.paletaDe("Historia de México") === "historia_azul", "paleta con materia libre: economía → naranja, anatomía → verde, derecho → morado; «Genética» ya no cae en cívica; lo demás, «otra»");
+const idxU = readFileSync(join(repo, "funciones/sparked/index.ts"), "utf8");
+ok(/const gradoP = texto\(b\.opciones\?\.grado, 60\) \|\| bo\.grado, materiaP = texto\(b\.opciones\?\.materia, 60\) \|\| bo\.materia;/.test(idxU) && /grado: gradoP, materia: materiaP, paginas/.test(idxU), "pruebas del administrador: opciones.grado y opciones.materia reemplazan los del borrador (máx. 60 caracteres)");
+
 console.log(fallos ? `\n${fallos} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);

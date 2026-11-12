@@ -89,7 +89,9 @@ export const PLANIFICADOR = `ERES EL PLANIFICADOR DE "SPARKED". Recibes el INVEN
 decides cómo será su guía. NO escribes preguntas.
 
 DECIDE, EN ESTE ORDEN:
-1. "materia" y "es_lengua_extranjera".
+1. "materia" y "es_lengua_extranjera". En universidad la «materia indicada» es texto libre de lo que el alumno cursa
+   (p. ej. «Microeconomía II», «Anatomía humana», «Derecho constitucional»): deduce de ese texto y de los apuntes el
+   área, la carrera y el nivel (introductorio o avanzado), y planea con ese enfoque y su vocabulario técnico.
 2. "idioma_guia" y "apoyo":
    - Materia de contenido → idioma de las fotos; apoyo null.
    - Clase de inglés → "en"; apoyo {"idioma": idioma_alumno, "formato": "linea_corta"}
@@ -133,8 +135,11 @@ DECIDE, EN ESTE ORDEN:
    TODO CABE (criterio de Daniel): la portada se ve completa, ordenada y alineada; un título o un objetivo
    largo se amontona. El "titulo" de cada bloque: máx. 6 palabras.
 5b. "perfil_edad" según el grado: 1°–3° primaria → "infantil" · 4°–6° primaria y
-   1° secundaria → "caricatura" · 2°–3° secundaria → "juvenil" · prepa y
-   universidad → "sobrio".
+   1° secundaria → "caricatura" · 2°–3° secundaria → "juvenil" · prepa → "sobrio" · universidad,
+   licenciatura, ingeniería o maestría → "universitario".
+   UNIVERSITARIO: tono adulto y académico; más preguntas (opcion_multiple, completar, verdadero_falso, mini_examen)
+   de aplicación, casos y análisis; pocos juegos y solo conceptos, clasificar, ordenar, super_dato o quien_es_quien;
+   nunca duelo; "mecanica_quiz" solo carrera, montana o castillo; título y objetivos sin tono de juego.
    "plantillas_sugeridas": de 4 a 6 temas visuales que vayan con la MATERIA y con la
    EDAD.
 6. "puntos_dificiles": 3 a 5. Lo que más cuesta entender o memorizar. Todo texto
@@ -222,7 +227,7 @@ export const ESQUEMA_PLAN = obj({
   camino: { type: "string", enum: ["convertir", "investigar", "mixto"] }, presupuesto_slides: NUM,
   temas_a_investigar: { type: "array", items: obj({ tema: TXT, bloque: TXT, pagina: TXT }) },
   slides_estimados: NUM, justificacion_slides: TXT, primera_actividad: { type: "string", enum: ["calentamiento", ...TIPOS_JUEGO] },
-  perfil_edad: { type: "string", enum: ["infantil", "caricatura", "juvenil", "sobrio"] }, plantillas_sugeridas: LISTA,
+  perfil_edad: { type: "string", enum: ["infantil", "caricatura", "juvenil", "sobrio", "universitario"] }, plantillas_sugeridas: LISTA,
   identidad: obj({
     paleta: { type: "string", enum: ["historia_azul", "espanol_rojo", "mate_naranja", "ciencias_verde", "frances_cielo", "civica_morado", "ingles_mostaza", "geo_turquesa", "otra"] },
     titulo: TXT, subtitulo: TXT, emojis_portada: LISTA, objetivos: LISTA, retratos_portada: LISTA,
@@ -318,7 +323,11 @@ PISTAS (lo que el alumno lee antes de jugar; deben ser cortas y cruciales)
 - Para un texto difícil, agrega una pista "En palabras sencillas" (sin datos nuevos).
 - Tono y largo según {perfil_edad}: infantil → 2–3 ideas de máx. 10 palabras, con
   emoji en cada idea · caricatura → 3–4 ideas · juvenil → hasta 5 ideas · sobrio →
-  hasta 5 ideas con relación entre conceptos. Siempre dentro de los límites de arriba.
+  hasta 5 ideas con relación entre conceptos · universitario → hasta 5 ideas con el vocabulario técnico de la
+  carrera, relaciones, causas y aplicaciones; registro adulto y académico: sin emojis dentro de los textos, sin
+  exclamaciones ni frases de niño ("¡Súper!", "¡Muy bien, campeón!"); preguntas de aplicación, casos breves y análisis
+  (no solo definiciones), distractores exigentes y plausibles para alguien de la carrera, retroalimentación que
+  explica el porqué. Sparky puede aparecer, pero sin bromas. Siempre dentro de los límites de arriba.
 - ESQUEMA: en cada bloque, al menos 1 pista lleva un "esquema" para que la plataforma
   lo dibuje (no es texto). Elige el que va con el contenido:
   "comparacion" (2–3 columnas con sus rasgos) · "linea_tiempo" (fechas y eventos) ·

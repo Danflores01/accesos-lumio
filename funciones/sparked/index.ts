@@ -23,7 +23,7 @@ import { imagenEntrega, imagenCompartir } from "./imagen-wa.ts";
 import { matrizQr } from "./qr.ts";
 import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 
-const VERSION = "2026-11-11.6";
+const VERSION = "2026-11-12.1";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -1549,10 +1549,12 @@ Deno.serve(async (req: Request) => {
         const opciones: Record<string, unknown> = Object.fromEntries(Object.entries(b.opciones ?? {}).filter(([k, v]) => /^(modelo|esfuerzo)_(extraer|plan|escribir|reparar|verificar|investigar)$|^investigar$/.test(k) && typeof v === "string").map(([k, v]) => [k, texto(v, 10)]));
         const idiomaP = idiomaValido(b.opciones?.idioma_guia ?? b.idioma);
         if (idiomaP) opciones.idioma_guia = idiomaP;
+        // Solo en pruebas del administrador (12 nov 2026): grado y materia propios, para probar universidad sin fotos nuevas.
+        const gradoP = texto(b.opciones?.grado, 60) || bo.grado, materiaP = texto(b.opciones?.materia, 60) || bo.materia;
         const bid = crypto.randomUUID(); const clave = nuevoToken(24);
-        const { error: eb } = await supabase.from("borradores").insert({ id: bid, clave, servicio: 2, colegio_id: bo.colegio_id, colegio_texto: bo.colegio_texto, grado: bo.grado, materia: bo.materia, paginas: bo.paginas, archivos: bo.archivos, estado: "generando", expira_en: enDias(7) });
+        const { error: eb } = await supabase.from("borradores").insert({ id: bid, clave, servicio: 2, colegio_id: bo.colegio_id, colegio_texto: bo.colegio_texto, grado: gradoP, materia: materiaP, paginas: bo.paginas, archivos: bo.archivos, estado: "generando", expira_en: enDias(7) });
         if (eb) throw eb;
-        const { data: g, error: eg } = await supabase.from("guias").insert({ estado: "borrador", origen: "personalizada", titulo: `Prueba ${etiqueta}`, colegio_id: bo.colegio_id, grado: bo.grado, materia: bo.materia, examen: `Prueba de modelos ${etiqueta}`, borrador_id: bid }).select("id").single();
+        const { data: g, error: eg } = await supabase.from("guias").insert({ estado: "borrador", origen: "personalizada", titulo: `Prueba ${etiqueta}`, colegio_id: bo.colegio_id, grado: gradoP, materia: materiaP, examen: `Prueba de modelos ${etiqueta}`, borrador_id: bid }).select("id").single();
         if (eg) throw eg;
         // Lo investigado en otra corrida no se copia: cada prueba investiga de nuevo con su propio plan.
         const inventarioP = Object.fromEntries(Object.entries(D0.inventario ?? {}).filter(([k]) => k !== "investigado"));
