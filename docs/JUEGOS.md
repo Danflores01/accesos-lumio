@@ -86,6 +86,13 @@ de preguntas de cada bloque y el tipo de verdadero o falso; al final, `repartir(
    preguntas (siguen contando en la calificación).
 6. **Verdadero o falso:** se reparte entre el contra reloj (swipe) y el perro, el que se haya usado menos, sin repetir
    seguido.
+7. **Universidad (Daniel, 12 nov 2026: «que las actividades no sean tan infantiles»):** si el cartucho trae
+   `plan.perfil_edad === "universitario"` (lo fija el servidor por el grado), los juegos de preguntas solo se reparten
+   entre carrera, montaña y castillo (`MECANICAS_UNIVERSIDAD`): nunca enemigos, duelo ni pingüino. Si hay más juegos
+   que mecánicas se repite una de esas tres (de preferencia otra carrera con distinta plantilla), y la lista `duelo` o
+   `"juego": "duelo"` se juegan con una de ellas (`esDuelo`, en juegos.js, tampoco vuelve duelo esas preguntas). El
+   verdadero o falso va siempre contra reloj (swipe), sin el perro. Con cualquier otro perfil el reparto es exactamente
+   el de las reglas 1 a 6.
 
 Las plantillas ya ocupadas por el calentamiento (o por otras slides fijas) cuentan desde el principio.
 El calentamiento usa siempre la plantilla `formula1` (circuito de Fórmula 1 de día, colores reales): es el primer juego

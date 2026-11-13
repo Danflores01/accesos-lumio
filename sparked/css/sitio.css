@@ -119,6 +119,8 @@ footer.pie a { color: #fff; }
 .panel-paso h1 { font-size: 30px; }
 .panel-paso h2 { font-size: 22px; }
 .rejilla-campos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+/* Paso 1 de crear.html: el grado y la materia miden lo mismo, sea la materia una lista o un campo de texto (Universidad). */
+#f-grado, #f-materia { height: 52px; }
 .pasos-barra { display: flex; gap: 8px; margin-bottom: 16px; }
 .pasos-barra div { flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,.25); }
 .pasos-barra div.on { background: linear-gradient(90deg, #FFB347, #FFD400); }

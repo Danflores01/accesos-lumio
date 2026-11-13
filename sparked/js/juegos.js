@@ -758,7 +758,9 @@ const TEXTOS_DUELO = {
 const td = (ctx, k) => (TEXTOS_DUELO[ctx.c?.plan?.idioma_guia] ?? TEXTOS_DUELO.es)[k] ?? TEXTOS_DUELO.es[k];
 // ¿Esta slide de preguntas se juega como duelo? Sí si el estante la marcó así (k: "duelo") o si el bloque lo pide con
 // "juego": "duelo" (el planificador decide qué juego recibe las preguntas de cada bloque). El calentamiento nunca.
-const esDuelo = (s, ctx) => s.k === "duelo" || (!s.calentamiento && s.blk >= 0 && ctx.c?.bloques?.[s.blk]?.juego === "duelo");
+// Las guías de universidad (plan.perfil_edad "universitario") tampoco: ahí "juego": "duelo" no cuenta y las preguntas
+// se juegan con la mecánica que repartió el estante (carrera, montaña o castillo; ver repartir() en cartucho.js).
+const esDuelo = (s, ctx) => s.k === "duelo" || (!s.calentamiento && s.blk >= 0 && ctx.c?.bloques?.[s.blk]?.juego === "duelo" && ctx.c?.plan?.perfil_edad !== "universitario");
 
 export function duelo(s, ctx) {
   const T = ctx.t;

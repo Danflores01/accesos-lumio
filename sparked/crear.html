@@ -32,8 +32,8 @@
     <div style="color:#7c3aed;font-weight:800;letter-spacing:1px;font-size:14px" data-i18n="crear.sello">TU GUÍA PERSONALIZADA</div>
     <h1 data-i18n="crear.titulo">Arrastra tu contenido para hacer tu guía</h1>
     <form id="form" class="rejilla-campos">
-      <div class="campo"><label data-i18n="crear.grado">Grado</label><select name="grado" required></select></div>
-      <div class="campo"><label data-i18n="crear.materia">Materia</label><select name="materia" required></select></div>
+      <div class="campo"><label for="f-grado" data-i18n="crear.grado">Grado</label><select id="f-grado" name="grado" required></select></div>
+      <div class="campo"><label for="f-materia" data-i18n="crear.materia">Materia</label><select id="f-materia" name="materia" required></select></div>
       <div style="grid-column:1/-1">
         <div class="zona-carga" id="zona">📸 <span data-i18n="crear.zona"><b>Toca para elegir fotos o PDF</b>, o arrástralos aquí</span><br><span class="ayuda" data-i18n="crear.zona_ayuda">Hasta 25 páginas · fotos del temario, del libro de texto o de tus apuntes. Mientras más claras, mejor.</span><input type="file" id="archivos" accept="image/*,application/pdf" multiple hidden></div>
         <div class="miniaturas" id="minis" style="margin-top:10px"></div>
@@ -58,17 +58,32 @@ const form = $("#form"), zona = $("#zona"), input = $("#archivos"), minis = $("#
 const MAX = CONFIG.paginasMax;
 const pasos = (n) => { [...$("#pasos").children].forEach((d, i) => d.classList.toggle("on", i < n)); ["p1", "p2", "p3", "p4"].forEach((id, i) => { $("#" + id).hidden = i !== n - 1; }); window.scrollTo({ top: 0, behavior: "smooth" }); };
 // Grado y materia: el valor que se manda al servidor sigue en español; lo que se ve cambia con el idioma.
+// Universidad: en lugar de la lista de materias hay un campo para escribir la materia («¿Qué estás cursando?»).
+// Los dos se llaman "materia" y solo uno está dentro del formulario a la vez: form.materia siempre es el que se ve.
+// Cada uno conserva lo suyo (la materia elegida y el texto escrito) al cambiar de grado o de idioma.
+const listaMateria = form.materia, etiquetaMateria = form.querySelector('label[for="f-materia"]');
+const textoMateria = Object.assign(document.createElement("input"), { id: "f-materia", name: "materia", required: true, maxLength: 60 });
+const esUniversidad = () => form.grado.value === "Universidad";
+function ajustarMateria() {
+  const campo = esUniversidad() ? textoMateria : listaMateria;
+  if (form.materia !== campo) form.materia.replaceWith(campo);
+  textoMateria.placeholder = t("crear.cursando_ej");
+  poner(etiquetaMateria, esUniversidad() ? "crear.cursando" : "crear.materia");
+}
 function llenarListas() {
-  const g = form.grado.value, m = form.materia.value;
+  const g = form.grado.value, m = listaMateria.value;
   opciones(form.grado, GRADOS.map((x) => ({ valor: x, texto: nombreGrado(x) })), t("crear.elige_grado"));
-  opciones(form.materia, MATERIAS.map((x) => ({ valor: x, texto: nombreMateria(x) })), t("crear.elige_materia"));
-  form.grado.value = g; form.materia.value = m;
+  opciones(listaMateria, MATERIAS.map((x) => ({ valor: x, texto: nombreMateria(x) })), t("crear.elige_materia"));
+  form.grado.value = g; listaMateria.value = m;
+  ajustarMateria();
 }
 llenarListas();
+form.grado.addEventListener("change", ajustarMateria);
+window.addEventListener("pageshow", ajustarMateria); // por si el navegador repone el grado al volver a la página
 alCambiarIdioma(() => { llenarListas(); pintar(); });
 const params = new URLSearchParams(location.search);
-if (params.get("grado")) form.grado.value = params.get("grado");
-if (params.get("materia")) form.materia.value = params.get("materia");
+if (params.get("grado")) { form.grado.value = params.get("grado"); ajustarMateria(); }
+if (params.get("materia")) form.materia.value = esUniversidad() ? params.get("materia").slice(0, 60) : params.get("materia");
 // Mensaje de error del primer paso (clave del diccionario: se traduce solo si cambian de idioma).
 const error1 = (clave, vars) => { if (clave) poner($("#err1"), clave, vars); else { delete $("#err1").dataset.i18n; $("#err1").textContent = ""; } };
 
@@ -124,13 +139,14 @@ let clave = null, esp = null, contacto = contactoParaFormulario();
 const botonReintentar = (accion) => `<button class="boton linea" onclick="${accion}" data-i18n="boton.reintentar">${th("boton.reintentar")}</button>`;
 form.onsubmit = async (e) => {
   e.preventDefault();
-  if (!form.grado.value || !form.materia.value) { error1("error.grado_materia"); return; }
+  const materia = form.materia.value.trim(); // en universidad es texto libre: no vale si solo trae espacios
+  if (!form.grado.value || !materia) { error1(esUniversidad() ? "error.cursando" : "error.grado_materia"); return; }
   if (!paginas.length) { error1("error.sin_paginas"); return; }
   pasos(2);
   esp = pantallaEspera($("#p2"), "espera.generando", { paginas: paginas.length });
   try {
     esp.actualizar(5, () => t("espera.preparando"));
-    const b = await api.post("/borrador", { grado: form.grado.value, materia: form.materia.value, paginas: paginas.map((p) => ({ nombre: p.nombre, tipo: "image/jpeg", tamano: p.blob.size })) });
+    const b = await api.post("/borrador", { grado: form.grado.value, materia, paginas: paginas.map((p) => ({ nombre: p.nombre, tipo: "image/jpeg", tamano: p.blob.size })) });
     clave = b.clave; try { localStorage.setItem("sparked_borrador", clave); } catch {}
     let n = 0;
     for (const s of b.subidas) {

@@ -64,3 +64,9 @@ Desde el reparto sin repeticiones (`docs/JUEGOS.md`, sección 5), la lista `duel
 con `"tipo": "duelo"` (que `normalizar` pasa a la lista `duelo`) cuentan como un pedido de duelo: el primero de la guía
 se juega como duelo; si hay otro cerca (a menos de 15 slides), ese bloque recibe otra plantilla de preguntas con las
 mismas preguntas. El personaje del duelo se elige antes de empezar (Sparky o la princesa guerrera).
+
+## Universidad (12 nov 2026)
+
+En las guías de universidad (`plan.perfil_edad === "universitario"`) no hay duelo: ni la lista `duelo` ni
+`"juego": "duelo"` lo activan. El estante reparte esas preguntas entre carrera, montaña y castillo (regla 7 de la
+sección 5 de `docs/JUEGOS.md`) y `esDuelo` no convierte la slide en duelo. Los demás perfiles siguen igual.

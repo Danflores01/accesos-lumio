@@ -328,10 +328,15 @@ export function armarSlides(c) {
 // preguntas del bloque 1 nunca es una carrera (el calentamiento ya es una carrera y la vista previa debe mostrar dos
 // formatos distintos). Si el bloque trae "mecanica_quiz" (carrera, montana, castillo, enemigos, duelo o pinguino) se
 // respeta salvo que rompa estas reglas. El verdadero o falso se reparte entre el contra reloj (swipe) y el perro.
+// Universidad (Daniel, 12 nov 2026: «que las actividades no sean tan infantiles»): si el cartucho trae
+// plan.perfil_edad === "universitario", los juegos de preguntas solo se reparten entre carrera, montaña y castillo
+// (nunca enemigos, duelo ni pingüino; si hay más juegos que mecánicas, se repite una de esas tres) y el verdadero o
+// falso va siempre contra reloj, sin «El perro y su plato». Los demás perfiles se reparten exactamente igual que antes.
 export const JUEGOS_PREGUNTA = [
   { k: "carrera", plantilla: "ciudad_neon" }, { k: "carrera", plantilla: "hipodromo" }, { k: "carrera", plantilla: "dragones" }, { k: "carrera", plantilla: "espacio" },
   { k: "enemigos" }, { k: "montana" }, { k: "castillo" }, { k: "duelo" }, { k: "pinguino" },
 ];
+export const MECANICAS_UNIVERSIDAD = ["carrera", "montana", "castillo"];
 const ICONO_JUEGO = { carrera: "🏎️", enemigos: "👾", puertas: "👾", montana: "🧗", castillo: "🏰", duelo: "⚔️", pinguino: "🐧" };
 const NO_ACTIVIDAD = new Set(["portada", "tutorial", "teoria", "resultados", "candado", "terminando"]);
 const SEPARACION = 15;
@@ -341,6 +346,11 @@ function repartir(S, c, idioma, elegir) {
   const azar = () => (s0 = (s0 * 1664525 + 1013904223) >>> 0) / 4294967296;
   const esAct = (s) => !NO_ACTIVIDAD.has(s.k);
   const flexible = (s) => s.pregunta || s.vf;
+  // Universidad: solo las mecánicas de adulto y el verdadero o falso contra reloj. Con cualquier otro perfil las dos
+  // listas son las de siempre (mismas opciones y mismos sorteos: el reparto no cambia).
+  const universitario = c.plan?.perfil_edad === "universitario";
+  const JUEGOS = universitario ? JUEGOS_PREGUNTA.filter((j) => MECANICAS_UNIVERSIDAD.includes(j.k)) : JUEGOS_PREGUNTA;
+  const JUEGOS_VF = universitario ? ["swipe"] : ["swipe", "perro"];
   // Usos de cada plantilla de preguntas (índices de slide). Las fijas (calentamiento, duelos del generador) cuentan desde
   // el principio para que una plantilla elegida antes no las repita.
   const usos = {};
@@ -355,8 +365,8 @@ function repartir(S, c, idioma, elegir) {
     if (!flexible(s)) return;
     const prev = anterior(i)?.k, next = siguienteFija(i)?.k;
     if (s.pregunta) {
-      let cand = JUEGOS_PREGUNTA.filter((j) => j.k !== prev && j.k !== next && !(s === primeraB1 && j.k === "carrera"));
-      if (!cand.length) cand = JUEGOS_PREGUNTA.filter((j) => j.k !== "carrera");
+      let cand = JUEGOS.filter((j) => j.k !== prev && j.k !== next && !(s === primeraB1 && j.k === "carrera"));
+      if (!cand.length) cand = JUEGOS.filter((j) => j.k !== "carrera");
       const libres = cand.filter((j) => !usos[claveJuego(j)]);
       const separadas = cand.filter((j) => lejos(claveJuego(j), i));
       let pool = libres.length ? libres : separadas.length ? separadas : cand;
@@ -375,9 +385,9 @@ function repartir(S, c, idioma, elegir) {
       usar(claveJuego(j), i);
     } else {
       const usados = (k) => S.filter((x) => x.k === k && !x.vf).length;
-      let cand = ["swipe", "perro"].filter((k) => k !== prev && k !== next);
-      if (!cand.length) cand = ["swipe", "perro"].filter((k) => k !== prev);
-      if (!cand.length) cand = ["perro"];
+      let cand = JUEGOS_VF.filter((k) => k !== prev && k !== next);
+      if (!cand.length) cand = JUEGOS_VF.filter((k) => k !== prev);
+      if (!cand.length) cand = [JUEGOS_VF[JUEGOS_VF.length - 1]];
       const menos = Math.min(...cand.map(usados));
       const k = tomar(cand.filter((x) => usados(x) === menos));
       s.k = k; delete s.vf;
