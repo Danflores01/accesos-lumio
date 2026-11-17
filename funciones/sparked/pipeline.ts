@@ -334,6 +334,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
         leido.fotos = (leido.fotos ?? []).filter((f: any) => !vacias.includes(Number(f?.indice)));
         D.pendientes.unshift(...vacias.map((n) => [n - 1, n]));
       } else if (vacias.length && !alcanza) anotarCandado(D, `extraer ${rango}`, `foto(s) ${vacias.join(", ")} sin datos: no se releen por el tope`);
+      if (hasta - desde === 1 && (D.relecturas ?? []).includes(hasta)) leido.relectura = true;
       D.inventarios.push(leido);
       return await avanzar();
     }
@@ -361,7 +362,11 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
 
   if (t.paso === "unir") {
     const invs = (D.inventarios ?? []) as any[];
-    if (invs.some((x) => x?.estado === "no_es_material_de_estudio") && invs.every((x) => x?.estado !== "ok" && x?.estado !== "parcial")) throw new Error("Las fotos no parecen material de estudio");
+    // Una relectura (foto sin datos que se volvió a leer sola) que diga «no es material de estudio» no hace fallar la
+    // guía (revisión del 17 nov): solo cuentan los lotes normales, y un lote con datos cuenta como leído.
+    const conDatos = (x: any) => Object.values(x?.inventario ?? {}).some((l: any) => Array.isArray(l) && l.length > 0);
+    const normales = invs.filter((x) => !x?.relectura);
+    if (normales.some((x) => x?.estado === "no_es_material_de_estudio") && invs.every((x) => x?.estado !== "ok" && x?.estado !== "parcial" && !conDatos(x))) throw new Error("Las fotos no parecen material de estudio");
     const fotos = invs.flatMap((x) => x?.fotos ?? []);
     const legibles = fotos.filter((f: any) => f?.legible !== false).length;
     if (!legibles) throw new Error("No se pudo leer ninguna foto. Prueba con fotos más claras y con buena luz.");
@@ -693,10 +698,11 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
           const fuentes = corrige ? fuentesValidas(listaDeFuentes(res.fuentes), r.urls) : [];
           if (corrige && !fuentes.length) {
             // Sin fuente la pista no cambia, pero una PREGUNTA marcada como equivocada no se entrega con su clave dudosa
-            // (17 nov 2026: Anatomía marcó «aurícula derecha» como la pared más gruesa y salió así): se quita del juego.
-            const quitadas = quitarActividadesDudosas(D.bloques as any[], ids);
+            // (17 nov 2026: Anatomía marcó «aurícula derecha» como la pared más gruesa y salió así): se quita del juego,
+            // salvo que el juego quede corto o el bloque sin juegos (entonces se conserva y Reportes lo dice).
+            const { quitadas, conservadas } = quitarActividadesDudosas(D.bloques as any[], ids);
             if (quitadas.length) anotarDescartes(D, "verificar", quitadas);
-            v.reporte.push({ ...res, ids, estado: "revisar_dato", estado_ia: "corregida", sin_cambio: "sin una fuente oficial o confiable que haya salido en su búsqueda", ...(quitadas.length ? { quitadas: quitadas.map((q) => q.id) } : {}) });
+            v.reporte.push({ ...res, ids, estado: "revisar_dato", estado_ia: "corregida", sin_cambio: "sin una fuente oficial o confiable que haya salido en su búsqueda", ...(quitadas.length ? { quitadas: quitadas.map((q) => q.id) } : {}), ...(conservadas.length ? { conservadas } : {}) });
             continue;
           }
           v.reporte.push({ ...res, ids, ...(corrige ? { fuentes: fuentes.map((f) => f.url) } : {}) });
@@ -777,14 +783,26 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     // Red de seguridad (también en la vista previa, que no pasa por revisar): ningún juego por debajo del mínimo y
     // nunca dos juegos del mismo tipo seguidos dentro de un bloque.
     const fuera: Descarte[] = [];
-    // También aquí (la vista previa no pasa por revisar): pasos con fechas en orden y nunca una clave incoherente.
+    // También aquí (la vista previa no pasa por revisar): pasos con fechas en orden y sin clave incoherente (si quitarla rompe el
+    // juego, se conserva y va a Reportes).
+    const dudosas: string[] = [];
     for (const b of bloques) {
       for (const a of b.actividades ?? []) ordenarPorFecha(a);
-      for (const k of ["actividades", "mini_examen"]) b[k] = (b[k] ?? []).filter((a: any) => { const otra = claveIncoherente(a); if (otra) fuera.push({ id: String(a.id), tipo: String(a.tipo ?? "opcion_multiple"), bloque: b.id, motivo: `respuesta marcada que no coincide con su retroalimentación («${otra.slice(0, 40)}»)` }); return !otra; });
+      for (const k of ["actividades", "mini_examen"]) for (const a of [...(b[k] ?? [])]) {
+        const otra = claveIncoherente(a);
+        if (!otra) continue;
+        if (quitarSinRomper(b, k, a)) fuera.push({ id: String(a.id), tipo: String(a.tipo ?? "opcion_multiple"), bloque: b.id, motivo: `respuesta marcada que no coincide con su retroalimentación («${otra.slice(0, 40)}»)` });
+        else dudosas.push(`🔎 REVISAR CLAVE: en el bloque «${String(b.titulo ?? b.id).slice(0, 60)}» (${a.id}) la respuesta marcada («${String(a.opciones?.[a.correcta] ?? "").slice(0, 60)}») no coincide con su retroalimentación («${otra.slice(0, 60)}»). Se dejó porque quitarla dejaba el juego sin preguntas suficientes.`);
+      }
     }
     for (const b of bloques) { descartarCortos(b, fuera, "por debajo del mínimo al armar"); quitarRepetidos(b, fuera); }
     if (fuera.length) anotarDescartes(D, "armar", fuera);
-    const om = (b: any) => b.actividades.filter((a: any) => a.tipo === "opcion_multiple");
+    if (dudosas.length && t.guia_id && D.reportes_claves === undefined) {
+      const { error } = await supabase.from("reportes").insert(dudosas.slice(0, 10).map((comentario) => ({ guia_id: t.guia_id, slide: null, comentario })));
+      if (error) console.warn("No se pudieron guardar los reportes de claves dudosas:", error.message);
+      D.reportes_claves = dudosas.length;
+    }
+    const om =(b: any) => b.actividades.filter((a: any) => a.tipo === "opcion_multiple");
     // Calentamiento: 5 o 6 preguntas fáciles de los dos primeros bloques (si faltan fáciles, cualquiera).
     let cal = bloques.slice(0, 2).flatMap((b: any) => om(b).filter((a: any) => a.dificultad !== "retadora").slice(0, 3).map((a: any) => a.id)).slice(0, 6);
     if (cal.length < MIN_PREGUNTAS) cal = [...new Set([...cal, ...bloques.slice(0, 2).flatMap((b: any) => om(b).map((a: any) => a.id))])].slice(0, 6);
@@ -1251,22 +1269,36 @@ export function aplicarCorreccion(bloques: any[], id: string, res: any): void {
 // otras preguntas de su juego. Los juegos enteros (clasificar, conceptos, ordenar, ¿quién es quién?, súper dato) y las
 // pistas no se tocan: sin fuente no se borra un juego (regla del 11 nov 2026, caso «lápiz»). El calentamiento y el reto
 // final se arman después con lo que quede, así que tampoco la llevan.
+// Red (revisión del 17 nov, 2026-11-17.2): si quitarla deja su juego por debajo del mínimo (65 de 166 juegos tienen
+// exactamente 5 preguntas) o el bloque sin juegos, la pregunta SE CONSERVA y va a Reportes para que Daniel la revise
+// (quitarla haría que armar borrara el juego entero o que la entrega se detuviera).
 const PREGUNTAS_SUELTAS = ["opcion_multiple", "duelo", "verdadero_falso", "completar"];
-export function quitarActividadesDudosas(bloques: any[], ids: string[]): Descarte[] {
-  const fuera: Descarte[] = [];
+export function quitarSinRomper(b: any, k: string, a: any): boolean {
+  if (!b || !Array.isArray(b[k])) return false;
+  const i = b[k].indexOf(a);
+  if (i < 0) return false;
+  const antes = faltasDeBloque(b).length;
+  b[k].splice(i, 1);
+  const juegos = (b.actividades ?? []).length + ((b.mini_examen ?? []).length ? 1 : 0) + ((b.duelo ?? []).length ? 1 : 0);
+  if (faltasDeBloque(b).length > antes || !juegos) { b[k].splice(i, 0, a); return false; }
+  return true;
+}
+export function quitarActividadesDudosas(bloques: any[], ids: string[]): { quitadas: Descarte[]; conservadas: string[] } {
+  const quitadas: Descarte[] = [];
+  const conservadas: string[] = [];
   for (const b of bloques ?? []) {
     if (!b) continue;
     for (const k of ["actividades", "mini_examen", "duelo"]) {
       if (!Array.isArray(b[k])) continue;
-      b[k] = b[k].filter((a: any) => {
-        if (!a || !ids.includes(a.id)) return true;
-        if (k === "actividades" && !PREGUNTAS_SUELTAS.includes(a.tipo)) return true;
-        fuera.push({ id: String(a.id), tipo: String(a.tipo ?? (k === "mini_examen" ? "opcion_multiple" : "?")), bloque: b.id, motivo: "la verificación la marcó como equivocada y no hubo fuente para corregirla: no se entrega con la respuesta dudosa" });
-        return false;
-      });
+      for (const a of [...b[k]]) {
+        if (!a || !ids.includes(a.id)) continue;
+        if (k === "actividades" && !PREGUNTAS_SUELTAS.includes(a.tipo)) continue;
+        if (quitarSinRomper(b, k, a)) quitadas.push({ id: String(a.id), tipo: String(a.tipo ?? (k === "mini_examen" ? "opcion_multiple" : "?")), bloque: b.id, motivo: "la verificación la marcó como equivocada y no hubo fuente para corregirla: no se entrega con la respuesta dudosa" });
+        else conservadas.push(String(a.id));
+      }
     }
   }
-  return fuera;
+  return { quitadas, conservadas };
 }
 
 // Clave incoherente en opción múltiple (17 nov 2026): la opción marcada no aparece en ninguna retroalimentación y la
@@ -1276,26 +1308,36 @@ export function claveIncoherente(a: any): string | null {
   if (!a || (a.tipo !== "opcion_multiple" && a.tipo !== "duelo") || !Array.isArray(a.opciones)) return null;
   const marcada = a.opciones[a.correcta];
   if (typeof marcada !== "string") return null;
-  const con = (texto: string, o: string) => { const n = normaliza(o); return n.length >= 4 && ` ${normaliza(texto)} `.includes(` ${n} `); };
+  // Revisión del 17 nov (2026-11-17.2): se toleran artículos al inicio y plurales sencillos («los ventrículos
+  // izquierdos» = «ventrículo izquierdo»), para no ver incoherencia donde solo cambia la forma.
+  const ARTICULOS = new Set(["el", "la", "los", "las", "un", "una", "unos", "unas", "lo", "the", "a", "an", "le", "les", "des", "du", "de"]);
+  const raiz = (w: string) => w.length > 4 && /es$/.test(w) && !/[aeiou]es$/.test(w) ? w.slice(0, -2) : w.length > 3 && /s$/.test(w) ? w.slice(0, -1) : w;
+  const forma = (t: string) => { const ws = normaliza(t).split(" ").filter(Boolean); while (ws.length > 1 && ARTICULOS.has(ws[0])) ws.shift(); return ws.map(raiz).join(" "); };
+  const con = (texto: string, o: string) => { const n = forma(o); return n.length >= 4 && ` ${normaliza(texto).split(" ").map(raiz).join(" ")} `.includes(` ${n} `); };
   const rc = String(a.retro_correcta ?? ""), ri = String(a.retro_incorrecta ?? "");
-  if (normaliza(marcada).length < 4 || con(rc, marcada) || con(ri, marcada)) return null;
-  const otras = a.opciones.filter((o: unknown, i: number) => i !== a.correcta && typeof o === "string" && con(rc, o as string) && !normaliza(marcada).includes(normaliza(o as string)));
+  if (forma(marcada).length < 4 || con(rc, marcada) || con(ri, marcada)) return null;
+  const otras = a.opciones.filter((o: unknown, i: number) => i !== a.correcta && typeof o === "string" && con(rc, o as string) && !forma(marcada).includes(forma(o as string)));
   return otras.length === 1 ? String(otras[0]) : null;
 }
 
 // Ordenar por fechas (17 nov 2026: los antecedentes del amparo salieron 1917 → 1847 → 2013 → 1841 → 1857 y el juego
-// toma el orden en que vienen los pasos como el correcto). Si la instrucción o el «por qué» hablan de orden cronológico
+// toma el orden en que vienen los pasos como el correcto). Si la instrucción pide orden cronológico
 // y cada paso trae un solo año distinto, los pasos se ordenan por año (del más antiguo al más reciente, salvo que pida
 // lo contrario). Devuelve true si cambió algo.
 export function ordenarPorFecha(a: any): boolean {
   if (!a || a.tipo !== "ordenar" || !Array.isArray(a.pasos) || a.pasos.length < 3) return false;
-  const contexto = normaliza(`${a.instruccion ?? ""} ${a.por_que ?? ""}`);
-  if (!/cronolog|antigu|reciente|chronolog|oldest|earliest|newest|latest|ancien|recent|fecha|dates?\b|ano\b|anos\b|siglo|century/.test(contexto)) return false;
-  const anios = a.pasos.map((p: any) => [...new Set(String(typeof p === "string" ? p : p?.texto ?? "").match(/(?<![\d.,])(1[0-9]{3}|20[0-9]{2})(?![\d.,]*\d)/g) ?? [])]);
+  // Solo si la INSTRUCCIÓN pide orden de fechas, con palabras completas (revisión del 17 nov, 2026-11-17.2: «ano\b»
+  // coincidía con «humanos» y el «por qué» de b1ord1 hablaba de «derechos humanos»).
+  const contexto = normaliza(String(a.instruccion ?? ""));
+  if (!/\b(cronologic\w*|chronologic\w*|mas antigu\w*|mas recientes?|oldest|earliest|newest|latest|plus ancien\w*|plus recent\w*|por fechas?|por anos?|by dates?|in date order)\b/.test(contexto)) return false;
+  const textos: string[] = a.pasos.map((p: any) => String(typeof p === "string" ? p : p?.texto ?? ""));
+  // Fechas antes de Cristo (a. C., antes de Cristo, BC, BCE, av. J.-C.): no se tocan.
+  if (textos.some((x) => /\ba\.\s?c\.?(?![a-z])|antes de cristo|\bb\.?\s?c\.?(\s?e\.?)?(?![a-z])|\bav\.?\s?j\.?\s?-?\s?c\.?(?![a-z])/i.test(x))) return false;
+  const anios = textos.map((x) => [...new Set(x.match(/(?<![\d.,])(1[0-9]{3}|20[0-9]{2})(?![\d.,]*\d)/g) ?? [])]);
   if (anios.some((x: string[]) => x.length !== 1)) return false;
   const y = anios.map((x: string[]) => Number(x[0]));
   if (new Set(y).size !== y.length) return false;
-  const alReves = /(mas reciente|newest|latest|plus recent)\s+(al|a la|to|au)\s+(mas antigu|oldest|earliest|plus ancien)/.test(contexto);
+  const alReves = /\b(mas reciente|newest|latest|plus recent)\w*\s+(al|a la|to|au)\s+(mas antigu|oldest|earliest|plus ancien)/.test(contexto);
   const orden = y.map((v: number, i: number) => i).sort((i: number, j: number) => alReves ? y[j] - y[i] : y[i] - y[j]);
   if (orden.every((v: number, i: number) => v === i)) return false;
   a.pasos = orden.map((i: number) => a.pasos[i]);
@@ -2467,7 +2509,7 @@ export function reportesDeVerificacion(verificacion: any[], bloques: any[]): str
     const fuentes = (Array.isArray(r.fuentes) ? r.fuentes : []).map((f: any) => typeof f === "string" ? f : f?.url).filter(Boolean).slice(0, 2);
     const segun = r.dato_correcto || r.mensaje_para_alumno;
     out.push(corto([
-      contradice ? "🔎 REVISAR DATO: la verificación dice que contradice el libro." : "🔎 REVISAR DATO: la verificación cree que hay un error, pero no trajo una fuente que haya salido en su búsqueda; " + (Array.isArray(r.quitadas) && r.quitadas.length ? "la pregunta se quitó de la guía para no entregar una respuesta dudosa (nada más cambió)." : "no se cambió nada en la guía."),
+      contradice ? "🔎 REVISAR DATO: la verificación dice que contradice el libro." : "🔎 REVISAR DATO: la verificación cree que hay un error, pero no trajo una fuente que haya salido en su búsqueda; " + (Array.isArray(r.quitadas) && r.quitadas.length ? "la pregunta se quitó de la guía para no entregar una respuesta dudosa; el resto de su juego sigue." : Array.isArray(r.conservadas) && r.conservadas.length ? "la pregunta se dejó porque quitarla dejaba su juego sin preguntas suficientes: revísala." : "no se cambió nada en la guía."),
       b ? `Bloque ${biQ + 1} «${corto(b.titulo, 60)}»${ids[0] ? ` (${ids[0]})` : ""}.` : ids[0] ? `Actividad ${ids[0]}.` : "",
       r.afirmacion ? `En la guía: «${corto(r.afirmacion, 220)}».` : "",
       segun ? `${contradice ? "Según las fuentes" : "La IA propone"}: ${corto(segun, 220)}.` : "",

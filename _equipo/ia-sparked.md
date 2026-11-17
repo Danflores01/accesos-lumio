@@ -204,6 +204,11 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
   y devolvió 0 datos de una → `fotosSinDatos`: esa foto se relee sola una vez (Haiku, ~0.1 MXN, dentro del tope).
   (3) Un ordenar con fechas venía desordenado → `ordenarPorFecha` si pide orden cronológico. (4) Nota «arts. 39,:» →
   hasta 12 palabras sin puntuación colgando. Pendiente: la búsqueda de arts. 39–41 dio `invalid_tool_input`.
+- **17 nov · Código 2026-11-17.2 (revisión Fable Max de la .1):** quitar una pregunta nunca deja su juego por debajo del
+  mínimo ni el bloque sin juegos (`quitarSinRomper`: si rompe, se conserva y va a Reportes); solo actúa con «corregida»
+  sin fuente, no con «revisar_dato» (eso lo decide Daniel); `ordenarPorFecha` solo si la INSTRUCCIÓN pide orden de fechas
+  y nunca con a. C./BC («ano\b» casaba con «humanos»); `claveIncoherente` tolera plural y artículo; una relectura «no es
+  material de estudio» no tumba la guía.
 
 - **12 nov · Universidad (código 2026-11-12.1):** «Universidad» caía en «sobrio» como prepa. Ahora universidad,
   licenciatura, ingeniería o maestría → perfil «universitario» (lo fija el código por el grado): tono académico, más

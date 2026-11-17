@@ -788,7 +788,7 @@ await hastaQueCambie(falsoR, tVq, fuenteG);
 const repQ = insertados.filter((x) => x.tabla === "reportes").flatMap((x) => x.filas);
 ok(!tVq.datos.bloques[0].actividades.some((a: any) => a.id === "b1om5") && tVq.datos.bloques[0].actividades.some((a: any) => a.id === "b1om6") && !tVq.datos.bloques[0].pistas[0].correcciones && tVq.datos.verificacion[0]?.estado === "revisar_dato" && tVq.datos.verificacion[0]?.quitadas?.[0] === "b1om5" && repQ.length === 1 && /se quitó de la guía/.test(repQ[0].comentario) && /Bloque 1 «Estructura del corazón» \(b1om5\)/.test(repQ[0].comentario), "verificar sin fuente sobre una pregunta: se quita la pregunta (sin «Dato corregido»), la otra sigue y Reportes lo dice · " + repQ[0]?.comentario);
 // c) Ordenar por fechas (Derecho b4or1): 1917 → 1847 → 2013 → 1841 → 1857 se ordena; sin años o sin pedir orden cronológico, igual.
-const ordD: any = { id: "b4or1", tipo: "ordenar", instruccion: "Ordena los antecedentes del juicio de amparo.", por_que: "Orden cronológico: Yucatán 1841, Acta 1847, Constitución de 1857, Constitución de 1917 y Ley de 2013.", pasos: ["Constitución de 1917, arts. 103 y 107", "Acta Constitutiva y de Reformas de 1847 (Mariano Otero)", "Ley de Amparo (DOF, 2 de abril de 2013)", "Constitución de Yucatán de 1841 (Manuel Crescencio Rejón)", "Constitución de 1857, arts. 101 y 102"].map((texto) => ({ texto, emoji: "" })) };
+const ordD: any = { id: "b4or1", tipo: "ordenar", instruccion: "Ordena los antecedentes del juicio de amparo, del más antiguo al más reciente.", por_que: "Orden cronológico: Yucatán 1841, Acta 1847, Constitución de 1857, Constitución de 1917 y Ley de 2013.", pasos: ["Constitución de 1917, arts. 103 y 107", "Acta Constitutiva y de Reformas de 1847 (Mariano Otero)", "Ley de Amparo (DOF, 2 de abril de 2013)", "Constitución de Yucatán de 1841 (Manuel Crescencio Rejón)", "Constitución de 1857, arts. 101 y 102"].map((texto) => ({ texto, emoji: "" })) };
 const ordAlReves: any = { ...JSON.parse(JSON.stringify(ordD)), instruccion: "Ordena del más reciente al más antiguo.", por_que: "" };
 const ordProceso: any = { id: "b1or1", tipo: "ordenar", instruccion: "Ordena los pasos para calcular Ed.", por_que: "Primero los porcentajes.", pasos: [{ texto: "Calcular %ΔQ" }, { texto: "Calcular %ΔP" }, { texto: "Dividir" }] };
 const ordSinPedir: any = { ...JSON.parse(JSON.stringify(ordD)), instruccion: "Ordena las fases.", por_que: "Así va." };
@@ -800,6 +800,48 @@ const pipeTxt = readFileSync(join(dir, "pipeline.ts"), "utf8");
 ok(/const vacias = fotosSinDatos\(leido, desde, hasta\)\.filter\(\(n\) => !\(D\.relecturas \?\? \[\]\)\.includes\(n\)\)/.test(pipeTxt) && /D\.pendientes\.unshift\(\.\.\.vacias\.map\(\(n\) => \[n - 1, n\]\)\)/.test(pipeTxt) && /costoGuiaMxn\(D\) \+ 0\.3 \* vacias\.length \+ RESERVA_FINAL_MXN <= TOPE_GUIA_MXN/.test(pipeTxt), "extraer: la foto sin datos se vuelve a leer sola, una sola vez (relecturas) y solo si cabe en el tope de 5 MXN");
 // e) Nota del temario sin puntuación colgando.
 ok(P.textoNotaTemario({ tema: "Soberanía nacional y forma de gobierno: arts. 39, 40 y 41", pagina: "" }) === "Soberanía nacional y forma de gobierno arts. 39, 40 y 41: este tema venía en tu temario; repásalo en tu libro." && P.textoNotaTemario({ tema: "uno, dos, tres, cuatro, cinco, seis, siete, ocho, nueve, diez, once, doce, trece" }) === "uno, dos, tres, cuatro, cinco, seis, siete, ocho, nueve, diez, once, doce…: este tema venía en tu temario; repásalo en tu libro.", "nota del temario: hasta 12 palabras, sin «39,:» colgando");
+
+// 30. Código 2026-11-17.2 (revisión Fable Max del 17 nov a la .1): la red y los 3 candados.
+// a) La IA marca «revisar_dato» (no «corregida») sobre una pregunta: no se quita nada (eso lo decide Daniel).
+const tVr30: any = { id: "tvr", guia_id: "g-vr", alcance: "resto", paso: "verificar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "es", materia: "Anatomía humana" }, fotos: [{ tipo: "apuntes_a_mano" }], inventario: {},
+  bloques: [{ id: "b1", titulo: "Corazón", pistas: [{ id: "b1p1", titulo: "A", ideas: ["A: x"] }], actividades: [1, 2, 3, 4, 5, 6].map((n) => preg("b1o" + n, "opcion_multiple")), mini_examen: [] }] } };
+insertados.length = 0; pedidos.length = 0;
+respuestas = [apiTexto({ resultados: [{ actividad: "b1o2", afirmacion: "¿Qué es? → a", estado: "revisar_dato", dato_correcto: "b", fuentes: [] }] }, []), vacia()];
+await hastaQueCambie(falsoR, tVr30, fuenteG);
+ok(tVr30.datos.bloques[0].actividades.length === 6 && tVr30.datos.verificacion[0]?.estado === "revisar_dato" && !tVr30.datos.verificacion[0]?.quitadas, "candado: «revisar_dato» de la IA sobre una pregunta no quita nada (solo «corregida» sin fuente; lo demás lo decide Daniel)");
+// b) Bloque de solo preguntas con un juego de exactamente 5: quitar una lo dejaría corto → se conserva y va a Reportes;
+//    en el bloque de 6, sí se quita. El cartucho armado pasa verificarCartucho (nunca un bloque sin juegos).
+const tVs30: any = { id: "tvs", guia_id: "g-vs", alcance: "completa", paso: "verificar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "es", materia: "Anatomía humana", identidad: { titulo: "T" }, primera_actividad: "calentamiento", reto_final: 16, puntos_dificiles: [], bloques: [{ id: "b1", orden_actividades: ["opcion_multiple"] }, { id: "b2", orden_actividades: ["opcion_multiple"] }] }, fotos: [{ tipo: "apuntes_a_mano" }], inventario: {},
+  bloques: [{ id: "b1", titulo: "Cinco", pistas: [{ id: "b1p1", titulo: "Pista b1p1", ideas: ["Una idea."] }], actividades: [1, 2, 3, 4, 5].map((n) => preg("b1o" + n, "opcion_multiple")), mini_examen: [] },
+    { id: "b2", titulo: "Seis", pistas: [{ id: "b2p1", titulo: "Pista b2p1", ideas: ["Una idea."] }], actividades: [1, 2, 3, 4, 5, 6].map((n) => preg("b2o" + n, "opcion_multiple")), mini_examen: [] }] } };
+insertados.length = 0; pedidos.length = 0;
+respuestas = [apiTexto({ resultados: [{ actividad: "b1o3", afirmacion: "¿Qué es? → a", estado: "corregida", dato_correcto: "b", fuentes: [] }, { actividad: "b2o3", afirmacion: "¿Qué es? → a", estado: "corregida", dato_correcto: "b", fuentes: [] }] }, []), vacia()];
+await hastaQueCambie(falsoR, tVs30, fuenteG);
+const repS30 = insertados.filter((x) => x.tabla === "reportes").flatMap((x) => x.filas).map((f: any) => f.comentario);
+ok(tVs30.datos.bloques[0].actividades.length === 5 && tVs30.datos.bloques[1].actividades.length === 5 && !tVs30.datos.bloques[1].actividades.some((a: any) => a.id === "b2o3") && tVs30.datos.verificacion.some((r: any) => r.conservadas?.[0] === "b1o3") && tVs30.datos.verificacion.some((r: any) => r.quitadas?.[0] === "b2o3") && repS30.some((c: string) => /se dejó porque quitarla dejaba su juego sin preguntas suficientes/.test(c)) && repS30.some((c: string) => /se quitó de la guía.*el resto de su juego sigue/.test(c)), "red: con 5 preguntas la dudosa se conserva y va a Reportes; con 6, se quita · " + repS30.join(" || "));
+tVs30.paso = "armar";
+await P.ejecutarPaso(falso, tVs30, { archivos: [], grado: "Universidad", materia: "Anatomía humana" });
+const cS30: any = JSON.parse(JSON.stringify(tVs30.datos.cartucho)); cS30.completo = true;
+ok(cS30.bloques.length === 2 && cS30.bloques.every((b: any) => b.actividades.length >= 5) && P.verificarCartucho(cS30).length === 0, "red: el cartucho armado conserva sus 2 bloques con juego y pasa verificarCartucho · " + P.verificarCartucho(cS30).join(" | "));
+const bSolo30: any = { id: "b9", actividades: [1, 2, 3, 4, 5].map((n) => preg("b9o" + n, "opcion_multiple")), mini_examen: [] };
+const rSolo30 = P.quitarActividadesDudosas([bSolo30], ["b9o1", "b9o2"]);
+ok(bSolo30.actividades.length === 5 && rSolo30.quitadas.length === 0 && rSolo30.conservadas.join() === "b9o1,b9o2", "red: en un bloque cuyo único juego tiene 5 preguntas no se quita ninguna");
+// c) ordenarPorFecha: nunca con a. C.; «humanos»/«mexicanos» ya no cuentan como «año»; el «por qué» no basta.
+const pasosAC30 = ["Código de Hammurabi, 1754 a. C.", "Ley de las XII Tablas, 450 a.C.", "Carta Magna, 1215", "Declaración de Derechos, 1789"].map((texto) => ({ texto }));
+const ordAC30: any = { id: "x1", tipo: "ordenar", instruccion: "Ordena del más antiguo al más reciente.", pasos: JSON.parse(JSON.stringify(pasosAC30)).reverse() };
+const ordHum30: any = { id: "x2", tipo: "ordenar", instruccion: "Ordena los derechos humanos de los mexicanos.", por_que: "Así se protegen los derechos humanos.", pasos: ["Constitución de 1917", "Reforma de 2011", "Acta de 1847"].map((texto) => ({ texto })) };
+const ordPorQue30: any = { id: "x3", tipo: "ordenar", instruccion: "Ordena los antecedentes.", por_que: "Orden cronológico: 1841, 1847 y 1857.", pasos: ["Constitución de 1857", "Acta de 1847", "Yucatán 1841"].map((texto) => ({ texto })) };
+const ordBC30: any = { id: "x4", tipo: "ordenar", instruccion: "Put these events in chronological order.", pasos: ["Rome founded, 753 BC", "Magna Carta, 1215", "Columbus, 1492"].map((texto) => ({ texto })).reverse() };
+ok(!P.ordenarPorFecha(ordAC30) && !P.ordenarPorFecha(ordHum30) && ordHum30.pasos[0].texto === "Constitución de 1917" && !P.ordenarPorFecha(ordPorQue30) && !P.ordenarPorFecha(ordBC30), "candado ordenar: con a. C./BC no se toca; «humanos»/«mexicanos» no piden orden de fechas; el «por qué» solo no basta");
+// d) Clave con plural o artículo distinto no es incoherente.
+const omPlural30: any = { tipo: "opcion_multiple", opciones: ["ventrículo izquierdo", "aurícula derecha", "válvula mitral", "tabique interauricular"], correcta: 0, retro_correcta: "Los ventrículos izquierdos tienen la pared más gruesa; no la aurícula derecha.", retro_incorrecta: "Repasa." };
+const omArticulo30: any = { tipo: "opcion_multiple", opciones: ["El Estado", "Los particulares", "El Congreso de la Unión", "Los padres de familia"], correcta: 0, retro_correcta: "Correcto: lo otorga el Estado, no los particulares.", retro_incorrecta: "Repasa." };
+ok(P.claveIncoherente(omPlural30) === null && P.claveIncoherente(omArticulo30) === null && P.claveIncoherente(omAna) === "ventrículo izquierdo", "clave: plural o artículo distinto no cuenta como incoherente; la de Anatomía sí");
+// e) Una relectura que diga «no es material de estudio» no hace fallar la guía.
+const tU30: any = { id: "tu", alcance: "completa", paso: "unir", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { inventarios: [{ fotos: [{ indice: 1, legible: true }], inventario: { temas: [{ texto: "Art. 1", foto: 1 }] } }, { estado: "no_es_material_de_estudio", relectura: true, fotos: [{ indice: 2, legible: true }], inventario: {} }] } };
+let errU30 = "";
+try { await P.ejecutarPaso(falso, tU30, { archivos: [{}, {}], grado: "Universidad", materia: "Derecho" }); } catch (e) { errU30 = (e as Error).message; }
+ok(!errU30 && tU30.datos.inventario?.temas?.length === 1, "unir: la relectura «no es material de estudio» no tumba la guía si otro lote trajo datos · " + errU30);
 
 console.log(fallos ? `\n${fallos} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);
