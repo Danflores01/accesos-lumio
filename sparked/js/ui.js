@@ -19,17 +19,27 @@ export function encajar(el, caja = el, max = 22, min = 18) {
 }
 // ---------- Todo cabe y las fotos van completas (Daniel, 9 nov 2026) ----------
 // Ninguna foto se recorta para llenar un espacio: cada <img> lleva su forma real (--r = ancho / alto) y se dibuja entera,
-// con esa forma. Las formas se miden una sola vez al abrir la guía (precargarFotos), antes de medir las slides, así que
+// con esa forma. El reproductor mide la forma de las fotos de cada slide (precargarFotos) antes de mostrarla, así que
 // el lugar de cada foto ya es el correcto aunque la foto todavía no termine de bajar. Si una forma no se conoce, la foto
 // se ve completa dentro de su caja (object-fit: contain), nunca cortada.
+// Datos celulares lentos (17 nov 2026): la forma de una foto viene en sus primeros bytes, así que se da por medida en
+// cuanto el navegador la conoce, sin esperar a que la foto termine de bajar (antes se esperaba la foto completa). La
+// foto sigue bajando sola y ya está en el navegador cuando su slide la muestra. alFallar(url) avisa de una foto que no
+// existe o no cargó, para que quien llama pueda pedir otra en su lugar.
 const FORMAS = new Map();
-export function precargarFotos(urls, ms = 7000) {
+export function precargarFotos(urls, ms = 7000, alFallar = null) {
   const lista = [...new Set(urls.filter((u) => typeof u === "string" && u))].filter((u) => !FORMAS.has(u));
   const una = (u) => new Promise((ok) => {
-    const im = new Image();
-    im.onload = () => { if (im.naturalWidth && im.naturalHeight) FORMAS.set(u, im.naturalWidth / im.naturalHeight); ok(); };
-    im.onerror = () => ok();
+    const im = new Image(), desde = Date.now();
+    let reloj = 0;
+    const medir = () => { if (!im.naturalWidth || !im.naturalHeight) return false; FORMAS.set(u, im.naturalWidth / im.naturalHeight); return true; };
+    const fin = () => { clearInterval(reloj); ok(); };
+    im.onload = () => { medir(); fin(); };
+    im.onerror = () => { fin(); if (typeof alFallar === "function") { try { alFallar(u); } catch {} } };
     im.src = u;
+    // Se asoma varias veces por segundo: en cuanto llegan los primeros bytes ya se sabe la forma. Si a los 30 s no se
+    // sabe, deja de asomarse (la foto sigue su camino y avisa sola al terminar o al fallar).
+    reloj = setInterval(() => { if (medir() || Date.now() - desde > 30000) fin(); }, 60);
   });
   return Promise.race([Promise.all(lista.map(una)), new Promise((ok) => setTimeout(ok, ms))]);
 }

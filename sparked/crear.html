@@ -13,6 +13,10 @@
 <link rel="icon" type="image/png" sizes="48x48" href="img/iconos/sparky-48.png">
 <link rel="icon" type="image/png" sizes="192x192" href="img/iconos/sparky-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="img/iconos/sparky-180.png">
+<!-- Letras: antes iban con @import dentro de base.css (una petición detrás de otra); aquí se piden al mismo tiempo que las hojas de estilo (17 nov 2026). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Press+Start+2P&amp;display=swap">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/sitio.css">
 <script>/* Idioma: si el visitante eligió inglés, se oculta la página un instante mientras idioma.js traduce (evita ver el español). */try{var l=new URLSearchParams(location.search).get("lang")||localStorage.getItem("sparked_idioma");if(l==="en"){document.documentElement.lang="en";document.documentElement.classList.add("i18n-cargando");setTimeout(function(){document.documentElement.classList.remove("i18n-cargando")},2500)}}catch(e){}</script>

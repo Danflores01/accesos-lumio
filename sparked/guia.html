@@ -20,13 +20,118 @@
 <link rel="icon" type="image/png" sizes="48x48" href="img/iconos/sparky-48.png">
 <link rel="icon" type="image/png" sizes="192x192" href="img/iconos/sparky-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="img/iconos/sparky-180.png">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/guia.css">
-<link rel="stylesheet" href="css/duelo.css">
-<link rel="stylesheet" href="css/juegos-nuevos.css">
 <title>SparkEd · Guía</title>
+<!-- Datos celulares lentos (17 nov 2026). Con 3G la guía se quedaba en blanco varios segundos. Ahora:
+     1. La capa "Cargando tu guía…" de abajo va escrita aquí mismo (con su estilo), así que se ve desde el primer byte.
+     2. Las letras (Google Fonts) y los guiones del reproductor se piden todos de una vez, no uno detrás de otro.
+     3. Las hojas de estilo van DESPUÉS de la capa, dentro del <body>: así no detienen su pintado, y lo que sigue
+        (el escenario y la barra) no se dibuja hasta que llegan. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Los guiones del reproductor. El ?v= de reproductor.js debe ser el MISMO aquí y donde se carga, al final de la página. -->
+<link rel="modulepreload" href="js/reproductor.js?v=2026-11-17a">
+<link rel="modulepreload" href="js/cartucho.js">
+<link rel="modulepreload" href="js/teoria.js">
+<link rel="modulepreload" href="js/juegos.js">
+<link rel="modulepreload" href="js/ui.js">
+<link rel="modulepreload" href="js/arte.js">
+<link rel="modulepreload" href="js/sonido.js">
+<link rel="modulepreload" href="js/config.js">
+<!-- Los datos curiosos de la pantalla de espera: es lo primero que pide el reproductor al arrancar. -->
+<link rel="preload" as="fetch" href="datos/curiosos.json" crossorigin>
+<style>
+#cargador{position:fixed;top:0;right:0;bottom:0;left:0;z-index:70;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;text-align:center;color:#fff;background:#4C1D95;background:linear-gradient(172deg,#1B1340 0%,#4C1D95 52%,#B8336A 100%);font:600 18px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+#cargador *{box-sizing:border-box}
+#cargador p{margin:0}
+.cg-caja{display:flex;flex-direction:column;align-items:center;gap:20px}
+.cg-marca{font-weight:800;font-size:32px;line-height:1.2;letter-spacing:-.5px}
+.cg-marca b{display:inline-block;margin-left:3px;padding:0 9px;border-radius:10px;background:#FFD400;color:#121826;font-weight:800}
+.cg-giro{width:48px;height:48px;border-radius:50%;border:5px solid rgba(255,255,255,.28);border-top-color:#FFD400;animation:cg-giro .9s linear infinite}
+@keyframes cg-giro{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.cg-giro{animation-duration:3s}}
+.cg-texto{font-size:21px;font-weight:700}
+.cg-aviso{display:none;flex-direction:column;align-items:center;gap:12px;max-width:340px;font-size:16px}
+#cargador button{font:800 16px/1 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#121826;background:#FFD400;border:0;border-radius:12px;padding:12px 22px;min-height:44px;cursor:pointer}
+#cargador.cg-lenta .cg-aviso{display:flex}
+/* No se pudo cargar: sin la rueda, con el aviso y el botón. */
+#cargador.cg-fallo .cg-giro,#cargador.cg-fallo .cg-texto{display:none}
+/* El reproductor ya puso su pantalla de espera: de esta capa solo queda, arriba, el aviso de conexión lenta. */
+#cargador.cg-arriba{top:calc(10px + env(safe-area-inset-top,0px));bottom:auto;flex-direction:row;padding:0 10px;background:none;pointer-events:none}
+#cargador.cg-arriba .cg-caja{display:none}
+#cargador.cg-arriba .cg-aviso{pointer-events:auto;flex-direction:row;gap:10px;max-width:100%;padding:7px 7px 7px 16px;border-radius:22px;background:#1b1b1f;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:14px;line-height:1.3;text-align:left}
+#cargador.cg-arriba button{flex:none;font-size:13px;padding:8px 13px;min-height:36px;border-radius:999px;white-space:nowrap}
+</style>
 </head>
 <body class="reproductor">
+<div id="cargador">
+  <div class="cg-caja">
+    <div class="cg-marca" aria-hidden="true">Spark<b>Ed</b></div>
+    <div class="cg-giro" aria-hidden="true"></div>
+    <p class="cg-texto" role="status">Cargando tu guía…</p>
+  </div>
+  <div class="cg-aviso" role="status" aria-live="polite">
+    <p>Tu conexión está lenta, seguimos intentando.</p>
+    <button type="button" data-reintentar>Reintentar</button>
+  </div>
+</div>
+<script>
+/* La capa de carga: a los 12 s avisa que la conexión está lenta y ofrece «Reintentar». El reproductor la sube (cuando
+   ya puso su pantalla de espera) y la quita (cuando ya hay una slide o un mensaje). Por si el reproductor no avisa,
+   esta misma capa se asoma al escenario y se quita sola: nunca se queda tapando una guía que ya abrió. */
+(function () {
+  var capa = document.getElementById("cargador"), aviso = capa.querySelector(".cg-aviso p"), boton = capa.querySelector("button");
+  var fuera = false, fallado = false, ingles = false;
+  try { ingles = localStorage.getItem("sparked_idioma") === "en"; } catch (e) {}
+  if (ingles) { capa.querySelector(".cg-texto").textContent = "Loading your guide…"; aviso.textContent = "Your connection is slow, we're still trying."; boton.textContent = "Try again"; }
+  boton.onclick = function () { location.reload(); };
+  var lenta = setTimeout(function () { capa.classList.add("cg-lenta"); }, 12000);
+  function quitar() {
+    if (fuera || fallado) return;
+    fuera = true; clearTimeout(lenta); clearInterval(vigia);
+    if (capa.parentNode) capa.parentNode.removeChild(capa);
+  }
+  function arriba() { if (!fuera && !fallado) capa.classList.add("cg-arriba"); }
+  /* Un archivo indispensable no llegó (se cortó la conexión): se dice claro y se ofrece volver a intentar. */
+  function fallo() {
+    if (fuera || fallado) return;
+    fallado = true; clearTimeout(lenta); clearInterval(vigia);
+    aviso.textContent = ingles ? "The guide could not load. Check your connection and try again." : "No se pudo cargar la guía. Revisa tu conexión e inténtalo de nuevo.";
+    capa.classList.remove("cg-arriba"); capa.classList.add("cg-lenta", "cg-fallo");
+  }
+  var vigia = setInterval(function () {
+    var escenario = document.getElementById("escenario"), pg = document.getElementById("pg");
+    if (!escenario) return;
+    if (escenario.querySelector(".sl.mensaje") || (pg && /^\d+\/\d+$/.test(pg.textContent || ""))) quitar();
+    else if (escenario.firstElementChild) arriba();
+  }, 300);
+  window.sparkedCargador = { arriba: arriba, quitar: quitar, fallo: fallo };
+  /* Las letras (la etiqueta <link> de abajo): sparkedLetras se cumple cuando su hoja ya está puesta, o cuando se sabe
+     que no llegó. En ese momento se piden de una vez las tres letras con las que el reproductor mide las slides. */
+  window.sparkedLetras = new Promise(function (listo) {
+    window.sparkedLetrasYa = function () {
+      listo();
+      try { ['400 20px "Atkinson Hyperlegible"', '700 20px "Atkinson Hyperlegible"', '800 24px "Outfit"'].forEach(function (f) { document.fonts.load(f).catch(function () {}); }); } catch (e) {}
+    };
+  });
+  /* Lo que el reproductor va a pedir enseguida se adelanta desde aquí, mientras bajan sus guiones: la guía de ejemplo
+     (un archivo de este sitio) o la conexión con el servidor de las guías (el mismo de js/config.js). */
+  try {
+    var q = new URLSearchParams(location.search), enlace = document.createElement("link");
+    if (/^#[A-Za-z0-9]{8,64}$/.test(location.hash) || q.get("vp") || q.get("clave")) { enlace.rel = "preconnect"; enlace.href = "https://wfqfqfsbkqbaejnkhidz.supabase.co"; }
+    else if (!q.get("local")) { enlace.rel = "preload"; enlace.as = "fetch"; enlace.href = "ejemplos/" + (q.get("demo") || "historia1").replace(/[^a-z0-9_-]/gi, "") + ".json"; }
+    if (enlace.rel) { enlace.crossOrigin = "anonymous"; document.head.appendChild(enlace); }
+  } catch (e) {}
+})();
+</script>
+<!-- Letras: antes iban con @import dentro de base.css (una petición detrás de otra, y sin ellas no se pintaba nada).
+     Aquí se piden sin detener la página (primero como "preload"; al llegar pasa a ser hoja de estilo) y el reproductor
+     las espera un momento antes de medir las slides: si Google Fonts tarda o no responde, la guía abre con la letra
+     del dispositivo en lugar de quedarse esperando. -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Press+Start+2P&amp;display=swap" onload="if(this.rel!=='stylesheet'){this.rel='stylesheet'}else{sparkedLetrasYa()}" onerror="sparkedLetrasYa()">
+<link rel="stylesheet" href="css/base.css" onerror="sparkedCargador.fallo()">
+<link rel="stylesheet" href="css/guia.css" onerror="sparkedCargador.fallo()">
+<link rel="stylesheet" href="css/duelo.css">
+<link rel="stylesheet" href="css/juegos-nuevos.css">
 <div id="vp"><div id="escenario"></div></div>
 <aside id="barra" aria-label="Barra de herramientas">
   <button id="salir" class="salir" hidden>✕ Salir</button>
@@ -38,8 +143,9 @@
   <button id="reportar" class="chico" title="¿Encontraste un error?" aria-label="Reportar un error">🚩</button>
 </aside>
 <div id="miniaturas" class="oculto"><div class="panel"><h2>Todas las slides</h2><div id="lista-mini"></div></div></div>
-<!-- El ?v= cambia cuando el reproductor cambia de forma urgente, para que ningún navegador use una copia guardada. -->
-<script type="module" src="js/reproductor.js?v=2026-11-12a"></script>
+<!-- El ?v= cambia cuando el reproductor cambia de forma urgente, para que ningún navegador use una copia guardada.
+     Si cambia aquí, cambia también en su <link rel="modulepreload"> de arriba. -->
+<script type="module" src="js/reproductor.js?v=2026-11-17a" onerror="sparkedCargador.fallo()"></script>
 <script type="module" src="js/sin-internet.js"></script>
 </body>
 </html>

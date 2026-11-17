@@ -2,11 +2,15 @@
 import { normalizar, armarSlides, recortarVistaPrevia, prepararVistaPrevia, slidesVistaPrevia, dividirSlide, retitular, t as tx } from "./cartucho.js";
 import { portada, tutorial, teoria, resultados, candado, terminando, pantallaCarga, mensaje } from "./teoria.js";
 import * as J from "./juegos.js";
-import { h, esc, desborda, ajustarInicio, precargarFotos, vigilarJuego, encajarJuego, algoSeSale, seEnciman } from "./ui.js";
+import { h, esc, desborda, ajustarInicio, precargarFotos, formaDe, vigilarJuego, encajarJuego, algoSeSale, seEnciman } from "./ui.js";
 import { sonido } from "./sonido.js";
 import { CONFIG } from "./config.js";
 
 const escenario = document.getElementById("escenario");
+// La capa "Cargando tu guía…" que guia.html pinta desde el primer byte (17 nov 2026). El reproductor le avisa cuando ya
+// puso su pantalla de espera (arriba) y cuando ya hay una slide o un mensaje en pantalla (quitar).
+const cargador = window.sparkedCargador ?? null;
+const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const params = new URLSearchParams(location.search);
 const token = (location.hash || "").replace(/^#/, "").trim();
 const esToken = /^[A-Za-z0-9]{8,64}$/.test(token);
@@ -35,7 +39,7 @@ const ctx = {
   modo: "demo", precio: CONFIG.precio, resultados: {}, minis: {}, reto: null, guiaId: null,
   t: (k) => tx(c?.plan?.idioma_guia ?? "es", k),
   escala: () => escala,
-  go: (i) => { cur = Math.max(0, Math.min(S.length - 1, i)); render(); },
+  go: (i) => irA(i),
   luego: (f, ms) => { const id = setTimeout(f, ms); timers.push(id); return id; },
   raf: (id) => rafs.push(id),
   // Apaga motores y sonidos que sigan sonando (lo llama fin() de ui.js al terminar un juego).
@@ -84,9 +88,29 @@ function avisoGiro() {
 addEventListener("resize", avisoGiro);
 avisoGiro();
 
+// Ir a una slide. Lo normal es que la forma de sus fotos ya se conozca (se miden dos slides antes de llegar) y se
+// muestre en el acto. Si todavía no (se llegó muy rápido, se saltó desde las miniaturas o la conexión es muy lenta), se
+// espera un momento a conocerla: así la slide sale ya acomodada y nada se mueve cuando la foto termina de bajar.
+let abierta = false, viaje = 0, relojFotos = 0;
+function irA(i) {
+  if (!abierta) return;   // mientras la guía carga, las flechas todavía no llevan a ningún lado
+  i = Math.max(0, Math.min(S.length - 1, Number(i) || 0));
+  const mio = ++viaje;
+  if (!porMedir(S[i]).length) { cur = i; render(); return; }
+  clearTimeout(relojFotos);
+  relojFotos = setTimeout(() => {
+    if (mio !== viaje || escenario.querySelector(".aviso-fotos")) return;
+    const texto = { es: "Cargando fotos…", en: "Loading photos…", fr: "Chargement des photos…" }[c?.plan?.idioma_guia] ?? "Cargando fotos…";
+    escenario.appendChild(h(`<div class="aviso-fotos" role="status" style="position:absolute;right:16px;top:16px;z-index:30;padding:9px 16px;border-radius:999px;background:rgba(18,24,38,.88);color:#fff;font:700 16px var(--texto)">${esc(texto)}</div>`));
+  }, 500);
+  formasDe(S[i], ESPERA_FOTOS).then(() => { if (mio === viaje) { cur = i; render(); } });
+}
+
 function render() {
   // Cambiar de slide (siguiente, anterior, miniaturas, "Jugar de nuevo") apaga los sonidos de la slide anterior.
+  clearTimeout(relojFotos);
   limpiar(); sonido.detenerTodo(); escenario.innerHTML = "";
+  cargador?.quitar?.();
   const s = S[cur]; if (!s) return;
   const el = (R[s.k] ?? portada)(s, ctx);
   el.appendChild(h(`<div class="marca-pie">Spark<b>Ed</b></div>`));
@@ -101,9 +125,13 @@ function render() {
   // (y la vuelven a revisar cada vez que cambia la pregunta o la tarjeta).
   if (s.k === "portada") encajarPortada(el);
   else if (s.k !== "teoria" && s.k !== "resultados") vigia = vigilarJuego(el);
-  // Red de seguridad: si una foto o una letra llega tarde y algo deja de caber, la slide se vuelve a acomodar.
+  // Red de seguridad: si una foto o una letra llega tarde y algo deja de caber, la slide se vuelve a acomodar. Una foto
+  // que se mostró sin conocer su forma (no llegó a tiempo) la recibe en cuanto baja, para verse igual que las demás.
   const pendientes = [...el.querySelectorAll("img")].filter((im) => !im.complete);
-  if (pendientes.length) Promise.all(pendientes.map((im) => new Promise((ok) => { im.addEventListener("load", ok, { once: true }); im.addEventListener("error", ok, { once: true }); }))).then(() => reacomodar(el, s));
+  const llegaron = Promise.all(pendientes.map(fotoTerminada));
+  if (pendientes.length) llegaron.then(() => { ponerFormas(el); reacomodar(el, s); });
+  // Las fotos de las slides que siguen empiezan a bajar cuando esta ya tiene las suyas (o a los 4 s, lo que pase antes).
+  Promise.race([llegaron, espera(4000)]).then(() => { if (S[cur] === s) adelantarFotos(); });
   el.querySelectorAll(".inicio").forEach(ajustarInicio);
   document.getElementById("pg").textContent = `${cur + 1}/${S.length}`;
   ajustar(); guardar();
@@ -188,15 +216,111 @@ function encajarResultados(el) {
   res.classList.remove("compacto");
   if (!escenario.classList.contains("angosto") && desborda(res)) res.classList.add("compacto");
 }
-// Todas las fotos de la guía (portada, pistas, esquemas y juegos): se mide su forma antes de acomodar las slides.
-function fotosDe(c) {
-  const urls = [];
-  (c.plan?.identidad?.retratos_portada ?? []).forEach((r) => urls.push(r?.url));
+// ---------- Fotos con datos celulares (17 nov 2026) ----------
+// La guía de ejemplo bajaba 5.5 MB de fotos y esperaba hasta 7 s por todas antes de mostrar la primera slide. Ahora:
+//  1. Al abrir solo se piden las fotos de la slide en la que se empieza. Las de las dos slides siguientes bajan cuando
+//     esa ya tiene las suyas, y así se va adelantando conforme se avanza: nunca se baja la guía entera de golpe.
+//  2. En celular, o con conexión lenta, las fotos de Wikimedia se piden en miniatura: 330 px las que se ven chicas
+//     (retratos, línea del tiempo, «¿Quién es quién?») y 500 px las pinturas, mapas y fotos. Si la miniatura no existe,
+//     va la foto que venía en la guía. Las fotos que no son de Wikimedia no se tocan. En computadora nada cambia.
+//  3. La regla de siempre sigue igual: una slide no se muestra sin conocer la forma de sus fotos (ui.js la saca de los
+//     primeros bytes), así que nada se mueve ni se encima cuando la foto termina de bajar.
+const FOTO_CHICA = 330, FOTO_GRANDE = 500, ADELANTO = 2, ESPERA_FOTOS = 5000;
+const FOTOS_LIGERAS = (() => {
+  let chica = false, lenta = false;
+  try { chica = Math.min(screen.width || 9999, screen.height || 9999) <= 600; } catch {}
+  try { const n = navigator.connection; lenta = !!n && (n.saveData === true || ["slow-2g", "2g", "3g"].includes(n.effectiveType)); } catch {}
+  return chica || lenta;
+})();
+// Miniatura de Wikimedia del ancho pedido. Devuelve la misma URL si no es de upload.wikimedia.org, si no tiene la forma
+// conocida o si ya es de ese ancho o más chica (Wikimedia no agranda). Solo usa anchos que Wikimedia sirve siempre.
+function fotoLigera(url, ancho) {
+  if (!(ancho > 0) || typeof url !== "string") return url;
+  const m = /^(https:\/\/upload\.wikimedia\.org\/wikipedia\/[a-z0-9_-]+\/)(thumb\/)?([0-9a-f]\/[0-9a-f]{2}\/)([^\/?#]+)(?:\/([^\/?#]+))?$/i.exec(url);
+  if (!m) return url;
+  const [, base, thumb, carpeta, archivo, mini] = m;
+  if (thumb) {
+    // «960px-Foto.jpg», «lossy-page1-960px-Foto.tif.jpg»…: solo cambia el número.
+    const n = /^((?:[a-z0-9]+-)*?)(\d+)px-/i.exec(mini ?? "");
+    return n && Number(n[2]) > ancho ? `${base}thumb/${carpeta}${archivo}/${n[1]}${ancho}px-${mini.slice(n[0].length)}` : url;
+  }
+  // Foto original (el servidor la guarda así cuando mide 960 px o menos): se arma su miniatura. Solo fotos comunes.
+  const ext = /\.(jpe?g|png)$/i.exec(archivo);
+  if (mini || !ext) return url;
+  let largo = 0; try { largo = new TextEncoder().encode(decodeURIComponent(archivo)).length; } catch { return url; }
+  return `${base}thumb/${carpeta}${archivo}/${ancho}px-${largo > 160 ? "thumbnail" + ext[0].toLowerCase() : archivo}`;
+}
+// Los lugares donde una guía trae fotos: f(objeto, campo, chica). «chica» = se dibuja en pequeño (retrato o miniatura).
+function cadaFoto(c, f) {
+  const es = (o, k) => !!o && typeof o[k] === "string" && /^https?:\/\//.test(o[k]);
+  (c.plan?.identidad?.retratos_portada ?? []).forEach((r) => es(r, "url") && f(r, "url", true));
   (c.bloques ?? []).forEach((b) => {
-    (b.pistas ?? []).forEach((p) => { (p.imagenes ?? []).forEach((x) => urls.push(x?.url)); (p.esquema?.elementos ?? []).forEach((e) => urls.push(e?.imagen)); });
-    [...(b.actividades ?? []), ...(b.mini_examen ?? []), ...(b.duelo ?? [])].forEach((a) => (a?.pares ?? []).forEach((p) => urls.push(p?.imagen)));
+    (b.pistas ?? []).forEach((p) => {
+      (p.imagenes ?? []).forEach((x) => es(x, "url") && f(x, "url", x.tipo === "retrato"));
+      (p.esquema?.elementos ?? []).forEach((e) => es(e, "imagen") && f(e, "imagen", true));
+    });
+    [...(b.actividades ?? []), ...(b.mini_examen ?? []), ...(b.duelo ?? [])].forEach((a) => (a?.pares ?? []).forEach((p) => es(p, "imagen") && f(p, "imagen", true)));
   });
-  return urls.filter((u) => typeof u === "string" && /^https?:\/\//.test(u));
+}
+const GUARDADA = new Map();   // miniatura ligera → la dirección que venía en la guía
+function aligerarFotos(c) {
+  if (!FOTOS_LIGERAS) return;
+  // Una misma foto puede salir chica en la portada y grande en una pista: se pide una sola vez, del tamaño mayor.
+  const ancho = new Map();
+  cadaFoto(c, (o, k, chica) => ancho.set(o[k], Math.max(ancho.get(o[k]) ?? 0, chica ? FOTO_CHICA : FOTO_GRANDE)));
+  cadaFoto(c, (o, k) => { const u = o[k], ligera = fotoLigera(u, ancho.get(u)); if (ligera !== u) { GUARDADA.set(ligera, u); o[k] = ligera; } });
+}
+// La miniatura ligera falló: en la guía y en pantalla vuelve la foto que venía (nunca se pierde una foto por aligerarla).
+function regresarFoto(ligera) {
+  const guardada = GUARDADA.get(ligera);
+  if (!guardada) return null;
+  if (c) cadaFoto(c, (o, k) => { if (o[k] === ligera) o[k] = guardada; });
+  document.querySelectorAll("#escenario img, #medidor img").forEach((im) => { if (im.getAttribute("src") === ligera) im.src = guardada; });
+  return guardada;
+}
+document.addEventListener("error", (e) => { const im = e.target; if (im?.tagName === "IMG" && GUARDADA.has(im.getAttribute("src"))) regresarFoto(im.getAttribute("src")); }, true);
+// Las fotos que puede mostrar una slide: [objeto, campo] de cada una, tal como están en la guía.
+function lugaresDeFotos(s) {
+  const L = [], es = (o, k) => !!o && typeof o[k] === "string" && /^https?:\/\//.test(o[k]);
+  if (s.k === "portada") {
+    // Igual que la portada: hasta 4 retratos, y solo si hay 2 o más (con uno solo van los dibujos).
+    const retratos = (c.plan?.identidad?.retratos_portada ?? []).filter((r) => r?.url).slice(0, 4);
+    if (retratos.length >= 2) retratos.forEach((r) => es(r, "url") && L.push([r, "url"]));
+  }
+  (s.pistas ?? []).forEach((p) => {
+    (p.imagenes ?? []).forEach((x) => es(x, "url") && L.push([x, "url"]));
+    (p.esquema?.elementos ?? []).forEach((e) => es(e, "imagen") && L.push([e, "imagen"]));
+  });
+  [s.a, ...(s.items ?? []), ...(s.ids ?? []).map((id) => c.porId?.[id])].forEach((a) => (a?.pares ?? []).forEach((p) => es(p, "imagen") && L.push([p, "imagen"])));
+  return L;
+}
+const fotosDeSlide = (s) => [...new Set(lugaresDeFotos(s).map(([o, k]) => o[k]))];
+// Mide una foto (y la deja bajando). La promesa se cumple cuando ya se sabe su forma, o cuando se sabe que no cargó.
+const medidas = new Map(), intentadas = new Set();
+function medirFoto(u) {
+  if (!medidas.has(u)) medidas.set(u, (async () => {
+    let fallo = false;
+    await precargarFotos([u], 25000, () => { fallo = true; });
+    intentadas.add(u);
+    if (fallo && !formaDe(u)) { const guardada = regresarFoto(u); if (guardada) await medirFoto(guardada); }
+  })());
+  return medidas.get(u);
+}
+// Las fotos de una slide cuya forma falta por conocer (las que ya se intentaron y no cargaron no se vuelven a esperar).
+const porMedir = (s) => (s ? fotosDeSlide(s).filter((u) => !formaDe(u) && !intentadas.has(u)) : []);
+const formasDe = (s, ms) => { const urls = porMedir(s); return urls.length ? Promise.race([Promise.all(urls.map(medirFoto)), espera(ms)]) : Promise.resolve(); };
+function adelantarFotos() { for (let j = cur + 1; j <= cur + ADELANTO && j < S.length; j++) porMedir(S[j]).forEach(medirFoto); }
+// Promesa que se cumple cuando una foto ya en pantalla terminó de bajar (o falló sin remedio). Si la miniatura ligera
+// falla, la foto se cambia por la que venía en la guía y se espera esa.
+const fotoTerminada = (im) => new Promise((ok) => {
+  const oir = () => { im.addEventListener("load", ok, { once: true }); im.addEventListener("error", () => setTimeout(() => (im.complete ? ok() : oir()), 0), { once: true }); };
+  oir();
+});
+function ponerFormas(el) {
+  el.querySelectorAll("img:not([data-forma])").forEach((im) => {
+    if (!im.naturalWidth || !im.naturalHeight) return;
+    im.style.setProperty("--r", Math.max(.2, Math.min(5, im.naturalWidth / im.naturalHeight)).toFixed(4)); im.dataset.forma = "1";
+  });
 }
 // Cambia la slide i por sus partes y recorre lo que depende del número de slide (calificaciones de los mini-exámenes).
 function insertarPartes(i, partes) {
@@ -212,20 +336,48 @@ function insertarPartes(i, partes) {
 // Antes de mostrar la guía se mide cada slide de teoría: así la numeración, las miniaturas y el progreso ya salen con
 // las slides de continuación incluidas y no cambian a media sesión.
 async function prepararTeoria() {
-  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  // Las letras con las que se mide. guia.html pide su hoja sin detener la página y avisa cuando ya está puesta
+  // (window.sparkedLetras): se le esperan hasta 3 s y, después, hasta 2.5 s a las letras mismas. Si Google Fonts no
+  // responde, la guía se mide con la letra del dispositivo y se reacomoda cuando lleguen (como siempre).
+  try { await Promise.race([window.sparkedLetras, espera(3000)]); } catch {}
   try { await Promise.race([Promise.all(['400 20px "Atkinson Hyperlegible"', '700 20px "Atkinson Hyperlegible"', '800 24px "Outfit"'].map((x) => document.fonts.load(x))), espera(2500)]); } catch {}
-  const antes = cur;
+  const antes = cur, limite = Date.now() + 7000;   // lo más que se espera, en total, por fotos que hagan falta para decidir
   for (let i = 0; i < S.length; i++) {
     if (S[i].k !== "teoria") continue;
     for (let intento = 0; intento < 8; intento++) {
-      cur = i; medidor.innerHTML = "";
-      const el = teoria(S[i], ctx); medidor.appendChild(el);
-      if (encajarTeoria(el, S[i])) break;
+      cur = i;
+      if (await cabeTeoria(S[i], limite)) break;
       const partes = dividirSlide(S[i]); if (!partes) break;
       insertarPartes(i, partes);
     }
   }
   medidor.innerHTML = ""; cur = antes;
+}
+// ¿Cabe esta slide de teoría? Casi siempre se sabe SIN bajar sus fotos, midiéndola dos veces con un hueco en lugar de
+// cada foto: con el hueco más grande que una foto puede ocupar (si así cabe, cabe con cualquier foto) y con el más
+// chico (si ni así cabe, no cabe con ninguna y la slide se divide). Solo cuando cabe con el chico y no con el grande
+// hace falta la forma real de sus fotos para decidir, y entonces sí se piden. El resultado es el de siempre (las mismas
+// slides, con la misma numeración), pero abrir la guía ya no espera a las fotos de toda la teoría.
+const HUECO = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+async function cabeTeoria(s, limite) {
+  // hueco: "" = las fotos de verdad (con la forma que se conozca); "grande" o "chico" = un hueco en lugar de cada foto.
+  const medir = (hueco = "") => {
+    const lugares = hueco ? lugaresDeFotos(s) : [], urls = lugares.map(([o, k]) => o[k]);
+    let el;
+    lugares.forEach(([o, k]) => { o[k] = HUECO; });
+    try { el = teoria(s, ctx); } finally { lugares.forEach(([o, k], n) => { o[k] = urls[n]; }); }
+    // El hueco más chico: la foto más ancha y bajita que se admite (--r = 5, el tope de attrsFoto en ui.js).
+    if (hueco === "chico") el.querySelectorAll("img").forEach((im) => { im.style.setProperty("--r", "5"); im.dataset.forma = "1"; });
+    medidor.innerHTML = ""; medidor.appendChild(el);
+    return encajarTeoria(el, s);
+  };
+  if (!lugaresDeFotos(s).length) return medir();
+  if (medir("grande")) return true;
+  if (!medir("chico")) return false;
+  const aqui = cur;
+  await formasDe(s, Math.max(0, limite - Date.now()));
+  cur = aqui;
+  return medir();
 }
 
 // ---------- Navegación ----------
@@ -261,9 +413,13 @@ function guardar() {
   try { localStorage.setItem(claveProgreso(), JSON.stringify(datos)); } catch {}
   if (ctx.modo === "acceso" && esToken) { clearTimeout(guardarPendiente); guardarPendiente = setTimeout(() => fetch(`${CONFIG.api}/progreso/${token}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ dispositivo: leerSecreto(), datos }) }).catch(() => {}), 3000); }
 }
-function recuperar(remoto) {
+// El avance guardado más reciente (el de este dispositivo o el del servidor), o null si se empieza de cero.
+function avanceGuardado(remoto) {
   let local = null; try { local = JSON.parse(localStorage.getItem(claveProgreso()) || "null"); } catch {}
-  const p = [local, remoto].filter(Boolean).sort((a, b) => (b.en ?? 0) - (a.en ?? 0))[0];
+  return [local, remoto].filter(Boolean).sort((a, b) => (b.en ?? 0) - (a.en ?? 0))[0] ?? null;
+}
+function recuperar(remoto) {
+  const p = avanceGuardado(remoto);
   if (p) { ctx.resultados = p.resultados ?? {}; ctx.minis = p.minis ?? {}; ctx.reto = p.reto ?? null; cur = Math.min(S.length - 1, p.cur ?? 0); }
 }
 
@@ -271,20 +427,38 @@ function recuperar(remoto) {
 const CLAVE_DISP = "disp_" + token;
 function leerSecreto() { try { return localStorage.getItem(CLAVE_DISP) || ""; } catch { return ""; } }
 function guardarSecreto(s) { try { if (s) localStorage.setItem(CLAVE_DISP, s); } catch {} }
+// El secreto lo pone este navegador ANTES de pedir la guía (17 nov 2026). Con datos lentos la respuesta puede perderse
+// y hay que pedirla otra vez: si el secreto lo pusiera el servidor en cada intento, cada intento gastaría uno de los 2
+// dispositivos de la familia. Con el mismo secreto, el servidor reconoce que es el mismo dispositivo. Si el navegador
+// no puede crearlo, se pide como antes (sin secreto) y no se reintenta.
+let secretoDeEstaVez = "";
+function secretoPropio() {
+  if (secretoDeEstaVez) return secretoDeEstaVez;
+  let s = leerSecreto();
+  if (!/^[A-Za-z0-9]{16,64}$/.test(s)) {
+    try { const letras = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"; s = Array.from(crypto.getRandomValues(new Uint8Array(32)), (x) => letras[x % letras.length]).join(""); } catch { return ""; }
+    guardarSecreto(s);
+  }
+  return (secretoDeEstaVez = s);
+}
 
 // ---------- Arranque ----------
 function aplicarPaleta() { document.documentElement.dataset.paleta = c.plan.identidad.paleta; document.documentElement.lang = c.plan.idioma_guia || "es"; document.title = `${c.plan.identidad.titulo} · SparkEd`; }
-async function montar(cartucho, modo, parcial = false) {
+async function montar(cartucho, modo, parcial = false, enPortada = true) {
   ctx.modo = modo;
   c = normalizar(cartucho); aplicarPaleta();
+  // En celular o con conexión lenta, las fotos de Wikimedia se piden en miniatura ligera.
+  aligerarFotos(c);
   // Vista previa gratis: portada, una pista (una sola página), dos juegos de formato distinto y el candado.
   if (modo === "vista_previa") prepararVistaPrevia(c);
   S = armarSlides(c);
   if (modo === "vista_previa") { S = slidesVistaPrevia(S); S.push({ k: "candado", t: ctx.t("desbloquea"), blk: -1 }); }
   // Guía pagada que todavía se está terminando: se juegan los bloques que ya existen y al final va un letrero.
   if (parcial) { S = S.filter((s) => s.k !== "resultados" && s.k !== "ruleta"); S.push({ k: "terminando", t: "Estamos terminando los demás bloques", blk: -1 }); }
-  // Fotos completas (Daniel, 9 nov 2026): primero se mide la forma de cada foto, para acomodarla entera y sin recortes.
-  await precargarFotos(fotosDe(c));
+  // Fotos completas (Daniel, 9 nov 2026): cada foto se acomoda entera y sin recortes, con su forma real. Desde el 17 nov
+  // 2026 la forma se mide slide por slide, justo antes de mostrarla (antes se esperaba aquí por las fotos de toda la guía).
+  // Si se empieza en la portada, sus fotos se piden de una vez, mientras se acomoda la teoría.
+  if (enPortada) porMedir(S[0]).forEach(medirFoto);
   await prepararTeoria();
   // Si la pista de la vista previa no cupo en una página, solo se muestra la primera (lo demás va en la guía completa).
   if (modo === "vista_previa") { let una = false; S = S.filter((s) => s.k !== "teoria" || (!una && (una = true))); retitular(S, c.plan.idioma_guia); }
@@ -315,7 +489,57 @@ function avisoParcial(d) {
   setTimeout(vigila, 30000);
 }
 
-async function cargarDatos() { try { return await (await fetch("datos/curiosos.json")).json(); } catch { return []; } }
+// ---------- Pedir sin quedarse esperando para siempre (17 nov 2026) ----------
+// Con datos celulares una petición puede quedarse colgada sin avisar. Si en 15 s no llega nada (ni la respuesta ni un
+// dato más) se corta y se intenta una vez más; mientras sigan llegando datos, aunque sea despacio, no se corta. Si
+// tampoco responde, quien llama muestra «Algo falló» con el botón «Reintentar» (nunca una pantalla en blanco).
+// Devuelve { r, d }: la respuesta y su contenido ya leído (d = null si no era JSON).
+const ESPERA_RED = 15000;
+async function pedir(hacer, intentos = 2) {
+  let fallo = null;
+  for (let n = 0; n < intentos; n++) {
+    if (n) await espera(1500);
+    const corte = new AbortController();
+    let reloj = 0, tardo = false;
+    const sigue = () => { clearTimeout(reloj); reloj = setTimeout(() => { tardo = true; corte.abort(); }, ESPERA_RED); };
+    try {
+      sigue();
+      const r = await hacer(corte.signal);
+      sigue();
+      let texto = "";
+      if (r.body?.getReader) {
+        const lector = r.body.getReader(), letras = new TextDecoder();
+        for (;;) { const { done, value } = await lector.read(); if (done) break; texto += letras.decode(value, { stream: true }); sigue(); }
+        texto += letras.decode();
+      } else texto = await r.text();
+      clearTimeout(reloj);
+      let d = null; try { d = JSON.parse(texto); } catch {}
+      return { r, d };
+    } catch (e) {
+      clearTimeout(reloj);
+      fallo = tardo ? new Error(`no hubo respuesta en ${ESPERA_RED / 1000} s (intento ${n + 1} de ${intentos})`) : e;
+    }
+  }
+  throw fallo;
+}
+// Los datos curiosos de la pantalla de espera son un adorno: un solo intento y, si no llegan, la pantalla sale sin ellos.
+async function cargarDatos() { try { const { r, d } = await pedir((signal) => fetch("datos/curiosos.json", { signal }), 1); return r.ok && Array.isArray(d) ? d : []; } catch { return []; } }
+// La guía que toca abrir, según la dirección: acceso con clave, vista previa, borrador o guía de ejemplo. Devuelve la
+// promesa de { r, d } (null cuando la guía viene guardada en este navegador, con ?local=).
+function pedirGuia() {
+  if (esToken) {
+    // Acceso real: pide la guía al servidor con la clave y la marca del dispositivo.
+    // La dirección termina en /abrir (11 nov 2026): del 10 al 11 de noviembre el servidor respondía «Ruta no
+    // encontrada» a POST /acceso/<clave>, porque la entrada con correo del panel se quedaba con esa dirección, y
+    // ninguna familia podía abrir su guía. Con /abrir la petición llega siempre a la ruta de las guías.
+    const secreto = secretoPropio();
+    return pedir((signal) => fetch(`${CONFIG.api}/acceso/${token}/abrir`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ dispositivo: secreto || undefined }), signal }), secreto ? 2 : 1);
+  }
+  if (params.get("vp")) return pedir((signal) => fetch(`${CONFIG.api}/vista-previa/${encodeURIComponent(params.get("vp"))}`, { signal }));
+  if (params.get("clave")) return pedir((signal) => fetch(`${CONFIG.api}/borrador/${encodeURIComponent(params.get("clave"))}`, { signal }));
+  if (params.get("local")) return null;
+  return pedir((signal) => fetch(`ejemplos/${(params.get("demo") || "historia1").replace(/[^a-z0-9_-]/gi, "")}.json`, { signal }));
+}
 
 // Aviso automático (11 nov 2026): si una guía pagada no abre por un fallo nuestro, queda un reporte nuevo en el panel
 // para que Daniel se entere en el momento y no cuando una familia le escriba. No se avisa de lo que es normal (link
@@ -331,61 +555,81 @@ function avisarFallo(detalle) {
 
 async function arrancar() {
   ajustar();
-  const carga = pantallaCarga({ t: (k) => tx("es", k) }, await cargarDatos());
+  // La guía se pide de una vez, mientras llegan los datos curiosos de la pantalla de espera (antes iba una cosa después
+  // de la otra). Si falla, se atiende abajo, donde se espera su respuesta.
+  const pedido = pedirGuia();
+  pedido?.catch(() => {});
+  const carga = pantallaCarga({ t: (k) => tx("es", k) }, await Promise.race([cargarDatos(), espera(4000).then(() => [])]));
   escenario.appendChild(carga); carga.actualizar(15, "LOADING…");
+  cargador?.arriba?.();
+  // Un mensaje en lugar de la guía (enlace vencido, guía en preparación, algo falló…). «Algo falló» lleva el botón
+  // «Reintentar»: con datos lentos lo más común es que la conexión se haya cortado a medio camino.
+  const avisar = (estado) => {
+    carga.detener(); escenario.innerHTML = "";
+    const m = mensaje(estado), caja = m.querySelector(".caja");
+    if (estado === "error" && caja) {
+      const b = h(`<button class="boton" type="button" data-reintentar style="margin:4px 0 2px">🔄 Reintentar</button>`);
+      b.onclick = () => location.reload();
+      caja.insertBefore(b, caja.lastElementChild);
+    }
+    escenario.appendChild(m); cargador?.quitar?.();
+    return m;
+  };
   try {
     if (esToken) {
-      // Acceso real: pide la guía al servidor con la clave y la marca del dispositivo.
-      // La dirección termina en /abrir (11 nov 2026): del 10 al 11 de noviembre el servidor respondía «Ruta no
-      // encontrada» a POST /acceso/<clave>, porque la entrada con correo del panel se quedaba con esa dirección, y
-      // ninguna familia podía abrir su guía. Con /abrir la petición llega siempre a la ruta de las guías.
-      const r = await fetch(`${CONFIG.api}/acceso/${token}/abrir`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ dispositivo: leerSecreto() || undefined }) });
-      const d = await r.json().catch(() => ({ estado: "error" }));
+      const { r, d: leido } = await pedido;
+      const d = leido ?? { estado: "error" };
+      carga.actualizar(55, "LOADING…");
       if (!ESTADOS_NORMALES.has(d.estado) || (d.estado === "ok" && !d.cartucho)) avisarFallo(`El servidor respondió HTTP ${r.status}: ${d.error ?? d.estado ?? "sin estado"}${d.estado === "ok" ? " (sin contenido)" : ""}`);
       if (d.dispositivo) guardarSecreto(d.dispositivo);
       if (d.estado === "generando") {
         // La guía ya está pagada pero Sparky sigue escribiendo bloques: se muestra el avance y se vuelve a intentar.
-        carga.detener(); escenario.innerHTML = ""; const msj = mensaje("generando"); escenario.appendChild(msj);
+        const msj = avisar("generando");
         const pr = d.progreso ?? {}; const p = document.createElement("p"); p.style.cssText = "font-weight:700;color:var(--p)"; p.textContent = `${pr.pct ? pr.pct + "% · " : ""}${pr.mensaje ?? ""}`; msj.querySelector(".caja")?.appendChild(p);
         setTimeout(() => location.reload(), 8000); return;
       }
       if (d.estado === "revisando") {
         // El trabajo que termina la guía falló: ya no se dice "generando" para siempre. Se vuelve a revisar cada minuto.
-        carga.detener(); escenario.innerHTML = ""; escenario.appendChild(mensaje("revisando"));
+        avisar("revisando");
         setTimeout(() => location.reload(), 60000); return;
       }
       // Un estado que el reproductor no conoce (o «ok» sin contenido) es un fallo nuestro: se dice «Algo falló», no «Enlace no válido».
-      if (d.estado !== "ok" || !d.cartucho) { carga.detener(); escenario.innerHTML = ""; escenario.appendChild(mensaje(d.estado && d.estado !== "ok" && ESTADOS_NORMALES.has(d.estado) ? d.estado : "error")); return; }
+      if (d.estado !== "ok" || !d.cartucho) { avisar(d.estado && d.estado !== "ok" && ESTADOS_NORMALES.has(d.estado) ? d.estado : "error"); return; }
       ctx.guiaId = d.guia_id ?? null;
-      await montar(d.cartucho, "acceso", !!d.parcial); recuperar(d.progreso ?? null);
+      await montar(d.cartucho, "acceso", !!d.parcial, !(avanceGuardado(d.progreso ?? null)?.cur > 0)); recuperar(d.progreso ?? null);
       if (d.parcial) avisoParcial(d);
     } else if (params.get("vp")) {
-      const r = await fetch(`${CONFIG.api}/vista-previa/${encodeURIComponent(params.get("vp"))}`);
-      const d = await r.json();
-      if (!d.vista_previa) throw new Error("sin vista previa");
+      const { d } = await pedido;
+      if (!d?.vista_previa) throw new Error("sin vista previa");
+      carga.actualizar(55, "LOADING…");
       ctx.guiaId = params.get("vp"); await montar(d.vista_previa, "vista_previa");
     } else if (params.get("clave")) {
-      const r = await fetch(`${CONFIG.api}/borrador/${encodeURIComponent(params.get("clave"))}`);
-      const d = await r.json();
-      if (!d.vista_previa) throw new Error("borrador sin vista previa");
+      const { d } = await pedido;
+      if (!d?.vista_previa) throw new Error("borrador sin vista previa");
+      carga.actualizar(55, "LOADING…");
       await montar(d.vista_previa, "vista_previa");
     } else if (params.get("local")) {
       // "Ver como profesor" desde el panel SparkEd: el cartucho viene guardado en este navegador.
       const guardado = localStorage.getItem("sparked_cartucho_" + params.get("local").replace(/[^a-z0-9_-]/gi, ""));
       if (!guardado) throw new Error("sin cartucho local");
-      await montar(JSON.parse(guardado), "demo"); recuperar(null);
+      await montar(JSON.parse(guardado), "demo", false, !(avanceGuardado(null)?.cur > 0)); recuperar(null);
     } else {
-      const demo = (params.get("demo") || "historia1").replace(/[^a-z0-9_-]/gi, "");
-      const cartucho = await (await fetch(`ejemplos/${demo}.json`)).json();
+      const { r, d: cartucho } = await pedido;
+      if (!r.ok || !cartucho) throw new Error(`sin guía de ejemplo (HTTP ${r.status})`);
+      carga.actualizar(55, "LOADING…");
       const vp = params.get("vista") === "previa";
-      await montar(vp ? recortarVistaPrevia(normalizar(cartucho)) : cartucho, vp ? "vista_previa" : "demo");
+      await montar(vp ? recortarVistaPrevia(normalizar(cartucho)) : cartucho, vp ? "vista_previa" : "demo", false, vp || !(avanceGuardado(null)?.cur > 0));
       if (!vp) recuperar(null);
     }
+    // La slide en la que se empieza necesita la forma de sus fotos (solo las suyas): se espera, a lo más, lo que antes
+    // se esperaba por las de toda la guía.
+    carga.actualizar(85, "LOADING…");
+    await formasDe(S[cur], 7000);
     carga.actualizar(100, "READY");
-    await new Promise((r) => setTimeout(r, 350));
-    carga.detener(); render();
+    await espera(350);
+    carga.detener(); abierta = true; render();
   } catch (e) {
-    console.error(e); carga.detener(); escenario.innerHTML = ""; escenario.appendChild(mensaje("error"));
+    console.error(e); avisar("error");
     avisarFallo(`Error al abrirla en el navegador: ${e?.message ?? e}`);
   }
 }
