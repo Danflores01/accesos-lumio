@@ -209,6 +209,12 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
   sin fuente, no con «revisar_dato» (eso lo decide Daniel); `ordenarPorFecha` solo si la INSTRUCCIÓN pide orden de fechas
   y nunca con a. C./BC («ano\b» casaba con «humanos»); `claveIncoherente` tolera plural y artículo; una relectura «no es
   material de estudio» no tumba la guía.
+- **17 nov · Código 2026-11-17.3 (prueba v55 de Derecho):** (1) un ordenar salió revuelto aunque su «por qué» decía el
+  orden → `ordenarSegunPorQue` lo acomoda si reconoce todos los pasos; si 3 o más están fuera de orden, el reparador lo
+  rehace («ampliaciones» con «pasos») y, si sigue mal al armar, se quita (o va a Reportes si era el único juego).
+  (2) El plan sí asignó el Congreso y la Suprema Corte, pero el escritor no los puso → `cubrirFaltantes` en revisar
+  agrega una pista «También en tus apuntes» con lo que faltó (máx. 4 datos por bloque, 2 pistas por guía, sin IA).
+  (3) La slide de teoría que se desborda y las 7 seguidas vienen del reproductor (`teoria.js` y `cartucho.js`), no del servidor.
 
 - **12 nov · Universidad (código 2026-11-12.1):** «Universidad» caía en «sobrio» como prepa. Ahora universidad,
   licenciatura, ingeniería o maestría → perfil «universitario» (lo fija el código por el grado): tono académico, más

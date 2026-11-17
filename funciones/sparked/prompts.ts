@@ -397,6 +397,8 @@ mini_examen ≥ 5 · conceptos ≥ 4 parejas · clasificar ≥ 6 tarjetas):
   "verdadero_falso", "duelo" o "mini_examen"; el mini-examen usa el formato de la opción múltiple).
 - Parejas o tarjetas que faltan en un juego de conceptos, quién es quién o clasificar: en "ampliaciones", con
   el id del juego y SOLO las parejas ("pares") o tarjetas ("elementos", con "grupo" 0 o 1) nuevas.
+- Un juego de ordenar cuyos pasos no siguen el orden de su «por qué» (te lo decimos en los huecos): en
+  "ampliaciones", con su id y "pasos": TODOS sus pasos, en el orden correcto, cada uno { "texto", "emoji" }.
 - Si el inventario no da para llegar al mínimo, no rellenes con datos dudosos: escribe el id o el juego en
   "sin_contenido" con el motivo.
 
@@ -427,7 +429,8 @@ ${GRAMATICA}
 Responde SOLO con JSON: { "actividades_nuevas": { "opcion_multiple": [...], "completar": [...],
   "verdadero_falso": [...], "duelo": [...], "mini_examen": [...] },
   "ampliaciones": [ { "id": "b2cn1", "pares": [ { "termino": "...", "definicion": "..." } ] },
-    { "id": "b2cl1", "elementos": [ { "texto": "...", "grupo": 0 } ] } ],
+    { "id": "b2cl1", "elementos": [ { "texto": "...", "grupo": 0 } ] },
+    { "id": "b1or1", "pasos": [ { "texto": "...", "emoji": "..." } ] } ],
   "sin_contenido": [ { "juego": "b2 · verdadero_falso", "motivo": "..." } ],
   "pistas_divididas": [ { "id": "b1p2", "pistas": [ { "titulo": "...", "emoji": "...", "ideas": ["..."],
     "ejemplo": null, "clave": null, "dato_rapido": null, "personajes": [], "esquema": null }, { ... } ] } ] }

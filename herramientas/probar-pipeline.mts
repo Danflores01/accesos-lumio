@@ -843,5 +843,37 @@ let errU30 = "";
 try { await P.ejecutarPaso(falso, tU30, { archivos: [{}, {}], grado: "Universidad", materia: "Derecho" }); } catch (e) { errU30 = (e as Error).message; }
 ok(!errU30 && tU30.datos.inventario?.temas?.length === 1, "unir: la relectura «no es material de estudio» no tumba la guía si otro lote trajo datos · " + errU30);
 
+// 31. Código 2026-11-17.3 (prueba v55: Derecho b1or1 «Reparar, Prevenir, Sancionar, Investigar» con su «por qué» en
+// orden; el Congreso y la Suprema Corte asignados al bloque 2 pero fuera de la guía).
+// a) Ordenar según su «por qué»: se acomoda si todos los pasos se reconocen; «incoherente» si 3 o más están fuera de orden.
+const ordPQ: any = { id: "b1or1", tipo: "ordenar", instruccion: "Ordena los deberes del Estado frente a una violación de derechos humanos.", por_que: "Orden: prevenir, investigar, sancionar y reparar; cada paso sigue al anterior.", pasos: ["Reparar las violaciones", "Prevenir las violaciones", "Sancionar las violaciones", "Investigar las violaciones"].map((texto) => ({ texto, emoji: "" })) };
+const ordImpulso: any = { id: "b3or1", tipo: "ordenar", instruccion: "Ordena el recorrido del impulso eléctrico en el corazón.", por_que: "El impulso nace en el nodo sinusal, se retrasa en el nodo AV y baja por el haz de His hasta Purkinje.", pasos: ["Nodo sinusal o SA (marcapasos, AD)", "Nodo AV (retrasa el impulso ≈ 0.1 s)", "Haz de His", "Ramas derecha e izquierda", "Fibras de Purkinje"].map((texto) => ({ texto })) };
+const ordGenerico: any = { id: "b1or2", tipo: "ordenar", instruccion: "Ordena los pasos para calcular Ed con el método del punto medio.", por_que: "Primero se calculan ambos porcentajes, luego se dividen y, al final, se compara |Ed| con 1.", pasos: ["Calcular %ΔQ con el punto medio", "Calcular %ΔP con el punto medio", "Dividir %ΔQ entre %ΔP", "Tomar el valor absoluto y comparar con 1"].map((texto) => ({ texto })) };
+const ordMalo: any = { id: "b2or9", tipo: "ordenar", instruccion: "Ordena el proceso.", por_que: "Primero se filtra, luego se hierve y al final se enfría.", pasos: ["Enfriar el agua", "Hierve el agua", "Filtrar el agua", "Guardar en un frasco limpio"].map((texto) => ({ texto })) };
+ok(P.ordenarSegunPorQue(ordPQ) === "reordenado" && ordPQ.pasos.map((p: any) => p.texto.split(" ")[0]).join() === "Prevenir,Investigar,Sancionar,Reparar" && P.ordenarSegunPorQue(ordPQ) === "ok" && P.ordenarSegunPorQue(ordImpulso) === "ok" && ordImpulso.pasos[0].texto.startsWith("Nodo sinusal") && P.ordenarSegunPorQue(ordGenerico) === "ok" && P.ordenarSegunPorQue(JSON.parse(JSON.stringify(ordMalo))) === "incoherente", "ordenar según su «por qué»: b1or1 se acomoda; el del impulso (bien) y el de Ed (por qué genérico) no se tocan; uno con 3 pasos fuera de orden y uno sin reconocer es «incoherente»");
+const tRevO: any = { id: "trevO", alcance: "resto", paso: "revisar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "es", perfil_edad: "universitario", materia: "Química", puntos_dificiles: [], bloques: [{ id: "b2", juegos: { ordenar: 1, opcion_multiple: 6 } }], presupuesto_slides: 25 }, inventario: {}, citas: [],
+  bloques: [{ id: "b2", titulo: "Agua", pistas: [{ id: "b2p1", titulo: "A", ideas: ["A: x"] }], actividades: [JSON.parse(JSON.stringify(ordMalo)), ...[1, 2, 3, 4, 5, 6].map((n) => preg("b2o" + n, "opcion_multiple"))], mini_examen: [] }] } };
+await P.ejecutarPaso(falso, tRevO, fuenteG);
+ok((tRevO.datos.huecos ?? []).some((h: string) => /^MÍNIMO · Actividad b2or9 \(ordenar, bloque b2\): sus pasos no siguen el orden que explica su «por qué»/.test(h)) && tRevO.datos.bloques[0].actividades.some((a: any) => a.id === "b2or9"), "revisar: el ordenar incoherente se queda y pide al reparador que lo rehaga (hueco MÍNIMO)");
+const blqO: any[] = [{ id: "b2", pistas: [], actividades: [JSON.parse(JSON.stringify(ordMalo))], mini_examen: [] }];
+const repO = P.aplicarReparacion(blqO, { ampliaciones: [{ id: "b2or9", pasos: [{ texto: "Filtrar el agua", emoji: "🧪" }, { texto: "Hervir el agua", emoji: "🔥" }, { texto: "Enfriar el agua", emoji: "❄️" }, "Guardar en un frasco limpio"] }] }, [], "universidad", "es", []);
+ok(blqO[0].actividades[0].pasos.map((p: any) => p.texto.split(" ")[0]).join() === "Filtrar,Hervir,Enfriar,Guardar" && repO.colocadas.includes("b2or9: pasos rehechos") && P.ordenarSegunPorQue(blqO[0].actividades[0]) === "ok", "reparar: «ampliaciones» con «pasos» rehace el ordenar completo");
+const tAO: any = JSON.parse(JSON.stringify(tA)); tAO.paso = "armar"; tAO.datos.cartucho = undefined;
+tAO.datos.bloques[0].actividades.push({ ...JSON.parse(JSON.stringify(ordMalo)), id: "b1or9" });
+await P.ejecutarPaso(falso, tAO, { archivos: [], grado: "3° secundaria", materia: "Historia" });
+ok(!tAO.datos.cartucho.bloques[0].actividades.some((a: any) => a.id === "b1or9") && (tAO.datos.descartes ?? []).some((d: any) => d.id === "b1or9" && /por qué/.test(d.motivo)), "armar: si el ordenar sigue incoherente y el bloque tiene otros juegos, se quita");
+// b) Cobertura: el dato del Congreso asignado al bloque y ausente de su texto va en una pista «También en tus apuntes».
+const invCob: any = { datos_clave: [
+  { id: "dat82", foto: 2, texto: "Poder Legislativo: Congreso General dividido en Cámara de Diputados y Cámara de Senadores (art. 50)" },
+  { id: "dat83", foto: 2, texto: "Diputaciones: 500 (300 de mayoría relativa y 200 de representación proporcional); se eligen cada 3 años (arts. 51 y 52)" },
+  { id: "dat84", foto: 2, texto: "Senado: 128 (64 de mayoría relativa, 32 de primera minoría y 32 de representación proporcional)" },
+  { id: "dat90", foto: 2, texto: "Soberanía: reside esencial y originariamente en el pueblo (art. 39)" },
+  { id: "dat91", foto: 2, texto: "Temario del 2.º parcial", motivo: "sospecha" }] };
+const DCob: any = { inventario: invCob, plan: { bloques: [{ id: "b2", ids_inventario: ["dat82", "dat83", "dat84", "dat90", "dat91"] }] },
+  bloques: [{ id: "b2", titulo: "Soberanía y división de poderes", pistas: [{ id: "b2p1", titulo: "Soberanía", ideas: ["Soberanía: reside esencial y originariamente en el pueblo (art. 39).", "Legislativo: Congreso General con Cámara de Diputados y Cámara de Senadores."] }], actividades: [], mini_examen: [] }] };
+const notasCob = P.cubrirFaltantes(DCob, "es");
+const pc = DCob.bloques[0].pistas.find((p: any) => p.cobertura);
+ok(notasCob.length === 1 && pc?.titulo === "También en tus apuntes" && pc.ideas.length === 2 && pc.ideas.some((i: string) => /500/.test(i)) && pc.ideas.some((i: string) => /128/.test(i)) && P.cubrirFaltantes(DCob, "es").length === 0, "cobertura: el Congreso (500 y 128) que el escritor dejó fuera va en una pista más del bloque; lo ya cubierto y las sospechas no; no se repite · " + notasCob.join());
+
 console.log(fallos ? `\n${fallos} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);
