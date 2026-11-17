@@ -373,7 +373,7 @@ export function chatDeRespuesta(r: any, pedido: string): string {
 let motivoEstado: string | null = null;
 async function estadoInstancia(): Promise<string> {
   try { const e = String((await api("getStateInstance"))?.stateInstance ?? "desconocido"); motivoEstado = null; return e; }
-  catch (e) { motivoEstado = String((e as Error)?.message ?? e).replace(/\s+/g, " ").slice(0, 200); return "sin_respuesta"; }
+  catch (e) { motivoEstado = sinLlave(String((e as Error)?.message ?? e)).replace(/\s+/g, " ").slice(0, 200); return "sin_respuesta"; }
 }
 
 // Manda un texto. Devuelve el idMessage, o lanza error.

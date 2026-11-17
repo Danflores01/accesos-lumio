@@ -873,7 +873,7 @@ const invCob: any = { datos_clave: [
   { id: "dat91", foto: 2, texto: "Temario del 2.º parcial", motivo: "sospecha" },
   { id: "dat92", foto: 2, texto: "Respuestas correctas: 500 diputaciones y 128 senadurías" }] };
 const blqCob = () => ({ id: "b2", titulo: "Soberanía y división de poderes", pistas: [{ id: "b2p1", titulo: "Soberanía", ideas: ["Soberanía: reside esencial y originariamente en el pueblo (art. 39).", "Legislativo: Congreso General con Cámara de Diputados y Cámara de Senadores."] }], actividades: [], mini_examen: [] });
-const DCob = (extra: any = {}): any => ({ inventario: invCob, metricas: [], plan: { bloques: [{ id: "b2", ids_inventario: ["dat82", "dat83", "dat84", "dat90", "dat91", "dat92"] }] }, bloques: [blqCob()], ...extra });
+const DCob = (extra: any = {}): any => ({ inventario: invCob, metricas: [], fotos: [{ idioma: "es" }], plan: { idioma_guia: "es", bloques: [{ id: "b2", ids_inventario: ["dat82", "dat83", "dat84", "dat90", "dat91", "dat92"] }] }, bloques: [blqCob()], ...extra });
 ok(JSON.stringify(P.datosSinCubrir(invCob, DCob().plan.bloques[0].ids_inventario, blqCob()).map((e: any) => e.id)) === '["dat83","dat84"]', "cobertura: faltan el 500 y el 128; lo que el bloque ya dice, la sospecha y la clave de respuestas no cuentan");
 const cobOk = P.huecosDeCobertura(DCob(), 22, 25, true);
 ok(cobOk.huecos.length === 1 && /^COBERTURA · Bloque b2: .*\[dat83\].*\[dat84\]/.test(cobOk.huecos[0]) && cobOk.pedidos[0] === "b2: dat83, dat84", "cobertura: con lugar y costo, se pide al reparador (no se pega el texto)");
@@ -910,6 +910,43 @@ ok((tRevH.datos.huecos ?? []).some((h: string) => /Pasos actuales: \["Enfriar el
 const bC: any[] = [{ id: "b1", pistas: [{ id: "b1p1", titulo: "T", ideas: ["X: y"] }], actividades: [1, 2, 3, 4, 5].map((n) => ({ ...preg("b1o" + n, "opcion_multiple"), pista: "b1p1" })), mini_examen: [] }];
 ok(P.aplicarCorreccion(bC, "b1o2", { dato_correcto: "Z", decia_la_foto: "Y" }) === "conservada" && bC[0].actividades.length === 5 && bC[0].pistas[0].correcciones.length === 1, "corrección con fuente en un juego de 5: la pregunta se conserva (y va a Reportes); la pista muestra el dato corregido");
 ok(P.reportesDeVerificacion([{ estado: "corregida", conservadas: ["b1o2"], ids: ["b1o2"], afirmacion: "x", dato_correcto: "Z", fuentes: ["https://www.rae.es/x"] }], bC).some((c: string) => /corrigió con fuente/.test(c) && /Según las fuentes/.test(c)), "Reportes: la corregida con fuente que se conservó se avisa");
+
+// 32. Código 2026-11-17.5 (revisión de la .4: un emoji compuesto recortado a medio par sustituto hizo que Postgres
+// rechazara el jsonb y la guía no se entregara).
+const maestra = "👩‍🏫";
+const medio = maestra.slice(0, 1); // medio par sustituto
+ok(P.recortar(maestra + "abc", 1) === "👩" && P.recortar("Título 👩‍🏫 largo", 8) === "Título 👩" && !/[\uD800-\uDFFF]/.test(P.textoBienFormado("a" + medio + "b").replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "")) && P.textoBienFormado(maestra) === maestra, "recortar por caracteres y textos bien formados (el emoji compuesto completo se conserva)");
+const sucio: any = { datos: { pistas: [{ titulo: "Clase " + medio, emoji: maestra.slice(0, 3) }], [medio + "k"]: [medio] } };
+const limpio = P.bienFormado(sucio);
+const malformado = (x: string) => /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(x);
+ok(!malformado(JSON.stringify(limpio)) && malformado(JSON.stringify(sucio).replace(/\\u[dD][89abAB][0-9a-fA-F]{2}/g, "")) === false && limpio.datos.pistas[0].titulo.startsWith("Clase "), "bienFormado limpia todo el árbol (valores y claves) sin tocar lo demás");
+const blqZ: any[] = [{ ...blqCob(), actividades: [preg("b2o1", "opcion_multiple")] }];
+P.aplicarReparacion(blqZ, { pistas_cobertura: [{ bloque: "b2", titulo: "El Congreso " + maestra, emoji: "👩‍🏫👨‍🏫🧑‍🏫", ideas: ["Diputaciones: 500 en total.", "Senado: 128 senadurías."] }] }, [], "universidad", "es", cobOk.huecos);
+const pZ = blqZ[0].pistas.find((p: any) => p.cobertura);
+ok(!!pZ && !malformado(pZ.emoji) && !malformado(pZ.titulo) && pZ.emoji.startsWith(maestra), "pista de cobertura con emoji compuesto: se recorta por caracteres (nunca a medio par) · " + JSON.stringify(pZ?.emoji));
+// guardar: lo que llega a la base va bien formado (Postgres rechaza los pares sueltos).
+let enviado: any = null;
+const baseZ: any = { from: () => ({ update: (x: any) => { enviado = x; return { eq: async () => ({ error: malformado(JSON.stringify(x)) ? { code: "22P02", message: "Unicode low surrogate must follow a high surrogate" } : null }) }; } }) };
+const tZ: any = { id: "tz", alcance: "resto", paso: "revisar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "es", perfil_edad: "juvenil", materia: "Español", puntos_dificiles: [], bloques: [{ id: "b1", juegos: { opcion_multiple: 6 } }], presupuesto_slides: 25 }, inventario: {}, citas: [],
+  bloques: [{ id: "b1", titulo: "B1 " + medio, pistas: [{ id: "b1p1", titulo: "A", emoji: maestra.slice(0, 3), ideas: ["A: x"] }], actividades: [1, 2, 3, 4, 5, 6].map((k) => ({ ...preg("b1o" + k, "opcion_multiple"), opciones: ["uno" + k, "dos" + k, "tres" + k, "cuatro" + k], retro_correcta: "Sí, uno" + k, retro_incorrecta: "Es uno" + k })), mini_examen: [] }] } };
+let errZ = "";
+try { await P.ejecutarPaso(baseZ, tZ, fuenteG); } catch (e) { errZ = (e as any)?.message ?? String(e); }
+ok(!errZ && enviado && !malformado(JSON.stringify(enviado)), "guardar: un texto a medio emoji ya no hace fallar el paso (se guarda bien formado) · " + errZ);
+// Cobertura: «Solución:», números de lista/párrafo y prioridad por números.
+const invL: any = { datos_clave: [
+  { id: "d1", texto: "Obligación 01: promover los derechos; párrafo 16 del artículo" },
+  { id: "d2", texto: "Solución: 128 senadurías" },
+  { id: "d3", texto: "Senado: 128 (64 de mayoría relativa y 32 de primera minoría)" }] };
+ok(JSON.stringify(P.datosSinCubrir(invL, ["d1", "d2", "d3"], { pistas: [], actividades: [] }, true).map((e: any) => e.id)) === '["d3"]', "cobertura: «Obligación 01»/«párrafo 16» no son datos y «Solución:» es clave de ejercicio");
+const DPri: any = { inventario: { datos_clave: [
+  { id: "a1", texto: "Fecha clave: 1917 en Querétaro" },
+  { id: "c1", texto: "Diputaciones: 500 (300 y 200)" }, { id: "c2", texto: "Senado: 128 (64, 32 y 32)" }] }, metricas: [], plan: { idioma_guia: "es", bloques: [{ id: "b1", ids_inventario: ["a1"] }, { id: "b2", ids_inventario: ["c1", "c2"] }] }, fotos: [{ idioma: "es" }],
+  bloques: [{ id: "b1", pistas: [], actividades: [], mini_examen: [] }, { id: "b2", pistas: [], actividades: [], mini_examen: [] }] };
+ok(P.huecosDeCobertura(DPri, 24, 25, true).pedidos[0]?.startsWith("b2:"), "cobertura: con lugar para uno, gana el bloque con más números faltantes (el del Congreso)");
+const DOtro: any = { ...DPri, fotos: [{ idioma: "en" }], inventario: { datos_clave: [{ id: "a1", texto: "La Corte Suprema de Justicia de la Nación" }] }, plan: { idioma_guia: "es", bloques: [{ id: "b1", ids_inventario: ["a1"] }] }, bloques: [{ id: "b1", pistas: [], actividades: [], mini_examen: [] }] };
+ok(P.huecosDeCobertura(DOtro, 20, 25, true).huecos.length === 0, "cobertura: con fotos en otro idioma que la guía, los nombres no cuentan");
+const waTxt = readFileSync(join(repo, "funciones/sparked/whatsapp.ts"), "utf8");
+ok(/motivoEstado = sinLlave\(/.test(waTxt) && /estado_motivo/.test(waTxt), "whatsapp: el motivo del estado pasa por sinLlave y llega a /admin/whatsapp");
 
 console.log(fallos ? `\n${fallos} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);

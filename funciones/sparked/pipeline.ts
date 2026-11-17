@@ -266,9 +266,27 @@ async function base64De(supabase: Supa, ruta: string): Promise<string> {
   return btoa(bin);
 }
 
+// Textos bien formados (2026-11-17.5): un recorte a medio emoji compuesto (👩‍🏫) deja medio par sustituto y Postgres
+// rechaza el jsonb (22P02 «Unicode low surrogate must follow a high surrogate»): el trabajo fallaba 3 veces y la guía
+// pagada no se entregaba. Todo texto que se guarda pasa por aquí; lo suelto se cambia por «�».
+const SUELTO = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+export const textoBienFormado = (x: string): string => typeof (x as any).toWellFormed === "function" ? (x as any).toWellFormed() : x.replace(SUELTO, "\uFFFD");
+export function bienFormado<T>(x: T): T {
+  if (typeof x === "string") return textoBienFormado(x) as any;
+  if (Array.isArray(x)) return x.map(bienFormado) as any;
+  if (x && typeof x === "object" && Object.getPrototypeOf(x) === Object.prototype) {
+    const o: any = {};
+    for (const [k, v] of Object.entries(x as any)) o[textoBienFormado(k)] = bienFormado(v);
+    return o;
+  }
+  return x;
+}
+// Recorta por caracteres visibles (nunca a medio emoji ni a medio par sustituto).
+export const recortar = (x: unknown, n: number): string => Array.from(String(x ?? "")).slice(0, n).join("");
+
 async function guardar(supabase: Supa, t: Trabajo, cambios: Partial<Trabajo>) {
   Object.assign(t, cambios);
-  const { error } = await supabase.from("trabajos").update({ ...cambios, actualizado_en: new Date().toISOString() }).eq("id", t.id);
+  const { error } = await supabase.from("trabajos").update(bienFormado({ ...cambios, actualizado_en: new Date().toISOString() })).eq("id", t.id);
   if (error) throw error;
 }
 function sumar(t: Trabajo, uso: { entrada: number; salida: number; costo: number }) {
@@ -736,7 +754,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     if (D.reportes_contradice === undefined && t.guia_id) {
       const filas = reportesDeVerificacion(reporte, D.bloques as any[]).map((comentario) => ({ guia_id: t.guia_id, slide: null, comentario }));
       if (filas.length) {
-        const { error } = await supabase.from("reportes").insert(filas);
+        const { error } = await supabase.from("reportes").insert(bienFormado(filas));
         if (error) console.warn("No se pudieron guardar los reportes de «contradice el libro»:", error.message);
       }
       D.reportes_contradice = filas.length;
@@ -816,7 +834,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     for (const b of bloques) { descartarCortos(b, fuera, "por debajo del mínimo al armar"); quitarRepetidos(b, fuera); }
     if (fuera.length) anotarDescartes(D, "armar", fuera);
     if (dudosas.length && t.guia_id && D.reportes_claves === undefined) {
-      const { error } = await supabase.from("reportes").insert(dudosas.slice(0, 10).map((comentario) => ({ guia_id: t.guia_id, slide: null, comentario })));
+      const { error } = await supabase.from("reportes").insert(bienFormado(dudosas.slice(0, 10).map((comentario) => ({ guia_id: t.guia_id, slide: null, comentario }))));
       if (error) console.warn("No se pudieron guardar los reportes de claves dudosas:", error.message);
       D.reportes_claves = dudosas.length;
     }
@@ -1415,11 +1433,17 @@ export function ordenarSegunPorQue(a: any): "ok" | "reordenado" | "incoherente" 
 //     en el idioma de la guía ("pistas_cobertura"). Solo si cabe una slide más en el tope (nunca se quitan juegos por
 //     esto) y si el costo cabe en 5 MXN (si el reparador no iba a correr, se cuenta su costo completo).
 //   - Si al terminar de reparar la guía se pasa del tope, la pista de cobertura es lo primero que sale.
-const CLAVE_DE_EJERCICIO = /respuestas?\s+(correctas?|del ejercicio|esperadas?)|clave de respuestas|answer key|correct answers?|solucion(es)?\s*:|\bsoluciones\b/i;
+const CLAVE_DE_EJERCICIO = /respuestas?\s+(correctas?|del ejercicio|esperadas?)|clave de respuestas|answer key|correct answers?|soluci[oó]n(es)?\s*:|\bsoluciones\b/i;
 const INICIO_NOMBRE = new Set(["el", "la", "los", "las", "un", "una", "the", "a", "an", "le", "les", "de", "del", "en", "y", "o"]);
 export function senalesDuras(texto: unknown): string[] {
   const t = String(texto ?? "");
-  const numeros = (t.match(/(?<![\d.,])\d{2,}(?:[.,]\d{3})*(?![\d])/g) ?? []).map((n) => n.replace(/[.,]/g, ""));
+  // Números de lista o de párrafo («Obligación 01», «párrafo 16», «inciso 12», «punto 3») no son datos: no cuentan.
+  const LISTA = /(obligaci[oó]n|p[aá]rrafo|inciso|fracci[oó]n|punto|paso|actividad|ejercicio|pregunta|n[uú]mero|no\.|n[º°]|item|question|exercise|step|paragraph)\s*$/i;
+  const numeros: string[] = [];
+  for (const m of t.matchAll(/(?<![\d.,])\d{2,}(?:[.,]\d{3})*(?![\d])/g)) {
+    if (LISTA.test(t.slice(Math.max(0, (m.index ?? 0) - 14), m.index)) || /^0\d$/.test(m[0])) continue;
+    numeros.push(m[0].replace(/[.,]/g, ""));
+  }
   // Nombres propios: palabra con mayúscula (4 letras o más) que no abre el texto ni va después de «:», «.», «;» o «(».
   const nombres: string[] = [];
   const re = /(^|[\s:;.(¿¡"«—–-]+)([A-ZÁÉÍÓÚÑ][a-záéíóúñü]{3,})/g;
@@ -1456,25 +1480,27 @@ export function datosSinCubrir(inventario: Record<string, any[]>, ids: string[],
 // más por hueco y el costo cabe. Devuelve los huecos y lo que se pidió (para el rastro).
 export const COSTO_REPARAR_MXN = 1.4; // lo más que costó reparar en las guías reales (0.47 a 1.40 MXN)
 export function huecosDeCobertura(D: any, estimado: number, tope: number, reparaIgual: boolean): { huecos: string[]; pedidos: string[]; motivo?: string } {
-  const candidatos: { b: any; faltan: any[] }[] = [];
+  const candidatos: { b: any; faltan: any[]; numeros: number }[] = [];
   const idiomaGuia = String(D?.plan?.idioma_guia ?? "es");
-  const soloNumeros = (D?.fotos ?? []).some((x: any) => x?.idioma && x.idioma !== idiomaGuia);
+  // Nombres solo si fotos y guía van en el mismo idioma (si una foto no dice su idioma, se toma como distinto).
+  const soloNumeros = !(D?.fotos ?? []).length || (D?.fotos ?? []).some((x: any) => !x?.idioma || x.idioma !== idiomaGuia);
   for (const b of (D?.bloques ?? []) as any[]) {
     if (!b || b.solo_nota) continue;
     const pb = (D.plan?.bloques ?? []).find((x: any) => x?.id === b.id);
     const ids = ((pb?.ids_inventario ?? []) as string[]).filter((x) => !String(x).startsWith("inv"));
     if (!ids.length || (b.pistas ?? []).some((p: any) => p?.cobertura)) continue;
     const faltan = datosSinCubrir(D.inventario ?? {}, ids, b, soloNumeros).slice(0, 4);
-    if (faltan.length) candidatos.push({ b, faltan });
+    if (faltan.length) candidatos.push({ b, faltan, numeros: faltan.reduce((n, e) => n + senalesDuras(e.texto ?? e.cita).filter((w) => /^\d+$/.test(w)).length, 0) });
   }
   if (!candidatos.length) return { huecos: [], pedidos: [] };
   const lugar = Math.max(0, tope - estimado);
   if (!lugar) return { huecos: [], pedidos: [], motivo: `sin lugar en el tope de ${tope} slides` };
   const costo = costoGuiaMxn(D) + (reparaIgual ? 0.3 : COSTO_REPARAR_MXN) + RESERVA_FINAL_MXN;
   if (costo > TOPE_GUIA_MXN) return { huecos: [], pedidos: [], motivo: `no cabe en ${TOPE_GUIA_MXN} MXN (llevaría ${costo.toFixed(2)})` };
-  const usar = candidatos.slice(0, Math.min(2, lugar));
+  // Primero el bloque con más números faltantes (en Derecho, el del Congreso: 500 y 128).
+  const usar = [...candidatos].sort((x, y) => y.numeros - x.numeros).slice(0, Math.min(2, lugar));
   return {
-    huecos: usar.map(({ b, faltan }) => `COBERTURA · Bloque ${b.id}: estos datos de las fotos no quedaron en la guía. Escribe UNA pista nueva en "pistas_cobertura" (bloque ${b.id}), en el idioma de la guía, con título de máx. 6 palabras y de 1 a 4 ideas de máx. 12 palabras que empiezan con "Palabra clave: "; solo estos datos, sin inventar: ${faltan.map((e) => `[${e.id}] ${String(e.texto ?? e.cita).slice(0, 220)}`).join(" | ")}`),
+    huecos: usar.map(({ b, faltan }) => `COBERTURA · Bloque ${b.id}: estos datos de las fotos no quedaron en la guía. Escribe UNA pista nueva en "pistas_cobertura" (bloque ${b.id}), en el idioma de la guía, con título de máx. 6 palabras y de 1 a 4 ideas de máx. 12 palabras que empiezan con "Palabra clave: "; solo estos datos, sin inventar: ${faltan.map((e) => `[${e.id}] ${recortar(e.texto ?? e.cita, 220)}`).join(" | ")}`),
     pedidos: usar.map(({ b, faltan }) => `${b.id}: ${faltan.map((e) => e.id).join(", ")}`),
   };
 }
@@ -1544,7 +1570,7 @@ export function aplicarReparacion(bloques: any[], j: any, citas: string[], nivel
     const b = bloques.find((x) => x?.id === String(pc?.bloque ?? "").trim());
     if (!b || !pidieron.has(b.id) || b.solo_nota || (b.pistas ?? []).some((p: any) => p?.cobertura)) continue;
     const ideas = (Array.isArray(pc?.ideas) ? pc.ideas : []).map(textoDe).map((x: string) => x.trim()).filter(Boolean).slice(0, 4);
-    const pista = { id: `${b.id}pc1`, titulo: String(pc?.titulo ?? "").trim().slice(0, 60), emoji: String(pc?.emoji ?? "📌").slice(0, 4) || "📌", ideas, ejemplo: null, clave: null, dato_rapido: null, personajes: [], esquema: null, cobertura: true };
+    const pista = { id: `${b.id}pc1`, titulo: recortar(String(pc?.titulo ?? "").trim(), 60), emoji: recortar(String(pc?.emoji ?? "").trim(), 8) || "📌", ideas, ejemplo: null, clave: null, dato_rapido: null, personajes: [], esquema: null, cobertura: true };
     if (!pista.titulo || !ideas.length || problemaDePista(pista, "juvenil")) { descartes.push({ id: pista.id, tipo: "pista", bloque: b.id, motivo: `pista de cobertura que no cabe en una slide (${problemaDePista(pista, "juvenil") ?? "sin título o sin ideas"})` }); continue; }
     b.pistas = [...(b.pistas ?? []), pista];
     colocadas.push(`${pista.id}: cobertura`);

@@ -223,6 +223,11 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
   corrección CON fuente usa la red (`aplicarCorreccion` → «conservada» y Reportes); el ordenar reacomodado deja métrica
   «reordenar · paso»; el hueco del ordenar lleva los pasos actuales; `/admin/whatsapp` trae `estado_motivo` y la ronda
   lo muestra. Lección: antes de entregar una regla que cambia guías, simularla con guías pagadas reales.
+- **17 nov · Código 2026-11-17.5 (la .4 no se desplegó):** `.slice(0, 4)` sobre un emoji compuesto (👩‍🏫) dejó medio par
+  sustituto y Postgres rechazó el jsonb (22P02): la guía no se entregaba. Ahora `guardar` y los inserts de Reportes pasan
+  todo por `bienFormado` (toWellFormed) y los recortes de texto nuevo usan `recortar` (por caracteres). Nunca recortar un
+  texto con `.slice` si puede traer emojis. Cobertura: sin «Obligación 01»/«párrafo 16», «Solución:» es clave, nombres solo
+  si fotos y guía van en el mismo idioma, y gana el bloque con más números faltantes.
 
 - **12 nov · Universidad (código 2026-11-12.1):** «Universidad» caía en «sobrio» como prepa. Ahora universidad,
   licenciatura, ingeniería o maestría → perfil «universitario» (lo fija el código por el grado): tono académico, más
