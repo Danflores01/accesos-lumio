@@ -368,8 +368,12 @@ export function chatDeRespuesta(r: any, pedido: string): string {
   return identificadorDe(r) ?? `${pedido}@c.us`;
 }
 
+// Por qué la última consulta de estado no respondió (ya sin la llave: api() la quita), para el panel y la ronda de la guardia
+// (17 nov 2026: decía solo «sin_respuesta» y Green API respondía 404).
+let motivoEstado: string | null = null;
 async function estadoInstancia(): Promise<string> {
-  try { return String((await api("getStateInstance"))?.stateInstance ?? "desconocido"); } catch { return "sin_respuesta"; }
+  try { const e = String((await api("getStateInstance"))?.stateInstance ?? "desconocido"); motivoEstado = null; return e; }
+  catch (e) { motivoEstado = String((e as Error)?.message ?? e).replace(/\s+/g, " ").slice(0, 200); return "sin_respuesta"; }
 }
 
 // Manda un texto. Devuelve el idMessage, o lanza error.
@@ -886,7 +890,8 @@ export async function rutasWhatsApp(c: CtxRutas): Promise<Response | null> {
     const cfg = await ajustesDe(c);
     const mensajes = Object.fromEntries((Object.keys(PLANTILLAS_ORIGINALES) as ClavePlantilla[]).map((k) => [k, { ...plantillaVigente(k, cfg), clave: CLAVES_PLANTILLA[k] }]));
     const ejemplo = { ...EJEMPLO, link: `${await c.sitio()}guia.html#ejemplo`, portada: PORTADA, maximo: MAX_PLANTILLA };
-    return c.json({ motor, estado_instancia, numero, enviados_7d, fallidos_7d, compartir_7d, ultimo_error, webhook_configurado, historial_del_telefono, mensajes, ejemplo });
+    const estado_motivo = estado_instancia === "sin_respuesta" ? motivoEstado : null;
+    return c.json({ motor, estado_instancia, estado_motivo, numero, enviados_7d, fallidos_7d, compartir_7d, ultimo_error, webhook_configurado, historial_del_telefono, mensajes, ejemplo });
   }
 
   // Vista de la imagen que acompaña a un mensaje (PNG): ?tipo=entrega|compartir&idioma=es|en. La de entrega sale con

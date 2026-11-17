@@ -105,7 +105,7 @@ if (!clave) {
   else if (!wa.d.motor) aviso("WhatsApp no está conectado: las guías se entregan solo por correo");
   else {
     if (wa.d.estado_instancia === "authorized") ok("el teléfono de SparkEd está enlazado");
-    else falla(`el WhatsApp de entregas está en «${wa.d.estado_instancia}»: las guías no llegan por WhatsApp (sí por correo)`);
+    else falla(`el WhatsApp de entregas está en «${wa.d.estado_instancia}»${wa.d.estado_motivo ? ` (${wa.d.estado_motivo})` : ""}: las guías no llegan por WhatsApp (sí por correo)`);
     if (wa.d.webhook_configurado === false) aviso("los avisos de Green API no están configurados (botón «Conectar» en Ajustes)");
     if ((wa.d.fallidos_7d ?? 0) > 0) aviso(`${wa.d.fallidos_7d} entrega(s) por WhatsApp fallaron en 7 días`);
   }

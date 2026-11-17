@@ -546,9 +546,6 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const citas: string[] = D.citas ?? [];
     const idioma = D.plan.idioma_guia ?? "es";
     const descartes: Descarte[] = [];
-    // Cobertura (2026-11-17.3): lo de las fotos que el escritor dejó fuera va en una pista más del bloque (ver cubrirFaltantes).
-    const cobertura = cubrirFaltantes(D, idioma);
-    if (cobertura.length) { D.cobertura = cobertura; console.log("Cobertura", JSON.stringify(cobertura)); }
     for (const b of D.bloques as any[]) {
       // Un bloque que solo trae la nota del temario no pide huecos: el reparador no debe inventar preguntas para él.
       if (b?.solo_nota) continue;
@@ -570,6 +567,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     D.huecos = [...huecos.filter((h) => h.startsWith("MÍNIMO")), ...huecos.filter((h) => !h.startsWith("MÍNIMO")).slice(0, 8)];
     // Cada actividad descartada queda anotada con su motivo (en datos.descartes, en datos.diagnostico y en el log).
     anotarDescartes(D, "revisar", descartes);
+    anotarReordenados(D, D.bloques as any[], "revisar");
     // Pistas que no caben en una slide y exceso de slides: los arregla el paso reparar.
     const perfil = D.plan.perfil_edad ?? "juvenil";
     // Las notas del temario («repásalo en tu libro») las escribe el código y no se dividen.
@@ -578,8 +576,13 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const estimado = estimarSlides(D.bloques) + D.pistas_largas.length;
     D.slides = { ...(D.slides ?? {}), tope, generado: estimarSlides(D.bloques), exceso: Math.max(0, estimado - tope) };
     const arreglar = huecos.length > 0 || D.pistas_largas.length > 0 || estimado > tope;
-    const sig = arreglar ? "reparar" : "ortografia";
-    await guardar(supabase, t, { datos: D, paso: sig, progreso: { pct: 72, mensaje: arreglar ? "Arreglando detallitos 🔧" : "Revisando la ortografía ✍️", paso: sig } });
+    // Cobertura (2026-11-17.4): lo de las fotos que el escritor dejó fuera se pide al reparador, solo si cabe una slide más
+    // y el costo cabe (ver huecosDeCobertura). Nunca se quitan juegos para hacerle lugar.
+    const cob = huecosDeCobertura(D, estimado, tope, arreglar);
+    if (cob.huecos.length) { D.huecos = [...D.huecos, ...cob.huecos]; D.cobertura = cob.pedidos; console.log("Cobertura", JSON.stringify(cob.pedidos)); }
+    else if (cob.motivo) D.cobertura = [`no se pidió: ${cob.motivo}`];
+    const sig = arreglar || cob.huecos.length ? "reparar" : "ortografia";
+    await guardar(supabase, t, { datos: D, paso: sig, progreso: { pct: 72, mensaje: sig === "reparar" ? "Arreglando detallitos 🔧" : "Revisando la ortografía ✍️", paso: sig } });
     return sig;
   }
 
@@ -605,10 +608,11 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
       const res = await llamar(supabase, t, fuente, "reparar", "reparar", { sistema, contenido, maxTokens: 16000 });
       if (res === REPETIR) return "reparar";
       const r = res;
-      if (!r.json?.actividades_nuevas && !r.json?.pistas_divididas && !r.json?.ampliaciones) await diagnosticar(supabase, t, "reparar", r);
+      if (!r.json?.actividades_nuevas && !r.json?.pistas_divididas && !r.json?.ampliaciones && !r.json?.pistas_cobertura) await diagnosticar(supabase, t, "reparar", r);
       divididas = Array.isArray(r.json?.pistas_divididas) ? r.json.pistas_divididas : [];
       const reparado = aplicarReparacion(D.bloques, r.json ?? {}, D.citas ?? [], nivel, plan.idioma_guia ?? "es", D.huecos ?? []);
       anotarDescartes(D, "reparar", reparado.descartes);
+      anotarReordenados(D, D.bloques as any[], "reparar");
       D.reparadas = reparado.colocadas;
       D.sin_contenido = Array.isArray(r.json?.sin_contenido) ? r.json.sin_contenido.slice(0, 20) : [];
     } catch (e) { if ((e as any)?.reintentar) throw e; console.warn("Reparación falló, sigue sin ella:", (e as Error).message); }
@@ -630,6 +634,8 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
     const cortos: Descarte[] = [];
     for (const b of D.bloques as any[]) descartarCortos(b, cortos, "no hubo contenido suficiente en los apuntes para completarlo");
     if (cortos.length) anotarDescartes(D, "reparar · mínimos", cortos);
+    // Cobertura: si con ella la guía se pasa del tope, la pista de cobertura es lo primero que sale (2026-11-17.4).
+    if (estimarSlides(D.bloques) > topeDe(plan)) for (const b of D.bloques as any[]) if (b && (b.pistas ?? []).some((p: any) => p?.cobertura)) { b.pistas = b.pistas.filter((p: any) => !p?.cobertura); D.cobertura = [...(D.cobertura ?? []), `${b.id}: pista quitada por el tope de slides`]; }
     // Tope de slides: si la guía se pasa, se fusiona y luego se recorta (ver recortarBloques).
     const recortes = recortarBloques(D.bloques, topeDe(plan), perfil, plan.primera_actividad ?? "");
     D.slides = { ...(D.slides ?? {}), pistas_divididas: notas, recortes, tras_reparar: estimarSlides(D.bloques) };
@@ -708,9 +714,11 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
             v.reporte.push({ ...res, ids, estado: "revisar_dato", estado_ia: "corregida", sin_cambio: "sin una fuente oficial o confiable que haya salido en su búsqueda", ...(quitadas.length ? { quitadas: quitadas.map((q) => q.id) } : {}), ...(conservadas.length ? { conservadas } : {}) });
             continue;
           }
-          v.reporte.push({ ...res, ids, ...(corrige ? { fuentes: fuentes.map((f) => f.url) } : {}) });
+          const entrada: any = { ...res, ids, ...(corrige ? { fuentes: fuentes.map((f) => f.url) } : {}) };
+          v.reporte.push(entrada);
           if (!corrige) continue;
-          for (const id of ids) aplicarCorreccion(D.bloques as any[], id, { ...res, fuentes: fuentes.map((f) => ({ nombre: f.nombre, url: f.url })) });
+          const conservadasC = ids.filter((id) => aplicarCorreccion(D.bloques as any[], id, { ...res, fuentes: fuentes.map((f) => ({ nombre: f.nombre, url: f.url })) }) === "conservada");
+          if (conservadasC.length) entrada.conservadas = conservadasC;
         }
       } catch (e) { if ((e as any)?.reintentar) throw e; console.warn("Verificación falló, se marca para revisión:", (e as Error).message); v.reporte.push({ estado: "error", parte: i + 1, detalle: (e as Error).message }); }
       v.i = i + 1;
@@ -804,6 +812,7 @@ export async function ejecutarPaso(supabase: Supa, t: Trabajo, fuente: Fuente): 
         else dudosas.push(`🔎 REVISAR CLAVE: en el bloque «${String(b.titulo ?? b.id).slice(0, 60)}» (${a.id}) la respuesta marcada («${String(a.opciones?.[a.correcta] ?? "").slice(0, 60)}») no coincide con su retroalimentación («${otra.slice(0, 60)}»). Se dejó porque quitarla dejaba el juego sin preguntas suficientes.`);
       }
     }
+    anotarReordenados(D, bloques, "armar");
     for (const b of bloques) { descartarCortos(b, fuera, "por debajo del mínimo al armar"); quitarRepetidos(b, fuera); }
     if (fuera.length) anotarDescartes(D, "armar", fuera);
     if (dudosas.length && t.guia_id && D.reportes_claves === undefined) {
@@ -1264,13 +1273,20 @@ export function idsDeVerificacion(bloques: any[], actividad: unknown): string[] 
 }
 // Aplica una corrección del verificador a un id: la pista la muestra una sola vez y la actividad con el dato
 // equivocado se quita.
-export function aplicarCorreccion(bloques: any[], id: string, res: any): void {
+// Con la red de quitarSinRomper (revisión del 17 nov, 2026-11-17.4): si quitar la actividad deja su juego corto o el
+// bloque sin juegos, se conserva y lo dice el resultado («conservada», para Reportes); la pista sí muestra el dato corregido.
+export function aplicarCorreccion(bloques: any[], id: string, res: any): "quitada" | "conservada" | "pista" | null {
   const lugar = pistaDeCorreccion(bloques, id, res);
-  if (!lugar) return;
+  if (!lugar) return null;
   const c = { dato_apuntes: res.decia_la_foto, dato_correcto: res.dato_correcto, mensaje: res.mensaje_para_alumno, fuentes: res.fuentes ?? [] };
   lugar.pista.correcciones = lugar.pista.correcciones ?? [];
   if (!lugar.pista.correcciones.some((x: any) => normaliza(x.dato_correcto) === normaliza(c.dato_correcto))) lugar.pista.correcciones.push(c);
-  if (lugar.act) { lugar.b.actividades = lugar.b.actividades.filter((a: any) => a.id !== id); lugar.b.mini_examen = lugar.b.mini_examen.filter((a: any) => a.id !== id); }
+  if (!lugar.act) return "pista";
+  for (const k of ["actividades", "mini_examen"]) {
+    const a = (lugar.b[k] ?? []).find((x: any) => x?.id === id);
+    if (a) return quitarSinRomper(lugar.b, k, a) ? "quitada" : "conservada";
+  }
+  return "pista";
 }
 
 // Corrección sin fuente sobre una actividad (17 nov 2026, encargo de la principal: «nunca entregar una clave dudosa»):
@@ -1350,6 +1366,7 @@ export function ordenarPorFecha(a: any): boolean {
   const orden = y.map((v: number, i: number) => i).sort((i: number, j: number) => alReves ? y[j] - y[i] : y[i] - y[j]);
   if (orden.every((v: number, i: number) => v === i)) return false;
   a.pasos = orden.map((i: number) => a.pasos[i]);
+  a._reordenado = "fecha";
   return true;
 }
 
@@ -1382,49 +1399,101 @@ export function ordenarSegunPorQue(a: any): "ok" | "reordenado" | "incoherente" 
     if (enOrden) return "ok";
     const orden = pos.map((k, i) => i).sort((i, j) => pos[i] - pos[j]);
     a.pasos = orden.map((i) => a.pasos[i]);
+    a._reordenado = "por_que";
     return "reordenado";
   }
   return vistos.length >= 3 && distintos && !enOrden ? "incoherente" : "ok";
 }
 
-// Cobertura (17 nov 2026, código 2026-11-17.3: en Derecho el plan sí asignó al bloque 2 el Congreso —500 diputaciones,
-// 128 senadurías— y la Suprema Corte, pero el escritor no los puso en ninguna pista ni pregunta). Un dato de las fotos
-// (datos clave, reglas o secuencias) asignado a un bloque cuenta como cubierto si al menos la mitad de sus palabras
-// fuertes (números de 2 cifras o más y palabras de 6 letras o más) aparecen en el texto del bloque. Lo que falte se pone
-// en UNA pista más del bloque, escrita por el código con el texto de los apuntes (máx. 4 datos por bloque y 2 pistas por
-// guía, para no pasarse de slides; sin llamadas extra a la IA). Si sus ideas son largas, las divide el paso reparar.
-const TITULO_COBERTURA: Record<string, string> = { es: "También en tus apuntes", en: "Also in your notes", fr: "Aussi dans tes notes" };
-const fuertesDe = (t: unknown) => [...new Set(normaliza(String(t ?? "")).split(" ").filter((w) => /^\d{2,}$/.test(w) || (w.length >= 6 && !/^\d/.test(w))))];
-export function datosSinCubrir(inventario: Record<string, any[]>, ids: string[], b: any): any[] {
+// Cobertura (17 nov 2026; rehecha en 2026-11-17.4 tras la revisión Fable Max de la .3). En Derecho el plan asignó al
+// bloque 2 el Congreso (500 diputaciones, 128 senadurías) y la Suprema Corte, pero el escritor no los puso. Reglas:
+//   - Solo cuenta como faltante un dato clave, regla o secuencia asignado al bloque cuyas SEÑALES DURAS (números de 2
+//     cifras o más y nombres propios) faltan en el texto del bloque: al menos una, y la mitad o más. Comparar palabras
+//     comunes daba «no cubierto» casi siempre (inventario en español y guía en inglés; secuencias con solo «cita»).
+//   - Nunca claves de ejercicios («Respuestas correctas…», answer key) ni sospechas ni datos administrativos.
+//   - El código ya no pega el texto crudo: lo pide al reparador como hueco «COBERTURA», para que escriba UNA pista corta
+//     en el idioma de la guía ("pistas_cobertura"). Solo si cabe una slide más en el tope (nunca se quitan juegos por
+//     esto) y si el costo cabe en 5 MXN (si el reparador no iba a correr, se cuenta su costo completo).
+//   - Si al terminar de reparar la guía se pasa del tope, la pista de cobertura es lo primero que sale.
+const CLAVE_DE_EJERCICIO = /respuestas?\s+(correctas?|del ejercicio|esperadas?)|clave de respuestas|answer key|correct answers?|solucion(es)?\s*:|\bsoluciones\b/i;
+const INICIO_NOMBRE = new Set(["el", "la", "los", "las", "un", "una", "the", "a", "an", "le", "les", "de", "del", "en", "y", "o"]);
+export function senalesDuras(texto: unknown): string[] {
+  const t = String(texto ?? "");
+  const numeros = (t.match(/(?<![\d.,])\d{2,}(?:[.,]\d{3})*(?![\d])/g) ?? []).map((n) => n.replace(/[.,]/g, ""));
+  // Nombres propios: palabra con mayúscula (4 letras o más) que no abre el texto ni va después de «:», «.», «;» o «(».
+  const nombres: string[] = [];
+  const re = /(^|[\s:;.(¿¡"«—–-]+)([A-ZÁÉÍÓÚÑ][a-záéíóúñü]{3,})/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(t))) {
+    const antes = t.slice(0, m.index + m[1].length).trimEnd();
+    if (!antes || /[:;.(¿¡"«]$/.test(antes)) continue;
+    if (INICIO_NOMBRE.has(m[2].toLowerCase())) continue;
+    nombres.push(normaliza(m[2]));
+  }
+  return [...new Set([...numeros, ...nombres])];
+}
+// soloNumeros: cuando las fotos están en otro idioma que la guía, los nombres cambian («Estados Unidos» → «United
+// States») y solo cuentan los números.
+export function datosSinCubrir(inventario: Record<string, any[]>, ids: string[], b: any, soloNumeros = false): any[] {
   const enBloque = ` ${normaliza(JSON.stringify([b?.pistas ?? [], b?.actividades ?? [], b?.mini_examen ?? []]))} `;
   const quiero = new Set(ids ?? []);
   const out: any[] = [];
   for (const k of ["datos_clave", "reglas", "secuencias"]) {
     for (const e of Array.isArray(inventario?.[k]) ? inventario[k] : []) {
-      if (!e?.id || !quiero.has(e.id) || e.motivo || esDatoAdministrativo(e.texto ?? e.cita)) continue;
-      const fuertes = fuertesDe(e.texto ?? e.cita);
-      if (fuertes.length < 2) continue;
-      const vistas = fuertes.filter((w) => enBloque.includes(` ${w} `) || (w.length >= 6 && enBloque.includes(` ${w.slice(0, 6)}`)));
-      if (vistas.length * 2 < fuertes.length) out.push(e);
+      const texto = String(e?.texto ?? e?.cita ?? "");
+      if (!e?.id || !quiero.has(e.id) || e.motivo || esDatoAdministrativo(texto) || CLAVE_DE_EJERCICIO.test(texto)) continue;
+      const senales = senalesDuras(texto).filter((w) => !soloNumeros || /^\d+$/.test(w));
+      if (!senales.length) continue;
+      const faltan = senales.filter((w) => !(/^\d+$/.test(w) ? enBloque.includes(` ${w} `) || enBloque.includes(` ${w.replace(/(\d)(?=(\d{3})+$)/g, "$1 ")} `) : enBloque.includes(` ${w.slice(0, 6)}`)));
+      // Falta si falta la mitad o más de sus señales y, entre ellas, un número o dos nombres (un nombre suelto se parafrasea).
+      const numeros = faltan.filter((w) => /^\d+$/.test(w)).length;
+      if (faltan.length && faltan.length * 2 >= senales.length && (numeros > 0 || faltan.length - numeros >= 2)) out.push(e);
     }
   }
   return out;
 }
-export function cubrirFaltantes(D: any, idioma = "es"): string[] {
-  const notas: string[] = [];
-  let puestas = 0;
+// Huecos «COBERTURA» para el reparador (máx. 1 por bloque y 2 por guía, máx. 4 datos cada uno), solo si cabe una slide
+// más por hueco y el costo cabe. Devuelve los huecos y lo que se pidió (para el rastro).
+export const COSTO_REPARAR_MXN = 1.4; // lo más que costó reparar en las guías reales (0.47 a 1.40 MXN)
+export function huecosDeCobertura(D: any, estimado: number, tope: number, reparaIgual: boolean): { huecos: string[]; pedidos: string[]; motivo?: string } {
+  const candidatos: { b: any; faltan: any[] }[] = [];
+  const idiomaGuia = String(D?.plan?.idioma_guia ?? "es");
+  const soloNumeros = (D?.fotos ?? []).some((x: any) => x?.idioma && x.idioma !== idiomaGuia);
   for (const b of (D?.bloques ?? []) as any[]) {
-    if (!b || b.solo_nota || puestas >= 2) continue;
+    if (!b || b.solo_nota) continue;
     const pb = (D.plan?.bloques ?? []).find((x: any) => x?.id === b.id);
     const ids = ((pb?.ids_inventario ?? []) as string[]).filter((x) => !String(x).startsWith("inv"));
     if (!ids.length || (b.pistas ?? []).some((p: any) => p?.cobertura)) continue;
-    const faltan = datosSinCubrir(D.inventario ?? {}, ids, b).slice(0, 4);
-    if (!faltan.length) continue;
-    b.pistas = [...(b.pistas ?? []), { id: `${b.id}pc1`, titulo: TITULO_COBERTURA[idioma] ?? TITULO_COBERTURA.es, emoji: "📌", ideas: faltan.map((e) => String(e.texto ?? e.cita).trim()), ejemplo: null, clave: null, dato_rapido: null, personajes: [], esquema: null, cobertura: true }];
-    puestas++;
-    notas.push(`${b.id}: ${faltan.map((e) => e.id).join(", ")}`);
+    const faltan = datosSinCubrir(D.inventario ?? {}, ids, b, soloNumeros).slice(0, 4);
+    if (faltan.length) candidatos.push({ b, faltan });
   }
-  return notas;
+  if (!candidatos.length) return { huecos: [], pedidos: [] };
+  const lugar = Math.max(0, tope - estimado);
+  if (!lugar) return { huecos: [], pedidos: [], motivo: `sin lugar en el tope de ${tope} slides` };
+  const costo = costoGuiaMxn(D) + (reparaIgual ? 0.3 : COSTO_REPARAR_MXN) + RESERVA_FINAL_MXN;
+  if (costo > TOPE_GUIA_MXN) return { huecos: [], pedidos: [], motivo: `no cabe en ${TOPE_GUIA_MXN} MXN (llevaría ${costo.toFixed(2)})` };
+  const usar = candidatos.slice(0, Math.min(2, lugar));
+  return {
+    huecos: usar.map(({ b, faltan }) => `COBERTURA · Bloque ${b.id}: estos datos de las fotos no quedaron en la guía. Escribe UNA pista nueva en "pistas_cobertura" (bloque ${b.id}), en el idioma de la guía, con título de máx. 6 palabras y de 1 a 4 ideas de máx. 12 palabras que empiezan con "Palabra clave: "; solo estos datos, sin inventar: ${faltan.map((e) => `[${e.id}] ${String(e.texto ?? e.cita).slice(0, 220)}`).join(" | ")}`),
+    pedidos: usar.map(({ b, faltan }) => `${b.id}: ${faltan.map((e) => e.id).join(", ")}`),
+  };
+}
+
+// Rastro de los ordenar que el código reacomodó (revisión del 17 nov, 2026-11-17.4): una métrica de costo 0 por cada uno
+// («reordenar · b1or1 (por_que)») y una línea en el log. La marca transitoria se borra (no llega al cartucho).
+export function anotarReordenados(D: any, bloques: any[], paso: string): string[] {
+  const out: string[] = [];
+  for (const b of bloques ?? []) for (const a of [...(b?.actividades ?? []), ...(b?.mini_examen ?? [])]) {
+    if (!a?._reordenado) continue;
+    out.push(`${a.id} (${a._reordenado})`);
+    delete a._reordenado;
+  }
+  if (out.length) {
+    D.metricas = [...(Array.isArray(D.metricas) ? D.metricas : []), ...out.map((x) => ({ paso: `reordenar · ${paso}`, modelo: "—", esfuerzo: "—", entrada: 0, salida: 0, costo_usd: 0, ms: 0, parada: null, resultado: x, en: new Date().toISOString() }))].slice(-80);
+    D.reordenados = [...(Array.isArray(D.reordenados) ? D.reordenados : []), ...out.map((x) => `${paso}: ${x}`)].slice(-20);
+    console.log("REORDENADO", JSON.stringify({ paso, actividades: out }));
+  }
+  return out;
 }
 
 // Aplica la respuesta del reparador: preguntas nuevas (solo de tipos que el bloque ya tiene; nunca tipos nuevos),
@@ -1467,6 +1536,18 @@ export function aplicarReparacion(bloques: any[], j: any, citas: string[], nivel
       act.elementos = todos.filter((e: any, i: number) => todos.findIndex((q: any) => normaliza(q.texto) === normaliza(e.texto)) === i).slice(0, 12);
       colocadas.push(`${id}: ${act.elementos.length} tarjetas`);
     }
+  }
+  // Cobertura (2026-11-17.4): UNA pista corta por bloque que la pidió (hueco «COBERTURA · Bloque bX»), en el idioma de
+  // la guía. Si no cumple el largo de una slide, no se pone (nunca se divide ni desplaza juegos).
+  const pidieron = new Set(huecos.map((h) => /^COBERTURA · Bloque (\S+):/.exec(h)?.[1]).filter(Boolean) as string[]);
+  for (const pc of Array.isArray(j?.pistas_cobertura) ? j.pistas_cobertura : []) {
+    const b = bloques.find((x) => x?.id === String(pc?.bloque ?? "").trim());
+    if (!b || !pidieron.has(b.id) || b.solo_nota || (b.pistas ?? []).some((p: any) => p?.cobertura)) continue;
+    const ideas = (Array.isArray(pc?.ideas) ? pc.ideas : []).map(textoDe).map((x: string) => x.trim()).filter(Boolean).slice(0, 4);
+    const pista = { id: `${b.id}pc1`, titulo: String(pc?.titulo ?? "").trim().slice(0, 60), emoji: String(pc?.emoji ?? "📌").slice(0, 4) || "📌", ideas, ejemplo: null, clave: null, dato_rapido: null, personajes: [], esquema: null, cobertura: true };
+    if (!pista.titulo || !ideas.length || problemaDePista(pista, "juvenil")) { descartes.push({ id: pista.id, tipo: "pista", bloque: b.id, motivo: `pista de cobertura que no cabe en una slide (${problemaDePista(pista, "juvenil") ?? "sin título o sin ideas"})` }); continue; }
+    b.pistas = [...(b.pistas ?? []), pista];
+    colocadas.push(`${pista.id}: cobertura`);
   }
   return { colocadas, descartes };
 }
@@ -1837,7 +1918,7 @@ function revisarActividad(a: any, citas: string[], nivel: string, huecos: string
   }
   if (a.tipo === "super_dato") { const huecosSD = (String(a.texto ?? "").match(/\[\[(.+?)\]\]/g) ?? []).length; if (huecosSD < 3) return fuera(`súper dato con ${huecosSD} huecos (mín. 3)`); if (!Array.isArray(a.distractores)) return fuera("súper dato sin distractores"); }
   if (a.tipo === "conceptos" || a.tipo === "quien_es_quien") { if (!Array.isArray(a.pares)) return fuera("sin parejas"); a.pares = a.pares.filter((p: any) => p?.termino && p?.definicion); if (a.pares.length < 2) return fuera(`${a.pares.length} parejas completas (mín. 2 para completarlo)`); }
-  if (a.tipo === "ordenar") { if (!Array.isArray(a.pasos) || a.pasos.length < 3) return fuera(`${Array.isArray(a.pasos) ? a.pasos.length : 0} pasos (mín. 3)`); a.pasos = a.pasos.map((p: any) => typeof p === "string" ? { texto: p, emoji: "" } : p); ordenarPorFecha(a); if (ordenarSegunPorQue(a) === "incoherente") huecos.push(`MÍNIMO · Actividad ${a.id} (ordenar, bloque ${bloque}): sus pasos no siguen el orden que explica su «por qué» («${String(a.por_que ?? "").slice(0, 160)}»); reescribe TODOS sus pasos en el orden correcto en "ampliaciones" con "pasos" (mín. 3, cada uno { "texto", "emoji" }).`); }
+  if (a.tipo === "ordenar") { if (!Array.isArray(a.pasos) || a.pasos.length < 3) return fuera(`${Array.isArray(a.pasos) ? a.pasos.length : 0} pasos (mín. 3)`); a.pasos = a.pasos.map((p: any) => typeof p === "string" ? { texto: p, emoji: "" } : p); ordenarPorFecha(a); if (ordenarSegunPorQue(a) === "incoherente") huecos.push(`MÍNIMO · Actividad ${a.id} (ordenar, bloque ${bloque}): sus pasos no siguen el orden que explica su «por qué» («${String(a.por_que ?? "").slice(0, 160)}»); reescribe TODOS sus pasos en el orden correcto en "ampliaciones" con "pasos" (mín. 3, cada uno { "texto", "emoji" }). Pasos actuales: ${JSON.stringify(a.pasos.map((p: any) => String(p?.texto ?? p)))}`); }
   if (a.tipo === "clasificar") { if (!Array.isArray(a.grupos) || a.grupos.length < 2 || !Array.isArray(a.elementos) || a.elementos.length < 2) return fuera("clasificar con menos de 2 grupos o 2 tarjetas"); normalizarClasificar(a); a.elementos = a.elementos.filter((e: any) => e && (e.grupo === 0 || e.grupo === 1)); if (a.elementos.length < 2) return fuera("clasificar con menos de 2 tarjetas válidas"); }
   // cita respaldada
   const cita = a.fuente?.cita;
@@ -2588,7 +2669,8 @@ export function reportesDeVerificacion(verificacion: any[], bloques: any[]): str
   const out: string[] = [];
   for (const r of Array.isArray(verificacion) ? verificacion : []) {
     const contradice = r?.estado === "contradice_libro";
-    if (!contradice && r?.estado !== "revisar_dato") continue;
+    const conservadaConFuente = r?.estado === "corregida" && Array.isArray(r.conservadas) && r.conservadas.length > 0;
+    if (!contradice && r?.estado !== "revisar_dato" && !conservadaConFuente) continue;
     const ids: string[] = Array.isArray(r.ids) && r.ids.length ? r.ids : idsDeVerificacion(bloques ?? [], r.actividad);
     const bi = (bloques ?? []).findIndex((b: any) => [...(b?.actividades ?? []), ...(b?.mini_examen ?? []), ...(b?.duelo ?? []), ...(b?.pistas ?? [])].some((x: any) => ids.includes(x?.id)));
     // Una pregunta quitada (sin fuente) ya no está en su bloque: se busca por el prefijo de su id (b2om5 → b2).
@@ -2597,11 +2679,11 @@ export function reportesDeVerificacion(verificacion: any[], bloques: any[]): str
     const fuentes = (Array.isArray(r.fuentes) ? r.fuentes : []).map((f: any) => typeof f === "string" ? f : f?.url).filter(Boolean).slice(0, 2);
     const segun = r.dato_correcto || r.mensaje_para_alumno;
     out.push(corto([
-      contradice ? "🔎 REVISAR DATO: la verificación dice que contradice el libro." : "🔎 REVISAR DATO: la verificación cree que hay un error, pero no trajo una fuente que haya salido en su búsqueda; " + (Array.isArray(r.quitadas) && r.quitadas.length ? "la pregunta se quitó de la guía para no entregar una respuesta dudosa; el resto de su juego sigue." : Array.isArray(r.conservadas) && r.conservadas.length ? "la pregunta se dejó porque quitarla dejaba su juego sin preguntas suficientes: revísala." : "no se cambió nada en la guía."),
+      contradice ? "🔎 REVISAR DATO: la verificación dice que contradice el libro." : conservadaConFuente ? "🔎 REVISAR DATO: la verificación lo corrigió con fuente (la pista ya muestra el dato corregido), pero la actividad se dejó porque quitarla dejaba su juego sin preguntas suficientes o el bloque sin juegos: revísala." : "🔎 REVISAR DATO: la verificación cree que hay un error, pero no trajo una fuente que haya salido en su búsqueda; " + (Array.isArray(r.quitadas) && r.quitadas.length ? "la pregunta se quitó de la guía para no entregar una respuesta dudosa; el resto de su juego sigue." : Array.isArray(r.conservadas) && r.conservadas.length ? "la pregunta se dejó porque quitarla dejaba su juego sin preguntas suficientes: revísala." : "no se cambió nada en la guía."),
       b ? `Bloque ${biQ + 1} «${corto(b.titulo, 60)}»${ids[0] ? ` (${ids[0]})` : ""}.` : ids[0] ? `Actividad ${ids[0]}.` : "",
       r.afirmacion ? `En la guía: «${corto(r.afirmacion, 220)}».` : "",
-      segun ? `${contradice ? "Según las fuentes" : "La IA propone"}: ${corto(segun, 220)}.` : "",
-      fuentes.length ? `${contradice ? "Fuentes" : "Fuentes que dio (no bastan para cambiar la guía)"}: ${fuentes.join(" · ")}` : "",
+      segun ? `${contradice || conservadaConFuente ? "Según las fuentes" : "La IA propone"}: ${corto(segun, 220)}.` : "",
+      fuentes.length ? `${contradice || conservadaConFuente ? "Fuentes" : "Fuentes que dio (no bastan para cambiar la guía)"}: ${fuentes.join(" · ")}` : "",
     ].filter(Boolean).join(" "), 900));
     if (out.length >= 10) break;
   }

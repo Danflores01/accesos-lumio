@@ -399,6 +399,9 @@ mini_examen ≥ 5 · conceptos ≥ 4 parejas · clasificar ≥ 6 tarjetas):
   el id del juego y SOLO las parejas ("pares") o tarjetas ("elementos", con "grupo" 0 o 1) nuevas.
 - Un juego de ordenar cuyos pasos no siguen el orden de su «por qué» (te lo decimos en los huecos): en
   "ampliaciones", con su id y "pasos": TODOS sus pasos, en el orden correcto, cada uno { "texto", "emoji" }.
+- Hueco «COBERTURA · Bloque bX»: datos de las fotos que no quedaron en la guía. Escribe UNA pista en
+  "pistas_cobertura": { "bloque": "bX", "titulo" (máx. 6 palabras), "emoji", "ideas": [1 a 4, máx. 12 palabras,
+  empiezan con "Palabra clave: "] }, en el idioma de la guía, solo con esos datos (tradúcelos si vienen en otro idioma).
 - Si el inventario no da para llegar al mínimo, no rellenes con datos dudosos: escribe el id o el juego en
   "sin_contenido" con el motivo.
 
@@ -432,6 +435,7 @@ Responde SOLO con JSON: { "actividades_nuevas": { "opcion_multiple": [...], "com
     { "id": "b2cl1", "elementos": [ { "texto": "...", "grupo": 0 } ] },
     { "id": "b1or1", "pasos": [ { "texto": "...", "emoji": "..." } ] } ],
   "sin_contenido": [ { "juego": "b2 · verdadero_falso", "motivo": "..." } ],
+  "pistas_cobertura": [ { "bloque": "b2", "titulo": "...", "emoji": "...", "ideas": ["..."] } ],
   "pistas_divididas": [ { "id": "b1p2", "pistas": [ { "titulo": "...", "emoji": "...", "ideas": ["..."],
     "ejemplo": null, "clave": null, "dato_rapido": null, "personajes": [], "esquema": null }, { ... } ] } ] }
 Incluye solo los tipos que uses; "pistas_divididas" vacío si no te mandamos pistas largas.`;

@@ -215,6 +215,14 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
   (2) El plan sí asignó el Congreso y la Suprema Corte, pero el escritor no los puso → `cubrirFaltantes` en revisar
   agrega una pista «También en tus apuntes» con lo que faltó (máx. 4 datos por bloque, 2 pistas por guía, sin IA).
   (3) La slide de teoría que se desborda y las 7 seguidas vienen del reproductor (`teoria.js` y `cartucho.js`), no del servidor.
+- **17 nov · Código 2026-11-17.4 (la .3 NO se desplegó; revisión Fable Max):** la cobertura de la .3 pegaba texto crudo
+  (en español en guías en inglés), comparaba palabras comunes y en 11 de 13 guías pagadas habría metido pistas y quitado
+  juegos. Ahora: solo señales duras (números y nombres; solo números si las fotos están en otro idioma), nunca claves de
+  ejercicios, y se PIDE al reparador una pista corta (`pistas_cobertura`) solo si cabe una slide más y el costo cabe; si
+  la guía se pasa del tope, esa pista sale primero. Simulación con 3 guías reales: 0 juegos perdidos. También: la
+  corrección CON fuente usa la red (`aplicarCorreccion` → «conservada» y Reportes); el ordenar reacomodado deja métrica
+  «reordenar · paso»; el hueco del ordenar lleva los pasos actuales; `/admin/whatsapp` trae `estado_motivo` y la ronda
+  lo muestra. Lección: antes de entregar una regla que cambia guías, simularla con guías pagadas reales.
 
 - **12 nov · Universidad (código 2026-11-12.1):** «Universidad» caía en «sobrio» como prepa. Ahora universidad,
   licenciatura, ingeniería o maestría → perfil «universitario» (lo fija el código por el grado): tono académico, más

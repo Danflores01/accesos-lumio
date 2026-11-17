@@ -176,7 +176,7 @@ ok(/const FOTOS_POR_LOTE = 2;/.test(src), "25 páginas = 13 pasos de lectura de 
 const bv: any[] = [{ id: "b2", pistas: [{ id: "b2p2", titulo: "T", ideas: ["X: y"] }], actividades: [{ id: "b2vf3", tipo: "verdadero_falso", pista: "b2p2" }, { id: "b2c2", tipo: "conceptos", pista: "b2p2" }], mini_examen: [] }];
 ok(JSON.stringify(P.idsDeVerificacion(bv, "b2p2, b2vf3, b2c2")) === '["b2p2","b2vf3","b2c2"]' && JSON.stringify(P.idsDeVerificacion(bv, "b2vf3 (pregunta)")) === '["b2vf3"]', "varios ids en una entrada se separan");
 for (const id of P.idsDeVerificacion(bv, "b2vf3, b2c2")) P.aplicarCorreccion(bv, id, { dato_correcto: "Z", decia_la_foto: "Y" });
-ok(bv[0].actividades.length === 0 && bv[0].pistas[0].correcciones.length === 1, "corregida: se quitan las actividades con el dato malo y la pista lo muestra una sola vez");
+ok(bv[0].actividades.map((a: any) => a.id).join() === "b2c2" && bv[0].pistas[0].correcciones.length === 1, "corregida: se quita la actividad con el dato malo y la pista lo muestra una sola vez; la última del bloque se conserva (red de 2026-11-17.4)");
 ok(!/no_confirmada"\) for/.test(src) && /no_confirmada" solo queda en el reporte/.test(src) && /UN SOLO id/.test(PR.VERIFICADOR), "no_confirmada ya no quita actividades; el prompt pide un id por entrada");
 
 // 16. Gramática y revisión ortográfica.
@@ -588,13 +588,14 @@ ok(tL3.datos.bloques[0].actividades.length === 1 && !tL3.datos.bloques[0].pistas
 const tL4 = tLap("l4");
 respuestas = [apiTexto({ resultados: [{ actividad: "b2cl1", afirmacion: "«reloj» es esdrújula", estado: "corregida", dato_correcto: "«reloj» es aguda", decia_la_foto: "reloj es esdrújula", fuentes: ["https://www.rae.es/dpd/tilde"] }] }, ["https://www.rae.es/dpd/tilde"]), vacia()];
 await hastaQueCambie(falsoR, tL4, fuenteG);
-ok(tL4.datos.bloques[0].actividades.length === 0 && tL4.datos.bloques[0].pistas[0].correcciones?.[0]?.fuentes?.[0]?.url === "https://www.rae.es/dpd/tilde" && tL4.datos.verificacion[0].estado === "corregida", "con una fuente oficial que salió en la búsqueda: se corrige como antes (la pista lo muestra y se quita el juego con el dato malo)");
+const repL4 = insertados.filter((x) => x.tabla === "reportes" && x.filas.some((f: any) => f.guia_id === "g-l4")).flatMap((x) => x.filas);
+ok(tL4.datos.bloques[0].actividades.length === 1 && tL4.datos.bloques[0].pistas[0].correcciones?.[0]?.fuentes?.[0]?.url === "https://www.rae.es/dpd/tilde" && tL4.datos.verificacion[0].estado === "corregida" && tL4.datos.verificacion[0].conservadas?.[0] === "b2cl1" && repL4.some((f: any) => /corrigió con fuente.*se dejó/.test(f.comentario)), "con fuente: la pista muestra el dato corregido; el juego, por ser el único del bloque, se conserva y va a Reportes (red de 2026-11-17.4)");
 // b2du4 (guía de inglés real, 2026-11-11.6): «herd» con clave «ur»; Cambridge dice «er». Con 1 sitio confiable que salió
 // en la búsqueda basta: la clave mala no se queda en la guía (con la regla de .5, de 11 correcciones reales solo 3).
 const urlHerd = "https://dictionary.cambridge.org/us/pronunciation/english/herd";
 const tHerd: any = { id: "therd", guia_id: "g-herd", alcance: "resto", paso: "verificar", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, datos: { plan: { idioma_guia: "en", materia: "Inglés" }, fotos: [{ tipo: "hoja_de_trabajo" }], inventario: {},
   bloques: [{ id: "b2", titulo: "Vowel sounds", pistas: [{ id: "b2p1", titulo: "The /ɜː/ sound", ideas: ["er, ir, ur: the same sound in her, bird, turn."] }],
-    actividades: [{ id: "b2du4", tipo: "duelo", pregunta: "Which letters spell the vowel sound in herd?", opciones: ["er", "ir", "ur", "or"], correcta: 2, pista: "b2p1", retro_correcta: "Yes!", retro_incorrecta: "It is ur." }], mini_examen: [] }] } };
+    actividades: [{ id: "b2du4", tipo: "duelo", pregunta: "Which letters spell the vowel sound in herd?", opciones: ["er", "ir", "ur", "or"], correcta: 2, pista: "b2p1", retro_correcta: "Yes!", retro_incorrecta: "It is ur." }, ...[1, 2, 3, 4, 5].map((n) => preg("b2du" + (10 + n), "duelo"))], mini_examen: [] }] } };
 pedidos.length = 0;
 respuestas = [vacia(), apiTexto({ resultados: [{ actividad: "b2du4", afirmacion: "Sparky must choose: Which letters spell the vowel sound in herd? (respuesta: ur)", estado: "corregida", dato_correcto: "er. En la palabra herd, el sonido de vocal se escribe con las letras 'er'.", decia_la_foto: "ur", fuentes: [urlHerd] }] }, [urlHerd])];
 await hastaQueCambie(falsoR, tHerd, fuenteG);
@@ -862,18 +863,53 @@ const tAO: any = JSON.parse(JSON.stringify(tA)); tAO.paso = "armar"; tAO.datos.c
 tAO.datos.bloques[0].actividades.push({ ...JSON.parse(JSON.stringify(ordMalo)), id: "b1or9" });
 await P.ejecutarPaso(falso, tAO, { archivos: [], grado: "3° secundaria", materia: "Historia" });
 ok(!tAO.datos.cartucho.bloques[0].actividades.some((a: any) => a.id === "b1or9") && (tAO.datos.descartes ?? []).some((d: any) => d.id === "b1or9" && /por qué/.test(d.motivo)), "armar: si el ordenar sigue incoherente y el bloque tiene otros juegos, se quita");
-// b) Cobertura: el dato del Congreso asignado al bloque y ausente de su texto va en una pista «También en tus apuntes».
+// b) Cobertura (rehecha en 2026-11-17.4): cuenta las SEÑALES DURAS (números y nombres propios); nunca pega texto crudo:
+//    pide al reparador UNA pista corta en el idioma de la guía, solo si cabe una slide más y el costo cabe.
 const invCob: any = { datos_clave: [
   { id: "dat82", foto: 2, texto: "Poder Legislativo: Congreso General dividido en Cámara de Diputados y Cámara de Senadores (art. 50)" },
   { id: "dat83", foto: 2, texto: "Diputaciones: 500 (300 de mayoría relativa y 200 de representación proporcional); se eligen cada 3 años (arts. 51 y 52)" },
   { id: "dat84", foto: 2, texto: "Senado: 128 (64 de mayoría relativa, 32 de primera minoría y 32 de representación proporcional)" },
   { id: "dat90", foto: 2, texto: "Soberanía: reside esencial y originariamente en el pueblo (art. 39)" },
-  { id: "dat91", foto: 2, texto: "Temario del 2.º parcial", motivo: "sospecha" }] };
-const DCob: any = { inventario: invCob, plan: { bloques: [{ id: "b2", ids_inventario: ["dat82", "dat83", "dat84", "dat90", "dat91"] }] },
-  bloques: [{ id: "b2", titulo: "Soberanía y división de poderes", pistas: [{ id: "b2p1", titulo: "Soberanía", ideas: ["Soberanía: reside esencial y originariamente en el pueblo (art. 39).", "Legislativo: Congreso General con Cámara de Diputados y Cámara de Senadores."] }], actividades: [], mini_examen: [] }] };
-const notasCob = P.cubrirFaltantes(DCob, "es");
-const pc = DCob.bloques[0].pistas.find((p: any) => p.cobertura);
-ok(notasCob.length === 1 && pc?.titulo === "También en tus apuntes" && pc.ideas.length === 2 && pc.ideas.some((i: string) => /500/.test(i)) && pc.ideas.some((i: string) => /128/.test(i)) && P.cubrirFaltantes(DCob, "es").length === 0, "cobertura: el Congreso (500 y 128) que el escritor dejó fuera va en una pista más del bloque; lo ya cubierto y las sospechas no; no se repite · " + notasCob.join());
+  { id: "dat91", foto: 2, texto: "Temario del 2.º parcial", motivo: "sospecha" },
+  { id: "dat92", foto: 2, texto: "Respuestas correctas: 500 diputaciones y 128 senadurías" }] };
+const blqCob = () => ({ id: "b2", titulo: "Soberanía y división de poderes", pistas: [{ id: "b2p1", titulo: "Soberanía", ideas: ["Soberanía: reside esencial y originariamente en el pueblo (art. 39).", "Legislativo: Congreso General con Cámara de Diputados y Cámara de Senadores."] }], actividades: [], mini_examen: [] });
+const DCob = (extra: any = {}): any => ({ inventario: invCob, metricas: [], plan: { bloques: [{ id: "b2", ids_inventario: ["dat82", "dat83", "dat84", "dat90", "dat91", "dat92"] }] }, bloques: [blqCob()], ...extra });
+ok(JSON.stringify(P.datosSinCubrir(invCob, DCob().plan.bloques[0].ids_inventario, blqCob()).map((e: any) => e.id)) === '["dat83","dat84"]', "cobertura: faltan el 500 y el 128; lo que el bloque ya dice, la sospecha y la clave de respuestas no cuentan");
+const cobOk = P.huecosDeCobertura(DCob(), 22, 25, true);
+ok(cobOk.huecos.length === 1 && /^COBERTURA · Bloque b2: .*\[dat83\].*\[dat84\]/.test(cobOk.huecos[0]) && cobOk.pedidos[0] === "b2: dat83, dat84", "cobertura: con lugar y costo, se pide al reparador (no se pega el texto)");
+ok(P.huecosDeCobertura(DCob(), 25, 25, true).huecos.length === 0 && /tope de 25/.test(P.huecosDeCobertura(DCob(), 25, 25, true).motivo), "cobertura: juegos/slides al límite (25 de 25) → no se pide nada (nunca se quitan juegos por esto)");
+const DCaro = DCob({ metricas: [{ costo_usd: 3.2 / P.MXN_POR_USD }] });
+ok(P.huecosDeCobertura(DCaro, 20, 25, false).huecos.length === 0 && /no cabe en 5 MXN/.test(P.huecosDeCobertura(DCaro, 20, 25, false).motivo) && P.huecosDeCobertura(DCaro, 20, 25, true).huecos.length === 1, "cobertura: en el tope de costo (3.2 MXN y el reparador no iba a correr) no se pide; si el reparador corre igual, sí");
+// Guía en inglés con inventario en español: las señales duras (números y nombres) no dependen del idioma.
+const blqEn = { id: "b1", titulo: "Human rights", pistas: [{ id: "b1p1", titulo: "Dignity", ideas: ["Dignity: every person deserves respect.", "Article 1 of the Mexican Constitution protects human rights."] }], actividades: [], mini_examen: [] };
+const invEn: any = { datos_clave: [
+  { id: "dat63", texto: "Definición de dignidad humana: derecho de todas las personas a ser respetadas y valoradas" },
+  { id: "dat68", texto: "El Artículo 1 de la Constitución Política de los Estados Unidos Mexicanos garantiza el derecho" },
+  { id: "dat70", texto: "La Declaración Universal de los Derechos Humanos se adoptó en 1948 en París" }] };
+ok(JSON.stringify(P.datosSinCubrir(invEn, ["dat63", "dat68", "dat70"], blqEn, true).map((e: any) => e.id)) === '["dat70"]', "cobertura en guía en inglés: sin números ni nombres no cuenta; con fotos en otro idioma solo cuentan los números («Estados Unidos Mexicanos» no se confunde); solo falta el de 1948");
+// Reparar: la pista de cobertura entra solo en el bloque que la pidió y si cabe en una slide.
+const blqR: any[] = [{ ...blqCob(), actividades: [preg("b2o1", "opcion_multiple")] }, { id: "b3", pistas: [], actividades: [], mini_examen: [] }];
+const repC = P.aplicarReparacion(blqR, { pistas_cobertura: [
+  { bloque: "b2", titulo: "El Congreso en números", emoji: "🏛️", ideas: ["Diputaciones: 500, con 300 de mayoría y 200 proporcionales.", "Senado: 128 senadurías en total."] },
+  { bloque: "b3", titulo: "Otro", ideas: ["No lo pidió."] }] }, [], "universidad", "es", cobOk.huecos);
+const pcR = blqR[0].pistas.find((p: any) => p.cobertura);
+ok(pcR?.id === "b2pc1" && pcR.ideas.length === 2 && !blqR[1].pistas.length && repC.colocadas.includes("b2pc1: cobertura"), "reparar: la pista de cobertura entra en el bloque que la pidió (no en otro)");
+const blqL: any[] = [blqCob()];
+const repL = P.aplicarReparacion(blqL, { pistas_cobertura: [{ bloque: "b2", titulo: "Congreso", ideas: ["Diputaciones: quinientas en total, trescientas de mayoría relativa y doscientas de representación proporcional, elegidas cada tres años según los artículos 51 y 52."] }] }, [], "universidad", "es", cobOk.huecos);
+ok(!blqL[0].pistas.some((p: any) => p.cobertura) && repL.descartes.some((d: any) => /no cabe en una slide/.test(d.motivo)), "reparar: una pista de cobertura larga no se pone (nunca se divide ni desplaza juegos)");
+ok(typeof P.cubrirFaltantes === "undefined", "ya no existe la versión que pegaba el texto crudo de los apuntes");
+// c) Rastro del reordenado y red en la corrección con fuente.
+const DR: any = { metricas: [] };
+const bR: any[] = [{ id: "b1", actividades: [JSON.parse(JSON.stringify({ ...ordPQ, pasos: ["Reparar las violaciones", "Prevenir las violaciones", "Sancionar las violaciones", "Investigar las violaciones"].map((texto) => ({ texto })) }))], mini_examen: [] }];
+P.ordenarSegunPorQue(bR[0].actividades[0]);
+const rastro = P.anotarReordenados(DR, bR, "revisar");
+ok(rastro.join() === "b1or1 (por_que)" && DR.metricas.some((m: any) => m.paso === "reordenar · revisar" && m.costo_usd === 0) && !("_reordenado" in bR[0].actividades[0]), "rastro: el ordenar reacomodado queda en métricas (costo 0) y la marca no llega al cartucho");
+const tRevH: any = JSON.parse(JSON.stringify(tRevO)); tRevH.datos.huecos = undefined; tRevH.paso = "revisar";
+await P.ejecutarPaso(falso, tRevH, fuenteG);
+ok((tRevH.datos.huecos ?? []).some((h: string) => /Pasos actuales: \["Enfriar el agua","Hierve el agua","Filtrar el agua","Guardar en un frasco limpio"\]/.test(h)), "el hueco del ordenar le pasa al reparador los pasos actuales");
+const bC: any[] = [{ id: "b1", pistas: [{ id: "b1p1", titulo: "T", ideas: ["X: y"] }], actividades: [1, 2, 3, 4, 5].map((n) => ({ ...preg("b1o" + n, "opcion_multiple"), pista: "b1p1" })), mini_examen: [] }];
+ok(P.aplicarCorreccion(bC, "b1o2", { dato_correcto: "Z", decia_la_foto: "Y" }) === "conservada" && bC[0].actividades.length === 5 && bC[0].pistas[0].correcciones.length === 1, "corrección con fuente en un juego de 5: la pregunta se conserva (y va a Reportes); la pista muestra el dato corregido");
+ok(P.reportesDeVerificacion([{ estado: "corregida", conservadas: ["b1o2"], ids: ["b1o2"], afirmacion: "x", dato_correcto: "Z", fuentes: ["https://www.rae.es/x"] }], bC).some((c: string) => /corrigió con fuente/.test(c) && /Según las fuentes/.test(c)), "Reportes: la corregida con fuente que se conservó se avisa");
 
 console.log(fallos ? `\n${fallos} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);
