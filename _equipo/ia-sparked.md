@@ -197,6 +197,14 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Lo aprendido
 
+- **17 nov · Código 2026-11-17.1 (prueba de 3 guías de universidad del 12 nov):** (1) una pregunta de opción múltiple
+  salió con la clave equivocada (la retro decía otra opción) → `claveIncoherente` la descarta en revisar y al armar; y
+  si la verificación marca una PREGUNTA como equivocada sin fuente, se quita (`quitarActividadesDudosas`); los juegos
+  enteros (clasificar, conceptos, ordenar…) siguen la regla del «lápiz»: sin fuente no se tocan. (2) Haiku leyó 2 fotos
+  y devolvió 0 datos de una → `fotosSinDatos`: esa foto se relee sola una vez (Haiku, ~0.1 MXN, dentro del tope).
+  (3) Un ordenar con fechas venía desordenado → `ordenarPorFecha` si pide orden cronológico. (4) Nota «arts. 39,:» →
+  hasta 12 palabras sin puntuación colgando. Pendiente: la búsqueda de arts. 39–41 dio `invalid_tool_input`.
+
 - **12 nov · Universidad (código 2026-11-12.1):** «Universidad» caía en «sobrio» como prepa. Ahora universidad,
   licenciatura, ingeniería o maestría → perfil «universitario» (lo fija el código por el grado): tono académico, más
   quizzes de aplicación y casos, sin duelo (pasa a mini-examen) y solo mecánicas carrera, montaña o castillo. La materia
