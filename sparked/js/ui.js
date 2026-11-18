@@ -123,17 +123,39 @@ export function inicio(sl, instruccion, fn, extraHtml = "", op = {}) {
 // Al terminar un juego se apagan los sonidos continuos (motor, galope, viento) antes de la fanfarria.
 const apagarSonidos = (ctx) => { try { (ctx?.detenerSonidos ?? (() => sonido.detenerTodo()))(); } catch {} };
 
+// Universidad (17 nov 2026, «que no sea tan infantil»): en las guías con plan.perfil_edad === "universitario" el final de
+// un juego es sobrio. Al ganar: la misma tarjeta con una palomita, sin lluvia de confeti, sin trofeo y sin fanfarria. Al
+// perder en el castillo: una tarjeta en el idioma de la guía en lugar de «GAME OVER» con calaveras. Con cualquier otro
+// perfil todo sale exactamente igual que antes.
+const esUniversidad = (ctx) => ctx?.c?.plan?.perfil_edad === "universitario";
+const SOBRIO = {
+  es: { otra: "Inténtalo de nuevo", vidas: "Se acabaron las vidas.", boton: "Reintentar" },
+  en: { otra: "Try again", vidas: "No lives left.", boton: "Retry" },
+  fr: { otra: "Essaie encore", vidas: "Plus de vies.", boton: "Réessayer" },
+};
+const PALOMITA = `<div aria-hidden="true" style="width:52px;height:52px;border-radius:50%;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font:800 30px/1 var(--titulos)">✓</div>`;
+
 export function fin(sl, ctx, titulo, grande, sub, otraVez, exito = true) {
-  const d = h(`<div class="${exito ? "victoria" : "fin"}">${exito ? `<div class="confeti">${confeti()}</div>${icono("trofeo", 5)}` : ""}<div class="caja" style="${exito ? "background:#fff;color:var(--tinta)" : ""}"><h2 style="font-family:var(--titulos);font-size:30px;color:var(--tinta);text-shadow:none">${esc(titulo)}</h2><div class="grande" style="color:var(--p)">${grande}</div><div>${sub}</div><div class="botones"><button class="btn alt" id="ag">${esc(ctx.t("de_nuevo"))}</button><button class="btn" id="nx">${esc(ctx.t("siguiente"))}</button></div></div></div>`);
+  const sobrio = esUniversidad(ctx), fiesta = exito && !sobrio;
+  const d = h(`<div class="${fiesta ? "victoria" : "fin"}">${fiesta ? `<div class="confeti">${confeti()}</div>${icono("trofeo", 5)}` : ""}<div class="caja" style="${exito ? "background:#fff;color:var(--tinta)" : ""}">${exito && sobrio ? PALOMITA : ""}<h2 style="font-family:var(--titulos);font-size:30px;color:var(--tinta);text-shadow:none">${esc(titulo)}</h2><div class="grande" style="color:var(--p)">${grande}</div><div>${sub}</div><div class="botones"><button class="btn alt" id="ag">${esc(ctx.t("de_nuevo"))}</button><button class="btn" id="nx">${esc(ctx.t("siguiente"))}</button></div></div></div>`);
   d.querySelector("#ag").onclick = () => { sonido.toque(); otraVez(); };
   d.querySelector("#nx").onclick = () => { sonido.toque(); ctx.go(ctx.cur + 1); };
   sl.appendChild(d);
   apagarSonidos(ctx);
-  exito ? sonido.victoria() : sonido.nivel();
+  fiesta ? sonido.victoria() : sonido.nivel();
   return d;
 }
 
 export function gameOver(sl, ctx, puntos, nivel, otraVez) {
+  if (esUniversidad(ctx)) {
+    const tx = SOBRIO[ctx.c?.plan?.idioma_guia] ?? SOBRIO.es;
+    const g = h(`<div class="fin"><div class="caja"><h2 style="font-family:var(--titulos);font-size:30px;color:var(--tinta);text-shadow:none">${esc(tx.otra)}</h2><div>${esc(tx.vidas)}</div><div class="grande" style="color:var(--p)">${Math.round(puntos / 100)}</div><div>${esc(ctx.t("correctas"))}</div><div class="botones"><button class="btn" type="button" data-otra>${esc(tx.boton)}</button></div></div></div>`);
+    g.querySelector("[data-otra]").onclick = () => { sonido.toque(); g.remove(); otraVez(); };
+    sl.appendChild(g);
+    apagarSonidos(ctx);
+    sonido.nivel();
+    return g;
+  }
   const g = h(`<div class="gameover crt"><div class="hud-top"><span>${esc(ctx.t("nivel"))} ${String(nivel).padStart(2, "0")}</span><span>SCORE ${String(puntos).padStart(5, "0")}</span></div>
     <div style="display:flex;gap:18px;align-items:center">${icono("calavera", 7)}${sparky("triste", 5)}</div>
     <h2>GAME <span>OVER</span></h2><div class="sub">${icono("calavera", 3)} ${esc(ctx.t("suerte"))}</div><button class="press">▶ ${esc(ctx.t("press_start"))}</button></div>`);
@@ -521,11 +543,14 @@ export function temporizador(barra, segundos, onFin, ctx) {
 // ---------- ¿Quién quieres ser? (8 nov 2026) ----------
 // En los juegos con protagonista (duelo, enemigos, castillo y montaña) se elige a Sparky o a la princesa guerrera antes
 // de empezar. La elección se guarda en este dispositivo para la siguiente partida y se puede cambiar cuando se quiera.
+// Universidad (17 nov 2026): no se pregunta «¿Quién quieres ser?»; el protagonista es Sparky y el juego empieza directo.
+// Por eso personaje() y selectorPersonaje() reciben el contexto del reproductor (si no llega, todo es como siempre).
 const CLAVE_PERSONAJE = "sparked_personaje";
-export const personaje = () => { try { const v = localStorage.getItem(CLAVE_PERSONAJE); return PERSONAJES.includes(v) ? v : "sparky"; } catch { return "sparky"; } };
+export const personaje = (ctx) => { if (esUniversidad(ctx)) return "sparky"; try { const v = localStorage.getItem(CLAVE_PERSONAJE); return PERSONAJES.includes(v) ? v : "sparky"; } catch { return "sparky"; } };
 export const guardarPersonaje = (v) => { try { localStorage.setItem(CLAVE_PERSONAJE, v); } catch {} };
 // HTML del selector (va dentro de la tarjeta de instrucciones, junto al selector de color si el juego lo tiene).
 export function selectorPersonaje(ctx) {
+  if (esUniversidad(ctx)) return "";
   const actual = personaje();
   return `<div class="ayuda elige-titulo">${esc(ctx.t("quien_ser"))}</div><div class="elige elige-personaje" role="group" aria-label="${esc(ctx.t("quien_ser"))}">${PERSONAJES.map((p) => `<button type="button" data-p="${p}" class="${p === actual ? "sel" : ""}" aria-pressed="${p === actual}">${heroe(p, "decidido+espada", 3)}<span>${esc(ctx.t("p_" + p))}</span></button>`).join("")}</div>`;
 }

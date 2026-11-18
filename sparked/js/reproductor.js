@@ -37,7 +37,8 @@ let c = null, S = [], cur = 0, escala = 1, timers = [], rafs = [], vigia = null;
 const ctx = {
   get c() { return c; }, get S() { return S; }, get cur() { return cur; },
   modo: "demo", precio: CONFIG.precio, resultados: {}, minis: {}, reto: null, guiaId: null,
-  t: (k) => tx(c?.plan?.idioma_guia ?? "es", k),
+  // En las guías de universidad algunos textos son más sobrios (cartucho.js, TEXTOS_UNIVERSIDAD): por eso va el perfil.
+  t: (k) => tx(c?.plan?.idioma_guia ?? "es", k, c?.plan?.perfil_edad),
   escala: () => escala,
   go: (i) => irA(i),
   luego: (f, ms) => { const id = setTimeout(f, ms); timers.push(id); return id; },

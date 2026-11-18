@@ -159,7 +159,15 @@ export const TEXTOS = {
     comp_repasar: "À revoir", comp_mas: "et {n} autres thèmes", comp_mas1: "et 1 autre thème", comp_error: "Impossible de partager. Réessaie.", comp_guardada: "Image enregistrée dans tes téléchargements.",
     comp_generando: "Préparation de l'image…", comp_locale: "fr-FR" },
 };
-export const t = (idioma, clave) => (TEXTOS[idioma] ?? TEXTOS.es)[clave] ?? TEXTOS.es[clave] ?? clave;
+// Universidad (17 nov 2026, «que no sea tan infantil»): con plan.perfil_edad === "universitario" estos textos sustituyen
+// a los de arriba; lo que no esté aquí sale como siempre. Con cualquier otro perfil no cambia nada.
+const TEXTOS_UNIVERSIDAD = {
+  es: { a_jugar: "Comenzar" },
+  en: { a_jugar: "Start" },
+  fr: { a_jugar: "Commencer" },
+};
+const esUniversidad = (c) => c?.plan?.perfil_edad === "universitario";
+export const t = (idioma, clave, perfil) => (perfil === "universitario" ? (TEXTOS_UNIVERSIDAD[idioma] ?? TEXTOS_UNIVERSIDAD.es)[clave] : undefined) ?? (TEXTOS[idioma] ?? TEXTOS.es)[clave] ?? TEXTOS.es[clave] ?? clave;
 
 // Mezcla con semilla (para que la misma guía salga igual en todos los dispositivos de la familia).
 export function mezclar(arr, semilla = 1) {
@@ -241,13 +249,25 @@ export const PLANTILLAS = {
   ruleta: ["luces", "casino", "neon"],
   quiz: ["consola", "tablet", "pizarra"],
 };
+// Universidad (17 nov 2026): las carreras son solo de coches (ciudad de noche o al atardecer; nada de caballos, dragones
+// ni naves) y el castillo no usa la piel «dragon». Las demás mecánicas usan sus plantillas de siempre.
+export const PLANTILLAS_UNIVERSIDAD = { carrera: ["ciudad_neon", "callejera"], castillo: ["noche", "amanecer"] };
+// Universidad: títulos sencillos, en el idioma de la guía, en lugar de «Mix & match», «Rank order» y «Super sort».
+const TITULOS_UNIVERSIDAD = {
+  es: { match: "Relaciona", rank: "Ordena", sort: "Clasifica" },
+  en: { match: "Match", rank: "Put in order", sort: "Sort" },
+  fr: { match: "Associe", rank: "Ordonne", sort: "Classe" },
+};
 
 export function armarSlides(c) {
   const idioma = c.plan.idioma_guia;
+  const universitario = esUniversidad(c);
+  // El título de un juego: el de siempre o, en universidad, el sencillo (con el mismo icono).
+  const titulo = (k, normal) => (universitario ? `${normal.split(" ")[0]} ${(TITULOS_UNIVERSIDAD[idioma] ?? TITULOS_UNIVERSIDAD.es)[k]}` : normal);
   const usadas = new Set();
   let n = 0;
   const elegir = (juego) => {
-    const lista = PLANTILLAS[juego] ?? ["base"];
+    const lista = (universitario && PLANTILLAS_UNIVERSIDAD[juego]) || PLANTILLAS[juego] || ["base"];
     const libres = lista.filter((p) => !usadas.has(juego + ":" + p));
     const opciones = libres.length ? libres : lista;
     const p = opciones[(c.semilla + n++) % opciones.length];
@@ -301,10 +321,10 @@ export function armarSlides(c) {
     const vf = acts.filter((a) => a.tipo === "verdadero_falso");
     if (vf.length) add("verdadero_falso", { k: "swipe", vf: true, t: `⏱ ${t(idioma, "vf_express")}`, items: vf, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi });
     acts.filter((a) => a.tipo === "super_dato").forEach((a) => add("super_dato", { k: "superdato", t: "⭐ Súper dato", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("superdato") }));
-    acts.filter((a) => a.tipo === "conceptos").forEach((a) => add("conceptos", { k: "match", t: "🧩 Mix & match", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match") }));
+    acts.filter((a) => a.tipo === "conceptos").forEach((a) => add("conceptos", { k: "match", t: titulo("match", "🧩 Mix & match"), a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match") }));
     acts.filter((a) => a.tipo === "quien_es_quien").forEach((a) => add("quien_es_quien", { k: "match", t: "🖼️ ¿Quién es quién?", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("match"), retratos: true }));
-    acts.filter((a) => a.tipo === "ordenar").forEach((a) => add("ordenar", { k: "rank", t: "🔢 Rank order", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("rank") }));
-    acts.filter((a) => a.tipo === "clasificar").forEach((a) => add("clasificar", { k: "sort", t: "🗂️ Super sort", a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("sort") }));
+    acts.filter((a) => a.tipo === "ordenar").forEach((a) => add("ordenar", { k: "rank", t: titulo("rank", "🔢 Rank order"), a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("rank") }));
+    acts.filter((a) => a.tipo === "clasificar").forEach((a) => add("clasificar", { k: "sort", t: titulo("sort", "🗂️ Super sort"), a, tag: `${t(idioma, "bloque")} ${nb}`, blk: bi, plantilla: elegir("sort") }));
     // Duelo del bloque (lista "duelo" del generador) y mini-examen: por defecto cierran el bloque, en ese orden.
     if (b.duelo.length) add("duelo", { k: "carrera", pregunta: true, pedida: "duelo", bt: b.titulo, t: `⚔️ ${b.titulo}`, ids: b.duelo.map((x) => x.id), tag: `${t(idioma, "bloque")} ${nb}`, blk: bi });
     if (b.mini_examen.length) add("mini_examen", { k: "quiz", t: `✅ ${t(idioma, "mini")} ${nb} · ${b.titulo}`, ids: b.mini_examen.map((x) => x.id), tag: `${t(idioma, "mini")} ${nb}`, blk: bi, plantilla: elegir("quiz") });
@@ -346,10 +366,10 @@ function repartir(S, c, idioma, elegir) {
   const azar = () => (s0 = (s0 * 1664525 + 1013904223) >>> 0) / 4294967296;
   const esAct = (s) => !NO_ACTIVIDAD.has(s.k);
   const flexible = (s) => s.pregunta || s.vf;
-  // Universidad: solo las mecánicas de adulto y el verdadero o falso contra reloj. Con cualquier otro perfil las dos
-  // listas son las de siempre (mismas opciones y mismos sorteos: el reparto no cambia).
-  const universitario = c.plan?.perfil_edad === "universitario";
-  const JUEGOS = universitario ? JUEGOS_PREGUNTA.filter((j) => MECANICAS_UNIVERSIDAD.includes(j.k)) : JUEGOS_PREGUNTA;
+  // Universidad: solo las mecánicas de adulto (se reparten aparte, más abajo) y el verdadero o falso contra reloj. Con
+  // cualquier otro perfil las dos listas son las de siempre (mismas opciones y mismos sorteos: el reparto no cambia).
+  const universitario = esUniversidad(c);
+  const JUEGOS = JUEGOS_PREGUNTA;
   const JUEGOS_VF = universitario ? ["swipe"] : ["swipe", "perro"];
   // Usos de cada plantilla de preguntas (índices de slide). Las fijas (calentamiento, duelos del generador) cuentan desde
   // el principio para que una plantilla elegida antes no las repita.
@@ -364,7 +384,23 @@ function repartir(S, c, idioma, elegir) {
   S.forEach((s, i) => {
     if (!flexible(s)) return;
     const prev = anterior(i)?.k, next = siguienteFija(i)?.k;
-    if (s.pregunta) {
+    if (s.pregunta && universitario) {
+      // Universidad (17 nov 2026): las tres mecánicas se reparten parejo. Todas las carreras cuentan como UNA mecánica
+      // (antes cada piel de carrera contaba como un juego distinto: con 4 bloques o más salían carreras de más, con
+      // caballos o dragones, y una sola montaña o castillo). Se elige la mecánica que menos veces va en la guía (el
+      // calentamiento cuenta como carrera), sin repetir la del juego de antes ni la del juego fijo de después; el
+      // primer juego del bloque 1 nunca es carrera. La que pide el plan (mecanica_quiz) se respeta cuando es una de las
+      // que menos van. La piel sale de PLANTILLAS_UNIVERSIDAD (coches; castillo sin «dragon»), sin repetir si hay otra.
+      const veces = (k) => Object.entries(usos).reduce((n, [u, v]) => n + (u.split(":")[0] === k ? v.length : 0), 0);
+      let cand = MECANICAS_UNIVERSIDAD.filter((k) => k !== prev && k !== next && !(s === primeraB1 && k === "carrera"));
+      if (!cand.length) cand = MECANICAS_UNIVERSIDAD.filter((k) => k !== "carrera");
+      const menos = Math.min(...cand.map(veces));
+      const pool = cand.filter((k) => veces(k) === menos);
+      s.k = pool.includes(s.pedida) ? s.pedida : tomar(pool);
+      s.plantilla = elegir(s.k);
+      s.t = `${ICONO_JUEGO[s.k]} ${s.bt}`;
+      usar(claveJuego(s), i);
+    } else if (s.pregunta) {
       let cand = JUEGOS.filter((j) => j.k !== prev && j.k !== next && !(s === primeraB1 && j.k === "carrera"));
       if (!cand.length) cand = JUEGOS.filter((j) => j.k !== "carrera");
       const libres = cand.filter((j) => !usos[claveJuego(j)]);

@@ -33,6 +33,9 @@ const NOMBRES_CORREDOR = {
   fr: { coche: { rojo: "Rouge course", azul: "Bleu nuit", amarillo: "Noir et or", verde: "Vert anglais", morado: "Argent" }, caballo: { rojo: "Alezan", azul: "Noir", amarillo: "Isabelle", verde: "Gris", morado: "Blanc" }, dragon: { rojo: "Vert forêt", azul: "Gris ardoise", amarillo: "Sable", verde: "Mousse", morado: "Charbon" } },
 };
 const nombreCorredor = (ctx, tipo, c) => (NOMBRES_CORREDOR[ctx.c?.plan?.idioma_guia] ?? NOMBRES_CORREDOR.es)[tipo]?.[c] ?? c.toUpperCase();
+// Universidad (17 nov 2026): la pantalla final de relacionar, ordenar y clasificar lleva el título sencillo de la slide
+// («Relaciona», «Ordena», «Clasifica»; lo pone cartucho.js) en lugar de «Mix & match», «Rank order» y «Super sort».
+const tituloFinal = (s, ctx, normal) => (ctx.c?.plan?.perfil_edad === "universitario" && s?.t ? s.t : normal);
 const hudPill = (txt, id = "", px = false) => `<span class="hud-pill ${px ? "px" : ""}" ${id ? `id="${id}"` : ""}>${txt}</span>`;
 // Un <g> de SVG de verdad (crearlo con innerHTML en un div lo volvería un elemento HTML que no se dibuja).
 function gSvg(inner, style = "") { const g = document.createElementNS("http://www.w3.org/2000/svg", "g"); if (style) g.setAttribute("style", style); g.innerHTML = inner; return g; }
@@ -148,10 +151,10 @@ export function enemigos(s, ctx) {
   const capaHe = (p, pose) => `<g class="ene-flota">${capaHeroe(p, pose + "+espada", 0, 0)}</g>`;
   const escena = (p, tipo) => escenaSvg(fondo.svg, W, H, `<g id="eh" transform="translate(${HX} ${hy}) scale(${HE})"><g class="ene-golpe">${capaHe(p, "decidido")}</g></g><g id="ee" transform="translate(${EX} ${ey(tipo)}) scale(${EE})"><g class="ene-golpe">${capaEnemigo(tipo, 0, 0)}</g></g><g id="fx"></g>`);
   el.appendChild(h(`<div class="juego"><div class="escena-caja duelo-arena ene-arena" id="caja"></div>${panel(ctx, `<div class="pill" id="st"></div>`)}</div>`));
-  fondoPrevio(el, escena(personaje(), tipos[0]));
+  fondoPrevio(el, escena(personaje(ctx), tipos[0]));
 
   const jugar = (ids) => {
-    const quien = personaje(), total = ids.length;
+    const quien = personaje(ctx), total = ids.length;
     const fila = ids.map((id, k) => ({ id, tipo: tipos[k % tipos.length] }));
     let vidas = 3, vencidos = 0, primeros = 0, timer = null, terminado = false, actual = null;
     const vistos = new Set(), malas = [];
@@ -258,9 +261,9 @@ export function montana(s, ctx) {
   el.appendChild(h(`<div class="juego"><div class="escena-caja" id="caja"></div>${panel(ctx, `<div class="pill" id="st"></div>`)}</div>`));
   const enPunto = (k) => ({ x: fondo.puntos[k].x - 4, y: fondo.puntos[k].y - 16 });
   const previa = (p) => fondoPrevio(el, escenaSvg(fondo.svg, W, H, `<g transform="translate(${enPunto(0).x} ${enPunto(0).y})">${capaEscaladorDe(p, 0, 0)}</g>`));
-  previa(personaje());
+  previa(personaje(ctx));
   const jugar = () => {
-    const quien = personaje();
+    const quien = personaje(ctx);
     let pos = 0, i = 0, aciertos = 0, timer = null, puntos = 0;
     const caja = el.querySelector("#caja");
     const bandera = `<g>${capaIcono("bandera", fondo.puntos[N].x + 4, fondo.puntos[N].y - 16)}</g>`;
@@ -305,9 +308,9 @@ export function castillo(s, ctx) {
   const fondo = escenaCastillo(W, H, ctx.c.semilla + ctx.cur, TEMAS[s.plantilla] ?? {});
   el.appendChild(h(`<div class="juego"><div class="escena-caja" id="caja"></div>${panel(ctx, `<div class="pill" id="st"></div>`)}</div>`));
   const previa = (p) => fondoPrevio(el, escenaSvg(fondo.svg, W, H, `<g>${capaArqueroDe(p, fondo.torreX - 20, fondo.torreTop - 14)}</g>`));
-  previa(personaje());
+  previa(personaje(ctx));
   const jugar = (ids) => {
-    const quien = personaje();
+    const quien = personaje(ctx);
     let i = 0, aciertos = 0, vidas = 3, timer = null;
     const N = ids.length;
     const caja = el.querySelector("#caja");
@@ -654,7 +657,7 @@ export function match(s, ctx) {
   const soltar = (c, zona) => {
     if (zona.children.length || !zona.dataset.k) return false;
     const p = pares.find((x) => x.termino === c.dataset.k);
-    if (zona.dataset.k === c.dataset.k) { juntar(c, zona); zona.style.borderStyle = "solid"; toast(el, true, `${p.termino} = ${p.definicion}`, 1600); if (!--faltan) { ctx.registrar(a.id, fallos === 0); ctx.luego(() => fin(el, ctx, "🧩 Mix & match", fallos ? `${fallos} ✗` : T("perfecto"), "", () => ctx.go(ctx.cur), fallos === 0), 800); } return true; }
+    if (zona.dataset.k === c.dataset.k) { juntar(c, zona); zona.style.borderStyle = "solid"; toast(el, true, `${p.termino} = ${p.definicion}`, 1600); if (!--faltan) { ctx.registrar(a.id, fallos === 0); ctx.luego(() => fin(el, ctx, tituloFinal(s, ctx, "🧩 Mix & match"), fallos ? `${fallos} ✗` : T("perfecto"), "", () => ctx.go(ctx.cur), fallos === 0), 800); } return true; }
     fallos++; toast(el, false, `${p.termino} = ${p.definicion}`, 2800); return false;
   };
   mezclar(pares).forEach((p) => { const fila = h(`<div class="fila"><div class="drop" data-k="${esc(p.termino)}"></div>${p.imagen && !s.retratos ? `<img class="retrato-chico" src="${esc(p.imagen)}" alt=""${attrsFoto(p.imagen)}>` : ""}<div class="def">${esc(p.definicion)}</div></div>`); body.querySelector("#R").appendChild(fila); const z = fila.querySelector(".drop"); z.addEventListener("click", () => sel.enZona(z, soltar)); });
@@ -671,7 +674,7 @@ export function sort(s, ctx) {
   el.classList.add("pl-" + (s.plantilla ?? "naves"));
   const body = h(`<div class="cuerpo sort"><div class="pila" id="pila"></div><div class="grupos">${(a.grupos ?? []).slice(0, 2).map((g, i) => `<div class="drop grupo" data-g="${i}" style="--g:${gc[i]}"><h3>${esc(g)}</h3></div>`).join("")}</div></div>`); el.appendChild(body);
   const sel = seleccion(body);
-  const soltar = (c, zona) => { if (!zona.classList.contains("grupo")) return false; const it = c.__it; if (+zona.dataset.g === it.grupo) { juntar(c, zona); toast(el, true, `“${it.texto}” → ${a.grupos[it.grupo]}`, 1500); if (!--faltan) { ctx.registrar(a.id, fallos === 0); ctx.luego(() => fin(el, ctx, "🗂️ Super sort", fallos ? `${fallos} ✗` : T("perfecto"), "", () => ctx.go(ctx.cur), fallos === 0), 800); } return true; } fallos++; toast(el, false, `“${it.texto}” → ${a.grupos[it.grupo]}`, 2800); return false; };
+  const soltar = (c, zona) => { if (!zona.classList.contains("grupo")) return false; const it = c.__it; if (+zona.dataset.g === it.grupo) { juntar(c, zona); toast(el, true, `“${it.texto}” → ${a.grupos[it.grupo]}`, 1500); if (!--faltan) { ctx.registrar(a.id, fallos === 0); ctx.luego(() => fin(el, ctx, tituloFinal(s, ctx, "🗂️ Super sort"), fallos ? `${fallos} ✗` : T("perfecto"), "", () => ctx.go(ctx.cur), fallos === 0), 800); } return true; } fallos++; toast(el, false, `“${it.texto}” → ${a.grupos[it.grupo]}`, 2800); return false; };
   body.querySelectorAll(".grupo").forEach((z) => z.addEventListener("click", (e) => { if (e.target.closest(".card-d")) return; sel.enZona(z, soltar); }));
   mezclar(a.elementos ?? []).forEach((it) => { const c = h(`<div>${esc(it.texto)}</div>`); c.__it = it;
     arrastrable(c, ctx, soltar, (c2) => sel.elegir(c2));
@@ -697,7 +700,7 @@ export function rank(s, ctx) {
     if (slots.some((z) => !z.firstElementChild)) { toast(el, false, "⬇️", 1500); return; }
     let ok = true; slots.forEach((z, i) => { const bien = z.firstElementChild.__p === pasos[i]; ok = ok && bien; z.style.borderStyle = "solid"; z.style.borderColor = bien ? "var(--ok)" : "var(--mal)"; });
     if (intentos++ === 0) ctx.registrar(a.id, ok);
-    if (ok) { toast(el, true, a.por_que ?? a.retro_correcta ?? "✓", 2200); ctx.luego(() => fin(el, ctx, "🔢 Rank order", "✓", esc(a.por_que ?? ""), () => ctx.go(ctx.cur), true), 1200); }
+    if (ok) { toast(el, true, a.por_que ?? a.retro_correcta ?? "✓", 2200); ctx.luego(() => fin(el, ctx, tituloFinal(s, ctx, "🔢 Rank order"), "✓", esc(a.por_que ?? ""), () => ctx.go(ctx.cur), true), 1200); }
     else toast(el, false, (a.por_que ? a.por_que + " · " : "") + pasos.map((p) => String(p.texto).split(":")[0]).join(" → "), 4500);
   };
   arranque(el, T, "rank", () => {});
@@ -772,7 +775,7 @@ export function duelo(s, ctx) {
   const arena = escenaDuelo(AW, AH, ctx.c.semilla + ctx.cur);
   const SP = { x: 20, esc: 2.5 }, DR = { x: 82, esc: 1.05 };
   const spY = arena.suelo - 19.35 * SP.esc, drY = arena.suelo - 68 * DR.esc;
-  let quien = personaje();
+  let quien = personaje(ctx);
   const capaSp = (pose) => `<g class="sp-flota">${capaHeroe(quien, pose + "+espada", 0, 0)}</g>`;
   const nombreSp = () => td(ctx, quien === "princesa" ? "princesa" : "sparky");
   const escena = () => escenaSvg(arena.svg, AW, AH,
@@ -783,7 +786,7 @@ export function duelo(s, ctx) {
   fondoPrevio(el, escena());
 
   const jugar = (ids, ronda) => {
-    quien = personaje();
+    quien = personaje(ctx);
     let i = 0, aciertos = 0, racha = 0, timer = null, terminado = false, anim = null;
     const golpesDragon = Math.max(1, Math.ceil(ids.length * .6)), golpesSparky = Math.max(1, ids.length - golpesDragon + 1);
     let vidaDr = golpesDragon, vidaSp = golpesSparky;
