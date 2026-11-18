@@ -1,8 +1,9 @@
 /* SparkEd · sistema de diseño de la fase 2
    Paletas por materia (criterios sección 7), colores semánticos fijos, tipografías y piezas comunes.
-   Una paleta se activa con data-paleta="historia_azul" en <html> o en cualquier contenedor. */
-
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Press+Start+2P&display=swap");
+   Una paleta se activa con data-paleta="historia_azul" en <html> o en cualquier contenedor.
+   Las letras (Outfit, Bricolage Grotesque, Atkinson Hyperlegible y Press Start 2P) ya no se piden desde aquí con
+   @import: cada página que usa esta hoja las pide en su <head> con <link> (17 nov 2026), para que con datos celulares
+   lentos bajen al mismo tiempo que lo demás. Una página nueva que use esta hoja debe llevar ese mismo <link>. */
 
 :root {
   /* identidad SparkEd */

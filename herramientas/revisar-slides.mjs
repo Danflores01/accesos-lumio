@@ -207,7 +207,13 @@ try {
         if (CAPTURAS) await captura(join(dir, `${String(i).padStart(2, "0")}-juego.png`));
       }
       for (const [estado, r] of estados) reporte.push({ slide: i, estado, titulo: r.titulo, clase: r.clase, problemas: r.problemas, fotos: r.fotos });
-      await evaluar(`document.getElementById("abajo").click()`); await dormir(350);
+      // Desde el 17 nov 2026 el reproductor puede tardar un momento en cambiar de slide (espera, a lo más 5 s, a conocer
+      // la forma de las fotos de la siguiente): se espera a que cambie el número, para no revisar dos veces la misma
+      // slide ni dejar sin revisar las últimas.
+      const numero = await evaluar(`document.getElementById("pg")?.textContent || ""`);
+      await evaluar(`document.getElementById("abajo").click()`);
+      for (let j = 0; i < total && j < 80; j++) { await dormir(100); if ((await evaluar(`document.getElementById("pg")?.textContent || ""`)) !== numero) break; }
+      await dormir(350);
     }
     writeFileSync(join(dir, "reporte.json"), JSON.stringify({ guia: g.nombre, total, consola, reporte }, null, 1));
     // Resumen: la lista de resultados puede desplazarse a propósito (guías con muchos bloques); eso no cuenta como falla.

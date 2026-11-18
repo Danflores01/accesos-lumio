@@ -71,7 +71,12 @@ for (const [ancho, alto, movil] of [[390, 844, true], [1280, 800, false]]) {
       if (!sl || sl.innerText.trim().length < 2) vacias++;
       const k = (sl?.className || "").split(/\\s+/).filter((c) => c !== "sl").slice(0, 1).join("") || "otra"; tipos[k] = (tipos[k] || 0) + 1;
       if (sl?.classList.contains("mensaje")) return { total, i, mensaje: sl.querySelector("h2")?.textContent };
-      document.querySelector("#abajo").click(); await espera(140);
+      // Desde el 17 nov 2026 el reproductor puede tardar un momento en cambiar de pantalla (espera, a lo más 5 s, a
+      // conocer la forma de las fotos de la siguiente): se espera a que cambie el número, para no saltarse ninguna.
+      const numero = document.querySelector("#pg")?.textContent ?? "";
+      document.querySelector("#abajo").click();
+      for (let j = 0; i < total - 1 && j < 80 && (document.querySelector("#pg")?.textContent ?? "") === numero; j++) await espera(100);
+      await espera(140);
     }
     return { total, vacias, tipos };
   })()`);
