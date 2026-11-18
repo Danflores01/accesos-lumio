@@ -197,6 +197,18 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Lo aprendido
 
+- **18 nov · Costo de planear (medido con /admin/pruebas/plan en 3 inventarios reales, 6.67 MXN):** producción usa
+  Sonnet/medium (0.96–1.81 MXN por guía; ~55 % entrada, ~45 % salida). Tokens de entrada del plan ≈ 10 780 + 0.336 ×
+  caracteres de `JSON.stringify(inventario)` (cuadra con Derecho: 20 785 estimados contra 20 806 reales).
+  | Opción | Derecho · Anatomía · Inglés (MXN) | Datos asignados | Veredicto |
+  |---|---|---|---|
+  | Sonnet/medium (hoy) | 1.50 · 0.96 · 1.29 | 120 · 98 · 128 | se queda |
+  | Sonnet/low | 0.86 · 0.71 · 1.03 | 102 · 94 · 101 (−15–21 %) | no: pierde cobertura y juegos |
+  | Haiku/medium | 0.13 · 0.09 · 0.10 | 120 · 97 · 74 | no: títulos en español en guía de inglés, «sin sustos» en universidad |
+  | Inventario compacto (sin «cita» si hay «texto», sin «foto») | −0.06 a −0.11 estimado | igual | aplazado (no vale un despliegue) |
+  | Caché del prompt del plan | −0.38 solo si otra guía entra en < 5 min | igual | no con el volumen actual |
+  Decisión de la principal (18 nov): Sonnet/medium tal cual.
+
 - **17 nov · Código 2026-11-17.1 (prueba de 3 guías de universidad del 12 nov):** (1) una pregunta de opción múltiple
   salió con la clave equivocada (la retro decía otra opción) → `claveIncoherente` la descarta en revisar y al armar; y
   si la verificación marca una PREGUNTA como equivocada sin fuente, se quita (`quitarActividadesDudosas`); los juegos
