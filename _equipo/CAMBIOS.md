@@ -2,6 +2,17 @@
 
 Lo más nuevo arriba. Cada entrada: qué cambió, por qué, a quién se avisó y qué secciones de su manual.
 
+## 2026-11-23 · Reproductor: datos celulares, universidad sobria, teoría sin desborde
+- Qué: af47d11 + cc1e324 (capa «Cargando tu guía…», fotos Wikimedia en miniatura en celular y solo las próximas
+  2 slides, corte de 15 s + reintento, letras sin @import: 5.8 MB → 554 KB al abrir); d16d12b (perfil universitario:
+  carreras solo de coches, castillo sin dragón, sin selector de personaje, final sobrio, títulos simples, reparto parejo
+  de mecánicas); 5037e16 (acomodarTeoria: nunca barra de desplazamiento; título «Pista · X (1/3)»; la 3.ª de 4 pistas
+  ya aparece). revisar-slides y probar-guia ahora esperan el cambio de slide.
+- Servidor: v57 = 2026-11-17.5 (a947234): claves dudosas, relectura de fotos, ordenar según su «por qué», cobertura
+  con señales duras, textos bien formados al guardar, estado_motivo de Green API.
+- A quién: Animaciones y Juegos (actualizar su manual: líneas 161-182 y docs/JUEGOS.md, docs/CRITERIOS-FASE-2.md);
+  IA de SPARKED (ya lo sabe).
+
 ## 2026-11-11 · Investigación de temas ENCENDIDA para clientes (v53, código 2026-11-11.6)
 - Qué: `config.sparked_investigar = 'si'`. Los temas del temario sin contenido se completan con fuentes (SEP, RAE…)
   o quedan como nota «repásalo en tu libro». Para apagarla: poner 'no' (el servidor la lee en 1 minuto).

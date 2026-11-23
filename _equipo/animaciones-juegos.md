@@ -163,8 +163,23 @@ pantalla, correr fluido en celulares modestos y nunca estorbar lo principal: que
   falso: contra reloj o el perro. `repartir` los reparte con la semilla de la guía, sin repetir tipo ni plantilla;
   el calentamiento siempre es `formula1`; el primer juego del bloque 1 nunca es carrera.
 - (8 nov) El personaje (Sparky o princesa guerrera) se elige antes de jugar y se recuerda en `sparked_personaje`.
-- (9 nov) «Todo cabe» (§ 29): fotos enteras (nunca `cover` ni círculos), la letra de los juegos baja hasta 70 % (`--fj`), la
-  teoría se divide en (1/2), (2/2) y ninguna slide trae barra de desplazamiento.
+- (17 nov) **Universidad** (`plan.perfil_edad === "universitario"`; `docs/JUEGOS.md` § 5 regla 7 y § 6, criterios § 37):
+  solo carrera (coches: `ciudad_neon` y `callejera`), montaña y castillo (`noche` y `amanecer`, sin `dragon`), repartidos
+  parejo (todas las carreras = una mecánica); sin enemigos, duelo, pingüino ni perro; sin selector de personaje
+  (`personaje(ctx)` da Sparky); títulos «Relaciona», «Ordena» y «Clasifica»; botón «Comenzar»; final con palomita (sin
+  confeti, trofeo ni fanfarria) y «Inténtalo de nuevo» en lugar de GAME OVER. **Al hacer un juego nuevo:** su final pasa
+  por `fin()` o `gameOver()` de `ui.js`, el protagonista sale de `personaje(ctx)` (siempre con `ctx`) y el título de
+  aspecto infantil lleva su versión en `TITULOS_UNIVERSIDAD` (cartucho.js). Con otros perfiles nada cambia.
+- (9 nov, 23 nov) «Todo cabe» (§ 29): fotos enteras (nunca `cover` ni círculos), la letra de los juegos baja hasta 70 %
+  (`--fj`) y la teoría no lleva barra de desplazamiento. `acomodarTeoria` (reproductor.js) la mide antes de abrir la guía:
+  «Ojo con esto» y «Palabras clave» van en columna junto a la última pista, en una **franja** debajo de ella (`ladoAbajo`)
+  o en una **slide de cierre**; al partir, la numeración es una sola, «Pista · X (1/3)» (`retitular`), y `partirCola`
+  siempre puede partir una pieza. Último recurso: letra de 17 a 15 px y, solo entonces, `.con-desplazamiento`.
+- (17 nov) Datos celulares (af47d11, cc1e324): al abrir solo se piden las fotos de la slide actual (las 2 siguientes bajan
+  conforme se avanza, `ADELANTO`); en celular (lado corto ≤ 600 px) o con conexión lenta las de Wikimedia van en miniatura
+  de 330 o 500 px (`fotoLigera`; si falla vuelve la original); cada slide espera a conocer la forma de sus fotos (hasta
+  5 s); `pedir()` corta a los 15 s y reintenta una vez; la capa «Cargando tu guía…» sale desde el primer byte. Para páginas
+  y arte nuevos: nada de `@import` (las letras van con `<link>` en cada página) ni archivos pesados al abrir.
 - El escenario mide 1280 × 720 y `ajustar()` lo escala. La guía se pensó para celular en horizontal: pruebo 844 × 390.
 - Todo temporizador pasa por `ctx.luego` / `ctx.raf` y `limpiar()` lo apaga al cambiar de slide; los sonidos se paran con
   `sonido.detenerTodo()` y al ocultarse la pestaña.
@@ -179,8 +194,8 @@ pantalla, correr fluido en celulares modestos y nunca estorbar lo principal: que
   `git fetch` y `git status` antes y después, y la lista exacta de mis archivos para quien publica (nunca `git add -A`).
 - (7 nov) Recursos: Kenney (CC0), LottieFiles (Lottie Simple License), lottie-web y canvas-confetti (MIT); **GSAP no**
   (SparkEd cobra acceso); Rive exporta solo con plan de pago. Hoy el arte y los sonidos son propios (SVG y Web Audio,
-  sin archivos). Lo externo: fuentes de Google (`@import` en `base.css`) y fotos de Wikimedia (licencia y crédito en el
-  pie de foto). Nunca personajes con derechos: las referencias de Daniel son solo de estilo.
+  sin archivos). Lo externo: fuentes de Google (un `<link>` en cada página, no `@import`) y fotos de Wikimedia
+  (licencia y crédito en el pie de foto). Nunca personajes con derechos: las referencias de Daniel son solo de estilo.
 - (7 nov) Palabras de Daniel: «dispositivos»; «7 días de acceso ilimitado a tu guía»; sin coloquialismos (§ 19 y 23).
 
 **Pruebas y entorno**
@@ -191,6 +206,7 @@ pantalla, correr fluido en celulares modestos y nunca estorbar lo principal: que
   scratchpad y las mando con `SendUserFile`. Para fotografiar un instante: `document.getAnimations()` → `a.pause();
   a.currentTime = ms`.
 - `probar-guia.mjs` recorre las pantallas pero no juega: los juegos los juego yo (a mano o con `javascript_exec`).
+  Él y `revisar-slides.mjs` esperan el cambio de slide (cc1e324): la slide nueva sale después de medir sus fotos.
 
 ## Pendientes de mi tema
 - **Arte 3.0 y juegos (confirmado por Daniel, 11 nov):** te tocan Sparky que juega e interactúa con la gente y la

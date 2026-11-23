@@ -25,13 +25,16 @@ estilos en `sparked/css/juegos-nuevos.css` (enlazada en `sparked/guia.html`) y t
 
 - **Dónde:** duelo, enemigos, castillo (defensa de la torre) y montaña. Antes de empezar, la tarjeta "¿Cómo se juega?"
   pregunta "¿Quién quieres ser?": **Sparky** o la **princesa guerrera**. La escena de fondo cambia en cuanto se elige.
+  **Excepto en las guías de universidad** (§ 6): ahí no se pregunta y el protagonista es siempre Sparky.
 - **Memoria:** la elección se guarda en `localStorage` (`sparked_personaje`) y se usa en la siguiente partida; se puede
   cambiar cada vez. Las carreras siguen con su selector de coche, caballo o dragón (no tienen protagonista a pie).
 - **Princesa guerrera (`cuerpoPrincesa` en arte.js):** misma escala y mismos puntos de apoyo que Sparky (16 × 20):
   diadema dorada con gema, trenza, capa, peto de plata, túnica turquesa, botas y la misma espada de Sparky (`+espada`).
   Poses: decidido, golpe, festejo, triste (caída) y quieto.
 - **Funciones:** `heroe(quien, pose, escala)`, `capaHeroe`, `capaEscaladorDe` (montaña) y `capaArqueroDe` (torre, con
-  arco) en arte.js; `personaje()`, `selectorPersonaje(ctx)` y `conectarSelector(tarjeta, alCambiar)` en ui.js.
+  arco) en arte.js; `personaje(ctx)`, `selectorPersonaje(ctx)` y `conectarSelector(tarjeta, alCambiar)` en ui.js.
+  Las dos primeras reciben el contexto del reproductor para saber si la guía es de universidad: todo juego con
+  protagonista debe llamarlas con `ctx` (sin él, `personaje()` lee `localStorage` como antes).
 - **Duelo:** la barra de vida dice SPARKY o PRINCESA y la instrucción dice "tu personaje ataca con su espada".
 
 ## 3. Clavados de pingüino (opción múltiple y completar)
@@ -74,10 +77,12 @@ de preguntas de cada bloque y el tipo de verdadero o falso; al final, `repartir(
 1. **Aleatorio pero fijo por guía:** se usa `c.semilla`, así la misma guía sale igual en todos los dispositivos.
 2. **Nunca dos actividades del mismo tipo seguidas**, aunque haya teoría en medio o se cruce de un bloque al siguiente
    (dos carreras, dos verdadero o falso del mismo tipo, dos Mix & match…). Si el plan pone juntas dos actividades fijas
-   del mismo tipo, se intercambia la segunda con otra actividad posterior del mismo bloque.
+   del mismo tipo, se intercambia la segunda con otra actividad posterior del mismo bloque. La regla es la misma con
+   los títulos de universidad: «Relaciona» es Mix & match, «Ordena» es Rank order y «Clasifica» es Super sort (§ 6).
 3. **Plantillas de juego de preguntas:** carrera de coches, de caballos, de dragones y de naves, enemigos, montaña,
    castillo, duelo y clavados de pingüino. Ninguna se repite en la guía si hay otras disponibles; si no queda remedio, va
-   separada por al menos 15 slides. Sin otra preferencia, se prefiere una mecánica que todavía no haya salido.
+   separada por al menos 15 slides. Sin otra preferencia, se prefiere una mecánica que todavía no haya salido. En las
+   guías de universidad solo hay carrera, montaña y castillo (regla 7).
 4. **El primer juego de preguntas del bloque 1 nunca es una carrera:** el calentamiento ya es una carrera y la vista
    previa debe mostrar dos formatos distintos.
 5. **`bloques[i].mecanica_quiz`** ("carrera", "montana", "castillo", "enemigos", "duelo" o "pinguino") se respeta salvo
@@ -86,16 +91,47 @@ de preguntas de cada bloque y el tipo de verdadero o falso; al final, `repartir(
    preguntas (siguen contando en la calificación).
 6. **Verdadero o falso:** se reparte entre el contra reloj (swipe) y el perro, el que se haya usado menos, sin repetir
    seguido.
-7. **Universidad (Daniel, 12 nov 2026: «que las actividades no sean tan infantiles»):** si el cartucho trae
-   `plan.perfil_edad === "universitario"` (lo fija el servidor por el grado), los juegos de preguntas solo se reparten
-   entre carrera, montaña y castillo (`MECANICAS_UNIVERSIDAD`): nunca enemigos, duelo ni pingüino. Si hay más juegos
-   que mecánicas se repite una de esas tres (de preferencia otra carrera con distinta plantilla), y la lista `duelo` o
-   `"juego": "duelo"` se juegan con una de ellas (`esDuelo`, en juegos.js, tampoco vuelve duelo esas preguntas). El
-   verdadero o falso va siempre contra reloj (swipe), sin el perro. Con cualquier otro perfil el reparto es exactamente
-   el de las reglas 1 a 6.
+7. **Universidad (Daniel, 12 y 17 nov 2026: «que las actividades no sean tan infantiles»):** si el cartucho trae
+   `plan.perfil_edad === "universitario"` (lo fija el servidor por el grado), los juegos de preguntas solo son carrera,
+   montaña y castillo (`MECANICAS_UNIVERSIDAD`): nunca enemigos, duelo ni pingüino. Se reparten **parejo**: todas las
+   carreras cuentan como UNA mecánica (antes cada piel de carrera contaba como un juego distinto y, con 4 bloques o más,
+   salían carreras de más y una sola montaña o castillo) y en cada juego se elige la mecánica que menos veces va en la
+   guía (el calentamiento cuenta como carrera), sin repetir la del juego de antes ni la del juego fijo de después. El
+   primer juego del bloque 1 sigue sin ser carrera. Lo que pide `mecanica_quiz` se respeta si es una de las que menos
+   van; si pide enemigos, duelo o pingüino, se cambia por otra. La lista `duelo` o `"juego": "duelo"` se juegan con una
+   de las tres (`esDuelo`, en juegos.js, tampoco vuelve duelo esas preguntas). Las pieles salen de
+   `PLANTILLAS_UNIVERSIDAD` (cartucho.js): la carrera es **solo de coches** (`ciudad_neon`, de noche, y `callejera`, al
+   atardecer; nada de naves, caballos ni dragones) y el castillo solo `noche` o `amanecer` (sin `dragon`); la piel no se
+   repite si hay otra libre. El verdadero o falso va siempre contra reloj (swipe), sin el perro. Con cualquier otro
+   perfil el reparto es exactamente el de las reglas 1 a 6.
 
 Las plantillas ya ocupadas por el calentamiento (o por otras slides fijas) cuentan desde el principio.
 El calentamiento usa siempre la plantilla `formula1` (circuito de Fórmula 1 de día, colores reales): es el primer juego
 que ve la familia y la carrera de F1 es la vitrina de SparkEd. Las otras carreras (ciudad de neón, naves, caballos y
 dragones) quedan para los bloques, repartidas por las reglas de arriba. La instrucción de la carrera ya no dice "Elige tu
 coche": el selector dice coche, nave, caballo o dragón según la plantilla.
+
+## 6. Universidad: acabado más sobrio (Daniel, 12 y 17 nov 2026)
+
+Daniel: «que las actividades no sean tan infantiles». Todo lo de esta sección pasa **solo** cuando el cartucho trae
+`plan.perfil_edad === "universitario"` (lo fija el servidor por el grado); con cualquier otro perfil nada cambia. El
+perfil se lee de `c.plan.perfil_edad` (`esUniversidad(c)` en cartucho.js y `esUniversidad(ctx)` en ui.js). Commit d16d12b.
+
+- **Juegos de preguntas:** solo carrera, montaña y castillo, repartidos parejo y con pieles sobrias (§ 5, regla 7). Sin
+  enemigos, duelo ni pingüino; el verdadero o falso es solo el contra reloj, sin el perro.
+- **Sin selector de personaje:** no se pregunta «¿Quién quieres ser?» y el protagonista es siempre Sparky
+  (`personaje(ctx)` y `selectorPersonaje(ctx)`, § 2); el juego empieza directo desde la tarjeta de instrucciones.
+- **Títulos sencillos** (`TITULOS_UNIVERSIDAD`, cartucho.js; el icono no cambia): «🧩 Relaciona», «🔢 Ordena» y
+  «🗂️ Clasifica» en lugar de Mix & match, Rank order y Super sort (en inglés Match, Put in order y Sort; en francés
+  Associe, Ordonne y Classe). Los usa el título de la slide y la pantalla final de esos tres juegos (`tituloFinal`, en
+  juegos.js). Los demás títulos no cambian.
+- **Botón de la teoría:** «Comenzar» (en inglés «Start», en francés «Commencer») en lugar de «¡A jugar!»
+  (`TEXTOS_UNIVERSIDAD` en cartucho.js; `t(idioma, clave, perfil)` y `ctx.t` reciben el perfil).
+- **Final sin fiesta** (`fin`, en ui.js): la misma tarjeta con una palomita verde (✓), sin lluvia de confeti, sin trofeo
+  y sin fanfarria (suena el tono de nivel, `sonido.nivel()`). El mensaje, los aciertos y los botones son los de siempre.
+- **Castillo sin GAME OVER:** al perder las tres vidas sale la tarjeta «Inténtalo de nuevo · Se acabaron las vidas.» con
+  las correctas y el botón «Reintentar» (`SOBRIO` en ui.js; en inglés «Try again» y «Retry», en francés «Essaie encore»
+  y «Réessayer»), no la pantalla CRT con calaveras. `gameOver` solo lo llama hoy el castillo (juegos.js).
+- **Al agregar un juego o una pantalla final nuevos:** que el final pase por `fin()` o `gameOver()` de ui.js (así hereda
+  el acabado sobrio), que el protagonista salga de `personaje(ctx)` y que, si el juego tiene un título de aspecto
+  infantil, lleve su versión sencilla en `TITULOS_UNIVERSIDAD`.

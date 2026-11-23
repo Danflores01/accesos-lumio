@@ -221,7 +221,7 @@ Referencia: la lección **Historia de México 2 · El encuentro de dos mundos** 
 - **Montaña:** subir contestando preguntas tipo quiz (la Torre del Documento 2 con plantilla de montaña y feeling de consola retro).
 - **Mix and match:** plantilla de astronauta en un planeta, feeling de videojuego retro.
 - **Súper dato:** la fórmula del Documento 2 con arte pixel retro.
-- **Pantalla de fin:** estilo "GAME OVER · Better luck next time · Press start" para intentar de nuevo, y celebración grande cuando gana.
+- **Pantalla de fin:** estilo "GAME OVER · Better luck next time · Press start" para intentar de nuevo, y celebración grande cuando gana. En las guías de universidad el final es sobrio: palomita en lugar de confeti y trofeo, y «Inténtalo de nuevo» en lugar de GAME OVER (§ 37).
 - **Juegos que dependen de imágenes, tomados de las guías de Lumio:** "¿Quién es quién?" (retrato ↔ nombre o hecho), "Une cada imagen con lo que pasó", "Completa la ruta" sobre un mapa. "Pasapalabra" también queda anotado.
 - **Técnica:** sprites chicos y paleta limitada; `image-rendering: pixelated`; hojas de sprites con CSS `steps()`; parallax; carretera pseudo-3D en Canvas 2D; fuente pixel solo en HUD y títulos, las preguntas en fuente legible; bancos CC0 (Kenney) y fondos generados con Gamma cuando hagan falta. Detalle en la memoria de recursos.
 
@@ -397,7 +397,8 @@ moderno).
   error = frenada y te rebasan; motor sintetizado que acelera y frena; meta a cuadros.
 - Montaña: plataformas; cada acierto es un salto en parábola con estrella (+10), cada error un resbalón.
 - Castillo: una escuadra de tres soldados marcha hacia la torre; acierto = flecha en arco y el líder cae, los otros
-  huyen; error = llegan a la torre, sacudida y se pierde un corazón; tres vidas y GAME OVER.
+  huyen; error = llegan a la torre, sacudida y se pierde un corazón; tres vidas y GAME OVER (en universidad, la tarjeta
+  «Inténtalo de nuevo»; § 37).
 - Mix and match, súper dato, super sort y rank order: se juegan tocando (tarjeta → destino, con destinos latiendo) o
   arrastrando; acierto = la tarjeta se junta con un "pop"; error = sacudida roja y la pareja correcta en el aviso.
 - Sonidos (`sparked/js/sonido.js`): tonos suaves con envolvente, ráfagas de ruido filtrado (silbido de la flecha,
@@ -430,7 +431,9 @@ como error. Objetivo: leer rápido y decidir con lo que se sabe.
 distinto personaje o escenario, para que el tema sea unisex y nunca se repita dentro de una guía: la carrera corre con
 coches (ciudad de neón), naves (espacio), caballos (hipódromo) o dragones (cielo), con su propio sonido (motor, galope,
 viento). El estante elige sin repetir plantilla dentro de la misma guía; la IA que genera las guías debe respetar esa
-biblioteca y alternar: por ejemplo carrera con coches → puertas → teoría → mix and match → carrera con caballos.
+biblioteca y alternar: por ejemplo carrera con coches → puertas → teoría → mix and match → carrera con caballos. En las
+guías de universidad la carrera es solo de coches (ciudad de noche o al atardecer), sin naves, caballos ni dragones, y el
+castillo no usa la piel de dragón (§ 37).
 
 ## 19. Tono y palabras (Daniel, 7 de noviembre de 2026)
 
@@ -539,7 +542,8 @@ en el idioma de la guía.
   planificador; el código la corrige si no cumple: nunca «carrera» en el bloque 1 (el calentamiento ya es una carrera),
   nunca la misma en dos bloques seguidos, nunca «duelo» si el bloque ya tiene juego de duelo; la de reemplazo sale al
   azar, de preferencia una que la guía no haya usado. Las plantillas visuales (coches, caballos, dragones…) las reparte
-  el reproductor.
+  el reproductor. En las guías de universidad solo cuentan «carrera», «montana» y «castillo»: si el plan pide otra, el
+  reproductor la cambia, y reparte esas tres parejo (§ 37).
 - **El duelo va en la lista `duelo` del bloque**, nunca dentro de `actividades`. El escritor lo escribe así; si lo pone
   dentro de `actividades`, se acepta y al armar el cartucho se pasa a `duelo`.
 
@@ -661,16 +665,47 @@ slide se ve completa, ordenada y alineada. Nada se sale de la slide ni de su caj
 **ninguna fotografía se recorta para llenar un espacio** (antes salían cabezas cortadas por los círculos y fotos
 reducidas a una tira).
 
-- **Fotos completas.** Cada foto se ve entera y con su forma real (vertical, horizontal o cuadrada). Antes de mostrar la
-  guía, el reproductor mide la forma de cada foto (`precargarFotos` y `attrsFoto` en `sparked/js/ui.js`; variable CSS
-  `--r`) y la acomoda con ese tamaño. Si una foto tarda en bajar, se ve completa dentro de su caja (`object-fit:
-  contain`), nunca cortada. Los retratos ya no son círculos: son rectángulos redondeados con un marco de color, y en la
-  portada sus nombres quedan en la misma línea.
+- **Fotos completas.** Cada foto se ve entera y con su forma real (vertical, horizontal o cuadrada). Antes de mostrar
+  **cada slide**, el reproductor mide la forma de sus fotos (`precargarFotos` y `attrsFoto` en `sparked/js/ui.js`, que la
+  sacan de los primeros bytes; `formasDe` en `reproductor.js`; variable CSS `--r`) y la acomoda con ese tamaño. Si
+  todavía no la conoce (se llegó muy rápido o la conexión es lenta), espera hasta 5 s, con el aviso «Cargando fotos…» a
+  los 0.5 s, para que nada se mueva ni se encime cuando la foto termine de bajar. Si una foto tarda en bajar, se ve
+  completa dentro de su caja (`object-fit: contain`), nunca cortada. Los retratos ya no son círculos: son rectángulos
+  redondeados con un marco de color, y en la portada sus nombres quedan en la misma línea.
+- **Datos celulares (17 nov 2026; af47d11 y cc1e324).** Abrir la guía de ejemplo pasó de 5.8 MB a unos 554 KB (según
+  `_equipo/CAMBIOS.md`, 23 nov 2026) y ya no espera a todas las fotos para mostrar la primera slide. Al abrir solo se
+  piden las fotos de la slide en que se empieza; las de las dos siguientes bajan conforme se avanza (`ADELANTO`), nunca
+  la guía entera de golpe. En celular (el lado corto de la pantalla de 600 px o menos) o con conexión lenta (ahorro de
+  datos, 2G o 3G), las fotos de Wikimedia se piden en miniatura: 330 px las que se ven chicas (retratos, línea del
+  tiempo, «¿Quién es quién?») y 500 px las pinturas, mapas y fotos; si la miniatura no existe o falla, vuelve la foto que
+  venía en la guía (nunca se pierde una foto por aligerarla). En computadora nada cambia. Las peticiones al abrir la guía
+  se cortan si en 15 s no llega ni un dato y se reintentan una vez; si tampoco responde sale «Algo falló» con el botón
+  «Reintentar», nunca una pantalla en blanco. Mientras carga se ve la capa «Cargando tu guía…» (va escrita dentro de
+  `guia.html`, así que sale desde el primer byte). Las letras de Google se piden con un `<link>` en el `<head>` de cada
+  página y no con `@import` en `base.css`: **una página nueva que use `base.css` debe llevar ese mismo `<link>`**.
 - **Teoría.** El reproductor prueba, de mayor a menor, el alto de las fotos (190 a 84 px) y la letra (22 a 18 px) hasta
-  que todo quepa; con fotos prefiere la foto grande con letra de 20 px o más. Si ni así cabe, divide la slide en (1/2),
-  (2/2). Ninguna tarjeta queda debajo del botón «¡A jugar!»: la caja clave y la banda le dejan el ancho real del botón
-  y, cuando el botón está, las tarjetas ya no se estiran hasta abajo. Un título muy largo baja hasta 28 px y, si aun así
-  llega al cuerpo, el cuerpo empieza más abajo.
+  que todo quepa; con fotos prefiere la foto grande con letra de 20 px o más. Si ni así cabe, divide la slide. Las
+  slides de un bloque que comparten título llevan **una sola numeración corrida**, «Pista · Juicio de amparo (1/3)»,
+  (2/3), (3/3), sin dobles como «(2) (1/5)»; si el título de página que escribió la IA ya termina en «(2)», ese número
+  se quita antes de numerar (`retitular`, cartucho.js). Ninguna tarjeta queda debajo del botón «¡A jugar!»: la caja
+  clave y la banda le dejan el ancho real del botón y, cuando el botón está, las tarjetas ya no se estiran hasta abajo.
+  Un título muy largo baja hasta 28 px y, si aun así llega al cuerpo, el cuerpo empieza más abajo.
+- **Teoría sin barra de desplazamiento (23 nov 2026; 5037e16).** Toda la teoría se mide antes de mostrar la guía
+  (`prepararTeoria` y `acomodarTeoria`, en `reproductor.js`), así la numeración, las miniaturas y el progreso ya traen
+  las slides de continuación. La última slide de teoría del bloque lleva «Ojo con esto» y «Palabras clave» en una
+  columna de 300 px junto a la última pista. Si no cabe, hay tres caminos: (1) el de siempre: se parte la pista y la
+  columna se queda con el último trozo; (2) la columna va sola, a lo ancho, en una **slide de cierre** sin pistas (la
+  dibuja `teoria.js`); (3) las dos cajas van en una **franja** debajo de la última pista (`s.ladoAbajo`) y sobra la
+  slide de cierre. Se queda el de siempre si todo cabe, cada slide intermedia se llena al menos al 40 % y el último
+  trozo no es casi vacío; o si todo cabe pero los otros caminos no ahorran ninguna slide (así las guías que ya se veían
+  bien no cambian). Si no, la franja y, si tampoco cabe, la slide de cierre. Antes, una guía con mucho en «Ojo con
+  esto» se partía hasta en 7 slides casi vacías y la última quedaba con barra de desplazamiento. Una pista siempre se
+  puede partir (`partirCola`: ejemplo y dato corregido, esquema y clave, o el esquema por la mitad); solo una pieza única
+  que ya no se divide se queda entera. Si algo no cupo al mostrarse (llegó una foto o una letra tarde), `render()` lo
+  reparte en el acto (`repartirTardio`; en la vista previa, que siempre tiene 4 slides, solo se quita la columna).
+  Último recurso: letra de 17 a 15 px y, solo si ni así cabe, la barra (`.con-desplazamiento`). También se corrigió el
+  agrupado de pistas: de 3 en 3 y, cuando quedan 4, de 2 y 2 (antes se perdía la tercera pista de un bloque de 4 y la
+  sexta de uno de 7).
 - **Portada.** El título baja de 74 a 44 px si es largo; los objetivos (17 a 14 px) y la barra de bloques (14 a 11 px)
   bajan su letra y nunca se enciman con lo de arriba ni con la marca SparkEd. Los retratos se achican si llegarían a
   los objetivos, y bajan si el sello «Vista previa» los tapa.
@@ -914,3 +949,20 @@ compras marcadas como pagadas a mano en el panel (botón «Marcar pagada»), sin
 5. El correo a la familia de una cortesía dice «Tu acceso se activó» y «Acceso de cortesía», no «Tu pago se confirmó».
 6. El panel funciona con el servidor anterior y con el nuevo: lo nuevo solo aparece cuando el servidor manda los
    datos (`cortesias_mes` en el Resumen, `cobro` y `a_mano` en cada compra).
+
+## 37. Universidad: que no se vea infantil (Daniel, 12 y 17 de noviembre de 2026)
+
+Daniel: «que las actividades no sean tan infantiles». Cuando el grado es de universidad (`plan.perfil_edad` vale
+`universitario`; lo fija el servidor), la guía se ve y se juega más sobria. Con cualquier otro perfil no cambia nada.
+
+1. **Juegos de preguntas:** solo carrera, montaña y castillo, repartidos parejo (todas las carreras cuentan como una sola
+   mecánica); nunca enemigos, duelo ni pingüino. La carrera es solo de coches (ciudad de noche o al atardecer) y el
+   castillo no usa la piel de dragón. El verdadero o falso es solo el contra reloj, sin el perro.
+2. **Sin selector de personaje:** no se pregunta «¿Quién quieres ser?»; el protagonista es Sparky.
+3. **Títulos sencillos:** «Relaciona», «Ordena» y «Clasifica» en lugar de Mix & match, Rank order y Super sort (también
+   en inglés y en francés), y el botón de la teoría dice «Comenzar» en lugar de «¡A jugar!».
+4. **Final sobrio:** una palomita verde en lugar de confeti, trofeo y fanfarria; al perder en el castillo, «Inténtalo de
+   nuevo» en lugar de GAME OVER con calaveras.
+5. Funciones y detalle técnico: `docs/JUEGOS.md` (§ 2, regla 7 del § 5 y § 6). Regla para todo juego nuevo: su final pasa
+   por `fin()` o `gameOver()` de `ui.js`, su protagonista sale de `personaje(ctx)` y sus títulos de aspecto infantil
+   tienen versión sencilla.
