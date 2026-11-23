@@ -116,11 +116,11 @@ function render() {
   const el = (R[s.k] ?? portada)(s, ctx);
   el.appendChild(h(`<div class="marca-pie">Spark<b>Ed</b></div>`));
   escenario.appendChild(el);
-  // Nada se desborda: la teoría se mide ya en pantalla; si ni con la letra mínima cabe, se divide aquí mismo.
+  // Nada se desborda: la teoría se mide ya en pantalla; si ni con la letra mínima cabe, se reparte aquí mismo (la
+  // columna de cierre se va a su propia slide, o la slide se divide) y, como último recurso, baja un poco más la letra.
   if (s.k === "teoria" && !encajarTeoria(el, s)) {
-    const partes = ctx.modo === "vista_previa" ? null : dividirSlide(s); // la vista previa siempre tiene 4 slides
-    if (partes) { insertarPartes(cur, partes); return render(); }
-    el.querySelector(".cuerpo")?.classList.add("con-desplazamiento");
+    if (repartirTardio(s)) return render();
+    if (!encajarTeoria(el, s, true)) el.querySelector(".cuerpo")?.classList.add("con-desplazamiento");
   }
   // La portada acomoda su título, objetivos y bloques; los juegos y el tutorial bajan su letra hasta que todo quepa
   // (y la vuelven a revisar cada vez que cambia la pregunta o la tarjeta).
@@ -151,7 +151,9 @@ document.body.appendChild(medidor);
 const HOJAS_TEORIA = ".tcard, .ojo, .claves, .caja-clave, .banda, .dato-rapido, .cat, .lista-iconos .fila, .hito, .comparacion .col, .ciclo .paso, .retrato-col .r, .cuadro, .linea-tiempo";
 const COMBOS_TEXTO = [[22, 0], [21, 0], [20, 0], [19, 0], [18, 0]];
 const COMBOS_FOTO = [[22, 190], [21, 190], [20, 190], [22, 165], [21, 165], [20, 165], [21, 140], [20, 140], [19, 140], [20, 120], [19, 120], [18, 120], [18, 100], [18, 84]];
-function encajarTeoria(el, s) {
+// apretar = true es el último recurso (17 nov 2026): para una slide que ya no se puede dividir ni repartir y aún no
+// cabe, se prueba con la letra un poco más chica (17, 16 y 15 px) antes que dejarla con barra de desplazamiento.
+function encajarTeoria(el, s, apretar = false) {
   const cuerpo = el.querySelector(".cuerpo"), h1 = el.querySelector(".cabeza h1"), cabeza = el.querySelector(".cabeza");
   if (!cuerpo) return true;
   // Título: de 40 a 28 px; si aun así llega al cuerpo, el cuerpo empieza más abajo.
@@ -169,8 +171,35 @@ function encajarTeoria(el, s) {
     if (foto) el.style.setProperty("--alto-foto", foto + "px");
     if (cabe()) { s.letra = letra; return true; }
   }
+  if (apretar) for (const letra of [17, 16, 15]) {
+    el.style.setProperty("--letra", letra + "px");
+    if (cabe()) { s.letra = letra; return true; }
+  }
+  el.style.setProperty("--letra", "18px");
   s.letra = 18;
   return false;
+}
+// ---------- La columna de cierre del bloque (17 nov 2026) ----------
+// La última slide de teoría de cada bloque lleva a la derecha «Ojo con esto» y «Palabras clave» (300 px de ancho, con
+// su letra fija). En las guías con mucho que decir ahí, la columna no cabía junto a la pista: la slide se partía una y
+// otra vez (hasta 7 páginas seguidas, varias casi vacías) y la última se quedaba con barra de desplazamiento, porque
+// partir la pista no achica la columna. Ahora, cuando no cabe, la columna puede irse a su propia slide de cierre (sin
+// pistas, a lo ancho; la dibuja teoria.js) y la pista se queda entera.
+const tieneLado = (s) => !!s && s.k === "teoria" && !!s.ultima && !!s.b && !s.sinLado
+  && (c.plan.puntos_dificiles.some((p) => c.bloqueDePunto[p.id] === s.b.id) || s.b.actividades.some((a) => a.tipo === "conceptos" && (a.pares ?? []).length > 0));
+const cierreDe = (s) => ({ ...s, pistas: [], cierre: true });
+// Una slide de teoría que YA EN PANTALLA no cupo (una letra o una foto llegó tarde y cambió las medidas). Si lleva la
+// columna de cierre, la columna se va a su propia slide; si no, la slide se divide. La vista previa siempre tiene 4
+// slides: ahí solo se quita la columna. Devuelve true si cambió algo y hay que volver a dibujar.
+function repartirTardio(s) {
+  const i = S.indexOf(s);
+  if (i < 0) return false;
+  const conLado = tieneLado(s) && (s.pistas ?? []).length > 0;
+  if (ctx.modo === "vista_previa") { if (conLado) s.sinLado = true; return conLado; }
+  const partes = conLado ? [s, cierreDe(s)] : dividirSlide(s);
+  if (!partes) return false;
+  insertarPartes(i, partes);
+  return true;
 }
 // Portada: el título, el subtítulo, los objetivos, los retratos y la barra de bloques nunca se enciman ni se salen.
 // Los títulos largos bajan de tamaño; si aun así no caben, lo de abajo se recorre (nunca queda encima).
@@ -203,8 +232,8 @@ function reacomodar(el, s) {
   if (S[cur] !== s || !el.isConnected) return;
   if (s.k === "teoria") {
     if (encajarTeoria(el, s)) return;
-    const partes = ctx.modo === "vista_previa" ? null : dividirSlide(s);
-    if (partes) { insertarPartes(cur, partes); render(); } else el.querySelector(".cuerpo")?.classList.add("con-desplazamiento");
+    if (repartirTardio(s)) render();
+    else if (!encajarTeoria(el, s, true)) el.querySelector(".cuerpo")?.classList.add("con-desplazamiento");
   }
   else if (s.k === "portada") encajarPortada(el);
   else if (s.k === "resultados") encajarResultados(el);
@@ -345,14 +374,77 @@ async function prepararTeoria() {
   const antes = cur, limite = Date.now() + 7000;   // lo más que se espera, en total, por fotos que hagan falta para decidir
   for (let i = 0; i < S.length; i++) {
     if (S[i].k !== "teoria") continue;
-    for (let intento = 0; intento < 8; intento++) {
-      cur = i;
-      if (await cabeTeoria(S[i], limite)) break;
-      const partes = dividirSlide(S[i]); if (!partes) break;
-      insertarPartes(i, partes);
-    }
+    i += (await acomodarTeoria(i, limite)) - 1;
   }
   medidor.innerHTML = ""; cur = antes;
+}
+// Divide lo que haga falta la zona de teoría que empieza en la slide i y mide n slides, hasta que cada una quepa (cada
+// slide se parte, a lo más, 8 veces). Devuelve cuántas slides quedaron, si todas caben y qué tan llena quedó cada una.
+async function partirHastaCaber(i, n, limite) {
+  let cabe = true;
+  const llenos = [];
+  for (let j = i; j < i + n; j++) {
+    for (let intento = 0; ; intento++) {
+      cur = j;
+      if (await cabeTeoria(S[j], limite)) { llenos.push(llenoMedido()); break; }
+      const partes = intento < 8 ? dividirSlide(S[j]) : null;
+      if (!partes) { cabe = false; llenos.push(1); break; }
+      insertarPartes(j, partes); n += partes.length - 1;
+    }
+  }
+  return { n, cabe, llenos };
+}
+// Qué tan llena quedó la slide de teoría recién medida (de 0 a 1): hasta dónde llegan sus pistas, esquemas y cajas
+// dentro del cuerpo, sin contar la columna de cierre.
+function llenoMedido() {
+  const cuerpo = medidor.querySelector(".cuerpo");
+  if (!cuerpo) return 1;
+  const caja = cuerpo.getBoundingClientRect();
+  const fondos = [...cuerpo.querySelectorAll(".tcard, .caja-clave, .banda, .linea-tiempo, .comparacion, .ciclo, .lista-iconos, .categorias, .cuadro, .retrato-col .r")].map((e) => e.getBoundingClientRect().bottom);
+  return fondos.length && caja.height ? (Math.max(...fondos) - caja.top) / caja.height : 0;
+}
+// Un trozo «pobre» trae casi nada: sin esquema ni fotos y con menos de 120 letras entre viñetas, ejemplo y datos corregidos.
+const pobre = (x) => {
+  const ps = x?.pistas ?? [];
+  if (ps.some((p) => p.esquema?.tipo || (p.imagenes ?? []).some((f) => f?.url))) return false;
+  return ps.reduce((n, p) => n + (p.ideas ?? []).join("").length + String(p.ejemplo ?? "").length + (p.correcciones ?? []).reduce((m, cr) => m + String(cr.dato_correcto ?? cr.mensaje ?? "").length, 0), 0) < 120;
+};
+// Acomoda la slide de teoría i y devuelve en cuántas slides quedó. Para la última del bloque, cuando no cabe con su
+// columna de cierre («Ojo con esto» y «Palabras clave»), hay tres caminos:
+//   1. el de siempre: se parte la pista y la columna se queda con el último trozo;
+//   2. la pista se queda como está (o se parte solo lo que ella necesite) y la columna va sola en su slide de cierre;
+//   3. como el 2, pero las dos cajas van en una franja debajo de la última pista (teoria.js, s.ladoAbajo) y sobra la
+//      slide de cierre. Se usa en lugar del 2 siempre que la franja cabe.
+// Se queda el de siempre si todo cabe y nada queda casi vacío (cada slide intermedia se llena al menos al 40 % y el
+// último trozo no es pobre), o si los otros caminos no ahorran ninguna slide: así las guías que ya se veían bien no
+// cambian. Si no, el 3 o el 2. Lo que aun así no quepa lo resuelve render() al mostrar la slide.
+async function acomodarTeoria(i, limite) {
+  const s = S[i];
+  if (!tieneLado(s) || !(s.pistas ?? []).length) return (await partirHastaCaber(i, 1, limite)).n;
+  cur = i;
+  if (await cabeTeoria(s, limite)) return 1;
+  const idioma = c.plan.idioma_guia, original = S.slice();
+  const a = await partirHastaCaber(i, 1, limite);
+  if (a.cabe && !pobre(S[i + a.n - 1]) && a.llenos.slice(0, -1).every((x) => x >= 0.4)) return a.n;
+  const deSiempre = S.slice();
+  S = original.slice(); insertarPartes(i, [s, cierreDe(s)]);
+  const b = await partirHastaCaber(i, 2, limite);
+  let n = b.n, conFranja = null;
+  if (b.cabe) {
+    // ¿Caben las dos cajas en una franja debajo de la última pista? Entonces sobra la slide de cierre.
+    const j = i + b.n - 2, cierre = S[j + 1];
+    conFranja = S[j];
+    S.splice(j + 1, 1); conFranja.ladoAbajo = true; retitular(S, idioma);
+    cur = j;
+    if (await cabeTeoria(conFranja, limite)) n = b.n - 1;
+    else { delete conFranja.ladoAbajo; conFranja = null; S.splice(j + 1, 0, cierre); retitular(S, idioma); }
+  }
+  if (a.cabe && (!b.cabe || n >= a.n)) {
+    if (conFranja) delete conFranja.ladoAbajo;
+    S = deSiempre; retitular(S, idioma);
+    return a.n;
+  }
+  return n;
 }
 // ¿Cabe esta slide de teoría? Casi siempre se sabe SIN bajar sus fotos, midiéndola dos veces con un hueco en lugar de
 // cada foto: con el hueco más grande que una foto puede ocupar (si así cabe, cabe con cualquier foto) y con el más
@@ -421,7 +513,19 @@ function avanceGuardado(remoto) {
 }
 function recuperar(remoto) {
   const p = avanceGuardado(remoto);
-  if (p) { ctx.resultados = p.resultados ?? {}; ctx.minis = p.minis ?? {}; ctx.reto = p.reto ?? null; cur = Math.min(S.length - 1, p.cur ?? 0); }
+  if (p) { ctx.resultados = p.resultados ?? {}; ctx.minis = minisEnSuLugar(p.minis); ctx.reto = p.reto ?? null; cur = Math.min(S.length - 1, p.cur ?? 0); }
+}
+// Las calificaciones de los mini-exámenes se guardan por número de slide. Si la teoría de la guía quedó repartida en
+// otras slides (17 nov 2026: menos páginas de continuación), un número guardado antes ya no cae en su mini-examen: esa
+// calificación se pasa al mini-examen libre más cercano a donde estaba, para que no se pierda en «Mis resultados».
+function minisEnSuLugar(minis) {
+  const quizzes = S.map((s, i) => (s.k === "quiz" ? i : -1)).filter((i) => i >= 0), m = {}, sueltas = [];
+  Object.entries(minis ?? {}).forEach(([k, v]) => { if (S[k]?.k === "quiz") m[k] = v; else sueltas.push([Number(k), v]); });
+  sueltas.sort((a, b) => a[0] - b[0]).forEach(([k, v]) => {
+    const libres = quizzes.filter((q) => !(q in m));
+    if (libres.length && Number.isFinite(k)) m[libres.reduce((a, b) => (Math.abs(b - k) < Math.abs(a - k) ? b : a))] = v;
+  });
+  return m;
 }
 
 // Secreto del dispositivo (regla de familia), igual que en entrar.html.

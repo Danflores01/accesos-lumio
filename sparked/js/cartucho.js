@@ -292,9 +292,12 @@ export function armarSlides(c) {
     // de después en otra; todas con el mismo título y (1/3), (2/3), (3/3).
     const pistas = b.pistas;
     const grupos = [];
-    for (let i = 0; i < pistas.length; i += 3) {
-      const resto = pistas.length - i;
-      grupos.push(pistas.slice(i, i + (resto === 4 ? 2 : 3)));
+    // De 3 en 3; cuando quedan 4, van 2 y 2. (Hasta el 17 nov 2026 el contador avanzaba siempre 3, aunque el grupo
+    // fuera de 2: en un bloque de 4 pistas la tercera se quedaba sin salir en la teoría, y en uno de 7, la sexta.)
+    for (let i = 0; i < pistas.length;) {
+      const cuantas = pistas.length - i === 4 ? 2 : 3;
+      grupos.push(pistas.slice(i, i + cuantas));
+      i += cuantas;
     }
     if (!grupos.length) grupos.push([]);
     // Si la primera pista del grupo trae `titulo_pagina`, la slide se titula así (como las páginas "Clue" de Lumio).
@@ -543,21 +546,36 @@ function partirCola(p) {
     const m = Math.ceil(corr.length / 2);
     return [{ ...sin(p, ["esquema", "clave", "conclusion"]), correcciones: corr.slice(0, m) }, { ...sin(p, ["ejemplo", ...CABEZA]), correcciones: corr.slice(m) }];
   }
+  // La cola siempre se puede partir (17 nov 2026): antes, una parte que solo traía el esquema y la clave ya no se
+  // dividía y, si no cabía, se quedaba con barra de desplazamiento. Ahora: el ejemplo y el dato corregido, uno en cada
+  // slide; el esquema en una y la clave con la conclusión en otra; un esquema solo, la mitad de sus elementos en cada
+  // una; la clave en una y la conclusión en otra. Solo una pieza única que ya no se puede dividir devuelve null.
+  if (p.ejemplo && corr.length === 1) return [sin(p, ["correcciones"]), sin(p, ["ejemplo", ...CABEZA])];
+  const elementos = p.esquema?.tipo ? (p.esquema.elementos ?? []) : [];
+  if (p.esquema?.tipo && (p.clave || p.conclusion)) return [sin(p, ["clave", "conclusion"]), sin(p, ["esquema", ...CABEZA])];
+  if (elementos.length >= 2) {
+    const m = Math.ceil(elementos.length / 2);
+    return [{ ...sin(p, []), esquema: { ...p.esquema, elementos: elementos.slice(0, m) } }, { ...sin(p, CABEZA), esquema: { ...p.esquema, elementos: elementos.slice(m) } }];
+  }
+  if (p.clave && p.conclusion) return [sin(p, ["conclusion"]), sin(p, ["clave", ...CABEZA])];
   return null;
 }
-// Títulos, numeración y marcas de las slides de teoría después de repartir: las slides de una misma serie (una pista o
-// un grupo que no cupo en una) llevan (1/2), (2/2); "parte" da los colores y "ultima" pone "Ojo con esto" y "Palabras
-// clave" solo en la última slide de teoría del bloque.
+// Títulos, numeración y marcas de las slides de teoría después de repartir: "parte" da los colores y "ultima" pone "Ojo
+// con esto" y "Palabras clave" solo en la última slide de teoría del bloque.
+// Numeración (17 nov 2026): las slides de un bloque que comparten título llevan UNA sola numeración corrida, (1/4),
+// (2/4)…, sean páginas de una pista que no cupo en una o grupos distintos del mismo bloque. Antes cada grupo llevaba su
+// número y, si además se partía, salía doble: «Pista · Juicio de amparo (2) (1/5)». Por lo mismo, si el título de página
+// que escribió la inteligencia artificial ya termina en «(2)», ese número se quita antes de numerar.
+const sinNumero = (x) => String(x).replace(/\s*\((?:[1-9]|1\d)\)\s*$/, "") || String(x);
 export function retitular(S, idioma) {
   const porBloque = {};
   S.forEach((s) => { if (s.k === "teoria") (porBloque[s.bi] ??= []).push(s); });
   Object.values(porBloque).forEach((lista) => {
-    const numeros = new Set(lista.map((s) => s.numero));
+    const bases = lista.map((s) => (s.base ? sinNumero(s.base) : `${t(idioma, "pista")} · ${s.b.titulo}`));
     lista.forEach((s, i) => {
-      const serie = lista.filter((x) => x.serie === s.serie);
-      const k = serie.length, j = serie.indexOf(s) + 1;
-      const base = s.base || `${t(idioma, "pista")} · ${s.b.titulo}${numeros.size > 1 ? ` (${s.numero})` : ""}`;
-      s.t = k > 1 ? `${base} (${j}/${k})` : base;
+      const iguales = bases.reduce((n, x) => n + (x === bases[i] ? 1 : 0), 0);
+      const lugar = bases.slice(0, i + 1).reduce((n, x) => n + (x === bases[i] ? 1 : 0), 0);
+      s.t = iguales > 1 ? `${bases[i]} (${lugar}/${iguales})` : bases[i];
       s.parte = i + 1; s.ultima = i === lista.length - 1;
     });
   });

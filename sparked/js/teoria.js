@@ -125,11 +125,27 @@ export function teoria(s, ctx) {
   cuerpo.innerHTML = cuerpoHtml;
 
   // última slide de teoría del bloque: "Ojo con esto" y "Palabras clave"
-  if (s.ultima && s.b) {
+  // (s.sinLado: el reproductor pide no ponerlos, por ejemplo en la vista previa cuando no caben junto a la pista)
+  if (s.ultima && s.b && !s.sinLado) {
     const pds = ctx.c.plan.puntos_dificiles.filter((p) => ctx.c.bloqueDePunto[p.id] === s.b.id);
     const terminos = s.b.actividades.filter((a) => a.tipo === "conceptos").flatMap((a) => (a.pares ?? []).map((p) => p.termino)).slice(0, 10);
-    if (pds.length || terminos.length) {
-      const lado = h(`<div style="display:flex;flex-direction:column;gap:12px">${pds.length ? `<div class="ojo"><h3>${esc(ctx.t("cuidado"))}</h3>${pds.map((p) => `<div>• ${esc(p.descripcion)}</div>`).join("")}</div>` : ""}${terminos.length ? `<div class="claves"><h3>${esc(ctx.t("claves"))}</h3><div class="kchips">${terminos.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}</div></div>` : ""}</div>`);
+    // Las dos cajas. Con «letra» y «titulo» (atributos style) van con la letra de la slide; sin ellos, con la suya de siempre.
+    const cajas = (letra = "", titulo = "") => `${pds.length ? `<div class="ojo"${letra}><h3${titulo}>${esc(ctx.t("cuidado"))}</h3>${pds.map((p) => `<div>• ${esc(p.descripcion)}</div>`).join("")}</div>` : ""}${terminos.length ? `<div class="claves"><h3${titulo}>${esc(ctx.t("claves"))}</h3><div class="kchips">${terminos.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}</div></div>` : ""}`;
+    const aLoAncho = pds.length && terminos.length ? "minmax(0,3fr) minmax(0,2fr)" : "minmax(0,1fr)";
+    if ((pds.length || terminos.length) && !pistas.length) {
+      // Slide de cierre del bloque (17 nov 2026, nada se desborda): cuando «Ojo con esto» y «Palabras clave» no cupieron
+      // junto a la última pista ni debajo de ella, el reproductor los manda a su propia slide, sin pistas. Aquí van a lo
+      // ancho y con la letra de la slide (--letra, de 22 a 18 px), no en la columna angosta de 300 px.
+      cuerpo.innerHTML = `<div class="tarjetas" style="grid-template-columns:${aLoAncho};height:auto;align-items:start">${cajas(' style="font-size:var(--letra)"', ' style="font-size:calc(var(--letra) + 2px)"')}</div>`;
+    } else if ((pds.length || terminos.length) && s.ladoAbajo) {
+      // Franja de cierre (17 nov 2026): la columna de 300 px no cupo junto a la última pista, pero las dos cajas sí caben
+      // a lo ancho debajo de ella (lo decide el reproductor, que mide la slide). Lo de arriba deja de estirarse.
+      // La caja clave y la banda ya no son lo último de la slide: no hace falta que le dejen sitio al botón del juego.
+      if (cuerpo.firstElementChild) cuerpo.firstElementChild.style.height = "auto";
+      cuerpo.querySelectorAll(".fila-clave").forEach((f) => { f.classList.remove("fila-clave"); f.style.marginRight = ""; f.style.marginTop = "16px"; });
+      cuerpo.appendChild(h(`<div class="tarjetas" style="grid-template-columns:${aLoAncho};height:auto;align-items:start;margin-top:16px">${cajas()}</div>`));
+    } else if (pds.length || terminos.length) {
+      const lado = h(`<div style="display:flex;flex-direction:column;gap:12px">${cajas()}</div>`);
       const grid = cuerpo.querySelector(".tarjetas, .definiciones");
       if (grid) { grid.style.gridTemplateColumns = `repeat(${Math.max(1, pistas.length)},1fr) 300px`; grid.classList.remove("definiciones"); grid.classList.add("tarjetas"); grid.appendChild(lado); }
       else cuerpo.appendChild(lado);
