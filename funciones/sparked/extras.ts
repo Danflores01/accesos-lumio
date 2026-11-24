@@ -273,12 +273,15 @@ type CompraCosto = { estado: string; monto_mxn: number | string | null; pagada_e
 //   · Daniel la confirmó a mano en el panel diciendo que la cobró por fuera, en efectivo o transferencia (metodo_pago "manual").
 // NO es venta lo que se entregó sin cobro: guía con código gratis (metodo_pago "codigo"), cortesía ("cortesia") o
 // confirmada a mano sin decir cómo se cobró (metodo_pago vacío: así quedaron las anteriores al 11 nov 2026).
+// Tampoco es venta una guía hecha con el saldo de un paquete (metodo_pago "saldo", 24 nov 2026): lo que se cobró fue el
+// PAQUETE (compras.producto "paquete3"), que cuenta como una sola venta de su monto cuando Mercado Pago lo aprueba.
 // Nació del 10 nov 2026: el panel decía 5 ventas y $500 cuando Mercado Pago solo había cobrado 3; las otras 2 eran
 // compras marcadas como pagadas a mano, sin cobro. Prueba: herramientas/probar-ventas.mjs.
 export type CompraCobro = { estado?: string | null; metodo_pago?: string | null; mp_estado?: string | null; stripe_session_id?: string | null };
 export const ventaCobrada = (c: CompraCobro): boolean => c.estado === "pagada" && (c.mp_estado === "approved" || c.metodo_pago === "manual" || !!c.stripe_session_id);
-/** Para una compra pagada que no es venta: "codigo" (código gratis) o "cortesia" (confirmada a mano sin cobro). */
-export const tipoSinCobro = (c: CompraCobro): "codigo" | "cortesia" | null => c.estado !== "pagada" || ventaCobrada(c) ? null : c.metodo_pago === "codigo" ? "codigo" : "cortesia";
+/** Para una compra pagada que no es venta: "codigo" (código gratis), "saldo" (guía hecha con el saldo de un paquete ya
+ *  cobrado) o "cortesia" (confirmada a mano sin cobro). */
+export const tipoSinCobro = (c: CompraCobro): "codigo" | "saldo" | "cortesia" | null => c.estado !== "pagada" || ventaCobrada(c) ? null : c.metodo_pago === "codigo" ? "codigo" : c.metodo_pago === "saldo" ? "saldo" : "cortesia";
 /** Inicio del «día de ventas» y del mes para el Resumen del panel: el día termina a las 11 pm de Ciudad de México
  *  (UTC−6 todo el año), o sea a la medianoche de UTC−5. Devuelve fechas ISO en UTC (hoy y mes empiezan a las 05:00 UTC). */
 export function inicioDiaVentas(ahoraMs: number): { hoy: string; mes: string } {
@@ -286,8 +289,8 @@ export function inicioDiaVentas(ahoraMs: number): { hoy: string; mes: string } {
   const y = d.getUTCFullYear(), m = d.getUTCMonth();
   return { hoy: new Date(Date.UTC(y, m, d.getUTCDate(), 5)).toISOString(), mes: new Date(Date.UTC(y, m, 1, 5)).toISOString() };
 }
-/** ¿Se confirmó a mano? (ni Mercado Pago ni Stripe ni código): solo a estas se les puede cambiar «cobrada por fuera» ↔ «cortesía». */
-export const confirmadaAMano = (c: CompraCobro): boolean => c.estado === "pagada" && c.mp_estado !== "approved" && !c.stripe_session_id && c.metodo_pago !== "codigo";
+/** ¿Se confirmó a mano? (ni Mercado Pago ni Stripe ni código ni saldo de un paquete): solo a estas se les puede cambiar «cobrada por fuera» ↔ «cortesía». */
+export const confirmadaAMano = (c: CompraCobro): boolean => c.estado === "pagada" && c.mp_estado !== "approved" && !c.stripe_session_id && c.metodo_pago !== "codigo" && c.metodo_pago !== "saldo";
 
 /** Cálculo puro de la ficha de costos (se prueba sin base de datos). */
 export function calcularCostos(e: {
@@ -349,17 +352,17 @@ export function calcularCostos(e: {
     }
   }
 
-  // Ingresos: solo las compras que de verdad se cobraron (ventaCobrada). Las de código gratis y las cortesías
-  // (confirmadas a mano sin cobro) no son ventas: se cuentan aparte.
-  type Ingreso = { mxn: number; ventas: number; con_codigo: number; cortesias: number };
-  const cero = (): Ingreso => ({ mxn: 0, ventas: 0, con_codigo: 0, cortesias: 0 });
+  // Ingresos: solo las compras que de verdad se cobraron (ventaCobrada). Las de código gratis, las cortesías
+  // (confirmadas a mano sin cobro) y las guías hechas con el saldo de un paquete no son ventas: se cuentan aparte.
+  type Ingreso = { mxn: number; ventas: number; con_codigo: number; cortesias: number; de_paquete: number };
+  const cero = (): Ingreso => ({ mxn: 0, ventas: 0, con_codigo: 0, cortesias: 0, de_paquete: 0 });
   const ingresos = { periodo: cero(), mes: cero(), d7: cero(), hoy: cero() };
   for (const c of e.compras) {
     if (c.estado !== "pagada" || !c.pagada_en) continue;
     const dia = diaMx(c.pagada_en);
     const cobrada = ventaCobrada(c), sinCobro = tipoSinCobro(c);
     const monto = cobrada ? Number(c.monto_mxn ?? 0) || 0 : 0;
-    const sumar = (p: Ingreso) => { if (cobrada) { p.mxn += monto; p.ventas++; } else if (sinCobro === "codigo") p.con_codigo++; else p.cortesias++; };
+    const sumar = (p: Ingreso) => { if (cobrada) { p.mxn += monto; p.ventas++; } else if (sinCobro === "codigo") p.con_codigo++; else if (sinCobro === "saldo") p.de_paquete++; else p.cortesias++; };
     if (dia === hoy) sumar(ingresos.hoy);
     if (dia >= d7 && dia <= hoy) sumar(ingresos.d7);
     if (dia >= mes && dia <= hoy) sumar(ingresos.mes);

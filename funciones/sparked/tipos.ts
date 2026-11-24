@@ -28,5 +28,29 @@ export type CtxRutas = CtxBase & {
   ip: string | null;
 };
 
-// Datos de una entrega (guía 100 % lista) para avisar a la familia.
-export type Entrega = { titulo: string; link: string; expira_en: string };
+// Datos de una entrega (guía 100 % lista) para avisar a la familia. extra (opcional) = un renglón más al final del
+// mensaje; lo usan las guías hechas con el saldo de un paquete para decir cuántas guías quedan (cuenta.ts).
+export type Entrega = { titulo: string; link: string; expira_en: string; extra?: string };
+
+// Lo que el módulo de cuentas y paquetes (cuenta.ts) necesita de index.ts además de lo común: el cobro con Mercado
+// Pago, la entrega de una guía y el arranque de un trabajo. Así cuenta.ts no importa nada de index.ts.
+export type ExtrasCuenta = {
+  limpiarTel: (t: unknown) => string;               // teléfono en formato internacional ("+52" + 10 dígitos) o ""
+  mpToken: () => string;                            // llave de Mercado Pago ("" = cobro en línea apagado)
+  // Link de pago (preferencia de Checkout Pro: tarjeta, OXXO y SPEI) de un paquete; regresa a cuenta.html.
+  crearPreferenciaPaquete: (compra: any, precio: number, guias: number, dias: number) => Promise<{ id: string; url: string }>;
+  revisarCompraMP: (compraId: string, pagoId?: string | null) => Promise<string | null>;
+  tocaRevisarMP: (compraId: string) => boolean;     // freno: una consulta a Mercado Pago cada 20 s por compra
+  // Crea (una vez) la clase y el acceso de una compra pagada; el link no sale hasta que la guía está completa.
+  entregar: (compra: any) => Promise<{ token: string; expira_en: string; link: string; lista: boolean; recien: boolean }>;
+  entregarGuiaLista: (compraId: string) => Promise<{ entregada: boolean; recien: boolean; problemas?: string[] }>;
+  avanceDeGuia: (guiaId: string, desde?: number) => Promise<{ revision: boolean; avance: any }>;
+  archivosSubidos: (carpeta: string) => Promise<Set<string>>;
+  borrarCarpeta: (carpeta: string) => Promise<void>;
+  disparar: (trabajoId: string, retrasoMs?: number) => void;   // arranca (o continúa) un trabajo de generación
+  linkDe: (base: string, token: string) => string;
+  diasAcceso: number;                               // días de acceso de cada guía (7)
+  dispositivos: number;                             // dispositivos por guía (2)
+};
+export type CtxCuenta = CtxBase & ExtrasCuenta;
+export type CtxRutasCuenta = CtxRutas & ExtrasCuenta;

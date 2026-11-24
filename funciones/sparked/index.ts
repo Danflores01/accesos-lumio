@@ -7,6 +7,9 @@
 //   POST /pago/crear (acepta un código de descuento) · GET /pago/estado/:compra_id · POST /pago/reintentar/:compra_id
 //   POST /pago/mercadopago (avisos de Mercado Pago) · POST /pago/webhook (Stripe)
 //   POST /acceso/:token · GET /acceso/:token/estado · POST /progreso/:token · POST /reporte · GET /datos-curiosos
+//   Cuentas y paquete de 3 guías (cuenta.ts, 24 nov 2026): GET /paquete/info · POST /cuenta/codigo · POST /cuenta/entrar ·
+//   GET /cuenta · POST /cuenta/salir · POST /cuenta/correo · POST /paquete/comprar · GET /paquete/estado/:compra · POST /paquete/reintentar/:compra ·
+//   POST /cuenta/guia · GET /cuenta/guia/:compra · y en administración /admin/paquetes y /admin/cuentas/:id
 // Rutas internas: POST /trabajo/:id/paso (solo la propia función, cabecera x-interno)
 // Rutas de administración (cabecera x-admin-key, la misma llave del panel de accesos): /admin/...
 //
@@ -16,14 +19,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ejecutarPaso, recortarVistaPrevia, aplanar, medirPlan, verificarCartucho, type Trabajo } from "./pipeline.ts";
-import type { CtxBase, CtxRutas } from "./tipos.ts";
+import type { CtxBase, CtxRutas, CtxCuenta, ExtrasCuenta } from "./tipos.ts";
 import { rutasExtras, codigoBorrado, ventaCobrada, tipoSinCobro, confirmadaAMano, inicioDiaVentas } from "./extras.ts";
 import { rutasWhatsApp, avisarPorWhatsApp, motorWhatsApp } from "./whatsapp.ts";
 import { imagenEntrega, imagenCompartir } from "./imagen-wa.ts";
 import { matrizQr } from "./qr.ts";
 import { rutasAcceso, sesionAdmin } from "./acceso.ts";
+import { rutasCuenta, abonarPaquete, devolverGuiaDeSaldo, notaDeSaldo } from "./cuenta.ts";
 
-const VERSION = "2026-11-17.5";
+const VERSION = "2026-11-24.1";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -35,7 +39,7 @@ const APARATOS = 2;
 
 const CORS = {
   "access-control-allow-origin": "*",
-  "access-control-allow-headers": "content-type, x-admin-key, x-interno, authorization",
+  "access-control-allow-headers": "content-type, x-admin-key, x-interno, authorization, x-cuenta",
   "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -102,6 +106,9 @@ const CONFIG_DEF: Record<string, string> = {
   // «Completado con fuentes» (lo que no se confirma queda como nota para repasar en el libro); "no" = como antes. Se
   // enciende cuando pase la prueba real con un temario.
   sparked_investigar: "no",
+  // Paquete de 3 guías (Daniel, 24 nov 2026; cuenta.ts): "si" = se vende (los botones aparecen en el sitio); "no" =
+  // apagado. Precio del paquete en pesos, IVA incluido, y días que dura el saldo desde la compra.
+  sparked_paquete3: "no", sparked_paquete3_precio: "199", sparked_paquete3_dias: "90",
 };
 let configCache: { en: number; valores: Record<string, string> } | null = null;
 async function config(): Promise<Record<string, string>> {
@@ -180,6 +187,8 @@ async function correrPaso(id: string) {
       if (t.borrador_id) await supabase.from("borradores").update({ estado: "fallido" }).eq("id", t.borrador_id).neq("estado", "pagado");
       await supabase.from("trabajos").update({ progreso: { pct: 0, mensaje: amable, paso: t.paso } }).eq("id", id);
       if (t.alcance === "resto") await avisarRestoFallido(id);
+      // Guía hecha con el saldo de un paquete (trabajo "completa"): la guía regresa sola al saldo de la familia.
+      else if (t.alcance === "completa") await devolverSiEraDeSaldo(t.guia_id, amable);
     } else disparar(id, 6000);
   }
 }
@@ -191,8 +200,9 @@ async function reanudarSiAtorado(t: { id: string; estado: string; actualizado_en
   if (quieto < 150_000) return;
   if (Number(t.intentos ?? 0) >= 6) {
     // Paso atómico: si varias consultas llegan juntas, solo una lo marca (y solo una vez se avisa a Daniel).
-    const { data: marcado } = await supabase.from("trabajos").update({ estado: "error", error: "Se interrumpió demasiadas veces", actualizado_en: ahora() }).eq("id", t.id).in("estado", ["pendiente", "corriendo"]).select("alcance");
+    const { data: marcado } = await supabase.from("trabajos").update({ estado: "error", error: "Se interrumpió demasiadas veces", actualizado_en: ahora() }).eq("id", t.id).in("estado", ["pendiente", "corriendo"]).select("alcance, guia_id");
     if (marcado?.[0]?.alcance === "resto") { await supabase.from("trabajos").update({ progreso: { pct: 0, mensaje: MSG_REVISANDO } }).eq("id", t.id); await avisarRestoFallido(t.id); }
+    else if (marcado?.[0]?.alcance === "completa") await devolverSiEraDeSaldo(marcado[0].guia_id, "No pudimos terminar tu guía. Inténtalo de nuevo.");
     return;
   }
   await supabase.from("trabajos").update({ estado: "pendiente", intentos: Number(t.intentos ?? 0) + 1, actualizado_en: ahora() }).eq("id", t.id);
@@ -246,7 +256,8 @@ async function alFinalizar(t: Trabajo) {
     console.error("La guía no pasó la verificación final:", guiaId, msg);
     await supabase.from("trabajos").update({ estado: "error", error: msg, progreso: { pct: 0, mensaje: MSG_REVISANDO, paso: t.paso }, actualizado_en: ahora() }).eq("id", t.id);
     if (t.alcance === "resto") await avisarRestoFallido(t.id);
-    else await avisarRevisionDeGuia(guiaId, msg);
+    // Guía hecha con saldo: se devuelve al saldo (la familia puede intentarlo de nuevo). Las demás, a revisión.
+    else if (!(await devolverSiEraDeSaldo(guiaId, "No pudimos terminar tu guía. Inténtalo de nuevo."))) await avisarRevisionDeGuia(guiaId, msg);
     return;
   }
   if (borrador) await supabase.from("borradores").update({ estado: borrador.estado === "pagado" ? "listo" : borrador.estado === "generando" ? "listo" : borrador.estado }).eq("id", borrador.id);
@@ -353,11 +364,12 @@ async function mp(ruta: string, op: { method?: string; body?: unknown } = {}): P
 
 // Crea el link de pago (preferencia) de una compra. Al pagar con tarjeta regresa solo a listo.html; si queda pendiente
 // (OXXO o SPEI) o falla, regresa a listo.html con ?pago=pendiente o ?pago=fallido.
-async function crearPreferenciaMP(compra: any, titulo: string, precio: number): Promise<{ id: string; url: string }> {
+// op (opcional, para el paquete de guías): a qué página regresa, y el nombre y la descripción del artículo.
+async function crearPreferenciaMP(compra: any, titulo: string, precio: number, op: { pagina?: string; articulo?: string; descripcion?: string } = {}): Promise<{ id: string; url: string }> {
   const base = await sitio();
-  const volver = (estado = "") => `${base}listo.html?compra=${compra.id}${estado ? `&pago=${estado}` : ""}`;
+  const volver = (estado = "") => `${base}${op.pagina ?? "listo.html"}?compra=${compra.id}${estado ? `&pago=${estado}` : ""}`;
   const cuerpo: Record<string, any> = {
-    items: [{ id: String(compra.guia_id ?? compra.id), title: `Guía SparkEd: ${titulo}`.slice(0, 120), description: `${DIAS_ACCESO} días de acceso ilimitado a tu guía, en ${APARATOS} dispositivos`, category_id: "learnings", quantity: 1, currency_id: "MXN", unit_price: precio }],
+    items: [{ id: String(compra.guia_id ?? compra.id), title: (op.articulo ?? `Guía SparkEd: ${titulo}`).slice(0, 120), description: op.descripcion ?? `${DIAS_ACCESO} días de acceso ilimitado a tu guía, en ${APARATOS} dispositivos`, category_id: "learnings", quantity: 1, currency_id: "MXN", unit_price: precio }],
     external_reference: compra.id,
     back_urls: { success: volver(), pending: volver("pendiente"), failure: volver("fallido") },
     auto_return: "approved",
@@ -607,6 +619,12 @@ async function confirmarPago(compraId: string, extra: { stripe_session_id?: stri
     if (e) throw e;
     Object.assign(compra, cambios);
   }
+  // Paquete de guías (24 nov 2026): no hay guía que entregar; el pago se vuelve saldo en la cuenta, una sola vez
+  // (abonarPaquete, en cuenta.ts; la base no deja abonar dos veces la misma compra).
+  if (compra.producto === "paquete3") {
+    const abono = await abonarPaquete(ctxBase(), compra);
+    return { compra, token: null, expira_en: null, link: null, lista: abono.abonado, recien: abono.recien, paquete: abono };
+  }
   const entrega = await entregar(compra);
   return { compra, ...entrega };
 }
@@ -623,7 +641,7 @@ async function entregar(compra: any): Promise<{ token: string; expira_en: string
     if (a) {
       const { data: g } = await supabase.from("guias").select("origen, borrador_id, completo:cartucho->completo").eq("id", compra.guia_id).maybeSingle();
       // Si la primera entrega se cortó antes de lanzar el resto de la guía, se lanza ahora (lanzarResto no lo duplica).
-      if (g && g.completo !== true && g.origen === "personalizada" && g.borrador_id) await lanzarResto(compra.guia_id, g.borrador_id).catch((e) => console.error("No se pudo lanzar el resto de la guía:", (e as Error).message));
+      if (g && g.completo !== true && g.origen === "personalizada" && g.borrador_id && compra.metodo_pago !== "saldo") await lanzarResto(compra.guia_id, g.borrador_id).catch((e) => console.error("No se pudo lanzar el resto de la guía:", (e as Error).message));
       const r = g?.completo === true ? await entregarGuiaLista(compra.id) : { entregada: false, recien: false };
       const a2 = r.recien ? (await supabase.from("accesos").select("token, expira_en").eq("id", compra.acceso_id).maybeSingle()).data ?? a : a;
       return { token: a2.token, expira_en: a2.expira_en, link: linkDe(base, a2.token), lista: r.entregada, recien: r.recien };
@@ -655,7 +673,8 @@ async function entregar(compra: any): Promise<{ token: string; expira_en: string
     await supabase.from("guias").update(cambios).eq("id", guia.id);
     if (guia.borrador_id) {
       await supabase.from("borradores").update({ estado: "pagado", pagado_en: ahora(), nombre: compra.nombre, telefono: compra.telefono, correo: compra.correo, expira_en: enDias(DIAS_ACCESO + 1) }).eq("id", guia.borrador_id);
-      if (guia.completo !== true) {
+      // Una guía hecha con el saldo de un paquete no pasa por aquí: su trabajo "completa" lo lanza cuenta.ts.
+      if (guia.completo !== true && compra.metodo_pago !== "saldo") {
         // Si no se puede lanzar, la familia ve "Estamos revisando tu guía" (y recibe ese correo) y Daniel recibe el aviso.
         try { await lanzarResto(guia.id, guia.borrador_id); }
         catch (e) {
@@ -701,10 +720,12 @@ async function entregarGuiaLista(compraId: string): Promise<{ entregada: boolean
   if (!a) return { entregada: true, recien: true };
   const titulo = g.titulo ?? c.titulo ?? "Tu guía";
   const link = linkDe(await sitio(), a.token);
+  // Guía hecha con el saldo de un paquete: el mensaje dice cuántas guías le quedan y dónde está su cuenta.
+  const extra = c.metodo_pago === "saldo" ? await notaDeSaldo(ctxBase(), c).catch(() => "") : "";
   // Correo y WhatsApp son independientes: que falle uno no impide el otro.
   const [correo, whatsapp] = await Promise.allSettled([
-    enviarCorreo(c, titulo, link, a.expira_en),
-    avisarPorWhatsApp(ctxBase(), c, { titulo, link, expira_en: a.expira_en }),
+    enviarCorreo(c, titulo, link, a.expira_en, extra),
+    avisarPorWhatsApp(ctxBase(), c, { titulo, link, expira_en: a.expira_en, ...(extra ? { extra } : {}) }),
   ]);
   console.log("Guía entregada", c.id, "correo:", correo.status === "fulfilled" ? "ok" : String((correo as PromiseRejectedResult).reason), "whatsapp:", whatsapp.status === "fulfilled" ? JSON.stringify(whatsapp.value) : String((whatsapp as PromiseRejectedResult).reason));
   return { entregada: true, recien: true };
@@ -779,18 +800,18 @@ async function avisarFalloDeGuia(comentario: string) {
 
 // Correo de entrega a la familia: sale una sola vez por compra, cuando la guía está 100 % completa y verificada (o cuando
 // Daniel lo reenvía desde el panel). Es el único correo del caso normal.
-async function enviarCorreo(compra: any, titulo: string, link: string, expira: string) {
+async function enviarCorreo(compra: any, titulo: string, link: string, expira: string, extra = "") {
   if (!Deno.env.get("RESEND_API_KEY") || !esCorreo(compra.correo)) return;
   const esc = escHtml;
   const fecha = new Date(expira).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short", timeZone: "America/Mexico_City" });
-  const conCodigo = compra.metodo_pago === "codigo", cortesia = compra.metodo_pago === "cortesia";
+  const conCodigo = compra.metodo_pago === "codigo", cortesia = compra.metodo_pago === "cortesia", conSaldo = compra.metodo_pago === "saldo";
   // El correo se escribe como lo escribiría una persona (saludo con nombre, párrafos cortos, el link como texto y sin
   // banners ni botones grandes): así Gmail lo deja en la bandeja principal y no en "Notificaciones" o "Promociones".
   const nombre = String(compra.nombre ?? "").trim().split(/[ ]+/)[0] || "Hola";
   const saludo = nombre === "Hola" ? "Hola:" : `Hola, ${esc(nombre)}:`;
-  const primera = `${conCodigo ? "Tu código se aplicó" : cortesia ? "Tu acceso se activó" : "Tu pago se confirmó"} y tu guía <b>${esc(titulo)}</b> ya está lista. Ábrela con este link:`;
-  const nota = "";
-  const pago = conCodigo ? `Acceso con código${compra.codigo ? " " + esc(compra.codigo) : ""}` : cortesia ? "Acceso de cortesía" : `$${esc(compra.monto_mxn)} MXN, IVA incluido`;
+  const primera = `${conCodigo ? "Tu código se aplicó" : cortesia ? "Tu acceso se activó" : conSaldo ? "Usaste 1 guía de tu paquete" : "Tu pago se confirmó"} y tu guía <b>${esc(titulo)}</b> ya está lista. Ábrela con este link:`;
+  const nota = extra ? `\n    <p>${esc(extra)}</p>` : "";
+  const pago = conCodigo ? `Acceso con código${compra.codigo ? " " + esc(compra.codigo) : ""}` : cortesia ? "Acceso de cortesía" : conSaldo ? "Guía de tu paquete" : `$${esc(compra.monto_mxn)} MXN, IVA incluido`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#1b1b1f;max-width:560px;margin:auto">
     <p>${saludo}</p>
     <p>${primera}</p>
@@ -805,6 +826,7 @@ async function enviarCorreo(compra: any, titulo: string, link: string, expira: s
 
 // Aviso a Daniel al confirmarse el pago: una venta, o un acceso con código gratis (que no es venta).
 async function avisarVenta(compra: any, titulo: string) {
+  if (compra.metodo_pago === "saldo") return;   // guía de paquete: la venta (y su aviso) fue el paquete
   const esc = escHtml;
   const conCodigo = compra.metodo_pago === "codigo";
   const quien = `<p>${esc(compra.nombre)} · ${esc(compra.telefono)} · ${esc(compra.correo)}</p>`;
@@ -879,15 +901,29 @@ async function autorizado(req: Request): Promise<boolean> {
   return (await autorizadoConClave(req)) || !!(await sesionAdmin(ctxBase(), req));
 }
 
-// ---------- Módulos aparte: entrada con correo y contraseña (acceso.ts), comentarios y costos (extras.ts) y WhatsApp (whatsapp.ts) ----------
+// ---------- Módulos aparte: entrada con correo y contraseña (acceso.ts), comentarios y costos (extras.ts), WhatsApp (whatsapp.ts) y cuentas y paquetes (cuenta.ts) ----------
 // Cada módulo recibe este contexto (tipos.ts) y decide si la ruta es suya; si no, devuelve null.
 // Imagen de cada mensaje de WhatsApp: la entrega lleva el QR del link de esa guía; «compartir» es una imagen fija.
 const imagenWhatsApp = async (tipo: "entrega" | "compartir", idioma: "es" | "en", link?: string): Promise<Uint8Array | null> =>
   tipo === "entrega" ? (link ? await imagenEntrega(await sitio(), idioma, link, matrizQr) : null) : await imagenCompartir(await sitio(), idioma);
 const ctxBase = (): CtxBase => ({ supabase, config, sitio, ahora, mandarCorreo, avisarDaniel, enSegundoPlano, imagenWhatsApp });
+// Lo que cuenta.ts (cuentas, saldo y paquete de 3 guías) necesita de aquí: el cobro, la entrega y el arranque de un trabajo.
+const extrasCuenta = (): ExtrasCuenta => ({
+  limpiarTel, mpToken, revisarCompraMP, tocaRevisarMP, entregar, entregarGuiaLista, avanceDeGuia, archivosSubidos, borrarCarpeta, disparar, linkDe,
+  crearPreferenciaPaquete: (compra, precio, guias, dias) => crearPreferenciaMP(compra, `Paquete de ${guias} guías`, precio, { pagina: "cuenta.html", articulo: `SparkEd: paquete de ${guias} guías`, descripcion: `${guias} guías completas; se pueden usar durante ${dias} días` }),
+  diasAcceso: DIAS_ACCESO, dispositivos: APARATOS,
+});
+const ctxCuenta = (): CtxCuenta => ({ ...ctxBase(), ...extrasCuenta() });
+// Si la guía de ese trabajo se hizo con el saldo de un paquete, la devuelve al saldo (una sola vez) y avisa a la familia.
+// true = era de saldo y quedó devuelta. Nunca lanza: un fallo aquí no debe tapar el fallo original del trabajo.
+async function devolverSiEraDeSaldo(guiaId: string | null | undefined, motivo: string): Promise<boolean> {
+  if (!guiaId) return false;
+  try { return await devolverGuiaDeSaldo(ctxCuenta(), guiaId, motivo); }
+  catch (e) { console.error("No se pudo devolver la guía al saldo:", guiaId, (e as Error).message); return false; }
+}
 async function rutasAparte(req: Request, m: string, ruta: string[]): Promise<Response | null> {
   const c: CtxRutas = { ...ctxBase(), req, m, ruta, json, error, leerJson, esAdmin: () => autorizado(req), ip: ipDe(req) };
-  return (await rutasAcceso({ ...c, conClave: () => autorizadoConClave(req) })) ?? (await rutasExtras(c)) ?? (await rutasWhatsApp(c));
+  return (await rutasAcceso({ ...c, conClave: () => autorizadoConClave(req) })) ?? (await rutasExtras(c)) ?? (await rutasWhatsApp(c)) ?? (await rutasCuenta({ ...c, ...extrasCuenta() }));
 }
 // avisarPorWhatsApp(ctxBase(), compra, { titulo, link, expira_en }) se llama en entregarGuiaLista(), junto con el correo.
 
@@ -1079,9 +1115,11 @@ Deno.serve(async (req: Request) => {
     }
 
     if (r0 === "pago" && r1 === "estado" && esUuid(r2) && m === "GET") {
-      const columnas = "id, estado, titulo, correo, telefono, acceso_id, guia_id, pagada_en, entregada_en, monto_mxn, mp_preferencia_id, mp_estado, metodo_pago, mp_ficha_url, mp_vence_en";
+      const columnas = "id, estado, titulo, correo, telefono, acceso_id, guia_id, pagada_en, entregada_en, monto_mxn, mp_preferencia_id, mp_estado, metodo_pago, mp_ficha_url, mp_vence_en, producto";
       let { data: c } = await supabase.from("compras").select(columnas).eq("id", r2).maybeSingle();
       if (!c) return error("Esa compra no existe", 404);
+      // Un paquete de guías no tiene link que entregar: su estado se ve en «Mi cuenta» (GET /paquete/estado, con sesión).
+      if (c.producto === "paquete3") return json({ estado: c.estado, titulo: c.titulo, folio: String(c.id).slice(0, 8).toUpperCase(), producto: "paquete3" });
       // Mercado Pago: si su aviso todavía no llega, se le pregunta directo (máximo una vez cada 20 s por compra).
       if (c.estado !== "pagada" && c.mp_preferencia_id && mpToken() && tocaRevisarMP(c.id)) {
         try { if (await revisarCompraMP(c.id, url.searchParams.get("pago"))) c = (await supabase.from("compras").select(columnas).eq("id", r2).maybeSingle()).data ?? c; }
@@ -1241,7 +1279,7 @@ Deno.serve(async (req: Request) => {
         const { hoy, mes } = inicioDiaVentas(Date.now());
         const [guias, compras, solicitudes, reportes, trabajos, borradores, fallidos] = await Promise.all([
           supabase.from("guias").select("estado, origen"),
-          supabase.from("compras").select("estado, monto_mxn, pagada_en, creada_en, metodo_pago, mp_estado, stripe_session_id").gte("creada_en", new Date(Date.now() - 45 * 86400 * 1000).toISOString()),
+          supabase.from("compras").select("estado, monto_mxn, pagada_en, creada_en, metodo_pago, mp_estado, stripe_session_id, producto").gte("creada_en", new Date(Date.now() - 45 * 86400 * 1000).toISOString()),
           supabase.from("solicitudes").select("id", { count: "exact", head: true }).eq("estado", "sin_guia"),
           supabase.from("reportes").select("id", { count: "exact", head: true }).eq("estado", "nuevo"),
           supabase.from("trabajos").select("estado, costo_usd, creado_en").gte("creado_en", mes),
@@ -1256,6 +1294,10 @@ Deno.serve(async (req: Request) => {
         const venta = (c: any) => ventaCobrada(c);
         const gratis = (c: any) => tipoSinCobro(c) === "codigo";
         const cortesia = (c: any) => tipoSinCobro(c) === "cortesia";
+        // Paquete de 3 guías: el paquete cobrado es UNA venta de su monto (entra en las ventas de arriba); las guías
+        // hechas con su saldo (metodo_pago "saldo") no son ventas ni cortesías y se cuentan aparte.
+        const esPaquete = (c: any) => c.producto === "paquete3";
+        const dePaquete = (c: any) => tipoSinCobro(c) === "saldo";
         const hoyIso = hoy;
         // Guías pagadas cuyo trabajo "resto" falló y siguen sin terminar (aviso en el Resumen del panel).
         const F = fallidos.data ?? [];
@@ -1263,7 +1305,8 @@ Deno.serve(async (req: Request) => {
         const entregasConError = F.map((t) => ({ t, g: (gF ?? []).find((x: any) => x.id === t.guia_id) })).filter(({ g }) => g && g.completo !== true).map(({ t, g }) => ({ trabajo_id: t.id, guia_id: t.guia_id, titulo: g.titulo, paso: t.paso, error: t.error, desde: t.actualizado_en }));
         return json({
           guias: { publicadas: cuenta(G, (g) => g.estado === "publicada" && g.origen === "biblioteca"), borradores: cuenta(G, (g) => g.estado === "borrador" && g.origen === "biblioteca"), personalizadas: cuenta(G, (g) => g.origen === "personalizada" && g.estado !== "archivada"), archivadas: cuenta(G, (g) => g.estado === "archivada") },
-          compras: { pendientes: cuenta(C, (c) => c.estado === "pendiente"), pagadas_hoy: cuenta(C, (c) => venta(c) && c.pagada_en >= hoyIso), ingresos_hoy: suma(C, (c) => venta(c) && c.pagada_en >= hoyIso), pagadas_mes: cuenta(C, (c) => venta(c) && c.pagada_en >= mes), ingresos_mes: suma(C, (c) => venta(c) && c.pagada_en >= mes), con_codigo_hoy: cuenta(C, (c) => gratis(c) && c.pagada_en >= hoyIso), con_codigo_mes: cuenta(C, (c) => gratis(c) && c.pagada_en >= mes), cortesias_hoy: cuenta(C, (c) => cortesia(c) && c.pagada_en >= hoyIso), cortesias_mes: cuenta(C, (c) => cortesia(c) && c.pagada_en >= mes) },
+          compras: { pendientes: cuenta(C, (c) => c.estado === "pendiente" && !esPaquete(c)), pagadas_hoy: cuenta(C, (c) => venta(c) && c.pagada_en >= hoyIso), ingresos_hoy: suma(C, (c) => venta(c) && c.pagada_en >= hoyIso), pagadas_mes: cuenta(C, (c) => venta(c) && c.pagada_en >= mes), ingresos_mes: suma(C, (c) => venta(c) && c.pagada_en >= mes), con_codigo_hoy: cuenta(C, (c) => gratis(c) && c.pagada_en >= hoyIso), con_codigo_mes: cuenta(C, (c) => gratis(c) && c.pagada_en >= mes), cortesias_hoy: cuenta(C, (c) => cortesia(c) && c.pagada_en >= hoyIso), cortesias_mes: cuenta(C, (c) => cortesia(c) && c.pagada_en >= mes), de_paquete_hoy: cuenta(C, (c) => dePaquete(c) && c.pagada_en >= hoyIso), de_paquete_mes: cuenta(C, (c) => dePaquete(c) && c.pagada_en >= mes) },
+          paquetes: { pendientes: cuenta(C, (c) => esPaquete(c) && c.estado === "pendiente"), vendidos_hoy: cuenta(C, (c) => esPaquete(c) && venta(c) && c.pagada_en >= hoyIso), vendidos_mes: cuenta(C, (c) => esPaquete(c) && venta(c) && c.pagada_en >= mes), ingresos_mes: suma(C, (c) => esPaquete(c) && venta(c) && c.pagada_en >= mes) },
           entregas_con_error: entregasConError,
           solicitudes_sin_guia: solicitudes.count ?? 0, reportes_nuevos: reportes.count ?? 0, borradores_activos: borradores.count ?? 0,
           ia: { trabajos_mes: T.length, corriendo: cuenta(T, (t) => ["pendiente", "corriendo"].includes(t.estado)), errores: cuenta(T, (t) => t.estado === "error"), costo_usd_mes: T.reduce((n, t) => n + Number(t.costo_usd ?? 0), 0) },
@@ -1417,6 +1460,10 @@ Deno.serve(async (req: Request) => {
         const estado = url.searchParams.get("estado");
         let q = supabase.from("compras").select("*").order("creada_en", { ascending: false }).limit(300);
         if (estado) q = q.eq("estado", estado);
+        // Los paquetes de guías no son la compra de una guía (no tienen link ni guía que terminar): van en su propia
+        // sección del panel (GET /admin/paquetes). Con ?producto=paquete3 se pueden listar aquí.
+        const producto = url.searchParams.get("producto");
+        q = producto ? q.eq("producto", producto) : q.neq("producto", "paquete3");
         const { data, error: e } = await q; if (e) throw e;
         const ids = (data ?? []).map((c) => c.acceso_id).filter(Boolean);
         const { data: acc } = ids.length ? await supabase.from("accesos_vista").select("id, token, estado, expira_en, usos, dispositivos, max_dispositivos, primer_uso_en, ultimo_uso_en").in("id", ids) : { data: [] };
@@ -1464,6 +1511,7 @@ Deno.serve(async (req: Request) => {
       if (rec === "compras" && esUuid(id) && accion === "reenviar" && m === "POST") {
         const { data: c } = await supabase.from("compras").select("*").eq("id", id).maybeSingle();
         if (!c || c.estado !== "pagada") return error("La compra no está pagada");
+        if (c.producto === "paquete3") return error("Esta compra es un paquete de guías: no tiene link. La familia entra a su cuenta con su número de WhatsApp.", 409);
         const e = await entregar(c);
         if (!e.lista) return error("La guía todavía no está completa y verificada. Se entrega sola (correo y WhatsApp) en cuanto lo esté.", 409);
         if (!e.recien) await enviarCorreo(c, c.titulo ?? "Tu guía", e.link, e.expira_en);

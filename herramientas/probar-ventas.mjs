@@ -53,6 +53,15 @@ revisar(imp.cobrado_mxn === 300 && imp.iva_mxn === 41.38, `los impuestos se calc
 const r2 = calcularCostos({ ...base, compras: [...compras, { estado: "pagada", monto_mxn: "100.00", metodo_pago: "manual", mp_estado: null, pagada_en: "2026-11-10T18:00:00Z" }] });
 revisar(r2.ingresos.mes.ventas === 4 && r2.ingresos.mes.mxn === 400, "una guía cobrada por fuera y confirmada a mano sí suma como venta (4 y $400)");
 
+// ---------- Paquete de 3 guías (24 nov 2026): el paquete cobrado es UNA venta; las guías hechas con su saldo no ----------
+revisar(ventaCobrada({ ...P, metodo_pago: "saldo" }) === false && tipoSinCobro({ ...P, metodo_pago: "saldo" }) === "saldo", "guía hecha con el saldo de un paquete: no es venta ni cortesía (se cuenta aparte)");
+revisar(!confirmadaAMano({ ...P, metodo_pago: "saldo" }), "a una guía hecha con saldo no se le puede «cambiar a cobrada por fuera»");
+const paquete = (metodo, mp_estado, pagada_en) => ({ estado: "pagada", monto_mxn: "199.00", metodo_pago: metodo, mp_estado, pagada_en, producto: "paquete3" });
+const deSaldo = (pagada_en) => ({ estado: "pagada", monto_mxn: "0.00", metodo_pago: "saldo", mp_estado: null, pagada_en, producto: "guia" });
+const r3 = calcularCostos({ ...base, compras: [...compras, paquete("spei", "approved", "2026-11-10T16:00:00Z"), deSaldo("2026-11-10T16:30:00Z"), deSaldo("2026-11-10T17:30:00Z"), paquete("cortesia", null, "2026-11-10T19:00:00Z"), { ...paquete("oxxo", "pending", null), estado: "pendiente" }] });
+revisar(r3.ingresos.mes.ventas === 4 && r3.ingresos.mes.mxn === 499, `un paquete cobrado por SPEI suma UNA venta de $199: 4 ventas y $499 (salió ${r3.ingresos.mes.ventas} y $${r3.ingresos.mes.mxn})`);
+revisar(r3.ingresos.mes.de_paquete === 2 && r3.ingresos.mes.cortesias === 3 && r3.ingresos.mes.con_codigo === 4, `las 2 guías hechas con saldo no son ventas ni cortesías; un paquete de cortesía tampoco es venta (salió ${r3.ingresos.mes.de_paquete} de paquete y ${r3.ingresos.mes.cortesias} cortesías)`);
+
 // ---------- El «día de ventas» del Resumen termina a las 11 pm de México (pedido de Daniel, 11 nov 2026) ----------
 // Horas en UTC; México = UTC−6. 22:59 de México (04:59 UTC del día siguiente) todavía es «hoy»; 23:00 ya es mañana.
 const dv = (iso) => inicioDiaVentas(Date.parse(iso));
@@ -67,6 +76,7 @@ revisar(/inicioDiaVentas\(Date\.now\(\)\)/.test(fs.readFileSync(path.join(REPO, 
 const fuentes = ["index.ts", "extras.ts"].map((f) => fs.readFileSync(path.join(REPO, "funciones", "sparked", f), "utf8")).join("\n");
 const consultas = [...fuentes.matchAll(/\.from\("compras"\)\.select\("([^"]+)"\)/g)].map((x) => x[1]).filter((s) => s.includes("monto_mxn") && s.includes("metodo_pago") && !s.includes("nombre"));
 revisar(consultas.length >= 3 && consultas.every((s) => s.includes("mp_estado") && s.includes("stripe_session_id") && s.includes("estado")), `las ${consultas.length} consultas de cuentas (Resumen, Costos y mes anterior) traen estado, mp_estado y stripe_session_id`);
+revisar(/pendientes: cuenta\(C, \(c\) => c\.estado === "pendiente" && !esPaquete\(c\)\)/.test(fuentes) && /const dePaquete = \(c: any\) => tipoSinCobro\(c\) === "saldo";/.test(fuentes), "el Resumen cuenta los paquetes aparte de las guías, y las guías hechas con saldo aparte de las cortesías");
 revisar(/const venta = \(c: any\) => ventaCobrada\(c\);/.test(fuentes) && !/const venta = \(c: any\) => c\.estado === "pagada" && c\.metodo_pago !== "codigo"/.test(fuentes), "el Resumen usa la misma regla (ventaCobrada) y ya no «todo lo pagado que no sea con código»");
 
 console.log(mal ? `\n${mal} FALLAS: las cuentas del panel no coinciden con lo cobrado.` : "\nCuentas bien: solo cuenta como venta lo que de verdad se cobró.");

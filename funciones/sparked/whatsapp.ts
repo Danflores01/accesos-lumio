@@ -482,7 +482,9 @@ export async function avisarPorWhatsApp(c: CtxBase, compra: any, entrega: Entreg
 
     const idioma = idiomaDe(intl);
     const plantilla = (await ajustesDe(c))[CLAVES_PLANTILLA[idioma === "en" ? "entrega_en" : "entrega_es"]];
-    const texto = mensajeEntrega(idioma, compra.nombre, entrega.titulo || compra.titulo, entrega.link, plantilla);
+    // entrega.extra: un renglón más al final (las guías hechas con el saldo de un paquete dicen cuántas guías quedan).
+    const extra = String(entrega.extra ?? "").trim();
+    const texto = mensajeEntrega(idioma, compra.nombre, entrega.titulo || compra.titulo, entrega.link, plantilla) + (extra ? `\n\n${extra}` : "");
     try {
       const envio = await enviarMensaje(c, chat, texto, "entrega", idioma, entrega.link);
       const id = envio.id;
@@ -504,6 +506,40 @@ export async function avisarPorWhatsApp(c: CtxBase, compra: any, entrega: Entreg
   } catch (e) {
     console.error("avisarPorWhatsApp:", (e as Error).message);
     return { ok: false, estado: "error" };
+  }
+}
+
+// Manda un texto suelto a un teléfono: los códigos para entrar a una cuenta y los avisos del saldo de guías (cuenta.ts).
+// Nunca lanza errores: devuelve qué pasó (enviado · sin_motor · sin_telefono · sin_whatsapp · instancia_<estado> ·
+// fallido). Solo manda con el teléfono de SparkEd enlazado («authorized»): un código que se queda en cola llegaría
+// cuando ya venció, así que quien llama usa su respaldo (el correo). En la bitácora queda el tipo, el chat y el estado;
+// nunca el texto (un código de entrada jamás se guarda).
+export async function mandarTextoA(c: CtxBase, telefono: unknown, texto: string, tipo: string): Promise<{ ok: boolean; estado: string }> {
+  try {
+    if (!motorWhatsApp()) return { ok: false, estado: "sin_motor" };
+    const intl = telefonoInternacional(telefono);
+    if (!intl) return { ok: false, estado: "sin_telefono" };
+    const estado = await estadoInstancia();
+    if (estado !== "authorized") {
+      if (ESTADOS_MALOS[estado]) await avisarDesconexion(c, estado);
+      return { ok: false, estado: `instancia_${estado}` };
+    }
+    const { chat, nota } = await resolverChat(intl);
+    if (!chat) {
+      await anotar(c, { direccion: "salida", tipo, chat: intl, estado: "sin_whatsapp", detalle: nota });
+      return { ok: false, estado: "sin_whatsapp" };
+    }
+    try {
+      const id = await enviarTexto(chat, texto);
+      await anotar(c, { direccion: "salida", tipo, chat, estado: "enviado", id_mensaje: id, detalle: nota ?? null });
+      return { ok: true, estado: "enviado" };
+    } catch (e) {
+      await anotar(c, { direccion: "salida", tipo, chat, estado: "fallido", detalle: (e as Error).message });
+      return { ok: false, estado: "fallido" };
+    }
+  } catch (e) {
+    console.error("mandarTextoA:", sinLlave((e as Error).message));
+    return { ok: false, estado: "fallido" };
   }
 }
 

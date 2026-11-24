@@ -1,6 +1,6 @@
 // Candado contra el fallo del 10 nov 2026: un módulo aparte se quedó con una ruta que no era suya.
 //
-// En funciones/sparked/index.ts los módulos aparte (acceso.ts, extras.ts, whatsapp.ts) se ejecutan ANTES que las rutas
+// En funciones/sparked/index.ts los módulos aparte (acceso.ts, extras.ts, whatsapp.ts, cuenta.ts) se ejecutan ANTES que las rutas
 // principales. Si un módulo responde algo en una ruta ajena, la ruta de verdad nunca se ejecuta. Así pasó con
 // POST /acceso/<clave de la familia> (la que abre una guía pagada): acceso.ts respondía «Ruta no encontrada» y ninguna
 // familia pudo abrir su guía durante unas horas.
@@ -19,8 +19,8 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ENV = { SUPABASE_URL: "https://demo.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "llave-de-prueba" };
 globalThis.Deno = { env: { get: (k) => ENV[k] } };
 const traer = (f) => import(pathToFileURL(path.join(REPO, "funciones/sparked", f)).href);
-const [{ rutasAcceso }, { rutasExtras }, { rutasWhatsApp }] = await Promise.all([traer("acceso.ts"), traer("extras.ts"), traer("whatsapp.ts")]);
-const MODULOS = { "acceso.ts": rutasAcceso, "extras.ts": rutasExtras, "whatsapp.ts": rutasWhatsApp };
+const [{ rutasAcceso }, { rutasExtras }, { rutasWhatsApp }, { rutasCuenta }] = await Promise.all([traer("acceso.ts"), traer("extras.ts"), traer("whatsapp.ts"), traer("cuenta.ts")]);
+const MODULOS = { "acceso.ts": rutasAcceso, "extras.ts": rutasExtras, "whatsapp.ts": rutasWhatsApp, "cuenta.ts": rutasCuenta };
 
 // En una ruta ajena un módulo no debe tocar nada: ni la base de datos, ni internet, ni preguntar quién es.
 const tocado = [];
@@ -34,6 +34,10 @@ function contexto(m, ruta, cuerpo) {
     esAdmin: async () => { tocado.push("esAdmin"); return false; }, conClave: async () => { tocado.push("conClave"); return false; }, ip: null,
     supabase: prohibido("supabase"), config: async () => { tocado.push("config"); return {}; }, sitio: async () => "https://sparkeducation-mx.com/sparked/", ahora: () => new Date().toISOString(),
     mandarCorreo: async () => { tocado.push("correo"); }, avisarDaniel: async () => { tocado.push("aviso"); }, enSegundoPlano: () => { tocado.push("segundo plano"); },
+    // Lo que cuenta.ts recibe además de lo común (ExtrasCuenta, en tipos.ts).
+    limpiarTel: (t) => { const d = String(t ?? "").replace(/\D/g, ""); return d.length === 10 ? "+52" + d : ""; }, mpToken: () => "",
+    ...Object.fromEntries(["crearPreferenciaPaquete", "revisarCompraMP", "tocaRevisarMP", "entregar", "entregarGuiaLista", "avanceDeGuia", "archivosSubidos", "borrarCarpeta", "disparar", "linkDe"].map((n) => [n, (...a) => { tocado.push(n); return prohibido(n)(...a); }])),
+    diasAcceso: 7, dispositivos: 2,
   };
 }
 
@@ -88,6 +92,30 @@ await revisar("extras.ts y whatsapp.ts atienden lo suyo", async () => {
   assert.equal(await estado(rutasWhatsApp, "POST", ["whatsapp", "webhook"]), 200);
   assert.equal(await estado(rutasWhatsApp, "GET", ["admin", "whatsapp"]), 401);
   assert.equal(await estado(rutasWhatsApp, "GET", ["admin", "whatsapp", "chats"]), 401);
+});
+await revisar("cuenta.ts atiende lo suyo (cuentas y paquete de 3 guías) y nada más", async () => {
+  assert.equal(await estado(rutasCuenta, "GET", ["paquete", "info"]), 200);
+  assert.equal(await estado(rutasCuenta, "GET", ["cuenta"]), 401);                      // sin sesión
+  assert.equal(await estado(rutasCuenta, "POST", ["cuenta", "entrar"], { telefono: "no", codigo: "1" }), 401);
+  assert.equal(await estado(rutasCuenta, "POST", ["cuenta", "codigo"], { telefono: "no" }), 400);
+  assert.equal(await estado(rutasCuenta, "POST", ["cuenta", "guia"], { clave: "x" }), 401);
+  assert.equal(await estado(rutasCuenta, "POST", ["cuenta", "correo"], { correo: "a@b.co" }), 401);
+  assert.equal(await estado(rutasCuenta, "POST", ["cuenta", "salir"]), 200);
+  assert.equal(await estado(rutasCuenta, "GET", ["cuenta", "guia", UUID]), 401);
+  assert.equal(await estado(rutasCuenta, "POST", ["paquete", "comprar"]), 401);
+  assert.equal(await estado(rutasCuenta, "GET", ["paquete", "estado", UUID]), 401);
+  assert.equal(await estado(rutasCuenta, "POST", ["paquete", "reintentar", UUID]), 401);
+  assert.equal(await estado(rutasCuenta, "GET", ["admin", "paquetes"]), 401);
+  assert.equal(await estado(rutasCuenta, "GET", ["admin", "cuentas", UUID]), 401);
+  assert.equal(await estado(rutasCuenta, "POST", ["admin", "cuentas", UUID, "ajuste"], { cambio: 3 }), 401);
+  // Lo que no es una ruta exacta suya sigue de largo (null), también dentro de su propio prefijo.
+  assert.equal(await estado(rutasCuenta, "GET", ["cuenta", "entrar"]), null);
+  assert.equal(await estado(rutasCuenta, "POST", ["cuenta", "otra"]), null);
+  assert.equal(await estado(rutasCuenta, "GET", ["paquete"]), null);
+  assert.equal(await estado(rutasCuenta, "GET", ["paquete", "estado", "no-es-folio"]), null);
+  assert.equal(await estado(rutasCuenta, "GET", ["cuentas"]), null);
+  assert.equal(await estado(rutasCuenta, "GET", ["admin", "cuenta"]), null);
+  assert.equal(await estado(rutasCuenta, "POST", ["acceso", "entrar"]), null);
 });
 console.log(`${fallas ? "FALLA" : "ok   "} cada módulo sigue atendiendo sus propias rutas`);
 
