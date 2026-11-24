@@ -90,7 +90,7 @@ sed -i "s/^\/\/ Versión del código: .*$/\/\/ Versión del código: $V (commit 
 5. Comprueba la versión (`ronda.mjs` lo hace) y guarda el puente en un commit **solo si el despliegue se hizo**: el
    puente del repositorio siempre dice qué está desplegado de verdad.
 6. Si el cambio toca cuentas, saldo, cobro o entrega: `node <carpeta de la skill>/scripts/probar-paquete.mjs` (en vivo,
-   con una cuenta de prueba que se borra sola; 40 comprobaciones en unos 35 segundos). Con `--guia` genera además una
+   con una cuenta de prueba que se borra sola; unas 40 comprobaciones en cerca de un minuto). Con `--guia` genera además una
    guía completa de verdad con saldo (unos 6 minutos y hasta 5 pesos de IA).
 
 **Si el despliegue es rechazado por permisos:** no lo intentes por otro lado. Deja el puente como estaba

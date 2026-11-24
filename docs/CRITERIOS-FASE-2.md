@@ -975,7 +975,8 @@ existe: en el sitio sale como «Próximamente». Código del servidor 2026-11-24
 
 1. **Se enciende y se apaga con un ajuste** (`sparked_paquete3`: `si` / `no`; panel → Paquetes → «Venta del paquete»,
    junto con el precio y los días). Apagado, el sitio no muestra ningún botón del paquete y comprar responde «no
-   disponible»; quien ya compró conserva su saldo y sigue entrando a su cuenta.
+   disponible»; quien ya compró conserva su saldo y sigue entrando a su cuenta. **A la venta desde el 24 de noviembre de
+   2026**, después de pasar todas las pruebas.
 2. **La cuenta es el número de WhatsApp.** Se entra con un código de 6 dígitos que llega por WhatsApp (vale 10 minutos,
    5 intentos); si WhatsApp falla, va al correo de respaldo. Sin contraseñas. Frenos: 3 códigos por hora y 10 al día
    por número, 20 por hora por conexión. La respuesta al pedir un código es siempre la misma, exista o no la cuenta.

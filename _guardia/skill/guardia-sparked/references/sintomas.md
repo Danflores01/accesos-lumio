@@ -68,7 +68,14 @@ necesitan el visto bueno de Daniel (ver «Quién decide»).
 | «Mi guía no se pudo crear» | La generación falló o las fotos no eran material de estudio: la guía **regresó sola a su saldo**. | Panel → Paquetes → su cuenta: movimiento «Guía devuelta (no se pudo crear)» con el motivo. | Que la cree de nuevo con fotos claras. Si falla varias veces con buenas fotos, es del generador: consulta 3. |
 | «Tu cuenta ya está abierta en 2 dispositivos» | Es el límite, no un fallo. | — | Aceptar cierra la sesión del dispositivo más antiguo. |
 | «No tienes guías disponibles» y dice que sí pagó | Su saldo venció (90 días), ya las usó, o pagó con otro número. | Panel → Paquetes: busca por folio o por los últimos 4 dígitos. | Sumar una guía a mano («＋ Sumar una guía») lo decide Daniel. |
-| Algo raro en todo el paquete | — | `node scripts/probar-paquete.mjs` (40 comprobaciones en vivo). | Si falla: apagar la venta del paquete en el panel (no necesita despliegue) y avisar a Daniel. |
+| «El pago no se completó» al regresar de Mercado Pago | Su pago fue rechazado, o regresó con «Volver a la tienda» sin pagar (Mercado Pago manda entonces a `cuenta.html?compra=…&pago=fallido`). No hubo cargo. | Panel → Paquetes: su paquete sigue «pendiente de pago». | Que oprima «Intentar de nuevo»: usa la misma compra, no la duplica. |
+| Algo raro en todo el paquete | — | `node scripts/probar-paquete.mjs` (unas 40 comprobaciones en vivo, cerca de un minuto). | Si falla: apagar la venta del paquete en el panel (no necesita despliegue) y avisar a Daniel. |
+
+**Ojo al probar el cobro con un programa.** Mercado Pago no deja entrar a su página de pago a un navegador sin ventana
+(Edge «headless») ni a un programa: responde 403 «Hubo un error accediendo a esta página», y responde lo mismo con un
+link inventado. No es un fallo del paquete ni de la guía suelta. Lo que sí se puede comprobar con un programa es A DÓNDE
+manda el sitio (`mercadopago.com.mx/checkout/v1/redirect?pref_id=…`); que ese link abre el cobro se comprueba en un
+navegador de verdad, sin pagar: debe decir «SparkEd: paquete de 3 guías · $ 199» y ofrecer tarjeta, OXXO y SPEI.
 
 ## Quién decide
 
