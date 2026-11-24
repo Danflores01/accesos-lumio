@@ -35,7 +35,7 @@ const LOTE_ANTERIOR = 3; // tamaño de lote de las versiones anteriores, para re
 // "urls": las páginas que de verdad devolvió el buscador en esta llamada (resultados y citas); con ellas se comprueba
 // que las fuentes de la investigación existen y no salieron de la memoria de la IA.
 // "busqueda": cuántas búsquedas hizo, con qué consultas y qué errores dio el buscador (se registran en el log).
-export type Respuesta = { json: any; reparado: boolean; texto: string; parada: string | null; formato: boolean; ms: number; uso: { entrada: number; salida: number; costo: number }; urls: string[]; busqueda: { usadas: number; consultas: string[]; errores: string[] } };
+export type Respuesta = { json: any; reparado: boolean; texto: string; parada: string | null; formato: boolean; ms: number; uso: { entrada: number; salida: number; costo: number }; urls: string[]; busqueda: { usadas: number; consultas: string[]; errores: string[]; vueltas?: number; codigo?: number } };
 
 // ---------- Llamada al API de Claude (fetch directo, sin SDK) ----------
 // Una sola llamada por ejecución de la función. "previo" es la segunda oportunidad: se le muestra su respuesta anterior
@@ -101,21 +101,26 @@ export async function claude(opts: { modelo?: string; sistema: string; contenido
   const busqueda = { usadas: Number(u.server_tool_use?.web_search_requests ?? 0), ...detalleBusqueda(d) };
   // Una línea por llamada en los logs para medir tiempos y tokens de cada paso; con buscador, también sus consultas y
   // los errores que dio (11 nov 2026: dos temas quedaron como nota por un «error de entrada» que no se veía).
-  console.log("IA", JSON.stringify({ etiqueta: opts.etiqueta ?? "", modelo, esfuerzo: (cuerpo.output_config as any)?.effort ?? null, ms, entrada, salida, parada, formato, reparado, json: !!json, ...(opts.herramientas?.length ? { busquedas: busqueda.usadas, paginas: urls.length, consultas: busqueda.consultas.slice(0, 8), errores: busqueda.errores.slice(0, 8) } : {}) }));
+  console.log("IA", JSON.stringify({ etiqueta: opts.etiqueta ?? "", modelo, esfuerzo: (cuerpo.output_config as any)?.effort ?? null, ms, entrada, salida, parada, formato, reparado, json: !!json, ...(opts.herramientas?.length ? { busquedas: busqueda.usadas, vueltas: busqueda.vueltas, codigo: busqueda.codigo, paginas: urls.length, consultas: busqueda.consultas.slice(0, 8), errores: busqueda.errores.slice(0, 8) } : {}) }));
   return { json, reparado, texto, parada, formato, ms, uso: { entrada, salida, costo }, urls, busqueda };
 }
 
 // Consultas que hizo la IA y errores del buscador. Un error del buscador llega con HTTP 200, dentro del bloque de
 // resultado: su contenido es un objeto con error_code (no la lista de páginas).
-export function detalleBusqueda(d: any): { consultas: string[]; errores: string[] } {
+// vueltas: herramientas del servidor que corrieron en la llamada (cada una es una vuelta que relee todo lo acumulado);
+// codigo: las que no son búsqueda (el código del filtrado dinámico). 24 nov 2026: una parte de verificar sumó 610 mil
+// tokens de entrada (2.68 MXN) y no había cómo saber cuántas vueltas dio.
+export function detalleBusqueda(d: any): { consultas: string[]; errores: string[]; vueltas: number; codigo: number } {
   const consultas: string[] = [], errores: string[] = [];
+  let vueltas = 0, codigo = 0;
   for (const b of Array.isArray(d?.content) ? d.content : []) {
+    if (b?.type === "server_tool_use") { vueltas++; if (b?.name !== "web_search") codigo++; }
     const q = b?.type === "server_tool_use" ? b?.input?.query : undefined;
     if (typeof q === "string" && q.trim()) consultas.push(q.trim().slice(0, 120));
     const c = b?.content;
     if (/_tool_result$/.test(String(b?.type ?? "")) && c && typeof c === "object" && !Array.isArray(c) && (c.error_code || /_error$/.test(String(c.type ?? "")))) errores.push(String(c.error_code ?? c.type));
   }
-  return { consultas, errores };
+  return { consultas, errores, vueltas, codigo };
 }
 
 // Dominios que el error 400 del buscador dice que no puede consultar ("...not accessible to our user agent: ['a', 'b']").
@@ -143,11 +148,12 @@ async function llamar(supabase: Supa, t: Trabajo, fuente: Fuente, paso: string, 
   const a = ajusteDe(paso, D.con_haiku?.[paso] ? {} : fuente.opciones ?? {});
   const caro = a.nombre !== "haiku";
   const anotar = (resultado: string, r?: Respuesta) => {
-    D.metricas = [...(Array.isArray(D.metricas) ? D.metricas : []), { paso: etiqueta, modelo: a.nombre, esfuerzo: a.esfuerzo, entrada: r?.uso.entrada ?? 0, salida: r?.uso.salida ?? 0, costo_usd: r?.uso.costo ?? 0, ms: r?.ms ?? 0, parada: r?.parada ?? null, resultado, ...(r?.busqueda?.usadas ? { busquedas: r.busqueda.usadas } : {}), ...(r?.busqueda?.errores?.length ? { errores_busqueda: r.busqueda.errores.slice(0, 6) } : {}), en: new Date().toISOString() }].slice(-80);
+    D.metricas = [...(Array.isArray(D.metricas) ? D.metricas : []), { paso: etiqueta, modelo: a.nombre, esfuerzo: a.esfuerzo, entrada: r?.uso.entrada ?? 0, salida: r?.uso.salida ?? 0, costo_usd: r?.uso.costo ?? 0, ms: r?.ms ?? 0, parada: r?.parada ?? null, resultado, ...(r?.busqueda?.usadas ? { busquedas: r.busqueda.usadas } : {}), ...(r?.busqueda?.vueltas ? { vueltas: r.busqueda.vueltas, codigo: r.busqueda.codigo ?? 0 } : {}), ...(r?.busqueda?.errores?.length ? { errores_busqueda: r.busqueda.errores.slice(0, 6) } : {}), en: new Date().toISOString() }].slice(-80);
   };
   let r: Respuesta;
+  const herramientas = herramientasPara(opts.herramientas, a.nombre, fuente.opciones ?? {});
   try {
-    r = await claude({ ...opts, modelo: a.modelo, esfuerzo: a.esfuerzo, etiqueta: `${etiqueta} · ${a.nombre}/${a.esfuerzo}` });
+    r = await claude({ ...opts, herramientas, modelo: a.modelo, esfuerzo: a.esfuerzo, etiqueta: `${etiqueta} · ${a.nombre}/${a.esfuerzo}` });
   } catch (e) {
     if (!caro || !esTiempo(e)) throw e;
     anotar("se pasó de 125 s; el paso sigue con Haiku");
@@ -167,6 +173,14 @@ async function llamar(supabase: Supa, t: Trabajo, fuente: Fuente, paso: string, 
   }
   anotar(r.parada === "max_tokens" ? "cortada por largo" : r.json ? "ok" : "sin JSON", r);
   return r;
+}
+
+// El filtrado dinámico de web_search_20260209 (código que corre en el servidor) está documentado para Sonnet y Opus, no
+// para Haiku 5.5. Con el ajuste sparked_busqueda_basica = "si", las llamadas con Haiku usan web_search_20250305 (sin
+// código: menos vueltas). Nace en "no" (24 nov 2026): se enciende tras una guía de prueba.
+export function herramientasPara(herramientas: unknown[] | undefined, modelo: string, opciones: Record<string, unknown>): unknown[] | undefined {
+  if (!herramientas?.length || modelo !== "haiku" || !["si", "sí", "true", "1"].includes(String(opciones?.busqueda_basica ?? "").toLowerCase().trim())) return herramientas;
+  return herramientas.map((h: any) => h?.type === "web_search_20260209" ? { ...h, type: "web_search_20250305" } : h);
 }
 
 // Prueba de velocidad: una sola llamada del planificador con el modelo y el esfuerzo dados, sobre el inventario de un
@@ -2131,6 +2145,7 @@ export function anotarCandado(D: any, paso: string, detalle: string): void {
   console.log("CANDADO", JSON.stringify({ tope_mxn: TOPE_GUIA_MXN, paso, detalle }));
 }
 export function puedeSegunda(D: any, bloquesPorEscribir: number, modelo = MODELO_HAIKU): boolean {
+  if (busquedaDisparada(D)) return false;
   return costoGuiaMxn(D) + costoLlamadaMxn(modelo, BUSQUEDAS_SEGUNDA, FIJOS_INVESTIGAR) + RESERVA_FINAL_MXN + RESERVA_POR_BLOQUE_MXN * Math.max(0, bloquesPorEscribir) <= TOPE_GUIA_MXN;
 }
 
@@ -2176,10 +2191,25 @@ export function planVerificacion(lineas: { texto: string }[], base: number): any
 // original (si una parte usó menos búsquedas, las siguientes las recuperan) y, si no alcanza, quita búsquedas (primero
 // a la parte que tiene más) y deja rastro. Sin búsquedas, la parte se verifica sin buscador. Cuenta todas las búsquedas
 // permitidas como usadas: la IA casi nunca las usa todas (en 8 guías, de 0 a 10 de 10), así que el costo real queda abajo.
+// Freno (24 nov 2026): lo normal es 0.2–0.8 MXN por llamada con búsqueda (la más cara medida antes: 1.18). Si una llamada
+// pasó de FRENO_BUSQUEDA_MXN, sus vueltas se dispararon (una parte de verificar llegó a 610 mil tokens, 2.68 MXN): las
+// búsquedas que falten en la guía se quitan, para que no se repita.
+export const FRENO_BUSQUEDA_MXN = 1.5;
+export function busquedaDisparada(D: any): any | null {
+  return (Array.isArray(D?.metricas) ? D.metricas : []).find((m: any) => Number(m?.busquedas) > 0 && Number(m?.costo_usd) * MXN_POR_USD > FRENO_BUSQUEDA_MXN) ?? null;
+}
 export function ajustarVerificacion(D: any, modelo: string, desde: number): string | null {
   const v = D?.verif;
   if (!v || !Array.isArray(v.partes) || desde >= v.partes.length) return null;
   if (Array.isArray(v.original)) for (let k = desde; k < v.partes.length; k++) v.busquedas[k] = Number(v.original[k]) || 0;
+  const disparada = busquedaDisparada(D);
+  if (disparada && v.busquedas.slice(desde).some((x: number) => Number(x) > 0)) {
+    for (let k = desde; k < v.busquedas.length; k++) v.busquedas[k] = 0;
+    const detalle = `verificar: sin búsquedas desde la parte ${desde + 1}, porque «${disparada.paso}» costó ${(Number(disparada.costo_usd) * MXN_POR_USD).toFixed(2)} MXN (freno de ${FRENO_BUSQUEDA_MXN})`;
+    v.recortes = [...(Array.isArray(v.recortes) ? v.recortes : []), detalle];
+    anotarCandado(D, "verificar", detalle);
+    return detalle;
+  }
   const presupuesto = TOPE_GUIA_MXN - costoGuiaMxn(D) - 0.05;
   const costo = () => v.partes.slice(desde).reduce((s: number, p: any, k: number) => s + costoLlamadaMxn(modelo, v.busquedas[desde + k] ?? 0, FIJOS_VERIFICAR + (Number(p?.tokens) || 0)), 0);
   const suma = () => v.busquedas.slice(desde).reduce((s: number, x: number) => s + (Number(x) || 0), 0);

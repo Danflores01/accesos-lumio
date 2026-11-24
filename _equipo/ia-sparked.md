@@ -197,6 +197,14 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Lo aprendido
 
+- **24 nov · Código 2026-11-24.2 (guía del paquete de 3 a 6.34 MXN):** «verificar 4/4» (Haiku) sumó 610 472 tokens de
+  entrada = 2.68 MXN en una sola llamada; lo normal es ~18 mil por búsqueda (máx. medido 0.76 MXN en verificar, 1.18 en
+  investigar). Con herramientas del servidor, cada vuelta (hasta 10) relee todo lo acumulado y el candado no lo ve venir:
+  estima ~15 mil tokens por búsqueda. Arreglo: (1) cada llamada registra `vueltas` y `codigo` (para saber la causa la
+  próxima vez); (2) freno: si una llamada con búsqueda pasa de 1.5 MXN, el resto de la guía va sin búsquedas;
+  (3) `sparked_busqueda_basica` (nace en «no»): con «si», Haiku usa `web_search_20250305` (el filtrado dinámico de la
+  20260209 no está documentado para Haiku). Ninguno garantiza el tope si la PRIMERA llamada se dispara; para eso hace
+  falta cortar la llamada en vivo (streaming) — propuesto a la principal.
 - **18 nov · Costo de planear (medido con /admin/pruebas/plan en 3 inventarios reales, 6.67 MXN):** producción usa
   Sonnet/medium (0.96–1.81 MXN por guía; ~55 % entrada, ~45 % salida). Tokens de entrada del plan ≈ 10 780 + 0.336 ×
   caracteres de `JSON.stringify(inventario)` (cuadra con Derecho: 20 785 estimados contra 20 806 reales).

@@ -27,7 +27,7 @@ import { matrizQr } from "./qr.ts";
 import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 import { rutasCuenta, abonarPaquete, devolverGuiaDeSaldo, notaDeSaldo } from "./cuenta.ts";
 
-const VERSION = "2026-11-24.1";
+const VERSION = "2026-11-24.2";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -106,6 +106,9 @@ const CONFIG_DEF: Record<string, string> = {
   // «Completado con fuentes» (lo que no se confirma queda como nota para repasar en el libro); "no" = como antes. Se
   // enciende cuando pase la prueba real con un temario.
   sparked_investigar: "no",
+  // Búsqueda básica (web_search_20250305, sin filtrado dinámico) en las llamadas con Haiku (24 nov 2026: una parte de
+  // verificar sumó 610 mil tokens). "no" = como siempre; se enciende tras una guía de prueba.
+  sparked_busqueda_basica: "no",
   // Paquete de 3 guías (Daniel, 24 nov 2026; cuenta.ts): "si" = se vende (los botones aparecen en el sitio); "no" =
   // apagado. Precio del paquete en pesos, IVA incluido, y días que dura el saldo desde la compra.
   sparked_paquete3: "no", sparked_paquete3_precio: "199", sparked_paquete3_dias: "90",
@@ -156,7 +159,7 @@ async function fuenteDe(t: Trabajo) {
   // Modelo y esfuerzo por paso: los de la tabla config y, encima, los del trabajo (pruebas).
   const cfg = await config();
   const opciones: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(cfg)) if (/^sparked_((modelo|esfuerzo)_|investigar$)/.test(k)) opciones[k.slice(8)] = v;
+  for (const [k, v] of Object.entries(cfg)) if (/^sparked_((modelo|esfuerzo)_|investigar$|busqueda_basica$)/.test(k)) opciones[k.slice(8)] = v;
   Object.assign(opciones, (t.datos as any)?.opciones ?? {});
   return { archivos: (b.archivos ?? []) as { ruta: string; nombre: string }[], grado: b.grado ?? "", materia: b.materia ?? "", colegio: b.colegio_texto ?? "", idioma_alumno: "es", opciones };
 }

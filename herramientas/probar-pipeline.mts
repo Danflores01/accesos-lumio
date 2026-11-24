@@ -948,5 +948,22 @@ ok(P.huecosDeCobertura(DOtro, 20, 25, true).huecos.length === 0, "cobertura: con
 const waTxt = readFileSync(join(repo, "funciones/sparked/whatsapp.ts"), "utf8");
 ok(/motivoEstado = sinLlave\(/.test(waTxt) && /estado_motivo/.test(waTxt), "whatsapp: el motivo del estado pasa por sinLlave y llega a /admin/whatsapp");
 
+// 33. Código 2026-11-24.2 (guía del paquete de 3 a 6.34 MXN: «verificar 4/4» sumó 610 472 tokens de entrada, 2.68 MXN).
+// a) Vueltas del servidor: se cuentan las herramientas que corrieron (búsquedas y código del filtrado dinámico).
+const dV_33 = { content: [{ type: "server_tool_use", name: "web_search", input: { query: "a" } }, { type: "web_search_tool_result", content: [] }, { type: "server_tool_use", name: "code_execution", input: {} }, { type: "server_tool_use", name: "web_search", input: { query: "b" } }, { type: "text", text: "{}" }] };
+const detV_33 = P.detalleBusqueda(dV_33);
+ok(detV_33.vueltas === 3 && detV_33.codigo === 1 && detV_33.consultas.join() === "a,b", "vueltas: 3 herramientas del servidor (1 de código) en la llamada");
+// b) Freno: una llamada con búsqueda de más de 1.5 MXN deja el resto de la guía sin búsquedas (verificar y 2.ª oportunidad).
+const Dfreno_33: any = { metricas: [{ paso: "verificar 2/4", busquedas: 2, costo_usd: 2.68 / P.MXN_POR_USD }], verif: P.planVerificacion(siete, 10) };
+const notaF_33 = P.ajustarVerificacion(Dfreno_33, H, 2);
+ok(!!notaF_33 && /sin búsquedas desde la parte 3/.test(notaF_33) && Dfreno_33.verif.busquedas.slice(2).every((x: number) => x === 0) && Dfreno_33.metricas.some((m: any) => m.paso === "candado 5 MXN · verificar" && /freno/.test(m.resultado)) && !P.puedeSegunda(Dfreno_33, 0), "freno: tras una llamada de 2.68 MXN, las partes que faltan van sin búsquedas y no hay segunda oportunidad");
+const Dnormal_33: any = { metricas: [{ paso: "verificar 1/4", busquedas: 3, costo_usd: 0.76 / P.MXN_POR_USD }], verif: P.planVerificacion(siete, 10) };
+ok(P.busquedaDisparada(Dnormal_33) === null && !/freno/.test(String(P.ajustarVerificacion(Dnormal_33, H, 1) ?? "")), "freno: una llamada normal (0.76 MXN, la más cara medida en verificar) no lo activa");
+// c) Búsqueda básica para Haiku solo con el ajuste encendido; Sonnet y las demás herramientas no cambian.
+const hb_33 = [{ type: "web_search_20260209", name: "web_search", max_uses: 3, allowed_domains: ["rae.es"] }];
+ok(P.herramientasPara(hb_33, "haiku", {})[0].type === "web_search_20260209" && P.herramientasPara(hb_33, "haiku", { busqueda_basica: "si" })[0].type === "web_search_20250305" && P.herramientasPara(hb_33, "haiku", { busqueda_basica: "si" })[0].max_uses === 3 && P.herramientasPara(hb_33, "sonnet", { busqueda_basica: "si" })[0].type === "web_search_20260209" && P.herramientasPara(undefined, "haiku", { busqueda_basica: "si" }) === undefined, "búsqueda básica: solo Haiku y solo con sparked_busqueda_basica = si (conserva max_uses y dominios)");
+const idx33_33 = readFileSync(join(repo, "funciones/sparked/index.ts"), "utf8");
+ok(/sparked_busqueda_basica: "no",/.test(idx33_33) && /\^sparked_\(\(modelo\|esfuerzo\)_\|investigar\$\|busqueda_basica\$\)/.test(idx33_33), "index: el ajuste nace en «no» y llega al trabajo como opciones.busqueda_basica");
+
 console.log(fallos ? `\n${fallos} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);
