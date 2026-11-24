@@ -2144,8 +2144,13 @@ export function anotarCandado(D: any, paso: string, detalle: string): void {
   D.metricas = [...(Array.isArray(D.metricas) ? D.metricas : []), { paso: `candado ${TOPE_GUIA_MXN} MXN · ${paso}`, modelo: "—", esfuerzo: "—", entrada: 0, salida: 0, costo_usd: 0, ms: 0, parada: null, resultado: detalle, en: new Date().toISOString() }].slice(-80);
   console.log("CANDADO", JSON.stringify({ tope_mxn: TOPE_GUIA_MXN, paso, detalle }));
 }
+// El freno no niega la segunda búsqueda mientras la guía no tenga NADA confirmado (2026-11-24.3): en una guía de puro
+// temario, sin segunda búsqueda no se hace la guía y el paquete devuelve el saldo. El tope de 5 MXN sigue igual.
+export function frenoSegunda(D: any): boolean {
+  return !!busquedaDisparada(D) && (Array.isArray(D?.investigacion) ? D.investigacion : []).some((r: any) => r?.estado === "confirmado");
+}
 export function puedeSegunda(D: any, bloquesPorEscribir: number, modelo = MODELO_HAIKU): boolean {
-  if (busquedaDisparada(D)) return false;
+  if (frenoSegunda(D)) return false;
   return costoGuiaMxn(D) + costoLlamadaMxn(modelo, BUSQUEDAS_SEGUNDA, FIJOS_INVESTIGAR) + RESERVA_FINAL_MXN + RESERVA_POR_BLOQUE_MXN * Math.max(0, bloquesPorEscribir) <= TOPE_GUIA_MXN;
 }
 
@@ -2436,11 +2441,16 @@ async function investigarTemas(supabase: Supa, t: Trabajo, fuente: Fuente, pb: a
     const yaHecha = previa?.hecha === true;
     const modeloI = ajusteDe("investigar", D.con_haiku?.investigar ? {} : fuente.opciones ?? {}).modelo;
     if (yaHecha || !puedeSegunda(D, porEscribir, modeloI)) {
+      // Quién la niega: el freno de 1.5 MXN (una llamada anterior se disparó) o el tope de 5 MXN.
+      const porFreno = !yaHecha && frenoSegunda(D);
       if (!yaHecha) {
-        D.inv_segunda[clave] = { ...previa, hecha: false, omitida: "tope" };
-        anotarCandado(D, "investigar", `sin segunda búsqueda para «${lote[0].tema}»; la guía llevaba ${costoGuiaMxn(D).toFixed(2)} MXN`);
+        D.inv_segunda[clave] = { ...previa, hecha: false, omitida: porFreno ? "freno" : "tope" };
+        const disparada = porFreno ? busquedaDisparada(D) : null;
+        anotarCandado(D, "investigar", porFreno
+          ? `sin segunda búsqueda para «${lote[0].tema}» por el freno de ${FRENO_BUSQUEDA_MXN} MXN («${disparada?.paso}» costó ${(Number(disparada?.costo_usd) * MXN_POR_USD).toFixed(2)} MXN)`
+          : `sin segunda búsqueda para «${lote[0].tema}»; la guía llevaba ${costoGuiaMxn(D).toFixed(2)} MXN`);
       }
-      guardarInvestigacion(D, [{ ...lote[0], estado: "no_confirmado", datos: [], fuentes: [], motivo: `${previa?.motivo ?? "no se pudo confirmar"}${yaHecha ? "" : `; sin segunda búsqueda para no pasar del tope de ${TOPE_GUIA_MXN} MXN por guía`}`, ...(previa?.busqueda ? { busqueda: previa.busqueda } : {}) }]);
+      guardarInvestigacion(D, [{ ...lote[0], estado: "no_confirmado", datos: [], fuentes: [], motivo: `${previa?.motivo ?? "no se pudo confirmar"}${yaHecha ? "" : porFreno ? `; sin segunda búsqueda por el freno de ${FRENO_BUSQUEDA_MXN} MXN (una búsqueda anterior costó de más)` : `; sin segunda búsqueda para no pasar del tope de ${TOPE_GUIA_MXN} MXN por guía`}`, ...(previa?.busqueda ? { busqueda: previa.busqueda } : {}) }]);
       await guardarTodo();
       return t.paso;
     }

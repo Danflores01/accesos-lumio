@@ -197,6 +197,10 @@ de la guía ≈ 0.14 USD (2.6 MXN): unos 4.3 MXN por guía vendida; la guía de 
 
 ## Lo aprendido
 
+- **24 nov · Código 2026-11-24.3 (revisión de la .2):** el freno de 1.5 MXN negaba la segunda búsqueda aunque la guía no
+  tuviera nada confirmado; en una guía «completa» de puro temario eso hacía que no se hiciera y se devolviera el saldo.
+  Ahora `frenoSegunda` solo niega con algo ya confirmado (el tope de 5 MXN sigue igual) y el rastro dice «freno de 1.5
+  MXN» o «tope de 5 MXN» según quién la negó (`inv_segunda[...].omitida` = "freno" | "tope").
 - **24 nov · Código 2026-11-24.2 (guía del paquete de 3 a 6.34 MXN):** «verificar 4/4» (Haiku) sumó 610 472 tokens de
   entrada = 2.68 MXN en una sola llamada; lo normal es ~18 mil por búsqueda (máx. medido 0.76 MXN en verificar, 1.18 en
   investigar). Con herramientas del servidor, cada vuelta (hasta 10) relee todo lo acumulado y el candado no lo ve venir:

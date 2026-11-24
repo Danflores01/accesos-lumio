@@ -954,7 +954,7 @@ const dV_33 = { content: [{ type: "server_tool_use", name: "web_search", input: 
 const detV_33 = P.detalleBusqueda(dV_33);
 ok(detV_33.vueltas === 3 && detV_33.codigo === 1 && detV_33.consultas.join() === "a,b", "vueltas: 3 herramientas del servidor (1 de código) en la llamada");
 // b) Freno: una llamada con búsqueda de más de 1.5 MXN deja el resto de la guía sin búsquedas (verificar y 2.ª oportunidad).
-const Dfreno_33: any = { metricas: [{ paso: "verificar 2/4", busquedas: 2, costo_usd: 2.68 / P.MXN_POR_USD }], verif: P.planVerificacion(siete, 10) };
+const Dfreno_33: any = { investigacion: [{ tema: "T", estado: "confirmado" }], metricas: [{ paso: "verificar 2/4", busquedas: 2, costo_usd: 2.68 / P.MXN_POR_USD }], verif: P.planVerificacion(siete, 10) };
 const notaF_33 = P.ajustarVerificacion(Dfreno_33, H, 2);
 ok(!!notaF_33 && /sin búsquedas desde la parte 3/.test(notaF_33) && Dfreno_33.verif.busquedas.slice(2).every((x: number) => x === 0) && Dfreno_33.metricas.some((m: any) => m.paso === "candado 5 MXN · verificar" && /freno/.test(m.resultado)) && !P.puedeSegunda(Dfreno_33, 0), "freno: tras una llamada de 2.68 MXN, las partes que faltan van sin búsquedas y no hay segunda oportunidad");
 const Dnormal_33: any = { metricas: [{ paso: "verificar 1/4", busquedas: 3, costo_usd: 0.76 / P.MXN_POR_USD }], verif: P.planVerificacion(siete, 10) };
@@ -964,6 +964,38 @@ const hb_33 = [{ type: "web_search_20260209", name: "web_search", max_uses: 3, a
 ok(P.herramientasPara(hb_33, "haiku", {})[0].type === "web_search_20260209" && P.herramientasPara(hb_33, "haiku", { busqueda_basica: "si" })[0].type === "web_search_20250305" && P.herramientasPara(hb_33, "haiku", { busqueda_basica: "si" })[0].max_uses === 3 && P.herramientasPara(hb_33, "sonnet", { busqueda_basica: "si" })[0].type === "web_search_20260209" && P.herramientasPara(undefined, "haiku", { busqueda_basica: "si" }) === undefined, "búsqueda básica: solo Haiku y solo con sparked_busqueda_basica = si (conserva max_uses y dominios)");
 const idx33_33 = readFileSync(join(repo, "funciones/sparked/index.ts"), "utf8");
 ok(/sparked_busqueda_basica: "no",/.test(idx33_33) && /\^sparked_\(\(modelo\|esfuerzo\)_\|investigar\$\|busqueda_basica\$\)/.test(idx33_33), "index: el ajuste nace en «no» y llega al trabajo como opciones.busqueda_basica");
+
+// 34. Código 2026-11-24.3 (revisión de la .2): en una guía «completa» de puro temario sin NADA confirmado, el freno de
+// 1.5 MXN no niega la segunda búsqueda (sin ella la guía no se hace y el paquete devuelve el saldo); con algo confirmado
+// sí la niega, y el rastro dice «freno de 1.5 MXN», no «tope de 5 MXN».
+const planSeg34 = { idioma_guia: "es", perfil_edad: "caricatura", materia: "Español", apoyo: null, puntos_dificiles: [], temas_a_investigar: [{ tema: "Figuras retóricas", bloque: "b1", pagina: "" }, { tema: "Tradición oral", bloque: "b1", pagina: "" }], bloques: [{ id: "b1", titulo: "Literatura", temas: ["Figuras retóricas", "Tradición oral"], ids_inventario: ["tem1"], pistas: ["Figuras retóricas", "Tradición oral"], juegos: { opcion_multiple: 5 }, mini_examen: 0 }] };
+const trabajoSeg34 = (metricas: any[], investigacion: any[], inv_segunda: any): any => ({ id: "tseg", guia_id: "gseg", alcance: "completa", paso: "generar:0", estado: "corriendo", costo_usd: 0, tokens_entrada: 0, tokens_salida: 0, progreso: { pct: 40 },
+  datos: { inventario: { temas: [{ id: "tem1", foto: 1, texto: "Figuras retóricas; tradición oral", cita: "x" }] }, citas: [], fotos: [{ indice: 1, tipo: "temario" }], plan: JSON.parse(JSON.stringify(planSeg34)), bloques: [], metricas: JSON.parse(JSON.stringify(metricas)), investigacion: JSON.parse(JSON.stringify(investigacion)), inv_segunda: JSON.parse(JSON.stringify(inv_segunda)) } });
+const figConf34 = { tema: "Figuras retóricas", bloque: "b1", pagina: "", estado: "confirmado", datos: [{ texto: "Metáfora: identifica un término real con otro imaginario.", fuentes: [{ nombre: "SEP", url: "https://www.sep.gob.mx/lenguajes/figuras", oficial: true, sitio: "sep.gob.mx" }] }], fuentes: [{ nombre: "SEP", url: "https://www.sep.gob.mx/lenguajes/figuras" }], motivo: "" };
+const mInvCara34 = { paso: "investigar b1", modelo: "haiku", esfuerzo: "medium", entrada: 120000, salida: 3000, costo_usd: 1.6 / P.MXN_POR_USD, ms: 1, parada: "end_turn", resultado: "ok", busquedas: 2, en: "2026-11-24T00:00:01.000Z" };
+const pendiente34 = { "tradicion oral": { motivo: "se acabaron las búsquedas (2)", busqueda: { consultas: ["tradición oral coplas"], errores: [] } } };
+const pendientes34 = { "figuras retoricas": { motivo: "el buscador no devolvió ninguna página", busqueda: { consultas: ["figuras retóricas"], errores: [] } }, ...pendiente34 };
+const urlTr34 = "https://www.sep.gob.mx/tradicion";
+const confirma34 = { temas: [{ tema: "Figuras retóricas", estado: "confirmado", datos: [{ texto: "Metáfora: identifica un término real con otro imaginario.", fuentes: [{ nombre: "SEP", url: urlTr34 }] }] }] };
+// a) Nada confirmado + llamada de 1.6 MXN → SÍ se pide la segunda búsqueda (como antes del freno).
+pedidos.length = 0; respuestas = [apiTexto(confirma34, [urlTr34], 1)];
+const tNada34 = trabajoSeg34([mInvCara34], [], pendientes34);
+await P.ejecutarPaso(falsoR, tNada34, fuenteG);
+ok(pedidos.length === 1 && pedidos[0].tools?.[0]?.max_uses === P.BUSQUEDAS_SEGUNDA && !tNada34.datos.metricas.some((m: any) => /freno/.test(String(m.resultado ?? ""))), "freno: en una guía de puro temario sin nada confirmado no niega la segunda búsqueda (la guía se puede hacer)");
+// b) Algo confirmado + llamada de 1.6 MXN → no hay segunda búsqueda, y el rastro y la nota dicen «freno de 1.5 MXN».
+pedidos.length = 0; respuestas = [];
+const tAlgo34 = trabajoSeg34([mInvCara34], [figConf34], pendiente34);
+let errAlgo34 = "";
+try { await P.ejecutarPaso(falsoR, tAlgo34, fuenteG); } catch (e) { errAlgo34 = (e as Error).message; }
+const rAlgo34 = tAlgo34.datos.investigacion.find((r: any) => r.tema === "Tradición oral");
+const candAlgo34 = tAlgo34.datos.metricas.find((m: any) => m.paso === "candado 5 MXN · investigar");
+ok(!errAlgo34 && pedidos.length === 0 && tAlgo34.datos.inv_segunda["tradicion oral"].omitida === "freno" && /por el freno de 1\.5 MXN \(«investigar b1» costó 1\.60 MXN\)/.test(candAlgo34?.resultado ?? "") && /sin segunda búsqueda por el freno de 1\.5 MXN/.test(rAlgo34?.motivo ?? "") && !/tope de 5 MXN/.test(rAlgo34?.motivo ?? ""), "freno: con algo confirmado niega la segunda búsqueda y el rastro dice «freno de 1.5 MXN», no «tope de 5 MXN» · " + (candAlgo34?.resultado ?? errAlgo34));
+// c) El tope de 5 MXN sigue igual: sin freno pero sin presupuesto, se niega y el rastro sigue diciendo «tope».
+pedidos.length = 0; respuestas = [];
+const tTope34 = trabajoSeg34([{ ...mInvCara34, busquedas: undefined, paso: "planear", costo_usd: 4.6 / P.MXN_POR_USD }], [figConf34], pendiente34);
+await P.ejecutarPaso(falsoR, tTope34, fuenteG);
+ok(pedidos.length === 0 && tTope34.datos.inv_segunda["tradicion oral"].omitida === "tope" && /tope de 5 MXN/.test(tTope34.datos.investigacion.find((r: any) => r.tema === "Tradición oral")?.motivo ?? ""), "tope: sin freno pero sin presupuesto, se niega como antes y el rastro dice «tope de 5 MXN»");
+ok(P.frenoSegunda({ metricas: [mInvCara34], investigacion: [] }) === false && P.frenoSegunda({ metricas: [mInvCara34], investigacion: [figConf34] }) === true && P.frenoSegunda({ metricas: [], investigacion: [figConf34] }) === false, "frenoSegunda: solo con llamada disparada Y algo confirmado");
 
 console.log(fallos ? `\n${fallos} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallos ? 1 : 0);
