@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="es" data-paleta="civica_morado">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FFD400">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="48x48" href="img/iconos/sparky-48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/iconos/sparky-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="img/iconos/sparky-180.png">
+<!-- Letras: se piden aquí, al mismo tiempo que las hojas de estilo (como en las demás páginas del sitio). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Press+Start+2P&amp;display=swap">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/sitio.css">
+<script>/* Idioma: si el visitante eligió inglés, se oculta la página un instante mientras idioma.js traduce (evita ver el español). */try{var l=new URLSearchParams(location.search).get("lang")||localStorage.getItem("sparked_idioma");if(l==="en"){document.documentElement.lang="en";document.documentElement.classList.add("i18n-cargando");setTimeout(function(){document.documentElement.classList.remove("i18n-cargando")},2500)}}catch(e){}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<title data-i18n="titulo.cuenta">SparkEd · Mi cuenta</title>
+</head>
+<body class="sitio">
+<header class="cab"><div class="contenedor">
+  <a class="marca" href="index.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span></a>
+  <nav><a href="paquetes.html" data-paquete hidden data-i18n="nav.paquetes">Paquetes</a><span class="idioma" role="group" aria-label="Idioma" data-i18n-attr="aria-label:nav.idioma"><button type="button" data-idioma="es" lang="es" aria-pressed="true">ES</button><span aria-hidden="true">|</span><button type="button" data-idioma="en" lang="en" aria-pressed="false">EN</button></span></nav>
+</div></header>
+<main class="flujo"><div class="contenedor"><div class="cuenta-app" id="app"><section class="panel-paso"><div class="estado-carga"><div data-i18n="cta.cargando">Abriendo tu cuenta…</div></div></section></div></div></main>
+
+<script type="module">
+// «Mi cuenta» de SparkEd (paquete de 3 guías). Una sola página con estas vistas:
+//   entrar (WhatsApp → código de 6 dígitos) · mi cuenta (saldo, guías, paquetes, datos) · comprar el paquete ·
+//   el regreso de Mercado Pago (?compra=…) · una guía que se está creando o ya está lista (?guia=…).
+// El saldo vive en el servidor; aquí solo se guarda el pase de la sesión (js/cuenta.js).
+import { api, esc, LADAS, ladaTexto, numeroSinLada, guardarContacto, contactoParaFormulario, pantallaEspera, PAGO_VIVO, mensajeWhatsApp, waLink, t, th, marca, poner, idioma, alCambiarIdioma, textoServidor, nombreGrado, nombreMateria, mensajeError } from "./js/flujo.js";
+import { sparky } from "./js/arte.js";
+import { cuentaApi, paseGuardado, guardarPase, olvidarPase, mostrarPaquete } from "./js/cuenta.js";
+
+const $ = (s, r = document) => r.querySelector(s);
+const app = $("#app");
+const params = new URLSearchParams(location.search);
+const esUuid = (x) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x ?? "");
+const quiereComprar = params.get("comprar") === "paquete3";
+const compraUrl = [params.get("compra"), params.get("external_reference")].find(esUuid) ?? null;
+const guiaUrl = esUuid(params.get("guia")) ? params.get("guia") : null;
+// Al regresar de Mercado Pago la dirección trae ?pago=pendiente o ?pago=fallido y sus propios datos del pago.
+const regreso = params.get("pago") || "", pagoId = params.get("payment_id") || params.get("collection_id") || "";
+const estadoUrl = params.get("collection_status") || params.get("status") || "", tipoUrl = params.get("payment_type") || "";
+const CORREO_OK = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+let info = null, cuenta = null, espera = null, reloj = null, redibujar = null;
+
+// ---------- Piezas ----------
+function limpiar() { clearTimeout(reloj); reloj = null; espera?.detener(); espera = null; redibujar = null; }
+function pintar(html, subir = true) { limpiar(); app.innerHTML = html; if (subir) window.scrollTo({ top: 0 }); }
+alCambiarIdioma(() => { document.querySelectorAll("#c-lada option").forEach((o) => { o.textContent = ladaTexto(o.value); }); redibujar?.(); });
+const sinError = (el) => { if (!el) return; delete el.dataset.i18n; delete el.dataset.i18nVars; delete el.dataset.i18nServidor; el.textContent = ""; };
+const errorDe = (el, err) => { if (!el) return; sinError(el); el.dataset.i18nServidor = err?.message ?? ""; el.textContent = mensajeError(err); };
+const quitarDeLaDireccion = (...claves) => { try { const u = new URL(location.href); for (const k of claves.length ? claves : [...u.searchParams.keys()]) if (k !== "lang") u.searchParams.delete(k); history.replaceState(null, "", u); } catch {} };
+const cargando = (clave) => `<section class="panel-paso"><div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div>${marca(clave, null, "h2")}</div></section>`;
+const DISPOSITIVOS_EN = { "Celular Android": "Android phone", "Tableta Android": "Android tablet", "Computadora con Windows": "Windows computer", "Computadora con Linux": "Linux computer", "Dispositivo": "Device" };
+const nombreDispositivo = (n) => (idioma() === "en" && DISPOSITIVOS_EN[n || "Dispositivo"]) || n || "Dispositivo";
+const cajaSuscripcion = () => `<section class="panel-paso" id="suscripcion">${marca("cta.sus_t", null, "h2")}${marca("cta.sus_texto", null, "p")}</section>`;
+const irASuscripcion = () => { if (location.hash === "#suscripcion") document.getElementById("suscripcion")?.scrollIntoView({ block: "start" }); };
+function sesionTermino() { olvidarPase(); cuenta = null; mostrarPaquete(); vistaEntrar({ aviso: "cta.sesion_termino" }); }
+async function cargarCuenta() {
+  if (!paseGuardado()) { cuenta = null; return false; }
+  try { cuenta = await cuentaApi.get("/cuenta"); return true; }
+  catch (e) { if (e.status === 401) { olvidarPase(); cuenta = null; return false; } throw e; }
+}
+
+// ---------- Entrar: WhatsApp (y, al comprar por primera vez, nombre y correo de respaldo) ----------
+function vistaEntrar(op = {}) {
+  const comprar = !!op.comprar && info?.disponible === true;
+  const c = contactoParaFormulario(), lada0 = String(c?.lada ?? "52");
+  pintar(`<section class="panel-paso">
+    <div class="cta-sello">${comprar ? marca("cta.sello_compra", { guias: info.guias }) : marca("cta.sello")}</div>
+    ${comprar ? marca("cta.comprar_t", { guias: info.guias }, "h1") : marca("cta.entrar_t", null, "h1")}
+    ${op.aviso ? `<div class="aviso-saldo"><span class="ico" aria-hidden="true">ℹ️</span>${marca(op.aviso)}</div>` : ""}
+    ${comprar ? `<div class="resultado-guia"><div class="em" aria-hidden="true">🎟️</div><div>${marca("cta.resumen_paquete", { guias: info.guias, precio: info.precio, dias: info.dias })}</div></div>` : ""}
+    ${marca(comprar ? "cta.comprar_texto" : "cta.entrar_texto", null, "p")}
+    <form id="f-entrar" class="rejilla-campos" novalidate>
+      ${comprar ? `<div class="campo" style="grid-column:1/-1">${marca("cta.nombre", null, "label", 'for="c-nombre"')}<input id="c-nombre" name="nombre" autocomplete="name" maxlength="80" required value="${esc(c?.nombre ?? "")}"></div>` : ""}
+      <div class="campo" style="grid-column:1/-1">${marca("cta.whatsapp", null, "label", 'for="c-tel"')}<div class="tel"><select name="lada" id="c-lada" aria-label="${esc(t("contacto.lada"))}" data-i18n-attr="aria-label:contacto.lada">${LADAS.map(([l]) => `<option value="${l}"${l === lada0 ? " selected" : ""}>${esc(ladaTexto(l))}</option>`).join("")}</select><input id="c-tel" name="telefono" type="tel" inputmode="tel" autocomplete="tel-national" required value="${esc(c?.numero ?? "")}"></div></div>
+      ${comprar ? `<div class="campo"><div class="etiqueta-fila">${marca("cta.correo", null, "label", 'for="c-correo"')}</div><input id="c-correo" name="correo" type="email" autocomplete="email" required value="${esc(c?.correo ?? "")}"></div>
+      <div class="campo"><div class="etiqueta-fila">${marca("cta.correo2", null, "label", 'for="c-correo2"')}<span class="coincide" id="ok-correo" hidden role="img" aria-label="${esc(t("contacto.coinciden"))}" data-i18n-attr="aria-label:contacto.coinciden">✓</span></div><input id="c-correo2" name="correo2" type="email" autocomplete="off" required value="${esc(c?.correo ?? "")}"></div>
+      ${marca("cta.correo_ayuda", null, "div", 'class="ayuda" style="grid-column:1/-1;margin-top:-4px"')}` : ""}
+      <div class="acciones" style="grid-column:1/-1">${marca("cta.pedir_codigo", null, "button", 'class="boton" type="submit" id="pedir"')}</div>
+      <div class="error" id="err-entrar" style="grid-column:1/-1" role="alert"></div>
+    </form>
+    ${!comprar && info?.disponible ? marca("cta.sin_paquete", null, "div", 'class="ayuda" style="text-align:center"') : ""}
+  </section>${location.hash === "#suscripcion" ? cajaSuscripcion() : ""}`);
+  const f = $("#f-entrar"), err = $("#err-entrar");
+  if (comprar) {
+    const coinciden = () => { const a = f.correo.value.trim().toLowerCase(); $("#ok-correo").hidden = !(CORREO_OK.test(a) && a === f.correo2.value.trim().toLowerCase()); };
+    f.addEventListener("input", coinciden); coinciden();
+  }
+  f.onsubmit = async (e) => {
+    e.preventDefault();
+    const lada = String(f.lada.value || "52").replace(/\D/g, ""), numero = numeroSinLada(f.telefono.value, lada);
+    const nombre = comprar ? f.nombre.value.trim() : "", correo = comprar ? f.correo.value.trim().toLowerCase() : "";
+    if (comprar && nombre.length < 2) { poner(err, "cta.err_nombre"); f.nombre.focus(); return; }
+    if (lada === "52" ? numero.length !== 10 : numero.length < 7 || (lada + numero).length > 15) { poner(err, "cta.err_tel"); f.telefono.focus(); return; }
+    if (comprar && !CORREO_OK.test(correo)) { poner(err, "contacto.err_correo"); f.correo.focus(); return; }
+    if (comprar && f.correo2.value.trim().toLowerCase() !== correo) { poner(err, "contacto.err_correo2"); f.correo2.focus(); return; }
+    const datos = { telefono: `+${lada}${numero}`, lada, numero, nombre, correo, comprar };
+    if (comprar) guardarContacto({ nombre, lada, numero, telefono: datos.telefono, correo });
+    const boton = $("#pedir"); boton.disabled = true; poner(boton, "cta.pidiendo"); sinError(err);
+    try { vistaCodigo(datos, await pedirCodigo(datos)); }
+    catch (e2) { errorDe(err, e2); boton.disabled = false; poner(boton, "cta.pedir_codigo"); }
+  };
+  irASuscripcion();
+}
+const pedirCodigo = (datos, canal) => api.post("/cuenta/codigo", { telefono: datos.telefono, ...(datos.correo ? { correo: datos.correo } : {}), ...(datos.nombre ? { nombre: datos.nombre } : {}), ...(canal ? { canal } : {}) });
+
+// ---------- El código de 6 dígitos ----------
+function vistaCodigo(datos, r) {
+  const telefono = `+${datos.lada} ${datos.numero}`;
+  const texto = (x) => marca(x.canal === "whatsapp" ? "cta.codigo_wa" : x.respaldo ? "cta.codigo_respaldo" : "cta.codigo_correo", { telefono, minutos: x.minutos ?? 10 }, "p", 'id="texto-codigo"');
+  const rotulo = datos.comprar ? "cta.continuar_pago" : "cta.entrar";
+  pintar(`<section class="panel-paso">
+    <div class="cta-sello">${datos.comprar ? marca("cta.sello_compra", { guias: info?.guias ?? 3 }) : marca("cta.sello")}</div>
+    ${marca("cta.codigo_t", null, "h1")}
+    ${texto(r)}
+    <form id="f-codigo" novalidate style="display:flex;flex-direction:column;gap:12px">
+      <div class="campo">${marca("cta.codigo_etiqueta", null, "label", 'for="c-codigo"')}<input id="c-codigo" class="codigo-entrada" name="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000000" required></div>
+      <div class="acciones">${marca(rotulo, null, "button", 'class="boton" type="submit" id="entrar"')}</div>
+      <div class="error" id="err-codigo" role="alert" style="text-align:center"></div>
+      <div class="ok-nota" id="nota-codigo" role="status" style="text-align:center"></div>
+    </form>
+    <div class="cta-enlaces"><button type="button" class="enlace" id="otro" disabled></button>${marca("cta.por_correo", null, "button", `type="button" class="enlace" id="por-correo"${r.canal === "correo" ? " hidden" : ""}`)}${marca("cta.cambiar_numero", null, "button", 'type="button" class="enlace" id="cambiar"')}</div>
+  </section>`);
+  const campo = $("#c-codigo"), err = $("#err-codigo"), nota = $("#nota-codigo"), otro = $("#otro"), boton = $("#entrar");
+  campo.focus();
+  // «Mandar otro código» se enciende a los 30 segundos (el servidor también frena: 3 códigos por hora por número).
+  let faltan = 30;
+  const pintaOtro = () => { otro.disabled = faltan > 0; if (faltan > 0) poner(otro, "cta.otro_codigo_en", { n: faltan }); else poner(otro, "cta.otro_codigo"); };
+  pintaOtro();
+  const cuenta30 = setInterval(() => { if (!document.body.contains(otro)) { clearInterval(cuenta30); return; } if (faltan > 0) { faltan--; pintaOtro(); } }, 1000);
+  const reenviar = async (canal) => {
+    sinError(err); sinError(nota);
+    try {
+      const r2 = await pedirCodigo(datos, canal);
+      faltan = 30; pintaOtro(); campo.value = ""; campo.focus();
+      $("#texto-codigo").outerHTML = texto(r2);
+      if (r2.canal === "correo") $("#por-correo").hidden = true;
+      poner(nota, r2.canal === "correo" ? "cta.codigo_a_correo" : "cta.codigo_enviado");
+    } catch (e) { errorDe(err, e); }
+  };
+  otro.onclick = () => reenviar(null);
+  $("#por-correo").onclick = () => reenviar("correo");
+  $("#cambiar").onclick = () => vistaEntrar({ comprar: datos.comprar });
+  let enviando = false;
+  const entrar = async () => {
+    const codigo = campo.value.replace(/\D/g, "");
+    if (codigo.length !== 6) { poner(err, "cta.err_codigo"); campo.focus(); return; }
+    if (enviando) return;
+    enviando = true; boton.disabled = true; poner(boton, "cta.entrando"); sinError(err); sinError(nota);
+    try {
+      const s = await api.post("/cuenta/entrar", { telefono: datos.telefono, codigo });
+      guardarPase(s.sesion); cuenta = s; despuesDeEntrar(datos);
+    } catch (e) {
+      if (e.status === 409 && e.datos?.limite) { vistaLimite(datos, codigo, e.datos); return; }
+      errorDe(err, e); enviando = false; boton.disabled = false; poner(boton, rotulo); campo.select();
+    }
+  };
+  $("#f-codigo").onsubmit = (e) => { e.preventDefault(); entrar(); };
+  // Al completar los 6 dígitos se manda solo (por ejemplo, al pegar el código o al usar el que sugiere el teclado).
+  campo.addEventListener("input", (e) => { if (e.inputType !== "deleteContentBackward" && campo.value.replace(/\D/g, "").length === 6) entrar(); });
+}
+
+// ---------- La cuenta ya está abierta en 2 dispositivos ----------
+function vistaLimite(datos, codigo, d) {
+  const viejo = (d.dispositivos ?? [])[0];
+  const fila = () => (viejo ? `<div class="cta-fila"><div class="cta-fila-texto"><b>${esc(nombreDispositivo(viejo.nombre))}</b>${viejo.ultimo_uso_en ? marca("cta.limite_uso", { fecha: viejo.ultimo_uso_en }) : ""}</div></div>` : "");
+  pintar(`<section class="panel-paso">
+    ${marca("cta.limite_t", { maximo: d.maximo ?? 2 }, "h1")}
+    ${marca("cta.limite_texto", null, "p")}
+    <div class="cta-lista" id="lista-limite">${fila()}</div>
+    <div class="acciones">${marca("cta.limite_cerrar", null, "button", 'class="boton" type="button" id="cerrar-y-entrar"')}${marca("cta.cancelar", null, "button", 'class="boton linea" type="button" id="no-cerrar"')}</div>
+    <div class="error" id="err-limite" role="alert" style="text-align:center"></div>
+  </section>`);
+  redibujar = () => { $("#lista-limite").innerHTML = fila(); };
+  $("#no-cerrar").onclick = () => vistaEntrar({ comprar: datos.comprar });
+  $("#cerrar-y-entrar").onclick = async () => {
+    const boton = $("#cerrar-y-entrar"); boton.disabled = true; poner(boton, "cta.entrando");
+    try { const s = await api.post("/cuenta/entrar", { telefono: datos.telefono, codigo, cerrar_antigua: true }); guardarPase(s.sesion); cuenta = s; despuesDeEntrar(datos); }
+    catch (e) { errorDe($("#err-limite"), e); boton.disabled = false; poner(boton, "cta.limite_cerrar"); }
+  };
+}
+
+function despuesDeEntrar(datos = {}) {
+  mostrarPaquete();
+  if (datos.comprar) return comprar({ nombre: datos.nombre, correo: datos.correo });
+  if (guiaUrl) return vistaGuia(guiaUrl);
+  if (compraUrl) return vistaCompra(compraUrl);
+  vistaCuenta();
+}
+
+// ---------- Mi cuenta ----------
+function vistaCuenta(subir = true, nota = null) {
+  const c = cuenta, s = c.saldo ?? { guias: 0, lotes: [], vencidas: 0 }, p = c.paquete ?? {}, n = Number(s.guias) || 0;
+  const nombre = String(c.cuenta?.nombre ?? "").trim().split(/\s+/)[0];
+  const vencimiento = (s.lotes ?? []).length > 1
+    ? s.lotes.map((l) => marca(l.quedan === 1 ? "cta.lote_1" : "cta.lote_n", { n: l.quedan, dia: l.vence_en })).join(" ")
+    : marca(n === 1 ? "cta.vence" : "cta.vencen", { dia: s.vence_en });
+  const pendientes = (c.paquetes ?? []).filter((x) => x.estado === "pendiente" && Date.now() - new Date(x.creada_en).getTime() < 4 * 86400000), pagados = (c.paquetes ?? []).filter((x) => x.estado === "pagada");
+  const sub = (g) => [g.grado ? nombreGrado(g.grado) : "", g.materia ? nombreMateria(g.materia) : ""].filter(Boolean).map(esc).join(" · ");
+  const filaGuia = (g) => {
+    const titulo = `<b>${g.titulo ? esc(g.titulo) : th("tu_guia")}</b>`, detalle = sub(g);
+    if (g.estado === "lista") return `<div class="cta-fila"><div class="cta-fila-texto">${titulo}<span>${detalle ? detalle + " · " : ""}${marca("cta.guia_hasta", { dia: g.expira_en })}</span></div><a class="boton chico" href="${esc(g.link)}" data-i18n="cta.guia_abrir">${th("cta.guia_abrir")}</a></div>`;
+    if (g.estado === "generando") return `<div class="cta-fila"><div class="cta-fila-texto">${titulo}<span>${detalle ? detalle + " · " : ""}${marca("cta.guia_generando")}</span></div><a class="boton chico linea" href="cuenta.html?guia=${esc(g.id)}" data-i18n="cta.guia_avance">${th("cta.guia_avance")}</a></div>`;
+    if (g.estado === "devuelta") return `<div class="cta-fila apagada"><div class="cta-fila-texto">${titulo}${marca("cta.guia_devuelta")}${g.mensaje ? `<span data-i18n-servidor="${esc(g.mensaje)}">${esc(textoServidor(g.mensaje))}</span>` : ""}</div></div>`;
+    return `<div class="cta-fila apagada"><div class="cta-fila-texto">${titulo}<span>${detalle ? detalle + " · " : ""}${marca("cta.guia_vencida", { dia: g.expira_en })}</span></div></div>`;
+  };
+  const filaPaquete = (x) => `<div class="cta-fila"><div class="cta-fila-texto">${marca("cta.paquete_pagado", { guias: x.guias ?? p.guias ?? 3, dia: x.pagada_en }, "b")}${x.vence_en ? marca(new Date(x.vence_en).getTime() > Date.now() ? "cta.paquete_vence" : "cta.paquete_vencido", { dia: x.vence_en, folio: x.folio }) : marca("cta.paquete_folio", { folio: x.folio })}</div></div>`;
+  const correo = c.cuenta?.correo, editable = c.cuenta?.correo_editable === true;
+  pintar(`<section class="panel-paso">
+    <div class="cta-cabeza"><div><div class="cta-sello">${marca("cta.sello")}</div>${nombre ? marca("cta.hola", { nombre }, "h1") : marca("cta.mi_cuenta", null, "h1")}${marca("cta.whatsapp_de", { whatsapp: c.cuenta?.whatsapp ?? "" }, "div", 'class="ayuda"')}</div>${marca("cta.salir", null, "button", 'class="boton linea chico" type="button" id="salir"')}</div>
+    <div class="saldo-caja${n ? "" : " vacio"}"><div class="saldo-num" aria-hidden="true">${n}</div><div class="saldo-texto">${n > 1 ? marca("cta.saldo_n", { n }, "b") : marca(n === 1 ? "cta.saldo_1" : "cta.saldo_0", null, "b")}<span>${n ? vencimiento : marca(p.disponible ? "cta.saldo_0_texto" : "cta.saldo_0_apagado")}</span></div></div>
+    ${s.vencidas > 0 ? marca(s.vencidas === 1 ? "cta.vencidas_1" : "cta.vencidas_n", { n: s.vencidas }, "div", 'class="ayuda"') : ""}
+    <div class="acciones">${n ? `<a class="boton" href="crear.html?saldo=1" data-i18n="cta.crear">${th("cta.crear")}</a>` : ""}${p.disponible ? marca(n || pagados.length ? "cta.comprar_otro" : "cta.comprar", { guias: p.guias, precio: p.precio }, "button", `class="boton${n ? " linea" : ""}" type="button" id="comprar"`) : ""}${n ? marca("cta.nota_guias", null, "span", 'class="ayuda"') : ""}</div>
+  </section>
+  ${pendientes.length ? `<section class="panel-paso">${marca("cta.pendiente_t", null, "h2")}<div class="cta-lista">${pendientes.map((x) => `<div class="cta-fila"><div class="cta-fila-texto">${marca("cta.pendiente_fila", { guias: p.guias ?? 3, folio: x.folio }, "b")}</div><a class="boton chico" href="cuenta.html?compra=${esc(x.id)}" data-i18n="cta.ver_pago">${th("cta.ver_pago")}</a></div>`).join("")}</div></section>` : ""}
+  <section class="panel-paso">${marca("cta.guias_t", null, "h2")}${(c.guias ?? []).length ? `<div class="cta-lista">${c.guias.map(filaGuia).join("")}</div>` : marca("cta.guias_vacio", null, "p", 'class="ayuda"')}</section>
+  ${pagados.length ? `<section class="panel-paso">${marca("cta.paquetes_t", null, "h2")}<div class="cta-lista">${pagados.map(filaPaquete).join("")}</div></section>` : ""}
+  <section class="panel-paso">${marca("cta.datos_t", null, "h2")}
+    <div class="cta-dato"><span>${correo ? marca("cta.correo_actual", { correo }) : marca("cta.correo_falta")}</span>${editable ? marca(correo ? "cta.correo_cambiar" : "cta.correo_agregar", null, "button", 'class="boton linea chico" type="button" id="cambiar-correo"') : ""}</div>
+    ${editable ? "" : marca("cta.correo_solo_wa", null, "div", 'class="ayuda"')}
+    <form id="f-correo" class="rejilla-campos" hidden novalidate>
+      <div class="campo">${marca("cta.correo", null, "label", 'for="n-correo"')}<input id="n-correo" name="correo" type="email" autocomplete="email" required></div>
+      <div class="campo">${marca("cta.correo2", null, "label", 'for="n-correo2"')}<input id="n-correo2" name="correo2" type="email" autocomplete="off" required></div>
+      <div class="acciones" style="grid-column:1/-1">${marca("cta.correo_guardar", null, "button", 'class="boton" type="submit"')}${marca("cta.cancelar", null, "button", 'class="boton linea" type="button" id="no-correo"')}</div>
+      <div class="error" id="err-correo" style="grid-column:1/-1" role="alert"></div>
+    </form>
+    <div class="ok-nota" id="nota-datos" role="status">${nota ? th(nota) : ""}</div>
+    ${marca("cta.dispositivos", { abiertos: c.dispositivos?.abiertos ?? 1, maximo: c.dispositivos?.maximo ?? 2 }, "div", 'class="ayuda"')}
+  </section>
+  ${cajaSuscripcion()}`, subir);
+  if (nota) $("#nota-datos").dataset.i18n = nota;
+  redibujar = () => vistaCuenta(false);
+  $("#salir").onclick = async () => { try { await cuentaApi.post("/cuenta/salir"); } catch {} olvidarPase(); cuenta = null; quitarDeLaDireccion(); mostrarPaquete(); vistaEntrar(); };
+  if ($("#comprar")) $("#comprar").onclick = () => comprar();
+  const fc = $("#f-correo");
+  if ($("#cambiar-correo")) $("#cambiar-correo").onclick = () => { fc.hidden = false; $("#cambiar-correo").hidden = true; sinError($("#nota-datos")); fc.correo.focus(); };
+  $("#no-correo").onclick = () => { fc.hidden = true; fc.reset(); sinError($("#err-correo")); if ($("#cambiar-correo")) $("#cambiar-correo").hidden = false; };
+  fc.onsubmit = async (e) => {
+    e.preventDefault();
+    const nuevo = fc.correo.value.trim().toLowerCase(), err = $("#err-correo");
+    if (!CORREO_OK.test(nuevo)) { poner(err, "contacto.err_correo"); fc.correo.focus(); return; }
+    if (fc.correo2.value.trim().toLowerCase() !== nuevo) { poner(err, "contacto.err_correo2"); fc.correo2.focus(); return; }
+    try { const r = await cuentaApi.post("/cuenta/correo", { correo: nuevo }); cuenta.cuenta.correo = r.correo; vistaCuenta(false, "cta.correo_guardado"); }
+    catch (e2) { if (e2.status === 401) return sesionTermino(); errorDe(err, e2); }
+  };
+  irASuscripcion();
+}
+
+// ---------- Comprar el paquete ----------
+async function comprar(datos = {}) {
+  const faltaNombre = !(datos.nombre || cuenta?.cuenta?.nombre), faltaCorreo = !(datos.correo || cuenta?.cuenta?.correo);
+  if (faltaNombre || faltaCorreo) return vistaDatosCompra(faltaNombre, faltaCorreo);
+  pintar(cargando("pago.preparando"));
+  try {
+    const r = await cuentaApi.post("/paquete/comprar", { ...(datos.nombre ? { nombre: datos.nombre } : {}), ...(datos.correo ? { correo: datos.correo } : {}) });
+    if (r.modo === "mercadopago" && r.url) {
+      // La dirección queda sin «comprar»: si la familia regresa con el botón Atrás, ve su cuenta y no vuelve a salir al pago.
+      quitarDeLaDireccion();
+      poner($(".estado-carga h2"), "pago.abriendo");
+      location.href = r.url; return;
+    }
+    quitarDeLaDireccion();
+    pintar(`<section class="panel-paso">${marca("cta.apartado_t", null, "h1")}${marca("cta.apartado", { folio: r.folio ?? "" }, "p")}<div class="acciones">${marca("cta.ir_cuenta", null, "button", 'class="boton" type="button" id="ir-cuenta"')}</div></section>`);
+    $("#ir-cuenta").onclick = abrirCuenta;
+  } catch (e) {
+    if (e.status === 401) return sesionTermino();
+    if (e.datos?.campo) return vistaDatosCompra(true, true, e);
+    pintar(`<section class="panel-paso"><p class="error" data-i18n-servidor="${esc(e.message)}">${esc(mensajeError(e))}</p><div class="acciones">${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div></section>`);
+    $("#ir-cuenta").onclick = abrirCuenta;
+  }
+}
+async function abrirCuenta() {
+  quitarDeLaDireccion();
+  try { if (await cargarCuenta()) vistaCuenta(); else vistaEntrar(); }
+  catch (e) { pintar(`<section class="panel-paso"><p class="error" data-i18n-servidor="${esc(e.message)}">${esc(mensajeError(e))}</p></section>`); }
+}
+// La cuenta todavía no tiene nombre o correo (por ejemplo, entró sin comprar): se piden antes de pagar.
+function vistaDatosCompra(faltaNombre, faltaCorreo, error = null) {
+  const p = cuenta?.paquete ?? info ?? {};
+  pintar(`<section class="panel-paso">
+    <div class="cta-sello">${marca("cta.sello_compra", { guias: p.guias ?? 3 })}</div>
+    ${marca("cta.datos_compra_t", null, "h1")}
+    ${marca("cta.datos_compra_texto", null, "p")}
+    <form id="f-datos" class="rejilla-campos" novalidate>
+      ${faltaNombre ? `<div class="campo" style="grid-column:1/-1">${marca("cta.nombre", null, "label", 'for="d-nombre"')}<input id="d-nombre" name="nombre" autocomplete="name" maxlength="80" required value="${esc(cuenta?.cuenta?.nombre ?? "")}"></div>` : ""}
+      ${faltaCorreo ? `<div class="campo">${marca("cta.correo", null, "label", 'for="d-correo"')}<input id="d-correo" name="correo" type="email" autocomplete="email" required></div>
+      <div class="campo">${marca("cta.correo2", null, "label", 'for="d-correo2"')}<input id="d-correo2" name="correo2" type="email" autocomplete="off" required></div>` : ""}
+      <div class="acciones" style="grid-column:1/-1">${marca("cta.ir_a_pagar", { precio: p.precio ?? "" }, "button", 'class="boton" type="submit"')}${marca("cta.cancelar", null, "button", 'class="boton linea" type="button" id="no-comprar"')}</div>
+      <div class="error" id="err-datos" style="grid-column:1/-1" role="alert"></div>
+    </form>
+  </section>`);
+  const f = $("#f-datos"), err = $("#err-datos");
+  if (error) errorDe(err, error);
+  $("#no-comprar").onclick = abrirCuenta;
+  f.onsubmit = (e) => {
+    e.preventDefault();
+    const nombre = faltaNombre ? f.nombre.value.trim() : "", correo = faltaCorreo ? f.correo.value.trim().toLowerCase() : "";
+    if (faltaNombre && nombre.length < 2) { poner(err, "cta.err_nombre"); f.nombre.focus(); return; }
+    if (faltaCorreo && !CORREO_OK.test(correo)) { poner(err, "contacto.err_correo"); f.correo.focus(); return; }
+    if (faltaCorreo && f.correo2.value.trim().toLowerCase() !== correo) { poner(err, "contacto.err_correo2"); f.correo2.focus(); return; }
+    if (nombre) cuenta.cuenta.nombre = nombre;
+    comprar({ ...(nombre ? { nombre } : {}), ...(correo ? { correo } : {}) });
+  };
+}
+
+// ---------- Regreso de Mercado Pago: cómo va el pago del paquete ----------
+function vistaCompra(id) {
+  let vista = "", intentos = 0;
+  const poneVista = (clave, html) => { if (clave === vista) return false; vista = clave; clearTimeout(reloj); app.innerHTML = html; return true; };
+  const otraVez = (ms) => { clearTimeout(reloj); reloj = setTimeout(revisar, ms); };
+  const reintentar = async (boton, err) => {
+    boton.disabled = true; poner(boton, "pago.abriendo");
+    try { const r = await cuentaApi.post(`/paquete/reintentar/${id}`); if (r.url) { quitarDeLaDireccion("pago", "status", "collection_status", "payment_id", "collection_id", "payment_type"); location.href = r.url; return; } vista = ""; revisar(); }
+    catch (e) { if (e.status === 401) return sesionTermino(); errorDe(err, e); boton.disabled = false; poner(boton, "cta.pagar_ahora"); }
+  };
+  const alFinal = `<div class="acciones">${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div>`;
+  const conBotonCuenta = () => { if ($("#ir-cuenta")) $("#ir-cuenta").onclick = abrirCuenta; };
+  async function revisar() {
+    try {
+      const d = await cuentaApi.get(`/paquete/estado/${id}${/^\d+$/.test(pagoId) ? `?pago=${pagoId}` : ""}`);
+      const pagoMP = d.pago_mp || "";
+      if (d.estado === "pagada" && d.abonado) {
+        poneVista("pagada", `<section class="panel-paso"><div style="display:flex;gap:14px;align-items:center">${sparky("festejo", 6)}<div>${marca("cta.pagado_t", { n: d.saldo?.guias ?? d.guias ?? 3 }, "h1")}</div></div>
+          ${d.guias_vencen_en ? marca("cta.pagado", { dia: d.guias_vencen_en }, "p") : ""}
+          <div class="acciones"><a class="boton" href="crear.html?saldo=1" data-i18n="cta.primera">${th("cta.primera")}</a>${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}${marca("cta.nota_guias", null, "span", 'class="ayuda"')}</div></section>`);
+        conBotonCuenta(); return;
+      }
+      if (d.estado === "pagada") { poneVista("confirmando", cargando("cta.confirmando")); return otraVez(3000); }
+      if (PAGO_VIVO.includes(pagoMP) || (!pagoMP && (regreso === "pendiente" || PAGO_VIVO.includes(estadoUrl)))) {
+        const metodo = d.metodo || { ticket: "oxxo", bank_transfer: "spei", credit_card: "tarjeta", debit_card: "tarjeta", prepaid_card: "tarjeta" }[tipoUrl] || "";
+        const [titulo, cuerpo, vence, ficha] = metodo === "oxxo" ? ["pend.oxxo_t", "cta.pend_oxxo", "pend.oxxo_vence", "pend.oxxo_ficha"] : metodo === "spei" ? ["pend.spei_t", "cta.pend_spei", "pend.spei_vence", "pend.spei_ficha"] : metodo === "tarjeta" ? ["pend.tarjeta_t", "cta.pend_tarjeta", "", ""] : ["pago.esperando", "cta.pend_otro", "", ""];
+        poneVista(["pendiente", metodo, d.vence_en, d.ficha_url].join("|"), `<section class="panel-paso"><div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div>${marca(titulo, null, "h2")}</div>
+          <div class="caja-clave">${marca(cuerpo, null, "p", 'style="margin:0"')}${vence && d.vence_en ? marca(vence, { fecha: d.vence_en }, "p", 'class="ayuda" style="margin:8px 0 0"') : ""}${ficha && d.ficha_url ? `<p class="acciones" style="margin:10px 0 0"><a class="boton linea" target="_blank" rel="noopener" href="${esc(d.ficha_url)}" data-i18n="${ficha}">${th(ficha)}</a></p>` : ""}</div>
+          ${marca("cta.pend_nota", { folio: d.folio ?? "" }, "p", 'class="ayuda"')}${alFinal}</section>`);
+        conBotonCuenta(); return otraVez(15000);
+      }
+      if (["rejected", "cancelled"].includes(pagoMP) || regreso === "fallido" || estadoUrl === "rejected") {
+        const vencido = pagoMP === "cancelled";
+        if (poneVista("fallido:" + vencido, `<section class="panel-paso"><div style="display:flex;gap:14px;align-items:center">${sparky("triste", 5)}<div>${marca(vencido ? "listo.vencido_t" : "listo.fallido_t", null, "h1")}</div></div>
+          ${marca(vencido ? "listo.vencido" : "listo.fallido", null, "p")}
+          <div class="acciones">${marca("listo.reintentar", null, "button", 'class="boton" type="button" id="otra-vez"')}${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div>
+          <div class="error" id="err-compra" role="alert" style="text-align:center"></div></section>`)) {
+          conBotonCuenta(); $("#otra-vez").onclick = () => reintentar($("#otra-vez"), $("#err-compra"));
+        }
+        return otraVez(15000);
+      }
+      // Sin noticias del pago: puede que no lo haya terminado. A los pocos segundos se le ofrece continuar.
+      intentos++;
+      if (poneVista("esperando:" + (intentos > 2), `<section class="panel-paso"><div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div>${marca("pago.esperando", null, "h2")}</div>
+        ${intentos > 2 ? `${marca("cta.sin_pagar", null, "p", 'style="text-align:center"')}<div class="acciones">${marca("cta.pagar_ahora", null, "button", 'class="boton" type="button" id="pagar-ahora"')}${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div><div class="error" id="err-compra" role="alert" style="text-align:center"></div>` : ""}</section>`) && intentos > 2) {
+        conBotonCuenta(); $("#pagar-ahora").onclick = () => reintentar($("#pagar-ahora"), $("#err-compra"));
+      }
+      otraVez(5000);
+    } catch (e) {
+      if (e.status === 401) return sesionTermino();
+      if (e.status === 404) { poneVista("no", `<section class="panel-paso">${marca("cta.compra_no", null, "p")}${alFinal}</section>`); conBotonCuenta(); return; }
+      poneVista("error:" + e.message, `<section class="panel-paso"><p class="error" data-i18n-servidor="${esc(e.message)}">${esc(mensajeError(e))}</p>${alFinal}</section>`); conBotonCuenta();
+      otraVez(8000);
+    }
+  }
+  pintar(cargando("cta.confirmando"));
+  revisar();
+}
+
+// ---------- Una guía hecha con saldo: se está creando, ya está lista o se devolvió ----------
+function vistaGuia(id) {
+  let vista = "";
+  async function revisar() {
+    try {
+      const d = await cuentaApi.get(`/cuenta/guia/${id}`);
+      if (d.estado === "lista") return lista(d);
+      if (d.estado === "devuelta") return devuelta(d);
+      if (vista !== "generando") {
+        vista = "generando";
+        app.innerHTML = `<section class="panel-paso"><div><div class="cta-sello">${marca("cta.sello")}</div>${d.titulo ? `<div class="ayuda">${esc(d.titulo)}</div>` : ""}</div><div id="espera"></div>${marca("cta.creando_nota", null, "p", 'class="ayuda" style="text-align:center"')}<div class="acciones">${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div></section>`;
+        $("#ir-cuenta").onclick = abrirCuenta;
+        espera = pantallaEspera($("#espera"), "espera.generando", { estimado: 300, inicio: d.iniciada_en ? new Date(d.iniciada_en).getTime() : Date.now(), base: 1 });
+      }
+      const pr = d.progreso ?? {};
+      espera?.actualizar(pr.pct ?? 1, pr.mensaje ?? "");
+      reloj = setTimeout(revisar, 4000);
+    } catch (e) {
+      if (e.status === 401) return sesionTermino();
+      if (e.status === 404) { pintar(`<section class="panel-paso">${marca("cta.guia_no", null, "p")}<div class="acciones">${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div></section>`); $("#ir-cuenta").onclick = abrirCuenta; return; }
+      reloj = setTimeout(revisar, 8000);
+    }
+  }
+  function lista(d) {
+    const link = d.link, nombre = d.titulo ?? "", n = Number(d.saldo?.guias) || 0;
+    let svgQr = "";
+    try { const qr = qrcode(0, "M"); qr.addData(link); qr.make(); svgQr = qr.createSvgTag({ cellSize: 5, margin: 2 }); } catch {}
+    pintar(`<section class="panel-paso"><div style="display:flex;gap:14px;align-items:center">${sparky("festejo", 6)}<div>${marca("listo.lista", null, "h1")}<div class="ayuda">${nombre ? esc(nombre) : marca("tu_guia")}</div></div></div>
+      <div style="display:grid;grid-template-columns:1fr;gap:16px" class="rejilla-campos entrega">
+        ${svgQr ? `<div class="entrega-qr"><div class="qr">${svgQr}</div>${marca("listo.qr", null, "div", 'class="ayuda" style="margin-top:6px"')}</div>` : ""}
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="link-caja">${esc(link)}</div>
+          <div class="acciones"><a class="boton" href="${esc(link)}" data-i18n="link.abrir">${th("link.abrir")}</a>${marca("link.copiar", null, "button", 'class="boton linea" type="button" id="copiar"')}<a class="boton linea" id="wa" target="_blank" rel="noopener" href="${esc(waLink("", mensajeWhatsApp(nombre || t("tu_guia"), link)))}" data-i18n="link.whatsapp">${th("link.whatsapp")}</a></div>
+        </div></div>
+      <div class="caja-clave">${marca("listo.acceso_t", null, "b")}<ul style="margin:8px 0 0;padding-left:20px">${d.expira_en ? marca("listo.acceso1_fecha", { fecha: d.expira_en }, "li") : marca("listo.acceso1", null, "li")}${marca("listo.acceso2", null, "li")}${marca("listo.acceso3", null, "li")}</ul></div>
+      <div class="aviso-saldo"><span class="ico" aria-hidden="true">🎟️</span>${n > 1 ? marca("cta.lista_saldo_n", { n }) : marca(n === 1 ? "cta.lista_saldo_1" : "cta.lista_saldo_0")}</div>
+      <div class="acciones">${n ? `<a class="boton linea" href="crear.html?saldo=1" data-i18n="cta.otra">${th("cta.otra")}</a>` : ""}${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div></section>`);
+    $("#ir-cuenta").onclick = abrirCuenta;
+    $("#copiar").onclick = async () => { try { await navigator.clipboard.writeText(link); poner($("#copiar"), "link.copiado"); } catch {} };
+    redibujar = () => { $("#wa").href = waLink("", mensajeWhatsApp(nombre || t("tu_guia"), link)); };
+  }
+  function devuelta(d) {
+    const n = Number(d.saldo?.guias) || 0;
+    pintar(`<section class="panel-paso"><div style="display:flex;gap:14px;align-items:center">${sparky("triste", 5)}<div>${marca("cta.devuelta_t", null, "h1")}${d.titulo ? `<div class="ayuda">${esc(d.titulo)}</div>` : ""}</div></div>
+      ${d.mensaje ? `<p data-i18n-servidor="${esc(d.mensaje)}">${esc(textoServidor(d.mensaje))}</p>` : ""}
+      <div class="aviso-saldo"><span class="ico" aria-hidden="true">🎟️</span>${n === 1 ? marca("cta.devuelta_1") : marca("cta.devuelta_n", { n })}</div>
+      <div class="acciones">${n ? `<a class="boton" href="crear.html?saldo=1" data-i18n="cta.reintentar">${th("cta.reintentar")}</a>` : ""}${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div></section>`);
+    $("#ir-cuenta").onclick = abrirCuenta;
+  }
+  pintar(cargando("espera.generando"));
+  revisar();
+}
+
+// ---------- Arranque ----------
+try {
+  info = await mostrarPaquete(document, true);
+  const dentro = await cargarCuenta();
+  if (!dentro) vistaEntrar({ comprar: quiereComprar, aviso: compraUrl || guiaUrl ? "cta.entra_para_ver" : null });
+  else if (guiaUrl) vistaGuia(guiaUrl);
+  else if (compraUrl) vistaCompra(compraUrl);
+  else if (quiereComprar && cuenta.paquete?.disponible) comprar();
+  else vistaCuenta();
+} catch (e) {
+  pintar(`<section class="panel-paso"><p class="error" data-i18n-servidor="${esc(e.message)}">${esc(mensajeError(e))}</p><div class="acciones"><button class="boton linea" type="button" onclick="location.reload()" data-i18n="boton.reintentar">${th("boton.reintentar")}</button></div></section>`);
+}
+</script>
+<script type="module" src="js/sin-internet.js"></script>
+</body>
+</html>

@@ -7,6 +7,7 @@
 //   2. Servidor: versión desplegada contra la del repositorio, y que los motores de la venta estén encendidos.
 //   3. WhatsApp: que el teléfono de SparkEd siga enlazado.
 //   4. Compras recientes: pagadas sin guía, guías sin entregar, entregas sin correo o sin WhatsApp, guías que nadie abre.
+//      Y los paquetes de guías: pagados sin abonar, saldo de las cuentas y guías que regresaron al saldo.
 //   5. Guías pagadas que la IA no terminó.
 //   6. Reportes nuevos, sobre todo los «AVISO AUTOMÁTICO» (una guía pagada no abrió).
 //   7. Publicación del sitio (GitHub Pages) y estado de la copia local.
@@ -124,7 +125,11 @@ if (!clave) {
       if (c.estado === "pendiente" && c.mp_estado === "approved") falla(`${f}: Mercado Pago ya aprobó el pago y sigue «pendiente» (revisar: POST /admin/compras/<id>/revisar)`);
       if (c.estado !== "pagada") continue;
       const min = (Date.now() - new Date(c.pagada_en ?? c.creada_en).getTime()) / 60000;
-      if (!c.guia_lista && min > 12) falla(`${f}: pagada hace ${hace(c.pagada_en)} y su guía todavía no está lista`);
+      // Una guía hecha con el saldo de un paquete se genera completa de una vez (unos 6 minutos, más con muchas páginas):
+      // su margen es de 25 minutos. Si falló, el servidor la devuelve sola al saldo y la compra queda «fallida».
+      const dePaquete = c.metodo_pago === "saldo" || c.cobro === "saldo";
+      if (!c.guia_lista && dePaquete) { if (min > 25) falla(`${f} (guía de paquete): creada hace ${hace(c.pagada_en)} y todavía no está lista ni se devolvió al saldo`); }
+      else if (!c.guia_lista && min > 12) falla(`${f}: pagada hace ${hace(c.pagada_en)} y su guía todavía no está lista`);
       else if (c.guia_lista && !c.entregada_en && min > 12) falla(`${f}: su guía está lista desde hace rato y no se ha entregado`);
       if (!c.entregada_en) continue;
       if (!c.acceso) { falla(`${f}: entregada sin acceso (no hay link)`); continue; }
@@ -158,6 +163,28 @@ if (!clave) {
       } catch (e) { aviso(`compra ${c.folio}: no pude preguntar por su clave (${e.message})`); }
     }
     if (vigentes.length && reconocidas === vigentes.length) ok(`llaves entregadas y vigentes: el servidor reconoce las ${vigentes.length} y cada una tiene su guía completa (sin gastar accesos)`);
+  }
+
+  // ---------- 4b. Paquetes de guías (cuentas y saldo) ----------
+  // GET /admin/paquetes: el servidor manda el WhatsApp y el correo enmascarados; aquí solo se imprimen folios y cifras.
+  titulo("4b. Paquetes de guías");
+  const paq = await admin("/paquetes");
+  if (paq.st === 404) aviso("el servidor desplegado todavía no trae el paquete de guías (/admin/paquetes no existe)");
+  else if (paq.st !== 200 || !paq.d?.resumen) aviso(`/admin/paquetes no respondió (HTTP ${paq.st})`);
+  else {
+    const R = paq.d.resumen, A = paq.d.ajustes ?? {};
+    for (const x of paq.d.paquetes ?? []) {
+      if (x.de_prueba) continue;
+      const min = (Date.now() - new Date(x.pagada_en ?? x.creada_en).getTime()) / 60000;
+      if (x.estado === "pagada" && !x.abonado && min > 5) falla(`paquete ${x.folio}: pagado hace ${hace(x.pagada_en)} y sus guías no están en su cuenta. Abonar: panel → Paquetes → «Abonar ahora» (POST /admin/compras/<id>/pagar)`);
+      if (x.estado === "pendiente" && x.mp_estado === "approved") falla(`paquete ${x.folio}: Mercado Pago ya aprobó el pago y sigue «pendiente» (revisar: POST /admin/compras/<id>/revisar)`);
+    }
+    const negativas = (paq.d.cuentas ?? []).filter((c) => !(c.saldo >= 0)).length;
+    if (negativas) falla(`${negativas} cuenta(s) con saldo negativo: el libro de movimientos no cuadra`);
+    const dePrueba = (paq.d.cuentas ?? []).filter((c) => c.de_prueba).length;
+    if (dePrueba) aviso(`hay ${dePrueba} cuenta(s) de prueba sin borrar (¿una prueba en curso?). Borrarlas: node probar-paquete.mjs --limpiar`);
+    if ((R.guias_devueltas ?? 0) >= 3 && R.guias_devueltas > (R.guias_usadas ?? 0)) aviso(`${R.guias_devueltas} guías de paquete regresaron al saldo y solo ${R.guias_usadas ?? 0} se crearon bien: revisa por qué fallan (panel → Paquetes → movimientos de cada cuenta)`);
+    ok(`paquete ${A.encendido ? "A LA VENTA" : "apagado"} ($${A.precio}, ${A.guias} guías, ${A.dias} días) · cobrados ${R.paquetes_cobrados ?? 0} · $${R.ingreso_mxn ?? 0} · pendientes de pago ${R.paquetes_pendientes ?? 0} · guías usadas ${R.guias_usadas ?? 0}, sin usar ${R.guias_sin_usar ?? 0}, vencidas ${R.guias_vencidas ?? 0}, devueltas ${R.guias_devueltas ?? 0} · cuentas ${R.cuentas ?? 0}`);
   }
 
   // ---------- 5. Guías pagadas que no se terminaron ----------

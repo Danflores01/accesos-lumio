@@ -59,6 +59,17 @@ necesitan el visto bueno de Daniel (ver «Quién decide»).
 | «El panel dice más ventas (o más pesos) de los que cobré» | Una compra solo es venta si de verdad se cobró: Mercado Pago aprobado, o confirmada a mano como «cobrada por fuera». Las de código y las cortesías (confirmadas a mano sin cobro) no cuentan. El 10 nov 2026 el panel decía 5 ventas y $500 porque sumaba 2 compras marcadas a mano que nadie pagó. | Compras pagadas con su método y estado de Mercado Pago (`metodo_pago`, `mp_estado`); `node herramientas/probar-ventas.mjs`. La versión desplegada debe ser 2026-11-10.8 o más nueva. | En Compras, cada confirmada a mano tiene un botón para decir si fue cortesía o cobrada por fuera: lo decide Daniel. |
 | Un número del Resumen se ve raro | Datos, no un fallo de cliente. | `/admin/resumen`. | Fuera de la guardia, salvo que esconda compras sin entregar. |
 
+## Con un paquete de guías (cuenta, saldo y «Mi cuenta»)
+
+| Lo que ve o dice | Qué significa | Comprobar | Arreglar |
+|---|---|---|---|
+| «No me llega el código» | WhatsApp desconectado, número sin WhatsApp o número mal escrito. El código va entonces al correo de respaldo de su cuenta. | `/admin/whatsapp` → `estado_instancia`; `cuenta_codigos.envio` de ese número (consulta por teléfono; no lo imprimas). | Que lo pida «por correo» en la misma pantalla, o que revise su número. Frenos: 3 códigos por hora por número. |
+| «Pagué el paquete y no tengo mis guías» | El aviso de Mercado Pago no ha llegado (OXXO y SPEI tardan), o el abono se interrumpió. | Ronda, parte 4b; panel → Paquetes: ¿su paquete dice «Pagada» y «Sus guías ya están en su cuenta»? | «Revisar en Mercado Pago»; si ya está pagado y sin abonar, «Abonar ahora». Marcarlo pagado a mano lo decide Daniel. |
+| «Mi guía no se pudo crear» | La generación falló o las fotos no eran material de estudio: la guía **regresó sola a su saldo**. | Panel → Paquetes → su cuenta: movimiento «Guía devuelta (no se pudo crear)» con el motivo. | Que la cree de nuevo con fotos claras. Si falla varias veces con buenas fotos, es del generador: consulta 3. |
+| «Tu cuenta ya está abierta en 2 dispositivos» | Es el límite, no un fallo. | — | Aceptar cierra la sesión del dispositivo más antiguo. |
+| «No tienes guías disponibles» y dice que sí pagó | Su saldo venció (90 días), ya las usó, o pagó con otro número. | Panel → Paquetes: busca por folio o por los últimos 4 dígitos. | Sumar una guía a mano («＋ Sumar una guía») lo decide Daniel. |
+| Algo raro en todo el paquete | — | `node scripts/probar-paquete.mjs` (40 comprobaciones en vivo). | Si falla: apagar la venta del paquete en el panel (no necesita despliegue) y avisar a Daniel. |
+
 ## Quién decide
 
 - **La guardia arregla sin preguntar:** lo que restablece el servicio sin tocar a una familia en particular. Publicar

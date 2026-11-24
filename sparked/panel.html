@@ -418,6 +418,22 @@
     #listaIntentos td:nth-child(4):empty { display: none; }
     body.panel.sitio.claro dialog { padding: 20px; }
   }
+  /* Paquetes de guías (24 nov 2026): cuentas con su saldo y su libro de movimientos. */
+  .paq-titulo { font-size: 18px; margin: 22px 0 12px; }
+  .paq-ajustes { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; }
+  .paq-ajustes .campo { flex: 1 1 160px; min-width: 0; }
+  details.cuenta-paq { background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); padding: 16px 22px; margin-bottom: 12px; min-width: 0; }
+  details.cuenta-paq summary { cursor: pointer; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+  details.cuenta-paq summary b.saldo { font-size: 17px; }
+  details.cuenta-paq .tabla-envoltura { overflow-x: auto; }
+  details.cuenta-paq .tabla-libro { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 12px 0 4px; font-size: 13.5px; }
+  details.cuenta-paq .tabla-libro th:nth-child(1) { width: 24%; } details.cuenta-paq .tabla-libro th:nth-child(3) { width: 13%; } details.cuenta-paq .tabla-libro th:nth-child(4) { width: 21%; }
+  @media (max-width: 559px) { details.cuenta-paq { padding: 14px 14px; } details.cuenta-paq .tabla-libro { font-size: 12.5px; } details.cuenta-paq .tabla-libro th:nth-child(1) { width: 27%; } details.cuenta-paq .tabla-libro th:nth-child(3) { width: 15%; } details.cuenta-paq .tabla-libro th:nth-child(4) { width: 23%; } }
+  body.panel.sitio.claro details.cuenta-paq .tabla-libro th { padding: 6px 8px 6px 0; white-space: normal; background: none; }
+  body.panel.sitio.claro details.cuenta-paq .tabla-libro td { padding: 7px 8px 7px 0; white-space: normal; overflow-wrap: anywhere; }
+  details.cuenta-paq .tabla-libro td.mas { color: #15803d; font-weight: 700; white-space: nowrap; }
+  details.cuenta-paq .tabla-libro td.menos { color: #b91c1c; font-weight: 700; white-space: nowrap; }
+  details.cuenta-paq .acciones-cuenta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 </style>
 </head>
 <body class="sitio claro panel">
@@ -435,6 +451,7 @@
     <button data-tab="resumen" class="on">Resumen</button>
     <button data-tab="guias">Guías</button>
     <button data-tab="compras">Compras <span class="n" id="nCompras" hidden></span></button>
+    <button data-tab="paquetes">Paquetes <span class="n" id="nPaquetes" hidden></span></button>
     <button data-tab="codigos">Códigos</button>
     <button data-tab="solicitudes" hidden>Pedidos sin guía <span class="n" id="nSolicitudes" hidden></span></button>
     <button data-tab="reportes">Reportes <span class="n" id="nReportes" hidden></span></button>
@@ -531,6 +548,32 @@
         <p class="ayuda" style="margin:6px 0 0">Con Mercado Pago encendido, el pago se confirma solo (tarjeta, OXXO o SPEI). Sin cobro en línea, aquí confirmas los pagos a mano con "Marcar pagada".<span id="notaCobro"></span></p>
       </div>
       <div id="listaCompras"></div>
+    </section>
+
+    <!-- Paquetes de guías (24 nov 2026): ventas del paquete de 3, saldo de cada cuenta y su libro de movimientos. -->
+    <section data-panel="paquetes" hidden>
+      <div class="barra-herr">
+        <input id="buscaPaquetes" class="filtro" type="search" placeholder="Buscar por folio, nombre o últimos 4 dígitos" aria-label="Buscar en paquetes y cuentas" style="flex:1 1 240px;min-height:40px;padding:8px 14px;border:1px solid var(--pn-campo);border-radius:999px">
+        <button class="boton linea chico" id="btnRefrescarPaquetes">⟳ Actualizar</button>
+      </div>
+      <div class="caja-clave" style="margin-bottom:12px">
+        <b>Cómo funciona el paquete de guías</b>
+        <p style="margin:6px 0 0">La familia entra con su WhatsApp (le llega un código), paga una sola vez con tarjeta, OXXO o SPEI y recibe sus guías en su cuenta. Cada guía se genera completa, sin vista previa; si no se puede crear, regresa sola a su saldo. El paquete cuenta como <b>una venta</b>; las guías hechas con saldo no son ventas.</p>
+        <p class="ayuda" style="margin:6px 0 0">Aquí el WhatsApp y el correo de cada familia salen a medias a propósito. <span id="paqEstado"></span></p>
+      </div>
+      <div class="panel-paso" style="margin-bottom:16px"><h2 style="margin-top:0">Venta del paquete</h2>
+        <form id="formPaquete" class="paq-ajustes">
+          <div class="campo"><label for="paqVenta">Venta en el sitio</label><select id="paqVenta" name="sparked_paquete3"><option value="no">Apagada (los botones no se ven)</option><option value="si">Encendida</option></select></div>
+          <div class="campo"><label for="paqPrecio">Precio del paquete (MXN, IVA incluido)</label><input id="paqPrecio" name="sparked_paquete3_precio" inputmode="numeric"></div>
+          <div class="campo"><label for="paqDias">Días para usar las guías</label><input id="paqDias" name="sparked_paquete3_dias" inputmode="numeric"></div>
+          <button class="boton" type="submit">Guardar</button>
+        </form>
+      </div>
+      <div class="numeros" id="paqNumeros"></div>
+      <h2 class="paq-titulo">Paquetes</h2>
+      <div id="listaPaquetes"></div>
+      <h2 class="paq-titulo">Cuentas y su saldo</h2>
+      <div id="listaCuentas"></div>
     </section>
 
     <section data-panel="codigos" hidden>
@@ -732,7 +775,7 @@ function mostrarTab(t) {
   location.hash = t;
   $("#seccionActual").textContent = $$("#tabs button").find((b) => b.dataset.tab === t)?.firstChild?.textContent?.trim() ?? "";
   cerrarMenu();
-  ({ resumen: () => { cargarChats(); return cargarResumen(); }, guias: cargarCostosGuias, compras: cargarCompras, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, comentarios: cargarComentarios, costos: cargarCostos, motores: cargarMotores, ajustes: cargarAjustes })[t]?.();
+  ({ resumen: () => { cargarChats(); return cargarResumen(); }, guias: cargarCostosGuias, compras: cargarCompras, paquetes: cargarPaquetes, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, comentarios: cargarComentarios, costos: cargarCostos, motores: cargarMotores, ajustes: cargarAjustes })[t]?.();
 }
 function cargarTodo() { mostrarTab(location.hash.replace("#", "") || "resumen"); }
 
@@ -749,13 +792,13 @@ for (const d of $$("details.plegable")) {
 // Resumen trae «cortesias_mes» y cada compra trae «cobro» y «a_mano». Con un servidor anterior esos datos no vienen y
 // el panel se queda como estaba; por eso lo nuevo siempre pregunta primero si el dato llegó.
 // Al marcar una compra como pagada a mano hay que decir si se cobró: solo lo cobrado cuenta como venta y entra en los impuestos.
-function preguntarCobro() {
+function preguntarCobro(paquete = false) {
   return new Promise((listo) => {
-    const d = modal(`<h2>¿Cómo se pagó esta guía?</h2>
-      <p>Al confirmar, la guía se termina y se envía sola a la familia.</p>
+    const d = modal(`<h2>${paquete ? "¿Cómo se pagó este paquete?" : "¿Cómo se pagó esta guía?"}</h2>
+      <p>${paquete ? "Al confirmar, sus guías quedan en su cuenta y la familia recibe el aviso por WhatsApp y por correo." : "Al confirmar, la guía se termina y se envía sola a la familia."}</p>
       <div style="display:grid;gap:10px;margin-top:14px">
-        <button class="boton" data-cobro="por_fuera">💵 La cobré por fuera (efectivo o transferencia)</button>
-        <button class="boton linea" data-cobro="cortesia">🎁 Es una cortesía: no la cobré</button>
+        <button class="boton" data-cobro="por_fuera">💵 ${paquete ? "Lo cobré" : "La cobré"} por fuera (efectivo o transferencia)</button>
+        <button class="boton linea" data-cobro="cortesia">🎁 Es una cortesía: no ${paquete ? "lo" : "la"} cobré</button>
       </div>
       <p class="ayuda" style="margin-top:12px">Solo lo que cobras cuenta como venta y entra en el cálculo de tus impuestos.</p>`);
     let elegido = null;
@@ -774,12 +817,18 @@ async function cargarResumen() {
     SERVIDOR_CON_COBRO
       ? [(r.compras.con_codigo_mes ?? 0) + (r.compras.cortesias_mes ?? 0), `guías sin cobro este mes: ${r.compras.con_codigo_mes ?? 0} con código y ${r.compras.cortesias_mes ?? 0} de cortesía (no son ventas)`]
       : [r.compras.con_codigo_mes ?? 0, "guías con código gratis este mes (no son ventas)"],
+    // Paquetes de guías: el paquete cobrado ya va dentro de las ventas de arriba; las guías hechas con saldo no son ventas.
+    ...(r.paquetes && (r.paquetes.vendidos_mes || r.paquetes.pendientes || r.compras.de_paquete_mes) ? [
+      [r.paquetes.vendidos_mes + " · " + dinero(r.paquetes.ingresos_mes), "paquetes de guías cobrados este mes (ya contados en las ventas)"],
+      [r.compras.de_paquete_mes ?? 0, "guías hechas con saldo de paquete este mes (no son ventas)"],
+    ] : []),
     [r.reportes_nuevos, "reportes nuevos"], ["US$" + r.ia.costo_usd_mes.toFixed(2), "gasto de IA este mes"],
   ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
   // Guías pagadas que la IA no pudo terminar: la familia ve "Estamos revisando tu guía" hasta que se reintente.
   $("#alertas").innerHTML = (r.entregas_con_error ?? []).map((x) => `<div class="caja-clave" style="border-left-color:#dc2626;margin-bottom:12px"><b>⚠️ Una guía pagada no se terminó</b><div class="ayuda" style="margin:4px 0 8px">La IA no pudo terminar los bloques que faltan (paso ${esc(x.paso ?? "")}, ${esc(fecha(x.desde))}). La familia ve "Estamos revisando tu guía; te avisamos por correo en cuanto esté lista". Toca ↻ Reintentar; al terminar, a la familia le llega sola su guía.</div><button class="boton chico" data-reintentar="${esc(x.trabajo_id)}">↻ Reintentar</button></div>`).join("");
   $$("#alertas [data-reintentar]").forEach((b) => b.onclick = async () => { b.disabled = true; try { await api(`/trabajos/${b.dataset.reintentar}/reintentar`, { method: "POST" }); aviso("Reintentando… la guía se envía sola cuando esté lista", false, 6000); cargarResumen(); } catch (e) { b.disabled = false; aviso(e.message, true, 6000); } });
   $("#nCompras").hidden = !r.compras.pendientes; $("#nCompras").textContent = r.compras.pendientes;
+  $("#nPaquetes").hidden = !r.paquetes?.pendientes; $("#nPaquetes").textContent = r.paquetes?.pendientes ?? "";
   $("#nSolicitudes").hidden = !r.solicitudes_sin_guia; $("#nSolicitudes").textContent = r.solicitudes_sin_guia;
   $("#nReportes").hidden = !r.reportes_nuevos; $("#nReportes").textContent = r.reportes_nuevos;
   // Comentarios nuevos de la portada (si la ruta todavía no existe, no se muestra nada).
@@ -1082,7 +1131,8 @@ async function cargarCompras() {
   // La nota sobre cobro o cortesía solo aparece cuando el servidor ya lo distingue (cada compra trae «cobro»).
   if (lista.length) $("#notaCobro").textContent = "cobro" in lista[0] ? " Al marcarla eliges si la cobraste por fuera o si es una cortesía: solo lo cobrado cuenta como venta." : "";
   $("#listaCompras").innerHTML = lista.map((c) => `<div class="fila-g"><div class="info"><b class="cliente">${esc(c.nombre || "Sin nombre")}</b>${chip(c.estado)}
-      <div class="ayuda">Folio <b>${esc(c.folio)}</b> · ${esc(fecha(c.creada_en))} · ${c.cobro === "cortesia" ? "sin cobro" : dinero(c.monto_mxn) + " MXN"}${c.pagada_en ? (c.cobro === "cortesia" ? " · confirmada " : " · pagada ") + esc(fecha(c.pagada_en)) : ""}</div>
+      <div class="ayuda">Folio <b>${esc(c.folio)}</b> · ${esc(fecha(c.creada_en))} · ${c.cobro === "saldo" ? "guía de paquete, sin cobro" : c.cobro === "cortesia" ? "sin cobro" : dinero(c.monto_mxn) + " MXN"}${c.pagada_en && c.cobro !== "saldo" ? (c.cobro === "cortesia" ? " · confirmada " : " · pagada ") + esc(fecha(c.pagada_en)) : ""}</div>
+      ${c.metodo_pago === "saldo" ? '<div class="ayuda">🎟️ Hecha con el saldo de un paquete: no cuenta como venta (la venta fue el paquete).' + (c.estado === "fallida" ? " No se pudo crear y la guía regresó a su saldo." : "") + "</div>" : ""}
       <div class="ayuda">📞 <a href="${esc(waLink(c.telefono ?? "", ""))}" target="_blank" rel="noopener">${esc(c.telefono ?? "")}</a> · ✉️ <a href="mailto:${esc(c.correo ?? "")}">${esc(c.correo ?? "")}</a></div>
       ${c.codigo ? `<div class="ayuda">🎟️ Código <b>${esc(c.codigo)}</b>${c.metodo_pago === "codigo" ? " · guía gratis (no cuenta como venta)" : ` · descuento de ${dinero(c.descuento_mxn)}`}</div>` : ""}
       ${c.a_mano ? `<div class="ayuda">${c.cobro === "por_fuera" ? "💵 Confirmada a mano · cobrada por fuera (cuenta como venta)" : "🎁 Confirmada a mano · cortesía, sin cobro (no cuenta como venta)"}</div>
@@ -1231,6 +1281,80 @@ async function cargarAjustes() {
 }
 $("#formAjustes").onsubmit = async (e) => { e.preventDefault(); const f = e.target; const body = {}; for (const el of f.elements) if (el.name) body[el.name] = el.value; try { await api("/config", { method: "POST", body }); aviso("Ajustes guardados"); } catch (err) { aviso(err.message, true); } };
 $("#btnLimpiar").onclick = async () => { try { const r = await api("/limpiar", { method: "POST" }); aviso(`Limpieza: ${r.borradores} borradores y ${r.guias} guías vencidas`); } catch (e) { aviso(e.message, true); } };
+// ---------- Paquetes de guías: ventas del paquete, saldo de cada cuenta y su libro de movimientos ----------
+// GET /admin/paquetes. El WhatsApp y el correo llegan ya enmascarados desde el servidor: aquí nunca salen completos.
+const COBRO_PAQ = { linea: "cobrado en línea", por_fuera: "cobrado por fuera", cortesia: "cortesía, sin cobro (no es venta)", codigo: "con código (no es venta)" };
+const diaCorto = (x) => x ? new Date(x).toLocaleDateString("es-MX", { dateStyle: "medium" }) : "";
+const guiasTxt = (n) => `${n} ${n === 1 ? "guía" : "guías"}`;
+function filtrarPaquetes() {
+  const q = $("#buscaPaquetes").value.trim().toLowerCase();
+  for (const el of $$("#listaPaquetes > *, #listaCuentas > *")) el.hidden = !!q && !el.textContent.toLowerCase().includes(q);
+}
+$("#buscaPaquetes").addEventListener("input", filtrarPaquetes);
+$("#btnRefrescarPaquetes").onclick = () => cargarPaquetes().catch((e) => aviso(e.message, true));
+$("#formPaquete").onsubmit = async (e) => {
+  e.preventDefault();
+  const f = e.target, encender = f.sparked_paquete3.value === "si";
+  const precio = Math.round(Number(f.sparked_paquete3_precio.value)), dias = Math.round(Number(f.sparked_paquete3_dias.value));
+  if (!(precio >= 1) || !(dias >= 1)) { aviso("Escribe el precio y los días con números mayores que cero.", true); return; }
+  if (!confirm(encender ? `¿Dejar a la venta el paquete de guías por $${precio}? Sus botones se ven en el sitio en menos de un minuto.` : "¿Apagar la venta del paquete? Sus botones dejan de verse en el sitio. Quien ya compró conserva su saldo y puede seguir usándolo.")) return;
+  try { await api("/config", { method: "POST", body: { sparked_paquete3: encender ? "si" : "no", sparked_paquete3_precio: String(precio), sparked_paquete3_dias: String(dias) } }); aviso(encender ? "Paquete a la venta." : "Venta del paquete apagada."); cargarPaquetes(); }
+  catch (err) { aviso(err.message, true); }
+};
+async function cargarPaquetes() {
+  const d = await api("/paquetes"), R = d.resumen ?? {}, A = d.ajustes ?? {};
+  const f = $("#formPaquete");
+  f.sparked_paquete3.value = A.encendido ? "si" : "no"; f.sparked_paquete3_precio.value = A.precio ?? ""; f.sparked_paquete3_dias.value = A.dias ?? "";
+  $("#paqEstado").textContent = A.encendido ? "🟢 El paquete está a la venta: sus botones se ven en el sitio." : "⚪ El paquete está apagado: el sitio no muestra sus botones.";
+  $("#paqNumeros").innerHTML = [
+    [(R.paquetes_cobrados ?? 0) + " · " + dinero(R.ingreso_mxn), "paquetes vendidos y cobrados"],
+    ...(R.paquetes_sin_cobro ? [[R.paquetes_sin_cobro, "paquetes de cortesía, sin cobro (no son ventas)"]] : []),
+    [R.paquetes_pendientes ?? 0, "paquetes pendientes de pago"],
+    [R.guias_usadas ?? 0, "guías de paquete usadas"],
+    [R.guias_sin_usar ?? 0, "guías sin usar (las que debes)"],
+    [R.guias_vencidas ?? 0, "guías vencidas sin usarse"],
+    [R.guias_devueltas ?? 0, "guías que regresaron al saldo (no se pudieron crear)"],
+    [(R.cuentas_con_saldo ?? 0) + " de " + (R.cuentas ?? 0), "cuentas con saldo"],
+  ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
+  $("#listaPaquetes").innerHTML = (d.paquetes ?? []).map((x) => {
+    const botones = (x.estado === "pendiente" && x.con_link_de_pago ? `<button class="boton linea" data-paq="revisar" data-id="${x.id}">🔄 Revisar en Mercado Pago</button>` : "")
+      + (x.estado === "pendiente" ? `<button class="boton" data-paq="pagar" data-id="${x.id}">✅ Marcar pagado</button><button class="boton linea" data-paq="cancelar" data-id="${x.id}">✖ Cancelar</button>` : "")
+      + (x.estado === "pagada" && !x.abonado ? `<button class="boton" data-paq="abonar" data-id="${x.id}">Abonar ahora</button>` : "");
+    return `<div class="fila-g"><div class="info"><b class="cliente">${esc(x.nombre || "Sin nombre")}${x.de_prueba ? " · cuenta de prueba" : ""}</b>${chip(x.estado)}
+      <div class="ayuda">Folio <b>${esc(x.folio)}</b> · ${esc(fecha(x.creada_en))} · ${x.cobro === "cortesia" ? "sin cobro" : dinero(x.monto_mxn) + " MXN"}${x.pagada_en ? (x.cobro === "cortesia" ? " · confirmado " : " · pagado ") + esc(fecha(x.pagada_en)) : ""}</div>
+      <div class="ayuda">📞 WhatsApp ${esc(x.whatsapp ?? "sin cuenta")}${x.con_link_de_pago || x.mp_estado ? ` · Mercado Pago: ${esc(METODOS_MP[x.metodo_pago] ?? x.metodo_pago ?? "todavía sin pago")}${x.mp_estado ? " · " + esc(ESTADOS_MP[x.mp_estado] ?? x.mp_estado) : ""}${x.mp_vence_en ? " · se puede pagar hasta el " + esc(fecha(x.mp_vence_en)) : ""}` : ""}</div>
+      ${x.estado === "pagada" ? `<div class="ayuda">${x.abonado ? "✅ Sus guías ya están en su cuenta" : "⚠️ Pagado, pero sus guías todavía no están en su cuenta: toca «Abonar ahora»"}${x.cobro ? " · " + esc(COBRO_PAQ[x.cobro] ?? x.cobro) : ""}</div>` : ""}
+    </div>${botones ? `<div class="acciones">${botones}</div>` : ""}</div>`;
+  }).join("") || "<p class='ayuda'>Todavía no hay paquetes.</p>";
+  $("#listaCuentas").innerHTML = (d.cuentas ?? []).map((c) => `<details class="cuenta-paq"><summary><b>${esc(c.nombre || "Sin nombre")}</b> · WhatsApp ${esc(c.whatsapp)}${c.de_prueba ? " · cuenta de prueba" : ""} · <b class="saldo">${esc(guiasTxt(c.saldo))}</b>${c.saldo && c.vence_en ? ` (${c.saldo === 1 ? "vence" : "vencen"} el ${esc(diaCorto(c.vence_en))})` : ""} · usadas: ${c.usadas}${c.vencidas ? ` · vencidas sin usarse: ${c.vencidas}` : ""}</summary>
+      <div class="ayuda" style="margin-top:8px">Correo ${esc(c.correo ?? "sin correo")} · cuenta creada el ${esc(fecha(c.creada_en))}${c.ultimo_acceso_en ? " · último acceso el " + esc(fecha(c.ultimo_acceso_en)) : ""}</div>
+      <div class="tabla-envoltura"><table class="tabla-libro"><thead><tr><th>Fecha</th><th>Movimiento</th><th>Guías</th><th>Vence</th></tr></thead><tbody>${(c.movimientos ?? []).map((m) => `<tr><td>${esc(fecha(m.fecha))}</td><td>${esc(m.motivo_texto)}${m.folio ? " · folio " + esc(m.folio) : ""}${m.nota ? `<div class="ayuda">${esc(m.nota)}</div>` : ""}</td><td class="${m.cambio > 0 ? "mas" : "menos"}">${m.cambio > 0 ? "+" : ""}${m.cambio}</td><td>${m.vence_en ? esc(diaCorto(m.vence_en)) : ""}</td></tr>`).join("") || "<tr><td colspan='4'>Sin movimientos.</td></tr>"}</tbody></table></div>
+      ${c.de_prueba ? "" : `<div class="acciones-cuenta"><button class="boton linea chico" data-cta="1" data-id="${c.id}">＋ Sumar una guía</button><button class="boton linea chico" data-cta="-1" data-id="${c.id}">－ Restar una guía</button></div>`}
+    </details>`).join("") || "<p class='ayuda'>Todavía no hay cuentas.</p>";
+  filtrarPaquetes();
+  $$("#listaPaquetes [data-paq]").forEach((b) => b.onclick = async () => {
+    try {
+      const id = b.dataset.id, acto = b.dataset.paq;
+      if (acto === "pagar") {
+        const cobro = await preguntarCobro(true); if (!cobro) return;
+        await api(`/compras/${id}/pagar`, { method: "POST", body: { cobro } });
+        aviso(cobro === "cortesia" ? "Paquete de cortesía: sus guías ya están en su cuenta (no cuenta como venta)." : "Pago confirmado: sus guías ya están en su cuenta.", false, 6000);
+      }
+      if (acto === "abonar") { await api(`/compras/${id}/pagar`, { method: "POST", body: {} }); aviso("Listo: sus guías ya están en su cuenta."); }
+      if (acto === "revisar") { b.disabled = true; const r = await api(`/compras/${id}/revisar`, { method: "POST" }); aviso(r.compra?.estado === "pagada" ? "Pagado en Mercado Pago: sus guías ya están en su cuenta." : r.resultado === "sin_pagos" ? "Mercado Pago todavía no tiene ningún pago de este paquete." : "Mercado Pago dice: " + (ESTADOS_MP[r.compra?.mp_estado] ?? r.resultado), false, 6000); }
+      if (acto === "cancelar") { if (!confirm("¿Cancelar este paquete pendiente? Si la familia ya pagó en OXXO o por SPEI, su pago lo vuelve a activar solo.")) return; await api(`/compras/${id}/cancelar`, { method: "POST" }); aviso("Paquete cancelado."); }
+      cargarPaquetes(); cargarResumen();
+    } catch (e) { b.disabled = false; aviso(e.message, true, 6000); }
+  });
+  $$("#listaCuentas [data-cta]").forEach((b) => b.onclick = async () => {
+    const cambio = Number(b.dataset.cta);
+    const nota = prompt(cambio > 0 ? "Vas a SUMAR una guía a esta cuenta. Escribe el motivo (queda anotado en su libro):" : "Vas a RESTAR una guía a esta cuenta. Escribe el motivo (queda anotado en su libro):", "");
+    if (nota === null) return;
+    try { await api(`/cuentas/${b.dataset.id}/ajuste`, { method: "POST", body: { cambio, nota: nota.trim() } }); aviso(cambio > 0 ? "Se sumó una guía." : "Se restó una guía."); cargarPaquetes(); }
+    catch (e) { aviso(e.message, true, 6000); }
+  });
+}
+
 // ---------- Comentarios de la portada ----------
 // Todo lo que escriben los visitantes se muestra con esc(): nunca como HTML.
 const RELACION = { mama_papa: "Mamá o papá", alumno: "Alumno", docente: "Docente", otro: "Otro" };

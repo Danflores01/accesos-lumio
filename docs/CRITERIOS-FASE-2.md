@@ -966,3 +966,44 @@ Daniel: «que las actividades no sean tan infantiles». Cuando el grado es de un
 5. Funciones y detalle técnico: `docs/JUEGOS.md` (§ 2, regla 7 del § 5 y § 6). Regla para todo juego nuevo: su final pasa
    por `fin()` o `gameOver()` de `ui.js`, su protagonista sale de `personaje(ctx)` y sus títulos de aspecto infantil
    tienen versión sencilla.
+
+## 38. Paquete de 3 guías: cuentas, saldo y «Mi cuenta» (Daniel, 24 de noviembre de 2026)
+
+Daniel: «Construye y publica el paquete de 3 con los botones». Pago único de **$199** por **3 guías** que se pueden
+usar durante **90 días**. La guía suelta de $100 sigue igual y sin cuenta. La suscripción mensual (349) todavía no
+existe: en el sitio sale como «Próximamente». Código del servidor 2026-11-24.1; módulo `funciones/sparked/cuenta.ts`.
+
+1. **Se enciende y se apaga con un ajuste** (`sparked_paquete3`: `si` / `no`; panel → Paquetes → «Venta del paquete»,
+   junto con el precio y los días). Apagado, el sitio no muestra ningún botón del paquete y comprar responde «no
+   disponible»; quien ya compró conserva su saldo y sigue entrando a su cuenta.
+2. **La cuenta es el número de WhatsApp.** Se entra con un código de 6 dígitos que llega por WhatsApp (vale 10 minutos,
+   5 intentos); si WhatsApp falla, va al correo de respaldo. Sin contraseñas. Frenos: 3 códigos por hora y 10 al día
+   por número, 20 por hora por conexión. La respuesta al pedir un código es siempre la misma, exista o no la cuenta.
+3. **Máximo 2 dispositivos con la cuenta abierta** (como las guías). El tercero pregunta antes de cerrar la sesión del
+   dispositivo que lleva más tiempo sin usarse. La sesión dura 60 días sin uso.
+4. **El saldo es un libro de movimientos**, no un número: +3 al pagarse el paquete (con su fecha de vencimiento), −1 al
+   crear una guía, +1 si esa guía no se pudo crear, y los ajustes de Daniel. El descuento es un paso atómico en la
+   base (`sparked_usar_guia_de_saldo`): dos peticiones a la vez no gastan la misma guía. Un paquete se abona **una
+   sola vez** aunque Mercado Pago avise varias veces.
+5. **La guía hecha con saldo se genera completa, sin vista previa.** Antes de gastar se dice: «Se usará 1 de tus 3
+   guías. Te quedarán 2.». Si las fotos no sirven o la generación falla, **la guía regresa sola al saldo** y la familia
+   recibe el aviso. Cada guía tiene lo mismo que una suelta: 7 días de acceso ilimitado, en 2 dispositivos.
+6. **Ventas:** el paquete cobrado es **una venta de $199** (misma regla de la sección 36: solo lo cobrado). Las guías
+   hechas con saldo **no son ventas** (ni cortesías): se cuentan aparte, como «guías hechas con saldo de paquete».
+7. **Privacidad:** en el panel el WhatsApp y el correo de cada cuenta salen a medias («••• ••• 5678»,
+   «m•••@gmail.com»); nunca completos. Las cuentas de prueba (números +52 000…, que no existen) no mandan mensajes y
+   no cuentan en ninguna cifra.
+8. **Sitio:** la portada conserva su botón principal (con el paquete a la venta dice «Crea tu guía individual») y, debajo,
+   «Paquetes y suscripción · Ahorra más»; arriba, «Entrar» o «Mi cuenta»; al pie, «¿Quieres cancelar tu suscripción?»
+   (lleva a «Mi cuenta», que hoy explica que la suscripción todavía no existe). `paquetes.html` compara las tres
+   opciones; `cuenta.html` es «Mi cuenta» (saldo y vencimiento, crear guía, guías hechas, paquetes, correo de respaldo);
+   `crear.html?saldo=1` es el formulario de siempre gastando saldo. Todo en español e inglés.
+9. **Panel → Paquetes:** paquetes vendidos y cobrados, pendientes de pago, guías usadas, sin usar («las que debes»),
+   vencidas y devueltas; cada cuenta con su saldo y su libro; «Sumar una guía» y «Restar una guía» (quedan anotadas
+   como ajuste de Daniel, con su motivo).
+10. **Candados:** `node herramientas/probar-saldo.ts` (sin internet: 154 comprobaciones, con el servidor entero cargado;
+    la compuerta lo corre al subir código del servidor) y `node _guardia/skill/guardia-sparked/scripts/probar-paquete.mjs`
+    (en vivo, con una cuenta de prueba que se borra al final; con `--guia` genera además una guía completa de verdad).
+11. **Pendiente, a propósito:** la suscripción mensual; la tabla `pruebas_usadas` ya existe para su regla de «una prueba
+    gratis por WhatsApp y una por tarjeta», pero nada la usa todavía. Un reembolso de un paquete en Mercado Pago no
+    quita saldo solo: Daniel lo ajusta en el panel.

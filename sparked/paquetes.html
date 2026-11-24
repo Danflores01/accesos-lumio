@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es" data-paleta="civica_morado">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FFD400">
+<meta property="og:title" content="SparkEd · Paquetes y suscripción">
+<meta property="og:description" content="Compara una guía, el paquete de 3 guías y la suscripción mensual de SparkEd.">
+<meta property="og:image" content="https://sparkeducation-mx.com/sparked/img/og-sparky.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" sizes="48x48" href="img/iconos/sparky-48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/iconos/sparky-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="img/iconos/sparky-180.png">
+<!-- Letras: se piden aquí, al mismo tiempo que las hojas de estilo (como en las demás páginas del sitio). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&amp;family=Press+Start+2P&amp;display=swap">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/sitio.css">
+<script>/* Idioma: si el visitante eligió inglés, se oculta la página un instante mientras idioma.js traduce (evita ver el español). */try{var l=new URLSearchParams(location.search).get("lang")||localStorage.getItem("sparked_idioma");if(l==="en"){document.documentElement.lang="en";document.documentElement.classList.add("i18n-cargando");setTimeout(function(){document.documentElement.classList.remove("i18n-cargando")},2500)}}catch(e){}</script>
+<title data-i18n="titulo.paquetes">SparkEd · Paquetes y suscripción</title>
+</head>
+<body class="sitio">
+<header class="cab"><div class="contenedor">
+  <a class="marca" href="index.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span></a>
+  <nav><a class="nav-crear" href="crear.html" data-i18n="nav.crear">Crear mi guía</a><a href="cuenta.html" data-cuenta hidden data-i18n="nav.entrar">Entrar</a><span class="idioma" role="group" aria-label="Idioma" data-i18n-attr="aria-label:nav.idioma"><button type="button" data-idioma="es" lang="es" aria-pressed="true">ES</button><span aria-hidden="true">|</span><button type="button" data-idioma="en" lang="en" aria-pressed="false">EN</button></span></nav>
+</div></header>
+
+<main>
+<section class="planes-cab"><div class="contenedor">
+  <span class="pildora-sello" data-i18n="paq.sello">PAQUETES Y SUSCRIPCIÓN</span>
+  <h1 data-i18n="paq.titulo">Elige cómo quieres estudiar</h1>
+  <p data-i18n="paq.texto">Todas las guías se hacen con tu temario y tus apuntes. Con un paquete, cada guía te cuesta menos.</p>
+  <div class="aviso-planes" data-sin-paquete hidden data-i18n="paq.no_disponible">Los paquetes todavía no están disponibles. Por ahora puedes crear tu guía individual.</div>
+</div></section>
+
+<section class="contenedor"><div class="planes">
+  <article class="plan" style="--c:#FFB347;--c2:#FF6B9D">
+    <span class="cinta vacia" aria-hidden="true">·</span>
+    <h2 data-i18n="paq.una_t">Una guía</h2>
+    <div class="monto"><span id="precio-una">$100</span><small data-i18n="paq.iva">MXN · IVA incluido</small></div>
+    <div class="ahorro-linea" aria-hidden="true"></div>
+    <ul>
+      <li data-i18n="paq.una_1">Vista previa gratis antes de pagar</li>
+      <li data-i18n="paq.una_2">7 días de acceso ilimitado a tu guía</li>
+      <li data-i18n="paq.una_3">Hasta 2 dispositivos por familia</li>
+      <li data-i18n="paq.una_4">Pago con tarjeta, en OXXO o por transferencia</li>
+    </ul>
+    <a class="boton linea" href="crear.html" data-i18n="paq.una_boton">Crear una guía</a>
+  </article>
+
+  <article class="plan destacado" style="--c:#6d28d9;--c2:#FF6B9D">
+    <span class="cinta" data-i18n="paq.popular">Más popular</span>
+    <h2 id="tres-t" data-i18n="paq.tres_t" data-i18n-vars='{"guias":3}'>Paquete de 3 guías</h2>
+    <div class="monto"><span id="precio-tres">$199</span><small data-i18n="paq.tres_sub">MXN · IVA incluido · pago único</small></div>
+    <div class="ahorro-linea" id="tres-ahorro" data-i18n="paq.tres_ahorro" data-i18n-vars='{"ahorro":101,"guias":3}'>Ahorras $101 frente a 3 guías sueltas.</div>
+    <ul>
+      <li id="tres-1" data-i18n="paq.tres_1" data-i18n-vars='{"guias":3}'><b>3 guías completas, sin vista previa:</b> cada guía se genera entera desde el primer momento.</li>
+      <li id="tres-2" data-i18n="paq.tres_2" data-i18n-vars='{"dias":90}'><b>Vencen a los 90 días</b> de la compra: úsalas cuando las necesites.</li>
+      <li data-i18n="paq.tres_3"><b>Pago único</b> con tarjeta, en OXXO o por transferencia.</li>
+      <li data-i18n="paq.tres_4">Con cada guía tienes 7 días de acceso ilimitado, en 2 dispositivos.</li>
+      <li data-i18n="paq.tres_5">Si una guía no se puede crear, regresa sola a tu cuenta.</li>
+    </ul>
+    <a class="boton" id="comprar" href="cuenta.html?comprar=paquete3" data-paquete hidden data-i18n="paq.tres_boton" data-i18n-vars='{"precio":199}'>Comprar paquete · $199</a>
+    <button class="boton linea" type="button" disabled data-sin-paquete data-i18n="paq.proximamente">Próximamente</button>
+  </article>
+
+  <article class="plan pronto" style="--c:#9ca3af;--c2:#d1d5db">
+    <span class="cinta gris" data-i18n="paq.proximamente">Próximamente</span>
+    <h2 data-i18n="paq.ilim_t">Guías ilimitadas</h2>
+    <div class="monto"><span id="precio-ilim">$349</span><small data-i18n="paq.ilim_sub">MXN al mes · IVA incluido</small></div>
+    <div class="ahorro-linea" aria-hidden="true"></div>
+    <ul>
+      <li data-i18n="paq.ilim_1">Suscripción mensual con guías ilimitadas</li>
+      <li data-i18n="paq.ilim_2">Todavía no está disponible: pronto podrás suscribirte aquí.</li>
+    </ul>
+    <button class="boton linea" type="button" disabled data-i18n="paq.proximamente">Próximamente</button>
+  </article>
+</div></section>
+
+<section class="contenedor servicios unico">
+  <article class="servicio" style="--c:#6d28d9;--c2:#FF6B9D;--fondo-paso:#f6f3ff">
+    <h2 data-i18n="paq.como_t">Así funciona el paquete</h2>
+    <div class="pasos3">
+      <div class="paso"><div class="dib"><span data-sprite="telefono" data-escala="5"></span></div><div data-i18n="paq.paso1">1. Confirmas tu WhatsApp<small>te mandamos un código de 6 dígitos; sin contraseñas</small></div></div>
+      <div class="paso"><div class="dib"><span data-sprite="moneda" data-escala="5"></span></div><div data-i18n="paq.paso2">2. Pagas una sola vez<small>con tarjeta, en OXXO o por transferencia</small></div></div>
+      <div class="paso"><div class="dib"><span data-sprite="libro" data-escala="5"></span></div><div id="paso3" data-i18n="paq.paso3" data-i18n-vars='{"dias":90}'>3. Creas tus guías en «Mi cuenta»<small>cuando las necesites, durante 90 días</small></div></div>
+    </div>
+  </article>
+</section>
+<p class="planes-pie contenedor" data-i18n="paq.ya_tengo">¿Ya compraste un paquete? <a href="cuenta.html">Entra a tu cuenta</a>.</p>
+</main>
+
+<footer class="pie"><div class="contenedor"><span data-i18n="pie">SparkEd · Guías de estudio interactivas</span></div></footer>
+
+<script type="module">
+import { pintarSprites } from "./js/sitio.js";
+import { poner } from "./js/idioma.js";
+import { mostrarPaquete } from "./js/cuenta.js";
+pintarSprites();
+// Precios, guías y días vienen del servidor (GET /paquete/info). Si el paquete está apagado, su botón dice «Próximamente».
+const $ = (s) => document.querySelector(s);
+const info = await mostrarPaquete(document, true);
+if (info) {
+  const { precio, guias, dias } = info, una = Number(info.precio_guia) || 100, ahorro = una * guias - precio;
+  $("#precio-una").textContent = "$" + una;
+  $("#precio-tres").textContent = "$" + precio;
+  if (info.suscripcion?.precio) $("#precio-ilim").textContent = "$" + info.suscripcion.precio;
+  poner($("#tres-t"), "paq.tres_t", { guias });
+  poner($("#tres-1"), "paq.tres_1", { guias });
+  poner($("#tres-2"), "paq.tres_2", { dias });
+  poner($("#paso3"), "paq.paso3", { dias });
+  poner($("#comprar"), "paq.tres_boton", { precio });
+  const linea = $("#tres-ahorro");
+  if (ahorro > 0) poner(linea, "paq.tres_ahorro", { ahorro, guias }); else { delete linea.dataset.i18n; linea.textContent = ""; }
+}
+</script>
+<script type="module" src="js/sin-internet.js"></script>
+</body>
+</html>

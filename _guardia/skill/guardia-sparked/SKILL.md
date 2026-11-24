@@ -68,6 +68,9 @@ Todo cambio de SparkEd pasa por aquí, por pequeño que parezca. El del 10 de no
 4. **Si toca el reproductor o el contenido de las guías**, recórrelo de verdad con una guía real y sin usar el link de
    nadie: `node herramientas/servir.js` y `node herramientas/probar-guia.mjs <id de la guía> http://localhost:8790/sparked/`.
    Si toca el aviso de fallos: `herramientas/probar-aviso-de-fallo.mjs`. Si toca el diseño: `herramientas/revisar-slides.mjs`.
+   Si toca cuentas, saldo o el paquete de guías: `node herramientas/probar-saldo.ts` (sin internet) y, ya desplegado,
+   `scripts/probar-paquete.mjs` (en vivo).
+   **Remedio rápido del paquete:** apagar su venta en el panel (Paquetes → «Venta del paquete»); no necesita despliegue.
 5. **Que no haya nadie a media compra** antes de desplegar el servidor (consulta 4 de `references/consultas.md`).
 
 **Lanzar**
@@ -180,6 +183,7 @@ Para que no se repita: el candado nuevo.
 |---|---|
 | `scripts/ronda.mjs` | Siempre, lo primero. `--detalle` muestra todas las comprobaciones; `--horas 168` mira una semana. |
 | `scripts/lanzar.mjs` | Vas a publicar o a regresar algo del sitio. `--revisar` solo revisa. |
+| `scripts/probar-paquete.mjs` | Tocaste cuentas, saldo, cobro o entrega, o una familia dice que su paquete o su saldo no cuadran: prueba en vivo el paquete de 3 guías con una cuenta de prueba (se borra sola). `--guia` genera una guía completa de verdad; `--limpiar` borra cuentas de prueba que hayan quedado. |
 | `references/sintomas.md` | Alguien describe un fallo y hay que saber qué comprobar y quién decide. |
 | `references/publicar-rapido.md` | Hay que arreglar en vivo o regresar: sitio, servidor por el puente, copia guardada, permisos. |
 | `references/consultas.md` | Necesitas datos: compras, accesos, trabajos, reportes, registro del servidor. |

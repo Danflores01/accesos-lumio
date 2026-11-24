@@ -269,3 +269,91 @@ html.i18n-cargando body { visibility: hidden; }
 @media (min-width: 640px) { .comentarios form .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; } }
 @media (max-width: 639px) { .comentarios form .dos { display: grid; grid-template-columns: 1fr; gap: 14px; } }
 @media (max-width: 559px) { .comentarios { padding: 22px 16px 20px; border-radius: 22px; } .comentarios h2 { font-size: 23px; } .estrellas label { font-size: 42px; } .estrellas { justify-content: space-between; } .estrellas label { flex: 1; text-align: center; } }
+
+/* ---------- Paquete de 3 guías: portada, paquetes.html y cuenta.html (24 nov 2026) ---------- */
+/* Portada: «Paquetes y suscripción · Ahorra más» va debajo del botón principal, con su etiqueta amarilla. */
+.acciones .fila-paquetes { flex-basis: 100%; display: flex; justify-content: inherit; }
+.boton.ahorro { background: linear-gradient(90deg, #6d28d9, #FF6B9D); color: #fff; box-shadow: 0 14px 30px rgba(76, 29, 149, .4); flex-wrap: wrap; gap: 8px 12px; }
+.boton.ahorro:hover { box-shadow: 0 18px 34px rgba(76, 29, 149, .5); }
+.etiqueta-ahorro { font: 800 12px/1 var(--texto); letter-spacing: .6px; text-transform: uppercase; background: var(--amarillo); color: var(--tinta); border-radius: 8px; padding: 6px 9px; white-space: nowrap; word-spacing: 0; }
+.precio .nota-paquetes { margin: 16px 0 0; font-size: 15.5px; color: #3b3f52; }
+.precio .nota-paquetes a { color: var(--violeta); font-weight: 700; text-underline-offset: 3px; }
+footer.pie .contenedor { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; }
+footer.pie a.pie-enlace { color: #ead9ff; text-underline-offset: 3px; }
+footer.pie a.pie-enlace:hover { color: #fff; }
+
+/* paquetes.html: tres tarjetas para comparar (una guía, paquete de 3 y suscripción). */
+.planes-cab { text-align: center; padding: 34px 0 6px; }
+.planes-cab h1 { font-size: clamp(30px, 5vw, 46px); color: #fff; margin-top: 14px; }
+.planes-cab p { color: #ead9ff; font-size: 19px; max-width: 620px; margin: 12px auto 0; }
+.planes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 24px 0 12px; max-width: 480px; margin: 0 auto; align-items: stretch; }
+.plan { position: relative; overflow: hidden; background: #fff; color: var(--tinta); border-radius: 24px; box-shadow: 0 24px 50px rgba(10, 4, 40, .35); padding: 26px 22px 22px; display: flex; flex-direction: column; align-items: stretch; gap: 12px; text-align: center; min-width: 0; }
+.plan::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 6px; background: linear-gradient(90deg, var(--c, #6d28d9), var(--c2, #FF6B9D)); }
+.plan .cinta { align-self: center; font: 800 12px/1 var(--texto); letter-spacing: .8px; text-transform: uppercase; color: #fff; background: linear-gradient(90deg, #6d28d9, #FF6B9D); padding: 7px 12px; border-radius: 8px; }
+.plan .cinta.gris { background: #6b7280; }
+.plan .cinta.vacia { visibility: hidden; }
+.plan h2 { font-size: 25px; }
+.plan .monto { font: 800 58px var(--titulos); line-height: 1; }
+.plan .monto small { font: 700 15px var(--texto); color: var(--gris); display: block; margin-top: 8px; }
+.plan .ahorro-linea { font-weight: 700; color: #6d28d9; font-size: 16px; line-height: 1.3; min-height: 21px; }
+.plan ul { flex: 1; text-align: left; margin: 2px 0 0; padding-left: 22px; font-size: 16px; line-height: 1.4; display: flex; flex-direction: column; gap: 8px; }
+.plan .boton { width: 100%; margin-top: 8px; }
+.plan.destacado { box-shadow: 0 0 0 4px var(--amarillo), 0 28px 56px rgba(10, 4, 40, .45); }
+.plan.pronto { background: #f4f1fb; }
+.plan.pronto h2, .plan.pronto .monto { color: #4b5563; }
+.aviso-planes { background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .25); color: #fff; border-radius: 14px; padding: 12px 16px; margin: 18px auto 0; max-width: 620px; text-align: center; font-size: 16px; }
+.planes-pie { text-align: center; color: #ead9ff; font-size: 16px; padding: 4px 0 44px; margin: 0 auto; }
+.planes-pie a { color: #fff; font-weight: 700; text-underline-offset: 3px; }
+@media (min-width: 900px) {
+  .planes { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: none; gap: 22px; padding-top: 30px; }
+}
+@media (max-width: 899px) { .plan .cinta.vacia, .plan .ahorro-linea:empty { display: none; } }
+
+/* cuenta.html («Mi cuenta») y el aviso de saldo de crear.html. */
+.cuenta-app { display: flex; flex-direction: column; gap: 18px; }
+.cta-sello { color: #7c3aed; font-weight: 800; letter-spacing: 1px; font-size: 14px; }
+.cta-cabeza { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.cta-cabeza > div { min-width: 0; }
+.cta-cabeza h1 { margin-top: 4px; overflow-wrap: anywhere; }
+.cta-cabeza .boton { flex: none; }
+.cuenta-app .panel-paso > p { margin: 0; }
+.saldo-caja { display: flex; align-items: center; gap: 16px; background: linear-gradient(160deg, #efe9ff, #ffe1ec); border-radius: 20px; padding: 16px 18px; }
+.saldo-caja .saldo-num { flex: none; width: 76px; height: 76px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font: 800 40px var(--titulos); color: #6d28d9; box-shadow: 0 6px 16px rgba(76, 29, 149, .18); }
+.saldo-caja.vacio .saldo-num { color: #9ca3af; }
+.saldo-caja .saldo-texto { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.saldo-caja .saldo-texto b { font: 800 22px/1.15 var(--titulos); }
+.saldo-caja .saldo-texto span { font-size: 15px; color: #3b3f52; }
+.cta-lista { display: flex; flex-direction: column; gap: 10px; }
+.cta-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #f6f3ff; border-radius: 16px; padding: 12px 14px; }
+.cta-fila.apagada { background: var(--gris-suave); }
+.cta-fila-texto { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cta-fila-texto b { overflow-wrap: anywhere; line-height: 1.25; }
+.cta-fila-texto span { font-size: 14px; color: var(--gris); overflow-wrap: anywhere; }
+.cta-fila .boton { flex: none; }
+.cta-dato { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.cta-dato > span { min-width: 0; overflow-wrap: anywhere; }
+.codigo-entrada { font: 800 30px var(--titulos); letter-spacing: 8px; text-align: center; padding-left: 16px; }
+.codigo-entrada::placeholder { color: #d1d5db; }
+.cta-enlaces { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 20px; }
+.enlace { color: var(--violeta); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; font-size: 15px; padding: 6px 2px; }
+.enlace:disabled { color: var(--gris); text-decoration: none; cursor: default; }
+.ok-nota { color: var(--ok); font-weight: 700; font-size: 15px; }
+.cuenta-app .error:empty, .cuenta-app .ok-nota:empty { display: none; }
+.cuenta-app .ayuda a, .cuenta-app p a { color: var(--violeta); font-weight: 700; text-underline-offset: 3px; }
+.aviso-saldo { display: flex; gap: 10px; align-items: flex-start; background: #efe9ff; border-left: 5px solid #6d28d9; border-radius: 12px; padding: 10px 14px; font-size: 16px; line-height: 1.4; color: #3b1a8a; text-align: left; }
+.aviso-saldo .ico { font-size: 18px; line-height: 1.3; flex: none; }
+.cta-dispositivos { margin: 0; padding-left: 22px; }
+@media (max-width: 559px) {
+  .planes-cab { padding-top: 22px; }
+  .planes-cab p { font-size: 17px; }
+  .plan { padding: 22px 16px 18px; border-radius: 22px; }
+  .plan .monto { font-size: 52px; }
+  .saldo-caja { padding: 14px; gap: 12px; }
+  .saldo-caja .saldo-num { width: 64px; height: 64px; font-size: 34px; }
+  .saldo-caja .saldo-texto b { font-size: 20px; }
+  .codigo-entrada { font-size: 26px; letter-spacing: 6px; }
+  footer.pie .contenedor { flex-direction: column; align-items: flex-start; }
+  .hero .acciones .boton.vidrio { order: 1; }
+  /* Con «Mi cuenta» en el menú no cabe todo en un renglón: en teléfono «Crear mi guía» se queda en el botón grande de la página. */
+  header.cab nav.con-cuenta a.nav-crear { display: none; }
+}

@@ -25,7 +25,7 @@
 <body class="sitio">
 <header class="cab"><div class="contenedor">
   <a class="marca" href="index.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span></a>
-  <nav><a href="crear.html" data-i18n="nav.crear">Crear mi guía</a><a class="solo-ancho" href="guia.html?demo=historia1" target="_blank" rel="noopener" data-i18n="nav.ver">Ver una guía</a><span class="idioma" role="group" aria-label="Idioma" data-i18n-attr="aria-label:nav.idioma"><button type="button" data-idioma="es" lang="es" aria-pressed="true">ES</button><span aria-hidden="true">|</span><button type="button" data-idioma="en" lang="en" aria-pressed="false">EN</button></span></nav>
+  <nav><a class="nav-crear" href="crear.html" data-i18n="nav.crear">Crear mi guía</a><a class="solo-ancho" href="guia.html?demo=historia1" target="_blank" rel="noopener" data-i18n="nav.ver">Ver una guía</a><a href="cuenta.html" data-cuenta hidden data-i18n="nav.entrar">Entrar</a><span class="idioma" role="group" aria-label="Idioma" data-i18n-attr="aria-label:nav.idioma"><button type="button" data-idioma="es" lang="es" aria-pressed="true">ES</button><span aria-hidden="true">|</span><button type="button" data-idioma="en" lang="en" aria-pressed="false">EN</button></span></nav>
 </div></header>
 
 <section class="hero"><div class="contenedor">
@@ -38,8 +38,8 @@
     <h1 class="largo" style="margin-top:14px" data-i18n="hero.titulo2">Diferentes tipos de información requieren <em>diferentes métodos de estudio</em></h1>
     <p class="hero-sub" data-i18n="hero.texto2">Por eso en SparkEd convertimos tu temario y tus apuntes en una guía interactiva, sin importar el grado o la materia que estés cursando.</p>
     <p class="hero-lema" data-i18n="hero.texto3">Estudia jugando en cualquier dispositivo que tengas.</p>
-    <div class="acciones al-bloque"><a class="boton" href="crear.html" data-i18n="nav.crear">Crear mi guía</a><a class="boton vidrio" href="#demo" data-i18n="hero.demo">▶ Mira una guía real</a></div>
-    <div class="chips"><span data-i18n="chip.precio">Una guía: $100 MXN, IVA incluido</span><span data-i18n="chip.acceso">7 días de acceso ilimitado a tu guía</span><span data-i18n="chip.dispositivos">Hasta 2 dispositivos por familia</span></div>
+    <div class="acciones al-bloque"><a class="boton" id="boton-crear" href="crear.html" data-i18n="nav.crear">Crear mi guía</a><a class="boton vidrio" href="#demo" data-i18n="hero.demo">▶ Mira una guía real</a><div class="fila-paquetes" data-paquete hidden><a class="boton ahorro" href="paquetes.html"><span data-i18n="hero.paquetes">Paquetes y suscripción</span><span class="etiqueta-ahorro" data-i18n="hero.ahorra">Ahorra más</span></a></div></div>
+    <div class="chips"><span data-i18n="chip.precio">Una guía: $100 MXN, IVA incluido</span><span id="chip-paquete" data-paquete hidden data-i18n="chip.paquete" data-i18n-vars='{"guias":3,"precio":199}'>Paquete de 3 guías: $199 MXN</span><span data-i18n="chip.acceso">7 días de acceso ilimitado a tu guía</span><span data-i18n="chip.dispositivos">Hasta 2 dispositivos por familia</span></div>
   </div>
   <div class="sparky-hero"><div class="tarjeta-sparky">
     <div class="tile"><div class="sparky-sitio" id="sparky-inicio"><span data-sprite="sparky:quieto" data-escala="9"></span></div><div class="burbuja"><b data-i18n="sparky.consejo">Consejo de Sparky:</b> <span id="burbuja-dato" data-i18n="sparky.primer_consejo">Sube tu temario y con eso ya puedo armar tu guía. Si además me compartes dos o tres fotos de tus apuntes, la hago todavía más específica.</span></div></div>
@@ -73,6 +73,7 @@
     <div class="pildora" data-i18n="precio.pildora">Una guía</div>
     <div class="monto" style="margin-top:10px">$100<small data-i18n="precio.iva">MXN · IVA incluido</small></div>
     <ul><li data-i18n="chip.acceso">7 días de acceso ilimitado a tu guía</li><li data-i18n="precio.l2">Hasta 2 dispositivos por familia: por ejemplo, el celular de mamá y el iPad del alumno</li><li data-i18n="precio.l3">Teoría visual, juegos, mini-exámenes y reto final</li><li data-i18n="precio.l4">Vista previa gratis antes de pagar</li><li data-i18n="precio.l5">Te la mandamos por correo (por WhatsApp, próximamente)</li></ul>
+    <p class="nota-paquetes" data-paquete hidden data-i18n="precio.paquetes">¿Vas a necesitar varias guías? <a href="paquetes.html">Conoce los paquetes y ahorra</a>.</p>
   </div>
   <div class="faq">
     <h2 style="font-size:24px;margin-bottom:10px" data-i18n="faq.titulo">Preguntas rápidas</h2>
@@ -100,13 +101,21 @@
   <div class="gracias" id="com-gracias" hidden><div class="sk-anima" data-sprite="sparky:festejo" data-escala="6"></div><h3 data-i18n="com.gracias_t">¡Gracias por tu comentario!</h3><p data-i18n="com.gracias">Lo leeremos con mucho gusto. Gente como tú nos ayuda a hacer mejores guías.</p><button type="button" id="com-otro" data-i18n="com.otro">Enviar otro comentario</button></div>
 </div></section>
 
-<footer class="pie"><div class="contenedor" data-i18n="pie">SparkEd · Guías de estudio interactivas</div></footer>
+<footer class="pie"><div class="contenedor"><span data-i18n="pie">SparkEd · Guías de estudio interactivas</span><a class="pie-enlace" href="cuenta.html#suscripcion" data-paquete hidden data-i18n="pie.cancelar">¿Quieres cancelar tu suscripción?</a></div></footer>
 
 <script type="module">
 import { pintarSprites, api, esc } from "./js/sitio.js";
 import { sparkyVivo } from "./js/ui.js";
 import { t, th, poner, idioma, alCambiarIdioma, textoServidor } from "./js/idioma.js";
+import { mostrarPaquete } from "./js/cuenta.js";
 pintarSprites();
+// Paquete de 3 guías (24 nov 2026): si está a la venta aparecen su botón, su etiqueta, el enlace del pie y la entrada a
+// «Mi cuenta», y el botón principal pasa a decir «Crea tu guía individual». Apagado, la portada queda como siempre.
+mostrarPaquete().then((info) => {
+  if (!info?.disponible) return;
+  poner(document.getElementById("boton-crear"), "hero.individual");
+  poner(document.getElementById("chip-paquete"), "chip.paquete", { guias: info.guias, precio: info.precio });
+}).catch(() => {});
 // Sparky vivo: flota y parpadea; cada 8–15 s saluda, camina por su recuadro o escribe en la burbuja otro consejo
 // para subir las fotos, en primera persona (banco local datos/consejos.json, sin inteligencia artificial).
 // La pantalla de espera de crear.html sigue usando los datos curiosos. Si lo tocan festeja; si le pasan el mouse, saluda.

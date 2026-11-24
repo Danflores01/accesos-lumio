@@ -26,7 +26,7 @@ const tapada = (r) => r.st === 0 || r.st >= 500 || r.json?.error === "Ruta no en
 
 // ---------- 1. El sitio publicado ----------
 const paginas = {};
-for (const p of ["index.html", "crear.html", "listo.html", "guia.html", "panel.html", "js/config.js"]) {
+for (const p of ["index.html", "crear.html", "listo.html", "guia.html", "panel.html", "js/config.js"]) {   // las del paquete, en la parte 5
   paginas[p] = await pedir(SITIO + p + "?humo=" + Date.now());
   revisar(paginas[p].st === 200 && paginas[p].texto.length > 200, `sitio · ${p} abre (HTTP ${paginas[p].st})`);
 }
@@ -77,6 +77,34 @@ for (const [nombre, url, init] of [
   revisar(e.st === 401, `panel · la entrada con correo responde (HTTP ${e.st}; con datos malos debe ser 401)`);
   const ping = await pedir(`${API}/admin/ping`);
   revisar(ping.st === 401, `panel · /admin/ping pide clave (HTTP ${ping.st})`);
+}
+
+// ---------- 5. Cuentas y paquete de guías (24 nov 2026) ----------
+// Con datos vacíos y sin sesión: no escribe nada ni manda mensajes. Revisa que el servidor atiende lo que piden
+// paquetes.html, cuenta.html y crear.html?saldo=1, y que el sitio y el servidor dicen lo mismo sobre la venta.
+{
+  const sinRuta = (r) => r.st === 0 || r.st >= 500 || /^Ruta no (encontrada|reconocida)/.test(r.json?.error ?? "");
+  for (const p of ["paquetes.html", "cuenta.html", "js/cuenta.js"]) {
+    const r = await pedir(SITIO + p + "?humo=" + Date.now());
+    revisar(r.st === 200 && r.texto.length > 200, `sitio · ${p} abre (HTTP ${r.st})`);
+    if (p === "js/cuenta.js") revisar(r.texto.includes("/paquete/info") && r.texto.includes("x-cuenta"), "sitio · cuenta.js pregunta por el paquete y manda la sesión en la cabecera x-cuenta");
+  }
+  const info = await pedir(`${API}/paquete/info`);
+  revisar(info.st === 200 && typeof info.json?.disponible === "boolean" && info.json?.precio > 0 && info.json?.guias > 0, `paquete · GET /paquete/info (HTTP ${info.st}): ${info.json?.disponible ? "a la venta" : "apagado"}, ${info.json?.guias} guías por $${info.json?.precio}`);
+  if (info.json?.disponible) revisar(paginas["index.html"].texto.includes('href="paquetes.html"') && paginas["index.html"].texto.includes("data-paquete"), "paquete · está a la venta y la portada publicada trae su botón «Paquetes y suscripción»");
+  for (const [nombre, url, init, esperado] of [
+    ["GET /cuenta sin sesión pide entrar", `${API}/cuenta`, undefined, 401],
+    ["POST /cuenta/codigo sin número pide un WhatsApp válido (no manda nada)", `${API}/cuenta/codigo`, { method: "POST", body: "{}" }, 400],
+    ["POST /cuenta/entrar sin código no entra", `${API}/cuenta/entrar`, { method: "POST", body: "{}" }, 401],
+    ["POST /cuenta/guia sin sesión no crea nada", `${API}/cuenta/guia`, { method: "POST", body: "{}" }, 401],
+    ["POST /paquete/comprar sin sesión no compra nada", `${API}/paquete/comprar`, { method: "POST", body: "{}" }, 401],
+    ["GET /paquete/estado/<folio> sin sesión pide entrar", `${API}/paquete/estado/${UUID}`, undefined, 401],
+  ]) {
+    const r = await pedir(url, init);
+    revisar(r.st === esperado && !sinRuta(r), `cuenta · ${nombre} (HTTP ${r.st} ${corto(r.texto)})`);
+  }
+  const adm = await pedir(`${API}/admin/paquetes`);
+  revisar(adm.st === 401, `panel · /admin/paquetes pide clave (HTTP ${adm.st})`);
 }
 
 console.log(mal ? `\n${mal} FALLAS. Si alguna es de «ABRIR UNA GUÍA» o de «compra», las familias no pueden usar SparkEd: hay que arreglarlo o regresar a la versión anterior YA.` : "\nPrueba de humo bien: sitio y servidor contestan como deben.");

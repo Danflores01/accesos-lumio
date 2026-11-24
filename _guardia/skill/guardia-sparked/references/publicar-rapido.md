@@ -71,8 +71,9 @@ sigue con el archivo viejo. Pídele a Daniel que le diga a la familia que recarg
 
 ## Desplegar el servidor (por el puente)
 
-1. `node herramientas/probar-rutas.mjs` y `node herramientas/probar-ventas.mjs` (y las pruebas del módulo tocado).
-   La compuerta ya los corre al subir código del servidor. Si alguno falla, no se despliega.
+1. `node herramientas/probar-rutas.mjs` y `node herramientas/probar-ventas.mjs` (y las pruebas del módulo tocado:
+   `probar-codigos.ts`, `probar-mercadopago.ts`, `probar-saldo.ts`). La compuerta ya los corre al subir código del
+   servidor. Si alguno falla, no se despliega.
 2. Sube el código (`git push`). GitHub debe servirlo:
    `curl -s -o /dev/null -w "%{http_code}" https://raw.githubusercontent.com/Danflores01/accesos-lumio/$(git rev-parse HEAD)/funciones/sparked/index.ts` → 200.
 3. Que no haya una guía generándose: `select count(*) from trabajos where estado not in ('listo','fallido')` → 0.
@@ -88,6 +89,9 @@ sed -i "s/^\/\/ Versión del código: .*$/\/\/ Versión del código: $V (commit 
    grandes de `funciones/sparked/`.
 5. Comprueba la versión (`ronda.mjs` lo hace) y guarda el puente en un commit **solo si el despliegue se hizo**: el
    puente del repositorio siempre dice qué está desplegado de verdad.
+6. Si el cambio toca cuentas, saldo, cobro o entrega: `node <carpeta de la skill>/scripts/probar-paquete.mjs` (en vivo,
+   con una cuenta de prueba que se borra sola; 40 comprobaciones en unos 35 segundos). Con `--guia` genera además una
+   guía completa de verdad con saldo (unos 6 minutos y hasta 5 pesos de IA).
 
 **Si el despliegue es rechazado por permisos:** no lo intentes por otro lado. Deja el puente como estaba
 (`git checkout -- funciones/puente-sparked/index.ts`), resuelve por el sitio si se puede y pídele a Daniel el sí.

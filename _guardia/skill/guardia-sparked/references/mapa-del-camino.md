@@ -45,10 +45,39 @@ al armar una pantalla. → Prueba de humo («ABRIR UNA GUÍA»); avisos automát
 **8. Estudiar.** Un juego que no carga o una pantalla que se desborda. → `probar-guia.mjs` recorre todas las pantallas;
 `herramientas/revisar-slides.mjs` revisa que todo quepa.
 
+## El camino del paquete de 3 guías (24 nov 2026)
+
+Otra puerta de entrada, con cuenta. Solo existe para las familias si el ajuste `sparked_paquete3` está en `si`
+(panel → Paquetes); apagado, los botones no se ven y comprar responde «no disponible». Servidor: `cuenta.ts`.
+
+| # | Paso | Lo que ve la familia | Sitio | Servidor | Queda en |
+|---|---|---|---|---|---|
+| P1 | Ver las opciones | Tres tarjetas: una guía, paquete de 3, suscripción «Próximamente» | `index.html` (botón «Paquetes y suscripción»), `paquetes.html`, `js/cuenta.js` | `GET /paquete/info` | — |
+| P2 | Entrar | Su WhatsApp y un código de 6 dígitos | `cuenta.html` | `POST /cuenta/codigo` (WhatsApp; respaldo por correo), `POST /cuenta/entrar` | `cuenta_codigos`, `cuentas`, `cuenta_sesiones` (máx. 2 abiertas) |
+| P3 | Pagar el paquete | Mercado Pago (tarjeta, OXXO o SPEI) y de regreso «Ya tienes 3 guías» | `cuenta.html?compra=<folio>` | `POST /paquete/comprar`; Mercado Pago avisa a `POST /pago/mercadopago`; `GET /paquete/estado/<folio>` | `compras` (`producto = paquete3`), `cuenta_saldo_movimientos` (+3, una sola vez) |
+| P4 | Mi cuenta | Saldo, vencimiento, guías hechas, paquetes | `cuenta.html` | `GET /cuenta` (también devuelve al saldo una guía que se quedó a medias) | `cuenta_saldo_movimientos` |
+| P5 | Crear una guía con saldo | «Se usará 1 de tus 3 guías», avance y su link | `crear.html?saldo=1`, `cuenta.html?guia=<folio>` | `POST /borrador`, `POST /cuenta/guia` (descuenta 1 y lanza la guía completa), `GET /cuenta/guia/<folio>` | `compras` (`metodo_pago = saldo`, monto 0), `trabajos` (`alcance = completa`), `cuenta_saldo_movimientos` (−1; +1 si falla) |
+| P6 | Recibir y abrir | Igual que una guía suelta (pasos 6 a 8); el mensaje dice cuántas guías le quedan | `guia.html#<clave>` | `entregarGuiaLista()`; `POST /acceso/<clave>/abrir` | `compras.entregada_en`, `accesos` |
+
+**Qué puede romperlo y cómo se comprueba**
+
+- **No llega el código.** WhatsApp desconectado o número sin WhatsApp: el código va al correo de respaldo; sin correo, no
+  llega. → `cuenta_codigos.envio` de ese número (`enviado`, `sin_whatsapp > correo`, `sin_correo`); `/admin/whatsapp`.
+- **Pagó y no tiene sus guías.** El aviso de Mercado Pago no llegó, o se interrumpió el abono. → Ronda, parte 4b
+  («pagado y sus guías no están en su cuenta»); panel → Paquetes → «Revisar en Mercado Pago» o «Abonar ahora».
+- **Su guía no se creó.** Se devuelve sola al saldo y la compra queda «fallida»; la familia recibe el aviso. → Panel →
+  Paquetes → movimientos de la cuenta («Guía devuelta», con el motivo); `trabajos.error`.
+- **«Tu cuenta ya está abierta en 2 dispositivos».** Es el límite, no un fallo: al aceptar se cierra la sesión más antigua.
+- **Las cuentas no cuadran.** → `node herramientas/probar-saldo.ts` (sin internet) y
+  `node <carpeta de la skill>/scripts/probar-paquete.mjs` (en vivo, con una cuenta de prueba).
+- **Remedio rápido si algo del paquete falla:** apagar la venta en el panel (Paquetes → «Venta del paquete» → Apagada).
+  No hace falta desplegar nada y la venta de guías sueltas no se toca.
+
 ## Las partes del servidor y su orden
 
 `funciones/sparked/index.ts` recibe todo. Antes de sus propias rutas llama a los módulos aparte, en este orden:
-`acceso.ts` (entrada del panel), `extras.ts` (comentarios, costos, borrar códigos), `whatsapp.ts` (entregas, chats). Un
+`acceso.ts` (entrada del panel), `extras.ts` (comentarios, costos, borrar códigos), `whatsapp.ts` (entregas, chats) y
+`cuenta.ts` (cuentas, saldo y paquete de guías: `/cuenta/*`, `/paquete/*`, `/admin/paquetes`, `/admin/cuentas/*`). Un
 módulo que conteste en una dirección que no es suya **tapa** la ruta verdadera. `herramientas/probar-rutas.mjs` lo
 revisa; si agregas una ruta a `index.ts`, agrégala a su lista.
 

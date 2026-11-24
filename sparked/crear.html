@@ -26,7 +26,7 @@
 <body class="sitio">
 <header class="cab"><div class="contenedor">
   <a class="marca" href="index.html"><svg class="rayo" viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span></a>
-  <nav><a class="solo-ancho" href="guia.html?demo=historia1" target="_blank" rel="noopener" data-i18n="nav.ver">Ver una guía</a><span class="idioma" role="group" aria-label="Idioma" data-i18n-attr="aria-label:nav.idioma"><button type="button" data-idioma="es" lang="es" aria-pressed="true">ES</button><span aria-hidden="true">|</span><button type="button" data-idioma="en" lang="en" aria-pressed="false">EN</button></span></nav>
+  <nav><a class="solo-ancho" href="guia.html?demo=historia1" target="_blank" rel="noopener" data-i18n="nav.ver">Ver una guía</a><a href="cuenta.html" data-cuenta hidden data-i18n="nav.entrar">Entrar</a><span class="idioma" role="group" aria-label="Idioma" data-i18n-attr="aria-label:nav.idioma"><button type="button" data-idioma="es" lang="es" aria-pressed="true">ES</button><span aria-hidden="true">|</span><button type="button" data-idioma="en" lang="en" aria-pressed="false">EN</button></span></nav>
 </div></header>
 
 <main class="flujo"><div class="contenedor">
@@ -35,6 +35,7 @@
   <section class="panel-paso" id="p1">
     <div style="color:#7c3aed;font-weight:800;letter-spacing:1px;font-size:14px" data-i18n="crear.sello">TU GUÍA PERSONALIZADA</div>
     <h1 data-i18n="crear.titulo">Arrastra tu contenido para hacer tu guía</h1>
+    <div class="aviso-saldo" id="aviso-saldo" hidden><span class="ico" aria-hidden="true">🎟️</span><span id="aviso-saldo-texto"></span></div>
     <form id="form" class="rejilla-campos">
       <div class="campo"><label for="f-grado" data-i18n="crear.grado">Grado</label><select id="f-grado" name="grado" required></select></div>
       <div class="campo"><label for="f-materia" data-i18n="crear.materia">Materia</label><select id="f-materia" name="materia" required></select></div>
@@ -43,9 +44,10 @@
         <div class="miniaturas" id="minis" style="margin-top:10px"></div>
         <div class="ayuda" id="conteo" style="margin-top:6px"></div>
       </div>
-      <div class="acciones" style="grid-column:1/-1"><button class="boton" type="submit" id="crear" disabled data-i18n="crear.boton">✨ Crear mi guía</button><span class="ayuda" data-i18n="crear.nota">Primero ves una vista previa gratis. Tus fotos se borran solas.</span></div>
+      <div class="acciones" style="grid-column:1/-1"><button class="boton" type="submit" id="crear" disabled data-i18n="crear.boton">✨ Crear mi guía</button><span class="ayuda" id="nota-crear" data-i18n="crear.nota">Primero ves una vista previa gratis. Tus fotos se borran solas.</span></div>
       <div class="error" id="err1" style="grid-column:1/-1"></div>
     </form>
+    <div class="otra-guia" id="volver-cuenta" hidden><a href="cuenta.html" data-i18n="crear.volver_cuenta">← Volver a mi cuenta</a></div>
   </section>
 
   <section class="panel-paso" id="p2" hidden></section>
@@ -56,6 +58,7 @@
 <script type="module">
 import { api, esc, opciones, GRADOS, MATERIAS, leerContacto, LADAS, ladaTexto, numeroSinLada, guardarContacto, contactoParaFormulario, marcoVistaPrevia, iniciarPago, pantallaEspera, CONFIG, pintarSprites, campoCodigo, leerCodigo, t, th, marca, poner, alCambiarIdioma, textoServidor, nombreGrado, nombreMateria, mensajeError } from "./js/flujo.js";
 import { sparky } from "./js/arte.js";
+import { cuentaApi, paseGuardado, olvidarPase, mostrarPaquete } from "./js/cuenta.js";
 
 const $ = (s) => document.querySelector(s);
 const form = $("#form"), zona = $("#zona"), input = $("#archivos"), minis = $("#minis");
@@ -86,6 +89,30 @@ form.grado.addEventListener("change", ajustarMateria);
 window.addEventListener("pageshow", ajustarMateria); // por si el navegador repone el grado al volver a la página
 alCambiarIdioma(() => { llenarListas(); pintar(); });
 const params = new URLSearchParams(location.search);
+// ---------- Guía con el saldo de un paquete (crear.html?saldo=1, desde «Mi cuenta») ----------
+// El mismo formulario, pero la guía se genera COMPLETA, sin vista previa y sin pago: gasta 1 guía del saldo de la cuenta
+// (POST /cuenta/guia) y su avance se ve en cuenta.html. Sin sesión o sin saldo, se regresa a «Mi cuenta».
+const conSaldo = params.has("saldo");
+mostrarPaquete().catch(() => {});
+if (conSaldo) {
+  if (!paseGuardado()) location.replace("cuenta.html");
+  else cuentaApi.get("/cuenta").then((c) => {
+    const n = Number(c.saldo?.guias) || 0;
+    if (n < 1) { location.replace("cuenta.html"); return; }
+    $("#aviso-saldo").hidden = false; $("#volver-cuenta").hidden = false;
+    poner($("#aviso-saldo-texto"), n === 1 ? "crear.saldo_1" : n === 2 ? "crear.saldo_queda1" : "crear.saldo_n", { n, quedan: n - 1 });
+    poner($("#nota-crear"), "crear.nota_saldo");
+    [...$("#pasos").children].slice(2).forEach((d) => { d.hidden = true; });   // sin vista previa ni pago: solo 2 pasos
+  }).catch((e) => { if (e.status === 401) { olvidarPase(); location.replace("cuenta.html"); } });
+} else if (paseGuardado()) {
+  // Quien ya tiene guías en su cuenta y entra por «Crear mi guía»: se le recuerda, para que no pague una guía suelta sin querer.
+  cuentaApi.get("/cuenta").then((c) => {
+    const n = Number(c.saldo?.guias) || 0;
+    if (n < 1) return;
+    $("#aviso-saldo").hidden = false;
+    if (n === 1) poner($("#aviso-saldo-texto"), "crear.tienes_saldo_1"); else poner($("#aviso-saldo-texto"), "crear.tienes_saldo_n", { n });
+  }).catch(() => {});
+}
 if (params.get("grado")) { form.grado.value = params.get("grado"); ajustarMateria(); }
 if (params.get("materia")) form.materia.value = esUniversidad() ? params.get("materia").slice(0, 60) : params.get("materia");
 // Mensaje de error del primer paso (clave del diccionario: se traduce solo si cambian de idioma).
@@ -151,7 +178,7 @@ form.onsubmit = async (e) => {
   try {
     esp.actualizar(5, () => t("espera.preparando"));
     const b = await api.post("/borrador", { grado: form.grado.value, materia, paginas: paginas.map((p) => ({ nombre: p.nombre, tipo: "image/jpeg", tamano: p.blob.size })) });
-    clave = b.clave; try { localStorage.setItem("sparked_borrador", clave); } catch {}
+    clave = b.clave; if (!conSaldo) { try { localStorage.setItem("sparked_borrador", clave); } catch {} }
     let n = 0;
     for (const s of b.subidas) {
       const p = paginas.find((x) => x.nombre === s.nombre); if (!p) continue;
@@ -160,10 +187,17 @@ form.onsubmit = async (e) => {
       const hechas = ++n, total = b.subidas.length;
       esp.actualizar(5 + Math.round(20 * (hechas / total)), () => t("espera.subiendo", { n: hechas, total }));
     }
+    if (conSaldo) {
+      // Con saldo: la guía completa arranca ya (se descuenta 1 guía de la cuenta) y su avance se sigue en «Mi cuenta».
+      const g = await cuentaApi.post("/cuenta/guia", { clave });
+      location.href = `cuenta.html?guia=${encodeURIComponent(g.compra_id)}`;
+      return;
+    }
     await api.post(`/borrador/${encodeURIComponent(clave)}/generar`, {});
     vigilar();
   } catch (err) {
     esp?.detener();
+    if (conSaldo && err.status === 401) { olvidarPase(); location.replace("cuenta.html"); return; }
     $("#p2").innerHTML = `${err.propio ? marca(err.propio.clave, err.propio.vars, "p", 'class="error"') : `<p class="error" data-i18n-servidor="${esc(err.message)}">${esc(mensajeError(err))}</p>`}${botonReintentar("location.reload()")}`;
   }
 };
@@ -239,7 +273,7 @@ if (nueva) {
   try { localStorage.removeItem("sparked_borrador"); } catch {}
   try { const u = new URL(location.href); ["nueva", "clave", "paso"].forEach((k) => u.searchParams.delete(k)); history.replaceState(null, "", u); } catch {}
 }
-const claveGuardada = nueva ? null : params.get("clave") || (() => { try { return localStorage.getItem("sparked_borrador"); } catch { return null; } })();
+const claveGuardada = nueva || conSaldo ? null : params.get("clave") || (() => { try { return localStorage.getItem("sparked_borrador"); } catch { return null; } })();
 if (claveGuardada) {
   clave = claveGuardada;
   api.get(`/borrador/${encodeURIComponent(clave)}`).then((d) => {
