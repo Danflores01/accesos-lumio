@@ -172,6 +172,11 @@ try {
   if (!ok(alta.st === 200 && alta.d.modo === "simulada" && alta.d.con_prueba === true && alta.d.precio === PRECIO && cerca(alta.d.primer_cobro_en, Date.now() + 7 * DIA), `con la clave de administrador la cuenta de prueba se suscribe SIN tocar Mercado Pago: prueba gratis, primer cobro en 7 días (folio ${alta.d?.folio})`, `HTTP ${alta.st} ${alta.d?.error ?? ""}`)) throw new Error("no se pudo crear la suscripción de prueba");
   const otra = await pedir("POST", "suscripcion/crear", { acepta: true, ...datos }, { sesion, admin: true });
   ok(otra.d?.suscripcion_id === susId, "oprimir «Suscribirme» otra vez reutiliza la misma");
+  // «Mi cuenta» solo conoce el correo a medias (p•••@…). Si una página lo manda de regreso como correo de pago, el
+  // servidor lo ignora y usa el de la cuenta; si lo guardara, este pedido ya no sería igual y abriría OTRA suscripción.
+  const aMedias = String((await miCuenta()).cuenta?.correo ?? "");
+  const conMedias = await pedir("POST", "suscripcion/crear", { acepta: true, correo_pago: aMedias }, { sesion, admin: true });
+  ok(aMedias.includes("•") && conMedias.st === 200 && conMedias.d?.suscripcion_id === susId, "el correo a medias que enseña «Mi cuenta» nunca se usa como correo de pago (sigue siendo la misma suscripción)", `HTTP ${conMedias.st}`);
   const a0 = await actual();
   ok(a0?.estado === "pendiente" && a0.falta === "tarjeta" && a0.puede_crear === false && a0.puede_cancelar === true, "mientras no «pone su tarjeta»: pendiente, sin derecho a crear guías");
   const aut = await accion(susId, { accion: "preapproval", datos: { status: "authorized", next_payment_date: alta.d.primer_cobro_en, payer_id: PAGADOR, payment_method_id: "visa" }, pagos: [] });

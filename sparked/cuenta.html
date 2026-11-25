@@ -99,7 +99,7 @@ function ofertaSus() {
       ${c.nombre ? "" : `<div class="campo" style="grid-column:1/-1">${marca("cta.nombre", null, "label", 'for="s-nombre"')}<input id="s-nombre" name="nombre" autocomplete="name" maxlength="80" required></div>`}
       ${c.correo ? "" : `<div class="campo">${marca("cta.correo", null, "label", 'for="s-correo"')}<input id="s-correo" name="correo" type="email" autocomplete="email" maxlength="120" required></div>
       <div class="campo">${marca("cta.correo2", null, "label", 'for="s-correo2"')}<input id="s-correo2" name="correo2" type="email" autocomplete="off" maxlength="120" required></div>`}
-      <div class="campo" style="grid-column:1/-1">${marca("sus.correo_pago", null, "label", 'for="s-correo-pago"')}<input id="s-correo-pago" name="correo_pago" type="email" autocomplete="email" maxlength="120" value="${esc(c.correo ?? "")}">${marca("sus.correo_pago_ayuda", null, "div", 'class="ayuda"')}</div>
+      <div class="campo" style="grid-column:1/-1">${marca("sus.correo_pago", null, "label", 'for="s-correo-pago"')}<input id="s-correo-pago" name="correo_pago" type="email" autocomplete="email" maxlength="120">${c.correo ? marca("sus.correo_pago_ayuda_con", { correo: c.correo }, "div", 'class="ayuda"') : marca("sus.correo_pago_ayuda", null, "div", 'class="ayuda"')}</div>
       <label class="permiso sus-acepto" style="grid-column:1/-1"><input type="checkbox" name="acepta" id="s-acepta">${acepto}</label>
       <div class="acciones" style="grid-column:1/-1">${marca(s.con_prueba ? "sus.boton_prueba" : "sus.boton", { dias }, "button", 'class="boton" type="submit" id="suscribirme"')}${marca("sus.nota", null, "span", 'class="ayuda"')}</div>
       <div class="error" id="err-sus" style="grid-column:1/-1" role="alert"></div>
@@ -127,7 +127,8 @@ async function suscribirme(f) {
   if (f.nombre && nombre.length < 2) { poner(err, "cta.err_nombre"); f.nombre.focus(); return; }
   if (f.correo && !CORREO_OK.test(correo)) { poner(err, "contacto.err_correo"); f.correo.focus(); return; }
   if (f.correo && f.correo2.value.trim().toLowerCase() !== correo) { poner(err, "contacto.err_correo2"); f.correo2.focus(); return; }
-  if (correoPago && !CORREO_OK.test(correoPago)) { poner(err, "contacto.err_correo"); f.correo_pago.focus(); return; }
+  // El correo de la cuenta llega del servidor a medias (a•••@correo.com): ese nunca se manda; vacío = el de la cuenta.
+  if (correoPago && (!CORREO_OK.test(correoPago) || correoPago.includes("•"))) { poner(err, "contacto.err_correo"); f.correo_pago.focus(); return; }
   if (!f.acepta.checked) { poner(err, "sus.err_acepta"); f.acepta.focus(); return; }
   boton.disabled = true; poner(boton, "pago.abriendo"); sinError(err);
   try {

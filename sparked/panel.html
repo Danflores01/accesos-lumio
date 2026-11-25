@@ -1310,7 +1310,9 @@ async function cargarSolicitudes() {
 // ---------- Reportes ----------
 async function cargarReportes() {
   const lista = await api("/reportes");
-  $("#listaReportes").innerHTML = lista.map((r) => `<div class="fila-g"><div class="info"><b>${esc(r.guia_titulo ?? "Guía")}</b>${chip(r.estado)}<div class="ayuda">Slide ${esc(r.slide ?? "?")} · ${esc(fecha(r.creado_en))}</div><div style="margin-top:6px">${esc(r.comentario)}</div></div><div class="acciones">${r.estado === "nuevo" ? `<button class="boton linea" data-id="${r.id}">✓ Revisado</button>` : ""}</div></div>`).join("") || "<p class='ayuda'>Sin reportes.</p>";
+  // Los avisos de la suscripción mensual (empiezan con «SUSCRIPCIÓN ·») no son de una guía ni de una slide.
+  const deSus = (r) => /^SUSCRIPCIÓN ·/.test(r.comentario ?? "");
+  $("#listaReportes").innerHTML = lista.map((r) => `<div class="fila-g"><div class="info"><b>${esc(deSus(r) ? "Suscripción mensual" : r.guia_titulo ?? "Guía")}</b>${chip(r.estado)}<div class="ayuda">${deSus(r) ? "" : `Slide ${esc(r.slide ?? "?")} · `}${esc(fecha(r.creado_en))}</div><div style="margin-top:6px">${esc(r.comentario)}</div></div><div class="acciones">${r.estado === "nuevo" ? `<button class="boton linea" data-id="${r.id}">✓ Revisado</button>` : ""}</div></div>`).join("") || "<p class='ayuda'>Sin reportes.</p>";
   $$("#listaReportes button[data-id]").forEach((b) => b.onclick = async () => { await api(`/reportes/${b.dataset.id}`, { method: "PATCH" }); cargarReportes(); cargarResumen(); });
 }
 
