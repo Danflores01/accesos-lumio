@@ -247,6 +247,16 @@ const TEXTOS = {
   "hero.ahorra": ["Ahorra más", "Save more"],
   "chip.paquete": ["Paquete de {guias} guías: ${precio} MXN", "{guias}-guide pack: ${precio} MXN"],
   "precio.paquetes": ["¿Vas a necesitar varias guías? <a href=\"paquetes.html\">Conoce los paquetes y ahorra</a>.", "Will you need several guides? <a href=\"paquetes.html\">See the packs and save</a>."],
+  // Recuadro «Paquetes y suscripción» de la portada (24 nov 2026)
+  "port.paq_titulo": ["Paquetes y suscripción", "Packs and subscription"],
+  "port.paq_texto": ["Además de la guía individual, tienes dos caminos para estudiar todo el ciclo y pagar menos por cada guía.", "Besides the single guide, you have two ways to study all year and pay less for each guide."],
+  "port.popular": ["Más popular", "Most popular"],
+  "port.pago_unico": ["MXN · pago único", "MXN · one-time payment"],
+  "port.tres_texto": ["{guias} guías completas, sin vista previa. Vencen a los {dias} días. Paga con tarjeta, en OXXO o por transferencia.", "{guias} full guides, with no preview. They expire after {dias} days. Pay by card, at OXXO or by bank transfer."],
+  "port.ver_paquete": ["Ver el paquete", "See the pack"],
+  "port.al_mes": ["MXN al mes", "MXN per month"],
+  "port.ilim_texto": ["Suscripción mensual para estudiar todo el año. Todavía no está disponible.", "Monthly subscription to study all year. Not available yet."],
+  "port.saldo": ["¿Ya tienes guías en tu saldo? <a href=\"cuenta.html\">Entra a tu cuenta</a> y desde ahí crea tus guías.", "Already have guides in your balance? <a href=\"cuenta.html\">Sign in to your account</a> and create your guides from there."],
   "pie.cancelar": ["¿Quieres cancelar tu suscripción?", "Want to cancel your subscription?"],
 
   "titulo.paquetes": ["SparkEd · Paquetes y suscripción", "SparkEd · Packs and subscription"],

@@ -357,3 +357,26 @@ footer.pie a.pie-enlace:hover { color: #fff; }
   /* Con «Mi cuenta» en el menú no cabe todo en un renglón: en teléfono «Crear mi guía» se queda en el botón grande de la página. */
   header.cab nav.con-cuenta a.nav-crear { display: none; }
 }
+
+/* Recuadro «Paquetes y suscripción» de la portada (24 nov 2026): entre «Así se hace tu guía» y la guía de ejemplo.
+   Dos caminos: el paquete (enlace a paquetes.html) y las ilimitadas («Próximamente», sin enlace). */
+.caja-paquetes { border: 3px solid #6d28d9; }
+.titulo-paquetes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.titulo-paquetes h2 { margin: 0; }
+.opciones-paquete { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.opcion-paquete { position: relative; display: flex; flex-direction: column; gap: 8px; text-align: left; text-decoration: none; color: var(--tinta); background: #f6f3ff; border: 2px solid #c4b5fd; border-radius: 18px; padding: 18px 18px 18px; transition: transform .15s, box-shadow .15s; }
+a.opcion-paquete:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(76, 29, 149, .25); }
+.opcion-paquete .op-titulo { font: 800 21px/1.15 var(--titulos); padding-right: 0; }
+.opcion-paquete .op-precio { font: 800 32px/1 var(--titulos); color: #6d28d9; }
+.opcion-paquete .op-precio small { font: 600 14px/1.2 var(--texto); color: var(--gris); }
+.opcion-paquete .op-texto { font-size: 15px; line-height: 1.35; color: #3b3f52; flex: 1; }
+.opcion-paquete .op-boton { align-self: stretch; margin-top: 4px; }
+.opcion-paquete .cinta-popular, .opcion-paquete .cinta-proxima { align-self: flex-start; font: 800 12px/1 var(--texto); letter-spacing: .6px; text-transform: uppercase; border-radius: 8px; padding: 6px 9px; }
+.opcion-paquete .cinta-popular { background: var(--amarillo); color: var(--tinta); }
+.opcion-paquete .cinta-proxima { background: #e5e7eb; color: #4b5563; }
+.opcion-paquete.proxima { background: #f8f8fb; border-style: dashed; border-color: #d1d5db; }
+.opcion-paquete.proxima .op-precio { color: #6b7280; }
+.op-boton.apagado { background: #e5e7eb; color: #6b7280; box-shadow: none; cursor: default; pointer-events: none; }
+.nota-saldo { margin: 0; font-size: 15px; color: #3b3f52; background: #fff8e6; border-left: 4px solid var(--amarillo); border-radius: 10px; padding: 10px 14px; }
+.nota-saldo a { color: #6d28d9; font-weight: 700; }
+@media (min-width: 700px) { .opciones-paquete { grid-template-columns: 1fr 1fr; } }

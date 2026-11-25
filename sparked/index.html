@@ -62,6 +62,30 @@
   </article>
 </section>
 
+<section id="paquetes" class="contenedor servicios unico" data-paquete hidden>
+  <article class="servicio caja-paquetes" style="--c:#6d28d9;--c2:#FF6B9D">
+    <div class="titulo-paquetes"><h2 data-i18n="port.paq_titulo">Paquetes y suscripción</h2><span class="etiqueta-ahorro" data-i18n="hero.ahorra">Ahorra más</span></div>
+    <p class="para" data-i18n="port.paq_texto">Además de la guía individual, tienes dos caminos para estudiar todo el ciclo y pagar menos por cada guía.</p>
+    <div class="opciones-paquete">
+      <a class="opcion-paquete" href="paquetes.html">
+        <span class="cinta-popular" data-i18n="port.popular">Más popular</span>
+        <b class="op-titulo" id="port-tres-t" data-i18n="paq.tres_t" data-i18n-vars='{"guias":3}'>Paquete de 3 guías</b>
+        <span class="op-precio"><span id="port-tres-precio">$199</span> <small data-i18n="port.pago_unico">MXN · pago único</small></span>
+        <span class="op-texto" id="port-tres-texto" data-i18n="port.tres_texto" data-i18n-vars='{"guias":3,"dias":90}'>3 guías completas, sin vista previa. Vencen a los 90 días. Paga con tarjeta, en OXXO o por transferencia.</span>
+        <span class="boton op-boton" data-i18n="port.ver_paquete">Ver el paquete</span>
+      </a>
+      <div class="opcion-paquete proxima" aria-disabled="true">
+        <span class="cinta-proxima" data-i18n="paq.proximamente">Próximamente</span>
+        <b class="op-titulo" data-i18n="paq.ilim_t">Guías ilimitadas</b>
+        <span class="op-precio">$349 <small data-i18n="port.al_mes">MXN al mes</small></span>
+        <span class="op-texto" data-i18n="port.ilim_texto">Suscripción mensual para estudiar todo el año. Todavía no está disponible.</span>
+        <span class="boton op-boton apagado" data-i18n="paq.proximamente">Próximamente</span>
+      </div>
+    </div>
+    <p class="nota-saldo" data-i18n="port.saldo">¿Ya tienes guías en tu saldo? <a href="cuenta.html">Entra a tu cuenta</a> y desde ahí crea tus guías.</p>
+  </article>
+</section>
+
 <section id="demo" class="vista"><div class="contenedor"><div class="caja-vista">
   <h2 data-i18n="demo.titulo">Así se ve una guía de verdad</h2>
   <p data-i18n="demo.texto">Historia Universal de 1° de secundaria: teoría con fotografías reales, juegos, mini quizzes, líneas del tiempo y palabras clave.</p>
@@ -115,6 +139,10 @@ mostrarPaquete().then((info) => {
   if (!info?.disponible) return;
   poner(document.getElementById("boton-crear"), "hero.individual");
   poner(document.getElementById("chip-paquete"), "chip.paquete", { guias: info.guias, precio: info.precio });
+  // Recuadro «Paquetes y suscripción» (24 nov 2026): número de guías, precio y días vienen del servidor.
+  poner(document.getElementById("port-tres-t"), "paq.tres_t", { guias: info.guias });
+  poner(document.getElementById("port-tres-texto"), "port.tres_texto", { guias: info.guias, dias: info.dias });
+  document.getElementById("port-tres-precio").textContent = "$" + info.precio;
 }).catch(() => {});
 // Sparky vivo: flota y parpadea; cada 8–15 s saluda, camina por su recuadro o escribe en la burbuja otro consejo
 // para subir las fotos, en primera persona (banco local datos/consejos.json, sin inteligencia artificial).
