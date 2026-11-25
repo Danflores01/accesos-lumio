@@ -1025,7 +1025,10 @@ Daniel: «Solo para probar». Queda completa y desplegada, pero **apagada para e
    aviso de cobro va en el mensaje de bienvenida (7 días antes). **Más de 15 guías durante la prueba:** aviso a Daniel
    (Reportes, correo y bandera «revisar»); solo avisa, nunca bloquea.
 4. **La casilla del cobro automático es obligatoria** y queda guardado el texto que se aceptó y cuándo. La tarjeta se
-   pone en Mercado Pago: SparkEd nunca la pide ni la ve.
+   pone en Mercado Pago: SparkEd nunca la pide ni la ve. **Correo de pago:** el campo «Correo con el que pagas en
+   Mercado Pago (si es otro)» va vacío; vacío = el correo de la cuenta. «Mi cuenta» solo conoce el correo a medias
+   (`a•••@correo.com`): nunca se pone escrito en un campo ni se manda, y el servidor lo ignora si llega (servidor
+   2026-11-25.2: la primera página lo ponía ya escrito y lo habría mandado a Mercado Pago).
 5. **Guías:** se generan completas, sin vista previa, por el mismo camino del saldo del paquete (`POST /cuenta/guia`);
    con suscripción vigente no se gasta el saldo. Siguen abiertas mientras la suscripción esté pagada (mínimo, los 7
    días de siempre), cada una en 2 dispositivos. La cuenta admite 2 dispositivos.
@@ -1043,7 +1046,7 @@ Daniel: «Solo para probar». Queda completa y desplegada, pero **apagada para e
 10. **Panel:** pestaña Suscripciones (modo, probadores, activas, en prueba, en gracia, canceladas, ingreso cobrado, uso
     por suscriptora, bandera «revisar», cancelar y revisar en Mercado Pago) y, en el Resumen, las suscripciones aparte
     de las guías sueltas. El WhatsApp y el correo salen a medias.
-11. **Candados:** `node herramientas/probar-suscripciones.ts` (sin internet: 145 comprobaciones con el servidor entero,
+11. **Candados:** `node herramientas/probar-suscripciones.ts` (sin internet: 147 comprobaciones con el servidor entero,
     avisos firmados y un Mercado Pago de juguete) y `node _guardia/skill/guardia-sparked/scripts/probar-suscripcion.mjs`
     (en vivo, con una cuenta de prueba; no toca Mercado Pago). `probar-mercadopago` da lo mismo que antes.
 12. **Falta antes de abrirla al público:** la prueba real de Daniel (suscribirse con su número de probador y su

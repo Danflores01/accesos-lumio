@@ -775,6 +775,24 @@ const I = "5511110009";
   ok(c.d.estado === "cancelada" && /^cancel/.test(MP.pre[nueva.mp_preapproval_id].status), "(y la cancela desde su cuenta)");
 }
 
+// ---------- 16c. El correo a medias que enseña «Mi cuenta» nunca se usa como correo de verdad ----------
+// «Mi cuenta» solo conoce el correo a medias (j•••@correo.com). Si una página lo mandara de regreso (la del 25 nov 2026
+// lo ponía ya escrito en «Correo con el que pagas en Mercado Pago»), el servidor no debe pasárselo a Mercado Pago.
+titulo("16c. El correo a medias nunca llega a Mercado Pago");
+const J = "5511110010";
+{
+  await admin("POST", "suscripciones/probadores", { agregar: J }); reloj += 61_000;
+  const sesJ = await entrar(J, "Juana Media", "juana@correo.com");
+  const aMedias = String((await servidor("GET", "cuenta", undefined, { sesion: sesJ })).d?.cuenta?.correo ?? "");
+  const r1 = await servidor("POST", "suscripcion/crear", { acepta: true, correo_pago: aMedias }, { sesion: sesJ });
+  const s = ultimaSus(J);
+  ok(aMedias === "j•••@correo.com" && r1.st === 200 && s.correo_pago === "juana@correo.com" && MP.pre[s.mp_preapproval_id].pedido.payer_email === "juana@correo.com", "si llega el correo a medias como correo de pago, a Mercado Pago se le manda el correo de verdad de la cuenta");
+  // Tampoco como correo de respaldo: la cuenta conserva el suyo, y pedir lo mismo otra vez no abre otra suscripción.
+  const r2 = await servidor("POST", "suscripcion/crear", { acepta: true, correo: aMedias, correo_pago: "juana@correo.com" }, { sesion: sesJ });
+  const fin = await servidor("POST", "suscripcion/cancelar", {}, { sesion: sesJ });
+  ok(r2.st === 200 && r2.d.suscripcion_id === r1.d.suscripcion_id && susDe(J).length === 1 && cuentaDe(J).correo === "juana@correo.com" && fin.st === 200 && ultimaSus(J).estado === "abandonada" && /^cancel/.test(MP.pre[s.mp_preapproval_id].status), "tampoco reemplaza el correo de respaldo de la cuenta (y «Ya no quiero suscribirme» la deja sin nada pendiente)");
+}
+
 // ---------- 17. Cancelada desde Mercado Pago, y pendientes que nadie terminó ----------
 titulo("17. Lo que pasa del lado de Mercado Pago");
 {
@@ -860,7 +878,7 @@ titulo("19. El interruptor y el panel");
   const quitar = await admin("POST", "suscripciones/probadores", { quitar: (await admin("GET", "suscripciones")).d.ajustes.probadores.find((x: any) => x.whatsapp.endsWith("8888"))?.id });
   ok(quitar.st === 200 && !quitar.d.probadores.some((x: any) => x.whatsapp.endsWith("8888")), "Daniel puede quitar un número de la lista");
   const panel = await admin("GET", "suscripciones"), textoPanel = JSON.stringify(panel.d);
-  const telefonos = [A, B, D, E, F, G, H, I, "5511119999"], correosFam = ["ana@correo.com", "beto@correo.com", "dora@correo.com", "eva@correo.com", "fer@correo.com", "hugo@correo.com"];
+  const telefonos = [A, B, D, E, F, G, H, I, J, "5511119999"], correosFam = ["ana@correo.com", "beto@correo.com", "dora@correo.com", "eva@correo.com", "fer@correo.com", "hugo@correo.com", "juana@correo.com"];
   ok(panel.st === 200 && telefonos.every((t) => !textoPanel.includes(t)) && correosFam.every((c) => !textoPanel.includes(c)) && panel.d.suscripciones.every((x: any) => /^••• ••• \d{4}$/.test(x.whatsapp ?? "")), "en todo lo que ve el panel el WhatsApp y el correo salen enmascarados");
   const R = panel.d.resumen;
   ok(R.activas === 0 && R.en_prueba === 0 && R.en_gracia === 0 && R.pendientes === 0 && R.canceladas === 6 && R.vencidas === 1 && R.cobros === 5 && R.ingreso_mxn === 1745 && R.por_revisar === 3 && R.de_prueba === 0, `cifras finales: ${R.cobros} cobros aprobados · $${R.ingreso_mxn}; ${R.canceladas} canceladas, ${R.vencidas} vencida, ${R.por_revisar} por revisar`);

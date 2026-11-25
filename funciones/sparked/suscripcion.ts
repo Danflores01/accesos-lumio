@@ -59,7 +59,8 @@ export const MSG_FALLO_GUIA_SUS = "No pudimos terminar tu guía. Tu suscripción
 // ---------- Utilidades ----------
 const env = (k: string) => String((globalThis as any).Deno?.env?.get(k) ?? "").trim();
 const esUuid = (u: unknown): u is string => typeof u === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u);
-const esCorreo = (x: unknown): x is string => typeof x === "string" && x.length <= 120 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x);
+// «•» no vale: así se enseñan los correos a medias (a•••@correo.com) y uno de esos nunca debe usarse como correo de verdad.
+const esCorreo = (x: unknown): x is string => typeof x === "string" && x.length <= 120 && /^[^@\s•]+@[^@\s•]+\.[^@\s•]+$/.test(x);
 const correoLimpio = (v: unknown): string => { const x = String(v ?? "").trim().toLowerCase(); return esCorreo(x) ? x : ""; };
 const texto = (v: unknown, max = 120) => String(v ?? "").replace(/[\x00-\x1f\x7f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 const escHtml = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch] as string));
@@ -814,7 +815,9 @@ export async function crearSuscripcion(c: CtxRutasCuenta, cuenta: CuentaSus, can
   if (nombre.length < 2) return c.json({ error: "Escribe tu nombre.", campo: "nombre" }, 400);
   if (!esCorreo(correo)) return c.json({ error: "Escribe un correo válido.", campo: "correo" }, 400);
   // Mercado Pago rechaza el pago si el correo no es el de quien paga: por eso se puede indicar otro solo para el cobro.
-  const correoPago = b.correo_pago === undefined || b.correo_pago === null || String(b.correo_pago).trim() === "" ? correo : correoLimpio(b.correo_pago);
+  // Vacío (o el correo a medias que enseña «Mi cuenta», que no es un correo) = el correo de la cuenta.
+  const pagoEscrito = String(b.correo_pago ?? "").trim();
+  const correoPago = !pagoEscrito || pagoEscrito.includes("•") ? correo : correoLimpio(pagoEscrito);
   if (!correoPago) return c.json({ error: "Escribe un correo válido.", campo: "correo_pago" }, 400);
   const cambios: Record<string, unknown> = {};
   if (nombre !== (cuenta.nombre ?? "")) cambios.nombre = nombre;
