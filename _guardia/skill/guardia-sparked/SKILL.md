@@ -71,6 +71,10 @@ Todo cambio de SparkEd pasa por aquí, por pequeño que parezca. El del 10 de no
    Si toca cuentas, saldo o el paquete de guías: `node herramientas/probar-saldo.ts` (sin internet) y, ya desplegado,
    `scripts/probar-paquete.mjs` (en vivo).
    **Remedio rápido del paquete:** apagar su venta en el panel (Paquetes → «Venta del paquete»); no necesita despliegue.
+   Si toca la suscripción mensual: `node herramientas/probar-suscripciones.ts` (sin internet) y, ya desplegado,
+   `scripts/probar-suscripcion.mjs` (en vivo; no toca Mercado Pago). **Remedio rápido de la suscripción:** modo
+   «Apagada» en el panel (Suscripciones → «Quién puede suscribirse»); quien ya está suscrito sigue igual. Abrirla al
+   público (`si`) y programar su revisión diaria necesitan el sí de Daniel.
 5. **Que no haya nadie a media compra** antes de desplegar el servidor (consulta 4 de `references/consultas.md`).
 
 **Lanzar**
@@ -184,6 +188,7 @@ Para que no se repita: el candado nuevo.
 | `scripts/ronda.mjs` | Siempre, lo primero. `--detalle` muestra todas las comprobaciones; `--horas 168` mira una semana. |
 | `scripts/lanzar.mjs` | Vas a publicar o a regresar algo del sitio. `--revisar` solo revisa. |
 | `scripts/probar-paquete.mjs` | Tocaste cuentas, saldo, cobro o entrega, o una familia dice que su paquete o su saldo no cuadran: prueba en vivo el paquete de 3 guías con una cuenta de prueba (se borra sola). `--guia` genera una guía completa de verdad; `--limpiar` borra cuentas de prueba que hayan quedado. |
+| `scripts/probar-suscripcion.mjs` | Tocaste la suscripción mensual, o una familia dice que su suscripción, su cobro o su cancelación no cuadran: prueba en vivo con una cuenta de prueba (no toca Mercado Pago ni manda mensajes; se borra sola). `--guia` genera una guía completa de verdad; `--limpiar` borra lo que haya quedado. |
 | `references/sintomas.md` | Alguien describe un fallo y hay que saber qué comprobar y quién decide. |
 | `references/publicar-rapido.md` | Hay que arreglar en vivo o regresar: sitio, servidor por el puente, copia guardada, permisos. |
 | `references/consultas.md` | Necesitas datos: compras, accesos, trabajos, reportes, registro del servidor. |

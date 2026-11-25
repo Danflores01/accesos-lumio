@@ -73,11 +73,46 @@ Otra puerta de entrada, con cuenta. Solo existe para las familias si el ajuste `
 - **Remedio rápido si algo del paquete falla:** apagar la venta en el panel (Paquetes → «Venta del paquete» → Apagada).
   No hace falta desplegar nada y la venta de guías sueltas no se toca.
 
+## El camino de la suscripción mensual «Guías ilimitadas» (25 nov 2026)
+
+349 pesos al mes, solo con tarjeta, 7 días gratis (una vez por WhatsApp y por tarjeta), sin tope de guías. Cuelga de la
+misma cuenta del paquete. **Nace apagada:** el ajuste `sparked_suscripcion` (panel → Suscripciones → «Quién puede
+suscribirse») vale `no` (nadie), `probadores` (solo los WhatsApp de la lista `sparked_suscripcion_probadores`) o `si`
+(pública; ese paso necesita el sí de Daniel). La portada dice «Próximamente» en cualquier modo. Servidor:
+`suscripcion.ts` (la lógica y `/admin/suscripciones…`) y `cuenta.ts` (recibe `/suscripcion/*` porque conoce la sesión).
+
+| # | Paso | Lo que ve la familia | Sitio | Servidor | Queda en |
+|---|---|---|---|---|---|
+| S1 | Suscribirse | En «Mi cuenta»: la casilla del cobro automático y «Suscribirme»; pone su tarjeta en Mercado Pago | `cuenta.html` (caja «Suscripción mensual»), regreso `cuenta.html?suscripcion=<id>` | `POST /suscripcion/crear` (crea la suscripción en Mercado Pago: `POST /preapproval`), `GET /suscripcion/estado` | `suscripciones` (`pendiente` → `en_prueba` o `activa`), `pruebas_usadas` |
+| S2 | Crear guías | «Guías ilimitadas» y el mismo formulario; la guía sale completa | `crear.html?saldo=1`, `cuenta.html?guia=<folio>` | `POST /cuenta/guia` (usa la suscripción y no toca el saldo) | `compras` (`metodo_pago = suscripcion`, monto 0, `suscripcion_id`) |
+| S3 | Cobro de cada mes | Aviso 6 días antes y «Cobramos $349» | — | Mercado Pago avisa a `POST /pago/mercadopago` (temas `subscription_preapproval`, `subscription_authorized_payment` y `payment`); `sparked_registrar_cobro` alarga el periodo una sola vez | `suscripcion_cobros` (el id del pago es único), `suscripciones.periodo_fin` |
+| S4 | Cobro rechazado | «No pudimos cobrar»: abre sus guías, no crea nuevas; a los 10 días, vencida | `cuenta.html` | el mismo aviso; `POST /admin/suscripciones/diario` | `suscripciones` (`en_gracia` → `vencida`) |
+| S5 | Cancelar | «Cancelar suscripción» → una confirmación con la fecha → el mensaje de Daniel | `cuenta.html` y `cuenta.html?cancelar=1` (link del aviso) | `POST /suscripcion/cancelar` (cancela en Mercado Pago: `PUT /preapproval/<id>`) | `suscripciones` (`cancelada`; conserva lo pagado hasta `periodo_fin`) |
+
+**Qué puede romperlo y cómo se comprueba**
+
+- **«Puse mi tarjeta y no se activa».** Con prueba gratis se activa al autorizar; sin prueba, cuando Mercado Pago aprueba
+  el primer cobro (minutos, a veces una hora). → Panel → Suscripciones → «Revisar en Mercado Pago» (pregunta por la
+  suscripción y por sus cobros). Si el tema «Planes y suscripciones» no está activado en los Webhooks de Mercado Pago,
+  igual se activa cuando la familia regresa a «Mi cuenta» o al revisar.
+- **Canceló y Mercado Pago no respondió.** Aquí queda cancelada de inmediato y la familia recibe su comprobante; la
+  ronda marca FALLA «sigue sin cancelarse en Mercado Pago» hasta que se confirme (se reintenta en la revisión diaria).
+- **La revisión diaria no corre sola todavía.** `POST /admin/suscripciones/diario` (panel → Suscripciones → «Correr la
+  revisión diaria ahora») manda el aviso de renovación, pasa a gracia y vence. Sin ella no sale el aviso que pide la ley
+  (5 días antes): la ronda lo marca FALLA. Programarla necesita el sí de Daniel.
+- **«Me cobraron y había cancelado».** El cobro queda anotado, la suscripción sigue cancelada y Daniel recibe el aviso
+  para reembolsar en Mercado Pago. → Panel → Suscripciones → bandera «revisar».
+- **Las cuentas no cuadran.** Un cobro es venta solo si Mercado Pago lo aprobó; las guías de suscripción no son ventas.
+  → `node herramientas/probar-suscripciones.ts` (sin internet) y `scripts/probar-suscripcion.mjs` (en vivo).
+- **Remedio rápido:** poner el modo en «Apagada» (panel → Suscripciones). Nadie nuevo puede suscribirse; quien ya está
+  suscrito sigue igual y puede cancelar. No hace falta desplegar nada.
+
 ## Las partes del servidor y su orden
 
 `funciones/sparked/index.ts` recibe todo. Antes de sus propias rutas llama a los módulos aparte, en este orden:
-`acceso.ts` (entrada del panel), `extras.ts` (comentarios, costos, borrar códigos), `whatsapp.ts` (entregas, chats) y
-`cuenta.ts` (cuentas, saldo y paquete de guías: `/cuenta/*`, `/paquete/*`, `/admin/paquetes`, `/admin/cuentas/*`). Un
+`acceso.ts` (entrada del panel), `extras.ts` (comentarios, costos, borrar códigos), `whatsapp.ts` (entregas, chats),
+`cuenta.ts` (cuentas, saldo y paquete de guías: `/cuenta/*`, `/paquete/*`, `/admin/paquetes`, `/admin/cuentas/*`; y las
+rutas de la familia de la suscripción, `/suscripcion/*`) y `suscripcion.ts` (solo `/admin/suscripciones…`). Un
 módulo que conteste en una dirección que no es suya **tapa** la ruta verdadera. `herramientas/probar-rutas.mjs` lo
 revisa; si agregas una ruta a `index.ts`, agrégala a su lista.
 

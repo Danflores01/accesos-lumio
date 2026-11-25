@@ -30,6 +30,10 @@
 //   entrar (WhatsApp → código de 6 dígitos) · mi cuenta (saldo, guías, paquetes, datos) · comprar el paquete ·
 //   el regreso de Mercado Pago (?compra=…) · una guía que se está creando o ya está lista (?guia=…).
 // El saldo vive en el servidor; aquí solo se guarda el pase de la sesión (js/cuenta.js).
+// Suscripción mensual «Guías ilimitadas» (25 nov 2026): aquí se contrata (solo si el servidor dice que esta cuenta puede:
+// abierta al público, o el número está en la lista de probadores), se ve cómo va y se cancela. Vistas: la caja de la
+// suscripción dentro de «Mi cuenta», el regreso de Mercado Pago (?suscripcion=…) y cancelar (?cancelar=1, el link que
+// llega en el aviso de renovación). La tarjeta se pone en Mercado Pago: esta página nunca la pide ni la ve.
 import { api, esc, LADAS, ladaTexto, numeroSinLada, guardarContacto, contactoParaFormulario, pantallaEspera, PAGO_VIVO, mensajeWhatsApp, waLink, t, th, marca, poner, idioma, alCambiarIdioma, textoServidor, nombreGrado, nombreMateria, mensajeError } from "./js/flujo.js";
 import { sparky } from "./js/arte.js";
 import { cuentaApi, paseGuardado, guardarPase, olvidarPase, mostrarPaquete } from "./js/cuenta.js";
@@ -39,7 +43,10 @@ const app = $("#app");
 const params = new URLSearchParams(location.search);
 const esUuid = (x) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(x ?? "");
 const quiereComprar = params.get("comprar") === "paquete3";
-const compraUrl = [params.get("compra"), params.get("external_reference")].find(esUuid) ?? null;
+// Suscripción: ?suscripcion=<id> es el regreso de Mercado Pago; ?cancelar=1 llega del aviso de renovación; ?suscribir=1, de paquetes.html.
+const susUrl = esUuid(params.get("suscripcion")) ? params.get("suscripcion") : null;
+const quiereCancelar = params.get("cancelar") === "1", quiereSuscribirse = params.get("suscribir") === "1";
+const compraUrl = susUrl ? null : [params.get("compra"), params.get("external_reference")].find(esUuid) ?? null;
 const guiaUrl = esUuid(params.get("guia")) ? params.get("guia") : null;
 // Al regresar de Mercado Pago la dirección trae ?pago=pendiente o ?pago=fallido y sus propios datos del pago.
 const regreso = params.get("pago") || "", pagoId = params.get("payment_id") || params.get("collection_id") || "";
@@ -57,8 +64,174 @@ const quitarDeLaDireccion = (...claves) => { try { const u = new URL(location.hr
 const cargando = (clave) => `<section class="panel-paso"><div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div>${marca(clave, null, "h2")}</div></section>`;
 const DISPOSITIVOS_EN = { "Celular Android": "Android phone", "Tableta Android": "Android tablet", "Computadora con Windows": "Windows computer", "Computadora con Linux": "Linux computer", "Dispositivo": "Device" };
 const nombreDispositivo = (n) => (idioma() === "en" && DISPOSITIVOS_EN[n || "Dispositivo"]) || n || "Dispositivo";
-const cajaSuscripcion = () => `<section class="panel-paso" id="suscripcion">${marca("cta.sus_t", null, "h2")}${marca("cta.sus_texto", null, "p")}</section>`;
-const irASuscripcion = () => { if (location.hash === "#suscripcion") document.getElementById("suscripcion")?.scrollIntoView({ block: "start" }); };
+// La caja «Suscripción mensual» para quien todavía no entra (llegó con el link «¿Quieres cancelar tu suscripción?» de la portada).
+const cajaSuscripcion = () => `<section class="panel-paso" id="suscripcion">${marca("cta.sus_t", null, "h2")}${marca("sus.entra_para_ver", null, "p")}</section>`;
+const irASuscripcion = () => { if (location.hash === "#suscripcion" || quiereSuscribirse) document.getElementById("suscripcion")?.scrollIntoView({ block: "start" }); };
+
+// ---------- Suscripción mensual «Guías ilimitadas»: lo que se ve dentro de «Mi cuenta» ----------
+// El servidor manda cuenta.suscripcion = { disponible, precio, prueba_dias, con_prueba, primer_cobro_en, actual }.
+// «disponible» solo es cierto si esta cuenta puede contratar ahora (abierta al público o número de la lista de probadores).
+const sus = () => cuenta?.suscripcion ?? { disponible: false, actual: null };
+const DIA_MS = 86400000;
+// Renglón que dice cómo va la suscripción (se traduce solo al cambiar de idioma).
+function estadoSus(a, etiqueta = "span") {
+  const precio = a.precio, viva = a.estado === "en_prueba" || a.estado === "activa";
+  if (a.estado === "en_prueba" && a.puede_crear) return marca("sus.e_prueba", { dia: a.prueba_hasta ?? a.periodo_fin, precio }, etiqueta);
+  if (a.estado === "activa" && a.puede_crear) return marca("sus.e_activa", { dia: a.proximo_cobro ?? a.periodo_fin, precio }, etiqueta);
+  if (viva) return marca("sus.e_esperando", null, etiqueta);
+  if (a.estado === "cancelada") return a.puede_crear ? marca("sus.e_cancelada", { dia: a.hasta }, etiqueta) : a.periodo_fin ? marca("sus.e_terminada", { dia: a.periodo_fin }, etiqueta) : marca("sus.e_terminada_ya", null, etiqueta);
+  if (a.estado === "en_gracia") return marca("sus.e_gracia", null, etiqueta);
+  if (a.estado === "vencida") return marca("sus.e_vencida", null, etiqueta);
+  if (a.estado === "pendiente") return marca(a.falta === "cobro" ? "sus.e_falta_cobro" : "sus.e_falta_tarjeta", null, etiqueta);
+  return "";
+}
+// ¿Hay que llamar la atención? (un cobro que no pasó, o falta terminar algo en Mercado Pago)
+const susConAlerta = (a) => !!a && (a.estado === "en_gracia" || a.estado === "pendiente" || ((a.estado === "en_prueba" || a.estado === "activa") && !a.puede_crear));
+// La oferta con su casilla: el texto de la casilla es el mismo que el servidor guarda como aceptado.
+function ofertaSus() {
+  const s = sus(), precio = s.precio, c = cuenta.cuenta ?? {}, dias = s.prueba_dias ?? 7;
+  const primer = s.con_prueba ? new Date(Date.now() + dias * DIA_MS).toISOString() : s.primer_cobro_en;
+  const punto3 = s.con_prueba ? marca("sus.p3_prueba", { dias, dia: primer }, "li") : primer ? marca("sus.p3_diferido", { dia: primer }, "li") : marca("sus.p3_hoy", { precio }, "li");
+  const acepto = s.con_prueba ? marca("sus.acepto_prueba", { dias, dia: primer, precio }) : primer ? marca("sus.acepto_diferido", { dia: primer, precio }) : marca("sus.acepto", { precio });
+  return `<div class="resultado-guia"><div class="em" aria-hidden="true">♾️</div><div>${marca("sus.oferta", { precio })}</div></div>
+    <ul class="sus-puntos">${marca("sus.p1", null, "li")}${marca("sus.p2", null, "li")}${punto3}${marca("sus.p4", null, "li")}</ul>
+    <form id="f-sus" class="rejilla-campos" novalidate>
+      ${c.nombre ? "" : `<div class="campo" style="grid-column:1/-1">${marca("cta.nombre", null, "label", 'for="s-nombre"')}<input id="s-nombre" name="nombre" autocomplete="name" maxlength="80" required></div>`}
+      ${c.correo ? "" : `<div class="campo">${marca("cta.correo", null, "label", 'for="s-correo"')}<input id="s-correo" name="correo" type="email" autocomplete="email" maxlength="120" required></div>
+      <div class="campo">${marca("cta.correo2", null, "label", 'for="s-correo2"')}<input id="s-correo2" name="correo2" type="email" autocomplete="off" maxlength="120" required></div>`}
+      <div class="campo" style="grid-column:1/-1">${marca("sus.correo_pago", null, "label", 'for="s-correo-pago"')}<input id="s-correo-pago" name="correo_pago" type="email" autocomplete="email" maxlength="120" value="${esc(c.correo ?? "")}">${marca("sus.correo_pago_ayuda", null, "div", 'class="ayuda"')}</div>
+      <label class="permiso sus-acepto" style="grid-column:1/-1"><input type="checkbox" name="acepta" id="s-acepta">${acepto}</label>
+      <div class="acciones" style="grid-column:1/-1">${marca(s.con_prueba ? "sus.boton_prueba" : "sus.boton", { dias }, "button", 'class="boton" type="submit" id="suscribirme"')}${marca("sus.nota", null, "span", 'class="ayuda"')}</div>
+      <div class="error" id="err-sus" style="grid-column:1/-1" role="alert"></div>
+    </form>`;
+}
+// La sección completa. Sin suscripción y sin poder contratar (lo que ve hoy el público): el mismo texto de siempre.
+function seccionSuscripcion() {
+  const s = sus(), a = s.actual;
+  if (!a && !s.disponible) return `<section class="panel-paso" id="suscripcion">${marca("cta.sus_t", null, "h2")}${marca("cta.sus_texto", null, "p")}</section>`;
+  let cuerpo = "";
+  if (a) {
+    const alerta = susConAlerta(a);
+    // Con derecho a crear, cómo va ya se dice arriba (en la caja «Guías ilimitadas»): aquí van el precio y el folio.
+    cuerpo += a.puede_crear ? marca("sus.detalle", { precio: a.precio, folio: a.folio }, "p") : `<div class="aviso-saldo${alerta ? " alerta" : ""}"><span class="ico" aria-hidden="true">${alerta ? "⚠️" : "ℹ️"}</span>${estadoSus(a)}</div>`;
+    if (a.estado === "pendiente" && a.link_pago) cuerpo += `<div class="acciones"><a class="boton" href="${esc(a.link_pago)}" data-i18n="sus.continuar_mp">${th("sus.continuar_mp")}</a>${marca("sus.descartar", null, "button", 'class="boton linea" type="button" id="cancelar-sus"')}</div>`;
+    else if (a.puede_cancelar) cuerpo += `<div class="acciones">${marca("sus.cancelar", null, "button", 'class="boton linea" type="button" id="cancelar-sus"')}${marca("sus.cancelar_nota", null, "span", 'class="ayuda"')}</div>`;
+  }
+  if (s.disponible && a?.estado !== "pendiente") cuerpo += `${a ? marca("sus.volver_t", null, "b") : ""}${ofertaSus()}`;
+  return `<section class="panel-paso" id="suscripcion">${marca("cta.sus_t", null, "h2")}${cuerpo}</section>`;
+}
+// «Suscribirme»: el servidor abre la suscripción en Mercado Pago y aquí solo se manda a la familia a esa página.
+async function suscribirme(f) {
+  const err = $("#err-sus"), boton = $("#suscribirme"), s = sus();
+  const nombre = f.nombre ? f.nombre.value.trim() : "", correo = f.correo ? f.correo.value.trim().toLowerCase() : "", correoPago = f.correo_pago.value.trim().toLowerCase();
+  if (f.nombre && nombre.length < 2) { poner(err, "cta.err_nombre"); f.nombre.focus(); return; }
+  if (f.correo && !CORREO_OK.test(correo)) { poner(err, "contacto.err_correo"); f.correo.focus(); return; }
+  if (f.correo && f.correo2.value.trim().toLowerCase() !== correo) { poner(err, "contacto.err_correo2"); f.correo2.focus(); return; }
+  if (correoPago && !CORREO_OK.test(correoPago)) { poner(err, "contacto.err_correo"); f.correo_pago.focus(); return; }
+  if (!f.acepta.checked) { poner(err, "sus.err_acepta"); f.acepta.focus(); return; }
+  boton.disabled = true; poner(boton, "pago.abriendo"); sinError(err);
+  try {
+    const r = await cuentaApi.post("/suscripcion/crear", { acepta: true, ...(nombre ? { nombre } : {}), ...(correo ? { correo } : {}), ...(correoPago ? { correo_pago: correoPago } : {}) });
+    if (r.modo === "mercadopago" && /^https:\/\//.test(r.url ?? "")) { quitarDeLaDireccion(); location.href = r.url; return; }
+    vistaRegresoSuscripcion();   // no hay página que abrir (ya estaba autorizada): se ve cómo va
+  } catch (e) {
+    if (e.status === 401) return sesionTermino();
+    if (e.status === 409 && e.datos?.ya) return abrirCuenta();
+    errorDe(err, e); boton.disabled = false; poner(boton, s.con_prueba ? "sus.boton_prueba" : "sus.boton", { dias: s.prueba_dias ?? 7 });
+  }
+}
+// Falta que Mercado Pago confirme algo (la tarjeta o el primer cobro): se pregunta cada 15 segundos durante unos
+// minutos y, si algo cambia, «Mi cuenta» se vuelve a pintar sola.
+async function mirarPendiente(veces = 0) {
+  try {
+    const antes = JSON.stringify(sus().actual ?? null);
+    const d = await cuentaApi.get("/suscripcion/estado");
+    if (JSON.stringify(d.suscripcion?.actual ?? null) !== antes) { if (await cargarCuenta()) vistaCuenta(false); else sesionTermino(); return; }
+  } catch (e) { if (e.status === 401) return sesionTermino(); }
+  if (sus().actual?.estado === "pendiente" && veces < 40) reloj = setTimeout(() => mirarPendiente(veces + 1), 15000);
+}
+function conectarSuscripcion() {
+  if ($("#cancelar-sus")) $("#cancelar-sus").onclick = () => vistaCancelar();
+  const f = $("#f-sus");
+  if (f) f.onsubmit = (e) => { e.preventDefault(); suscribirme(f); };
+  if (sus().actual?.estado === "pendiente") reloj = setTimeout(() => mirarPendiente(), 15000);
+}
+
+// ---------- Regreso de Mercado Pago después de poner la tarjeta (?suscripcion=…) ----------
+function vistaRegresoSuscripcion() {
+  let vista = "", intentos = 0;
+  const poneVista = (clave, html) => { if (clave === vista) return false; vista = clave; clearTimeout(reloj); app.innerHTML = html; if ($("#ir-cuenta")) $("#ir-cuenta").onclick = abrirCuenta; return true; };
+  const otraVez = (ms) => { clearTimeout(reloj); reloj = setTimeout(revisar, ms); };
+  const alFinal = `<div class="acciones">${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div>`;
+  async function revisar() {
+    try {
+      const d = await cuentaApi.get("/suscripcion/estado");
+      if (cuenta) cuenta.suscripcion = d.suscripcion;
+      const a = d.suscripcion?.actual;
+      if (a && (a.estado === "en_prueba" || a.estado === "activa")) {
+        quitarDeLaDireccion();
+        poneVista("lista", `<section class="panel-paso"><div style="display:flex;gap:14px;align-items:center">${sparky("festejo", 6)}<div>${marca("sus.lista_t", null, "h1")}</div></div>
+          ${estadoSus(a, "p")}
+          <div class="acciones"><a class="boton" href="crear.html?saldo=1" data-i18n="cta.crear">${th("cta.crear")}</a>${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}${marca("sus.nota_guias", null, "span", 'class="ayuda"')}</div></section>`);
+        return;
+      }
+      if (a?.estado === "pendiente" && a.falta === "cobro") {
+        poneVista("cobro", `<section class="panel-paso"><div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div>${marca("sus.confirmando", null, "h2")}</div>
+          <div class="caja-clave">${marca("sus.e_falta_cobro", null, "p", 'style="margin:0"')}</div>${marca("sus.puedes_cerrar", null, "p", 'class="ayuda" style="text-align:center"')}${alFinal}</section>`);
+        return otraVez(++intentos < 40 ? 10000 : 30000);
+      }
+      if (a?.estado === "pendiente") {
+        // Todavía sin tarjeta: puede que no haya terminado en Mercado Pago. A los pocos segundos se le ofrece continuar.
+        intentos++;
+        poneVista("tarjeta:" + (intentos > 3), `<section class="panel-paso"><div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div>${marca("sus.confirmando", null, "h2")}</div>
+          ${intentos > 3 ? `${marca("sus.sin_terminar", null, "p", 'style="text-align:center"')}<div class="acciones">${a.link_pago ? `<a class="boton" href="${esc(a.link_pago)}" data-i18n="sus.continuar_mp">${th("sus.continuar_mp")}</a>` : ""}${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div>` : ""}</section>`);
+        return otraVez(intentos < 60 ? 5000 : 30000);
+      }
+      // No quedó ninguna suscripción en curso (por ejemplo, no se pudo activar): «Mi cuenta» dice qué pasó.
+      quitarDeLaDireccion(); location.hash = "suscripcion"; abrirCuenta();
+    } catch (e) {
+      if (e.status === 401) return sesionTermino();
+      poneVista("error:" + e.message, `<section class="panel-paso"><p class="error" data-i18n-servidor="${esc(e.message)}">${esc(mensajeError(e))}</p>${alFinal}</section>`);
+      otraVez(8000);
+    }
+  }
+  pintar(cargando("sus.confirmando"));
+  revisar();
+}
+
+// ---------- Cancelar la suscripción: un botón y una sola confirmación con la fecha de fin ----------
+function vistaCancelar() {
+  const a = sus().actual;
+  if (!a?.puede_cancelar) { quitarDeLaDireccion("cancelar"); location.hash = "suscripcion"; return vistaCuenta(); }
+  const pendiente = a.estado === "pendiente", conPeriodo = (a.estado === "en_prueba" || a.estado === "activa") && new Date(a.periodo_fin).getTime() > Date.now();
+  const texto = pendiente ? marca("sus.cancelar_pend", null, "p") : conPeriodo ? marca(a.estado === "en_prueba" ? "sus.cancelar_prueba" : "sus.cancelar_texto", { dia: a.periodo_fin }, "p") : marca("sus.cancelar_ya", null, "p");
+  pintar(`<section class="panel-paso">
+    <div class="cta-sello">${marca("cta.sello")}</div>
+    ${marca("sus.cancelar_t", null, "h1")}
+    ${texto}
+    <div class="acciones">${marca("sus.si_cancelar", null, "button", 'class="boton" type="button" id="si-cancelar"')}${marca("sus.no_cancelar", null, "button", 'class="boton linea" type="button" id="no-cancelar"')}</div>
+    <div class="error" id="err-cancelar" role="alert" style="text-align:center"></div>
+  </section>`);
+  $("#no-cancelar").onclick = abrirCuenta;
+  $("#si-cancelar").onclick = async () => {
+    const boton = $("#si-cancelar"); boton.disabled = true; $("#no-cancelar").disabled = true; poner(boton, "sus.cancelando");
+    try {
+      const r = await cuentaApi.post("/suscripcion/cancelar");
+      if (cuenta && r.suscripcion) cuenta.suscripcion = r.suscripcion;
+      quitarDeLaDireccion();
+      const adios = r.estado !== "cancelada" ? marca("sus.descartada", null, "p") : r.hasta ? marca("sus.adios", { dia: r.hasta }, "p") : marca("sus.adios_ya", null, "p");
+      pintar(`<section class="panel-paso">
+        ${marca(r.estado === "cancelada" ? "sus.cancelada_t" : "sus.descartada_t", null, "h1")}
+        ${adios}
+        ${r.estado === "cancelada" ? marca("sus.comprobante", { folio: r.folio ?? "" }, "p", 'class="ayuda"') : ""}
+        <div class="acciones">${marca("cta.ir_cuenta", null, "button", 'class="boton" type="button" id="ir-cuenta"')}</div></section>`);
+      $("#ir-cuenta").onclick = abrirCuenta;
+    } catch (e) {
+      if (e.status === 401) return sesionTermino();
+      errorDe($("#err-cancelar"), e); boton.disabled = false; $("#no-cancelar").disabled = false; poner(boton, "sus.si_cancelar");
+    }
+  };
+}
 function sesionTermino() { olvidarPase(); cuenta = null; mostrarPaquete(); vistaEntrar({ aviso: "cta.sesion_termino" }); }
 async function cargarCuenta() {
   if (!paseGuardado()) { cuenta = null; return false; }
@@ -190,14 +363,18 @@ function despuesDeEntrar(datos = {}) {
   mostrarPaquete();
   if (datos.comprar) return comprar({ nombre: datos.nombre, correo: datos.correo });
   if (guiaUrl) return vistaGuia(guiaUrl);
+  if (susUrl) return vistaRegresoSuscripcion();
   if (compraUrl) return vistaCompra(compraUrl);
+  if (quiereCancelar) return vistaCancelar();
   vistaCuenta();
 }
 
 // ---------- Mi cuenta ----------
 function vistaCuenta(subir = true, nota = null) {
   const c = cuenta, s = c.saldo ?? { guias: 0, lotes: [], vencidas: 0 }, p = c.paquete ?? {}, n = Number(s.guias) || 0;
-  const nombre = String(c.cuenta?.nombre ?? "").trim().split(/\s+/)[0];
+  // Suscripción: con derecho a crear, arriba dice «Guías ilimitadas»; su caja va justo debajo si existe o se puede contratar.
+  const a = sus().actual, ilim = a?.puede_crear === true, susArriba = !!a || sus().disponible === true;
+  const nombre =String(c.cuenta?.nombre ?? "").trim().split(/\s+/)[0];
   const vencimiento = (s.lotes ?? []).length > 1
     ? s.lotes.map((l) => marca(l.quedan === 1 ? "cta.lote_1" : "cta.lote_n", { n: l.quedan, dia: l.vence_en })).join(" ")
     : marca(n === 1 ? "cta.vence" : "cta.vencen", { dia: s.vence_en });
@@ -207,19 +384,22 @@ function vistaCuenta(subir = true, nota = null) {
     const titulo = `<b>${g.titulo ? esc(g.titulo) : th("tu_guia")}</b>`, detalle = sub(g);
     if (g.estado === "lista") return `<div class="cta-fila"><div class="cta-fila-texto">${titulo}<span>${detalle ? detalle + " · " : ""}${marca("cta.guia_hasta", { dia: g.expira_en })}</span></div><a class="boton chico" href="${esc(g.link)}" data-i18n="cta.guia_abrir">${th("cta.guia_abrir")}</a></div>`;
     if (g.estado === "generando") return `<div class="cta-fila"><div class="cta-fila-texto">${titulo}<span>${detalle ? detalle + " · " : ""}${marca("cta.guia_generando")}</span></div><a class="boton chico linea" href="cuenta.html?guia=${esc(g.id)}" data-i18n="cta.guia_avance">${th("cta.guia_avance")}</a></div>`;
-    if (g.estado === "devuelta") return `<div class="cta-fila apagada"><div class="cta-fila-texto">${titulo}${marca("cta.guia_devuelta")}${g.mensaje ? `<span data-i18n-servidor="${esc(g.mensaje)}">${esc(textoServidor(g.mensaje))}</span>` : ""}</div></div>`;
-    return `<div class="cta-fila apagada"><div class="cta-fila-texto">${titulo}<span>${detalle ? detalle + " · " : ""}${marca("cta.guia_vencida", { dia: g.expira_en })}</span></div></div>`;
+    if (g.estado === "devuelta") return `<div class="cta-fila apagada"><div class="cta-fila-texto">${titulo}${g.con_suscripcion ? marca("sus.guia_fallida") : marca("cta.guia_devuelta") + (g.mensaje ? `<span data-i18n-servidor="${esc(g.mensaje)}">${esc(textoServidor(g.mensaje))}</span>` : "")}</div></div>`;
+    return `<div class="cta-fila apagada"><div class="cta-fila-texto">${titulo}<span>${detalle ? detalle + " · " : ""}${marca(g.con_suscripcion ? "sus.guia_cerrada" : "cta.guia_vencida", { dia: g.expira_en })}</span></div></div>`;
   };
   const filaPaquete = (x) => `<div class="cta-fila"><div class="cta-fila-texto">${marca("cta.paquete_pagado", { guias: x.guias ?? p.guias ?? 3, dia: x.pagada_en }, "b")}${x.vence_en ? marca(new Date(x.vence_en).getTime() > Date.now() ? "cta.paquete_vence" : "cta.paquete_vencido", { dia: x.vence_en, folio: x.folio }) : marca("cta.paquete_folio", { folio: x.folio })}</div></div>`;
   const correo = c.cuenta?.correo, editable = c.cuenta?.correo_editable === true;
   pintar(`<section class="panel-paso">
     <div class="cta-cabeza"><div><div class="cta-sello">${marca("cta.sello")}</div>${nombre ? marca("cta.hola", { nombre }, "h1") : marca("cta.mi_cuenta", null, "h1")}${marca("cta.whatsapp_de", { whatsapp: c.cuenta?.whatsapp ?? "" }, "div", 'class="ayuda"')}</div>${marca("cta.salir", null, "button", 'class="boton linea chico" type="button" id="salir"')}</div>
-    <div class="saldo-caja${n ? "" : " vacio"}"><div class="saldo-num" aria-hidden="true">${n}</div><div class="saldo-texto">${n > 1 ? marca("cta.saldo_n", { n }, "b") : marca(n === 1 ? "cta.saldo_1" : "cta.saldo_0", null, "b")}<span>${n ? vencimiento : marca(p.disponible ? "cta.saldo_0_texto" : "cta.saldo_0_apagado")}</span></div></div>
+    ${ilim
+      ? `<div class="saldo-caja"><div class="saldo-num" aria-hidden="true">∞</div><div class="saldo-texto">${marca("sus.ilimitadas", null, "b")}${estadoSus(a)}</div></div>${n ? `<div class="ayuda">${marca(n === 1 ? "sus.ademas_1" : "sus.ademas_n", { n })} ${vencimiento}</div>` : ""}`
+      : `<div class="saldo-caja${n ? "" : " vacio"}"><div class="saldo-num" aria-hidden="true">${n}</div><div class="saldo-texto">${n > 1 ? marca("cta.saldo_n", { n }, "b") : marca(n === 1 ? "cta.saldo_1" : "cta.saldo_0", null, "b")}<span>${n ? vencimiento : marca(p.disponible ? "cta.saldo_0_texto" : "cta.saldo_0_apagado")}</span></div></div>`}
     ${s.vencidas > 0 ? marca(s.vencidas === 1 ? "cta.vencidas_1" : "cta.vencidas_n", { n: s.vencidas }, "div", 'class="ayuda"') : ""}
-    <div class="acciones">${n ? `<a class="boton" href="crear.html?saldo=1" data-i18n="cta.crear">${th("cta.crear")}</a>` : ""}${p.disponible ? marca(n || pagados.length ? "cta.comprar_otro" : "cta.comprar", { guias: p.guias, precio: p.precio }, "button", `class="boton${n ? " linea" : ""}" type="button" id="comprar"`) : ""}${n ? marca("cta.nota_guias", null, "span", 'class="ayuda"') : ""}</div>
+    <div class="acciones">${n || ilim ? `<a class="boton" href="crear.html?saldo=1" data-i18n="cta.crear">${th("cta.crear")}</a>` : ""}${p.disponible && !ilim ? marca(n || pagados.length ? "cta.comprar_otro" : "cta.comprar", { guias: p.guias, precio: p.precio }, "button", `class="boton${n ? " linea" : ""}" type="button" id="comprar"`) : ""}${ilim ? marca("sus.nota_guias", null, "span", 'class="ayuda"') : n ? marca("cta.nota_guias", null, "span", 'class="ayuda"') : ""}</div>
   </section>
+  ${susArriba ? seccionSuscripcion() : ""}
   ${pendientes.length ? `<section class="panel-paso">${marca("cta.pendiente_t", null, "h2")}<div class="cta-lista">${pendientes.map((x) => `<div class="cta-fila"><div class="cta-fila-texto">${marca("cta.pendiente_fila", { guias: p.guias ?? 3, folio: x.folio }, "b")}</div><a class="boton chico" href="cuenta.html?compra=${esc(x.id)}" data-i18n="cta.ver_pago">${th("cta.ver_pago")}</a></div>`).join("")}</div></section>` : ""}
-  <section class="panel-paso">${marca("cta.guias_t", null, "h2")}${(c.guias ?? []).length ? `<div class="cta-lista">${c.guias.map(filaGuia).join("")}</div>` : marca("cta.guias_vacio", null, "p", 'class="ayuda"')}</section>
+  <section class="panel-paso">${marca("cta.guias_t", null, "h2")}${(c.guias ?? []).length ? `<div class="cta-lista">${c.guias.map(filaGuia).join("")}</div>` : marca(ilim ? "sus.guias_vacio" : "cta.guias_vacio", null, "p", 'class="ayuda"')}</section>
   ${pagados.length ? `<section class="panel-paso">${marca("cta.paquetes_t", null, "h2")}<div class="cta-lista">${pagados.map(filaPaquete).join("")}</div></section>` : ""}
   <section class="panel-paso">${marca("cta.datos_t", null, "h2")}
     <div class="cta-dato"><span>${correo ? marca("cta.correo_actual", { correo }) : marca("cta.correo_falta")}</span>${editable ? marca(correo ? "cta.correo_cambiar" : "cta.correo_agregar", null, "button", 'class="boton linea chico" type="button" id="cambiar-correo"') : ""}</div>
@@ -233,7 +413,7 @@ function vistaCuenta(subir = true, nota = null) {
     <div class="ok-nota" id="nota-datos" role="status">${nota ? th(nota) : ""}</div>
     ${marca("cta.dispositivos", { abiertos: c.dispositivos?.abiertos ?? 1, maximo: c.dispositivos?.maximo ?? 2 }, "div", 'class="ayuda"')}
   </section>
-  ${cajaSuscripcion()}`, subir);
+  ${susArriba ? "" : seccionSuscripcion()}`, subir);
   if (nota) $("#nota-datos").dataset.i18n = nota;
   redibujar = () => vistaCuenta(false);
   $("#salir").onclick = async () => { try { await cuentaApi.post("/cuenta/salir"); } catch {} olvidarPase(); cuenta = null; quitarDeLaDireccion(); mostrarPaquete(); vistaEntrar(); };
@@ -249,6 +429,7 @@ function vistaCuenta(subir = true, nota = null) {
     try { const r = await cuentaApi.post("/cuenta/correo", { correo: nuevo }); cuenta.cuenta.correo = r.correo; vistaCuenta(false, "cta.correo_guardado"); }
     catch (e2) { if (e2.status === 401) return sesionTermino(); errorDe(err, e2); }
   };
+  conectarSuscripcion();
   irASuscripcion();
 }
 
@@ -392,7 +573,7 @@ function vistaGuia(id) {
     }
   }
   function lista(d) {
-    const link = d.link, nombre = d.titulo ?? "", n = Number(d.saldo?.guias) || 0;
+    const link = d.link, nombre = d.titulo ?? "", n = Number(d.saldo?.guias) || 0, conSus = d.con_suscripcion === true, otra = n > 0 || sus().actual?.puede_crear === true;
     let svgQr = "";
     try { const qr = qrcode(0, "M"); qr.addData(link); qr.make(); svgQr = qr.createSvgTag({ cellSize: 5, margin: 2 }); } catch {}
     pintar(`<section class="panel-paso"><div style="display:flex;gap:14px;align-items:center">${sparky("festejo", 6)}<div>${marca("listo.lista", null, "h1")}<div class="ayuda">${nombre ? esc(nombre) : marca("tu_guia")}</div></div></div>
@@ -402,19 +583,19 @@ function vistaGuia(id) {
           <div class="link-caja">${esc(link)}</div>
           <div class="acciones"><a class="boton" href="${esc(link)}" data-i18n="link.abrir">${th("link.abrir")}</a>${marca("link.copiar", null, "button", 'class="boton linea" type="button" id="copiar"')}<a class="boton linea" id="wa" target="_blank" rel="noopener" href="${esc(waLink("", mensajeWhatsApp(nombre || t("tu_guia"), link)))}" data-i18n="link.whatsapp">${th("link.whatsapp")}</a></div>
         </div></div>
-      <div class="caja-clave">${marca("listo.acceso_t", null, "b")}<ul style="margin:8px 0 0;padding-left:20px">${d.expira_en ? marca("listo.acceso1_fecha", { fecha: d.expira_en }, "li") : marca("listo.acceso1", null, "li")}${marca("listo.acceso2", null, "li")}${marca("listo.acceso3", null, "li")}</ul></div>
-      <div class="aviso-saldo"><span class="ico" aria-hidden="true">🎟️</span>${n > 1 ? marca("cta.lista_saldo_n", { n }) : marca(n === 1 ? "cta.lista_saldo_1" : "cta.lista_saldo_0")}</div>
-      <div class="acciones">${n ? `<a class="boton linea" href="crear.html?saldo=1" data-i18n="cta.otra">${th("cta.otra")}</a>` : ""}${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div></section>`);
+      <div class="caja-clave">${marca("listo.acceso_t", null, "b")}<ul style="margin:8px 0 0;padding-left:20px">${conSus ? marca(d.expira_en ? "sus.acceso1_fecha" : "sus.acceso1", { fecha: d.expira_en }, "li") : d.expira_en ? marca("listo.acceso1_fecha", { fecha: d.expira_en }, "li") : marca("listo.acceso1", null, "li")}${marca("listo.acceso2", null, "li")}${marca("listo.acceso3", null, "li")}</ul></div>
+      <div class="aviso-saldo"><span class="ico" aria-hidden="true">${conSus ? "♾️" : "🎟️"}</span>${conSus ? marca("sus.lista_nota") : n > 1 ? marca("cta.lista_saldo_n", { n }) : marca(n === 1 ? "cta.lista_saldo_1" : "cta.lista_saldo_0")}</div>
+      <div class="acciones">${otra ? `<a class="boton linea" href="crear.html?saldo=1" data-i18n="cta.otra">${th("cta.otra")}</a>` : ""}${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div></section>`);
     $("#ir-cuenta").onclick = abrirCuenta;
     $("#copiar").onclick = async () => { try { await navigator.clipboard.writeText(link); poner($("#copiar"), "link.copiado"); } catch {} };
     redibujar = () => { $("#wa").href = waLink("", mensajeWhatsApp(nombre || t("tu_guia"), link)); };
   }
   function devuelta(d) {
-    const n = Number(d.saldo?.guias) || 0;
+    const n = Number(d.saldo?.guias) || 0, conSus = d.con_suscripcion === true, otra = n > 0 || sus().actual?.puede_crear === true;
     pintar(`<section class="panel-paso"><div style="display:flex;gap:14px;align-items:center">${sparky("triste", 5)}<div>${marca("cta.devuelta_t", null, "h1")}${d.titulo ? `<div class="ayuda">${esc(d.titulo)}</div>` : ""}</div></div>
       ${d.mensaje ? `<p data-i18n-servidor="${esc(d.mensaje)}">${esc(textoServidor(d.mensaje))}</p>` : ""}
-      <div class="aviso-saldo"><span class="ico" aria-hidden="true">🎟️</span>${n === 1 ? marca("cta.devuelta_1") : marca("cta.devuelta_n", { n })}</div>
-      <div class="acciones">${n ? `<a class="boton" href="crear.html?saldo=1" data-i18n="cta.reintentar">${th("cta.reintentar")}</a>` : ""}${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div></section>`);
+      ${conSus ? "" : `<div class="aviso-saldo"><span class="ico" aria-hidden="true">🎟️</span>${n === 1 ? marca("cta.devuelta_1") : marca("cta.devuelta_n", { n })}</div>`}
+      <div class="acciones">${otra ? `<a class="boton" href="crear.html?saldo=1" data-i18n="cta.reintentar">${th("cta.reintentar")}</a>` : ""}${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div></section>`);
     $("#ir-cuenta").onclick = abrirCuenta;
   }
   pintar(cargando("espera.generando"));
@@ -425,9 +606,11 @@ function vistaGuia(id) {
 try {
   info = await mostrarPaquete(document, true);
   const dentro = await cargarCuenta();
-  if (!dentro) vistaEntrar({ comprar: quiereComprar, aviso: compraUrl || guiaUrl ? "cta.entra_para_ver" : null });
+  if (!dentro) vistaEntrar({ comprar: quiereComprar, aviso: quiereCancelar ? "sus.entra_para_cancelar" : susUrl || quiereSuscribirse ? "sus.entra_para_ver" : compraUrl || guiaUrl ? "cta.entra_para_ver" : null });
   else if (guiaUrl) vistaGuia(guiaUrl);
+  else if (susUrl) vistaRegresoSuscripcion();
   else if (compraUrl) vistaCompra(compraUrl);
+  else if (quiereCancelar) vistaCancelar();
   else if (quiereComprar && cuenta.paquete?.disponible) comprar();
   else vistaCuenta();
 } catch (e) {

@@ -12,6 +12,7 @@ carpetas que empiezan con guion bajo.
 | `skill/guardia-sparked/scripts/ronda.mjs` | La ronda: revisa en producción todo el camino del cliente en unos 15 segundos. |
 | `skill/guardia-sparked/scripts/lanzar.mjs` | La compuerta de lanzamiento: revisa, publica, espera y comprueba en un solo comando. |
 | `skill/guardia-sparked/scripts/probar-paquete.mjs` | La prueba en vivo del paquete de 3 guías: cuenta de prueba, código, saldo, compra sin pagar y devolución; borra todo al terminar. |
+| `skill/guardia-sparked/scripts/probar-suscripcion.mjs` | La prueba en vivo de la suscripción mensual: cuenta de prueba, alta con prueba gratis, cobro, cobro repetido, gracia, vencida y cancelar; no toca Mercado Pago y borra todo al terminar. |
 | `skill/guardia-sparked/references/` | La bitácora de fallos, cómo publicar o regresar rápido, las consultas, el mapa del camino del cliente y la tabla de síntomas. |
 | `agente/guardia-sparked.md` | El ayudante de guardia: un Claude dedicado solo a esto, que otro Claude puede llamar. |
 | `instalar.mjs` | Copia la skill y el agente a la computadora para que estén en cualquier sesión de Claude. |

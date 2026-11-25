@@ -434,6 +434,22 @@
   details.cuenta-paq .tabla-libro td.mas { color: #15803d; font-weight: 700; white-space: nowrap; }
   details.cuenta-paq .tabla-libro td.menos { color: #b91c1c; font-weight: 700; white-space: nowrap; }
   details.cuenta-paq .acciones-cuenta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  /* Suscripciones (25 nov 2026): el interruptor del modo, la lista de probadores y cada suscripción con su uso y sus cobros. */
+  .estado.activa, .estado.aprobado { background: var(--pn-ok-fondo); color: var(--pn-ok-texto); }
+  .estado.en_prueba { background: var(--pn-sec); color: var(--pn-violeta); }
+  .estado.en_gracia { background: var(--pn-ambar-fondo); color: var(--pn-ambar-texto); }
+  .estado.vencida, .estado.abandonada, .estado.rechazado, .estado.reembolsado { background: var(--pn-pel-fondo); color: var(--pn-pel-texto); }
+  .sus-modo { border-radius: 14px; padding: 12px 16px; font-weight: 600; font-size: 15px; line-height: 1.4; background: #F0EEF5; color: #4A4463; overflow-wrap: anywhere; }
+  .sus-modo.probadores { background: var(--pn-ambar-fondo); color: var(--pn-ambar-texto); }
+  .sus-modo.si { background: var(--pn-ok-fondo); color: var(--pn-ok-texto); }
+  .sus-probadores { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sus-probador { display: inline-flex; align-items: center; gap: 8px; background: var(--pn-sec); color: var(--pn-texto); border-radius: 999px; padding: 5px 6px 5px 14px; font-size: 14px; font-weight: 600; min-width: 0; }
+  .sus-probador .boton { width: auto; min-height: 30px; padding: 4px 12px; font-size: 13px; }
+  .sus-bandera { border-left: 4px solid #d97706; background: var(--pn-ambar-fondo); color: var(--pn-ambar-texto); border-radius: 10px; padding: 8px 12px; font-size: 13.5px; line-height: 1.4; overflow-wrap: anywhere; }
+  .fila-g details.sus-cobros summary { cursor: pointer; font-size: 13.5px; color: var(--pn-suave); }
+  .fila-g details.sus-cobros ul { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; line-height: 1.5; }
+  .sus-ver { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+  .sus-ver input { width: 18px; height: 18px; accent-color: var(--pn-violeta); }
 </style>
 </head>
 <body class="sitio claro panel">
@@ -452,6 +468,7 @@
     <button data-tab="guias">Guías</button>
     <button data-tab="compras">Compras <span class="n" id="nCompras" hidden></span></button>
     <button data-tab="paquetes">Paquetes <span class="n" id="nPaquetes" hidden></span></button>
+    <button data-tab="suscripciones">Suscripciones <span class="n" id="nSuscripciones" title="Suscripciones por revisar" hidden></span></button>
     <button data-tab="codigos">Códigos</button>
     <button data-tab="solicitudes" hidden>Pedidos sin guía <span class="n" id="nSolicitudes" hidden></span></button>
     <button data-tab="reportes">Reportes <span class="n" id="nReportes" hidden></span></button>
@@ -574,6 +591,46 @@
       <div id="listaPaquetes"></div>
       <h2 class="paq-titulo">Cuentas y su saldo</h2>
       <div id="listaCuentas"></div>
+    </section>
+
+    <!-- Suscripciones (25 nov 2026): suscripción mensual «Guías ilimitadas». Nace apagada; el modo se cambia aquí. -->
+    <section data-panel="suscripciones" hidden>
+      <div class="barra-herr">
+        <input id="buscaSus" class="filtro" type="search" placeholder="Buscar por folio, nombre o últimos 4 dígitos" aria-label="Buscar en suscripciones" style="flex:1 1 240px;min-height:40px;padding:8px 14px;border:1px solid var(--pn-campo);border-radius:999px">
+        <button class="boton linea chico" id="btnRefrescarSus">⟳ Actualizar</button>
+      </div>
+      <div class="caja-clave" style="margin-bottom:12px">
+        <b>Cómo funciona la suscripción «Guías ilimitadas»</b>
+        <p style="margin:6px 0 0">La familia entra a «Mi cuenta» con su WhatsApp, acepta el cobro automático y pone su tarjeta en Mercado Pago (aquí nunca se guarda una tarjeta). Tiene <span id="susDias">7</span> días gratis, una sola vez por WhatsApp y por tarjeta, y después Mercado Pago le cobra cada mes. Sus guías se generan completas, sin vista previa y sin tope. <b>Solo cuenta como venta cada cobro que Mercado Pago aprobó</b>; las guías hechas con la suscripción no son ventas.</p>
+        <p class="ayuda" style="margin:6px 0 0">Aquí el WhatsApp y el correo de cada familia salen a medias a propósito.</p>
+      </div>
+      <div class="panel-paso" style="margin-bottom:16px"><h2 style="margin-top:0">Quién puede suscribirse</h2>
+        <div class="sus-modo" id="susModoAhora" role="status">Cargando…</div>
+        <form id="formSus" class="paq-ajustes">
+          <div class="campo"><label for="susModo">Modo de la suscripción</label><select id="susModo" name="sparked_suscripcion"><option value="no">Apagada: nadie puede suscribirse</option><option value="probadores">Solo probadores: los números de la lista</option><option value="si">Pública: cualquier familia</option></select></div>
+          <div class="campo"><label for="susPrecio">Precio al mes (MXN, IVA incluido)</label><input id="susPrecio" name="sparked_suscripcion_precio" inputmode="numeric"></div>
+          <button class="boton" type="submit">Guardar</button>
+        </form>
+        <p class="ayuda" style="margin:0">La portada del sitio dice «Próximamente» en cualquier modo. En «Solo probadores», quien esté en la lista entra a <b>Mi cuenta</b> con su WhatsApp y ahí encuentra «Suscribirme». Un precio nuevo solo aplica a las suscripciones nuevas.</p>
+        <h2 style="margin:8px 0 0">Probadores</h2>
+        <div id="susProbadores" class="sus-probadores"></div>
+        <form id="formProbador" class="paq-ajustes">
+          <div class="campo"><label for="susTel">WhatsApp del probador (en México, 10 dígitos)</label><input id="susTel" name="telefono" type="tel" inputmode="tel" autocomplete="off" placeholder="5512345678"></div>
+          <button class="boton linea" type="submit">Agregar a la lista</button>
+        </form>
+      </div>
+      <div class="numeros" id="susNumeros"></div>
+      <div class="panel-paso" style="margin:16px 0"><h2 style="margin-top:0">Revisión diaria</h2>
+        <p class="ayuda" style="margin:0">Manda el aviso de renovación <span id="susAviso">6</span> días antes de cada cobro, deja «en gracia» la suscripción que no se pudo cobrar y «vencida» la que agotó sus <span id="susGracia">10</span> días de gracia. <b>Todavía no corre sola:</b> mientras tengas suscripciones, oprime este botón una vez al día.</p>
+        <div><button class="boton linea" type="button" id="btnSusDiario" style="width:auto">▶ Correr la revisión diaria ahora</button></div>
+        <div class="ayuda" id="susDiario" role="status"></div>
+      </div>
+      <h2 class="paq-titulo">Suscripciones</h2>
+      <div class="barra-herr">
+        <select id="filtroSus" class="filtro" aria-label="Qué suscripciones ver"><option value="">Todas</option><option value="en_prueba">En prueba gratis</option><option value="activa">Activas</option><option value="en_gracia">En gracia</option><option value="cancelada">Canceladas</option><option value="vencida">Vencidas</option><option value="revisar">Con bandera «revisar»</option></select>
+        <label class="sus-ver"><input type="checkbox" id="susVerTodo">Ver también las que no se contrataron y las de prueba</label>
+      </div>
+      <div id="listaSus"></div>
     </section>
 
     <section data-panel="codigos" hidden>
@@ -775,7 +832,7 @@ function mostrarTab(t) {
   location.hash = t;
   $("#seccionActual").textContent = $$("#tabs button").find((b) => b.dataset.tab === t)?.firstChild?.textContent?.trim() ?? "";
   cerrarMenu();
-  ({ resumen: () => { cargarChats(); return cargarResumen(); }, guias: cargarCostosGuias, compras: cargarCompras, paquetes: cargarPaquetes, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, comentarios: cargarComentarios, costos: cargarCostos, motores: cargarMotores, ajustes: cargarAjustes })[t]?.();
+  ({ resumen: () => { cargarChats(); return cargarResumen(); }, guias: cargarCostosGuias, compras: cargarCompras, paquetes: cargarPaquetes, suscripciones: cargarSuscripciones, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, comentarios: cargarComentarios, costos: cargarCostos, motores: cargarMotores, ajustes: cargarAjustes })[t]?.();
 }
 function cargarTodo() { mostrarTab(location.hash.replace("#", "") || "resumen"); }
 
@@ -822,6 +879,12 @@ async function cargarResumen() {
       [r.paquetes.vendidos_mes + " · " + dinero(r.paquetes.ingresos_mes), "paquetes de guías cobrados este mes (ya contados en las ventas)"],
       [r.compras.de_paquete_mes ?? 0, "guías hechas con saldo de paquete este mes (no son ventas)"],
     ] : []),
+    // Suscripción mensual: sus cobros van aparte de las guías sueltas y de los paquetes (no están en las ventas de arriba).
+    ...(r.suscripciones && (r.suscripciones.activas || r.suscripciones.en_prueba || r.suscripciones.en_gracia || r.suscripciones.cobros_mes || r.compras.de_suscripcion_mes) ? [
+      [`${r.suscripciones.activas} · ${r.suscripciones.en_prueba} · ${r.suscripciones.en_gracia}`, "suscripciones: activas · en prueba gratis · en gracia"],
+      [r.suscripciones.cobros_mes + " · " + dinero(r.suscripciones.ingresos_mes), "cobros de suscripción aprobados este mes (aparte de las ventas de guías)"],
+      [r.compras.de_suscripcion_mes ?? 0, "guías hechas con suscripción este mes (no son ventas)"],
+    ] : []),
     [r.reportes_nuevos, "reportes nuevos"], ["US$" + r.ia.costo_usd_mes.toFixed(2), "gasto de IA este mes"],
   ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
   // Guías pagadas que la IA no pudo terminar: la familia ve "Estamos revisando tu guía" hasta que se reintente.
@@ -829,6 +892,7 @@ async function cargarResumen() {
   $$("#alertas [data-reintentar]").forEach((b) => b.onclick = async () => { b.disabled = true; try { await api(`/trabajos/${b.dataset.reintentar}/reintentar`, { method: "POST" }); aviso("Reintentando… la guía se envía sola cuando esté lista", false, 6000); cargarResumen(); } catch (e) { b.disabled = false; aviso(e.message, true, 6000); } });
   $("#nCompras").hidden = !r.compras.pendientes; $("#nCompras").textContent = r.compras.pendientes;
   $("#nPaquetes").hidden = !r.paquetes?.pendientes; $("#nPaquetes").textContent = r.paquetes?.pendientes ?? "";
+  $("#nSuscripciones").hidden = !r.suscripciones?.por_revisar; $("#nSuscripciones").textContent = r.suscripciones?.por_revisar || "";
   $("#nSolicitudes").hidden = !r.solicitudes_sin_guia; $("#nSolicitudes").textContent = r.solicitudes_sin_guia;
   $("#nReportes").hidden = !r.reportes_nuevos; $("#nReportes").textContent = r.reportes_nuevos;
   // Comentarios nuevos de la portada (si la ruta todavía no existe, no se muestra nada).
@@ -1131,8 +1195,9 @@ async function cargarCompras() {
   // La nota sobre cobro o cortesía solo aparece cuando el servidor ya lo distingue (cada compra trae «cobro»).
   if (lista.length) $("#notaCobro").textContent = "cobro" in lista[0] ? " Al marcarla eliges si la cobraste por fuera o si es una cortesía: solo lo cobrado cuenta como venta." : "";
   $("#listaCompras").innerHTML = lista.map((c) => `<div class="fila-g"><div class="info"><b class="cliente">${esc(c.nombre || "Sin nombre")}</b>${chip(c.estado)}
-      <div class="ayuda">Folio <b>${esc(c.folio)}</b> · ${esc(fecha(c.creada_en))} · ${c.cobro === "saldo" ? "guía de paquete, sin cobro" : c.cobro === "cortesia" ? "sin cobro" : dinero(c.monto_mxn) + " MXN"}${c.pagada_en && c.cobro !== "saldo" ? (c.cobro === "cortesia" ? " · confirmada " : " · pagada ") + esc(fecha(c.pagada_en)) : ""}</div>
+      <div class="ayuda">Folio <b>${esc(c.folio)}</b> · ${esc(fecha(c.creada_en))} · ${c.cobro === "saldo" ? "guía de paquete, sin cobro" : c.cobro === "suscripcion" || c.metodo_pago === "suscripcion" ? "guía de suscripción, sin cobro" : c.cobro === "cortesia" ? "sin cobro" : dinero(c.monto_mxn) + " MXN"}${c.pagada_en && c.cobro !== "saldo" && c.metodo_pago !== "suscripcion" ? (c.cobro === "cortesia" ? " · confirmada " : " · pagada ") + esc(fecha(c.pagada_en)) : ""}</div>
       ${c.metodo_pago === "saldo" ? '<div class="ayuda">🎟️ Hecha con el saldo de un paquete: no cuenta como venta (la venta fue el paquete).' + (c.estado === "fallida" ? " No se pudo crear y la guía regresó a su saldo." : "") + "</div>" : ""}
+      ${c.metodo_pago === "suscripcion" ? '<div class="ayuda">♾️ Hecha con la suscripción de guías ilimitadas: no cuenta como venta (la venta es cada cobro mensual).' + (c.estado === "fallida" ? " No se pudo crear; la familia puede intentarlo de nuevo." : "") + "</div>" : ""}
       <div class="ayuda">📞 <a href="${esc(waLink(c.telefono ?? "", ""))}" target="_blank" rel="noopener">${esc(c.telefono ?? "")}</a> · ✉️ <a href="mailto:${esc(c.correo ?? "")}">${esc(c.correo ?? "")}</a></div>
       ${c.codigo ? `<div class="ayuda">🎟️ Código <b>${esc(c.codigo)}</b>${c.metodo_pago === "codigo" ? " · guía gratis (no cuenta como venta)" : ` · descuento de ${dinero(c.descuento_mxn)}`}</div>` : ""}
       ${c.a_mano ? `<div class="ayuda">${c.cobro === "por_fuera" ? "💵 Confirmada a mano · cobrada por fuera (cuenta como venta)" : "🎁 Confirmada a mano · cortesía, sin cobro (no cuenta como venta)"}</div>
@@ -1354,6 +1419,126 @@ async function cargarPaquetes() {
     catch (e) { aviso(e.message, true, 6000); }
   });
 }
+
+// ---------- Suscripciones (suscripción mensual «Guías ilimitadas», 25 nov 2026) ----------
+// El servidor (GET /admin/suscripciones) manda el modo, la lista de probadores (con el número a medias), las cifras y
+// cada suscripción con su uso y sus cobros. Un cobro es venta solo si Mercado Pago lo aprobó: eso ya viene calculado.
+const SUS_MODO = {
+  no: "⚪ Apagada: nadie puede suscribirse. El sitio dice «Próximamente».",
+  probadores: "🟡 Solo probadores: únicamente los números de la lista ven «Suscribirme» en Mi cuenta. Para el público sigue apagada.",
+  si: "🟢 Pública: cualquier familia con cuenta puede suscribirse.",
+};
+const SUS_FIN = { sin_pago: "no se pudo cobrar", prueba_ya_usada: "esa tarjeta o cuenta de Mercado Pago ya había usado su prueba gratis", fecha_no_respetada: "Mercado Pago no respetó la fecha del primer cobro", sin_terminar: "no terminó de poner su tarjeta", cancelada_sin_terminar: "la descartó antes de poner su tarjeta", reemplazada: "empezó otra", mercadopago_no_respondio: "Mercado Pago no respondió", cancelada_en_mercadopago: "se canceló en Mercado Pago", cancelada_por_mercadopago: "Mercado Pago la canceló" };
+const SUS_QUIEN = { familia: "la familia", daniel: "tú, desde el panel", mercadopago: "desde Mercado Pago", sistema: "el sistema" };
+const SUS_COBRO = { aprobado: "cobrado", pendiente: "en revisión", rechazado: "rechazado", reembolsado: "reembolsado", revisar: "monto distinto" };
+const SUS_MP = { pending: "sin tarjeta todavía", authorized: "autorizada (cobra sola)", paused: "en pausa", cancelled: "cancelada" };
+let susDatos = null;
+function lineaSus(x) {
+  const dia = diaCorto;
+  if (x.estado === "en_prueba") return `Prueba gratis hasta el <b>${esc(dia(x.prueba_hasta ?? x.periodo_fin))}</b>; ese día Mercado Pago hace el primer cobro de ${dinero(x.precio)}.`;
+  if (x.estado === "activa") return `Pagada hasta el <b>${esc(dia(x.periodo_fin))}</b>${x.proximo_cobro ? ` · próximo cobro de ${dinero(x.precio)} el ${esc(dia(x.proximo_cobro))}` : ""}.${x.puede_crear ? "" : " El cobro de este mes todavía no llega."}`;
+  if (x.estado === "en_gracia") return `No se pudo cobrar. Mercado Pago lo reintenta hasta el <b>${esc(dia(x.gracia_hasta))}</b>; mientras tanto abre sus guías, pero no crea nuevas.`;
+  if (x.estado === "cancelada") return `Cancelada el ${esc(dia(x.cancelada_en))}${x.cancelada_por ? " por " + esc(SUS_QUIEN[x.cancelada_por] ?? x.cancelada_por) : ""}. ${x.vigente_hasta ? `Sigue activa hasta el <b>${esc(dia(x.vigente_hasta))}</b>; ya no se le cobra.` : "Ya terminó y no se le cobra."}`;
+  if (x.estado === "vencida") return `Venció${x.vencida_en ? " el " + esc(dia(x.vencida_en)) : ""}: ${esc(SUS_FIN[x.motivo_fin] ?? "no se pudo cobrar")}. Ya no se le cobra.`;
+  if (x.estado === "pendiente") return x.mp_estado === "authorized" ? "Ya puso su tarjeta: falta que Mercado Pago apruebe el primer cobro." : "Empezó a suscribirse y todavía no pone su tarjeta en Mercado Pago.";
+  return `No se contrató: ${esc(SUS_FIN[x.motivo_fin] ?? x.motivo_fin ?? "sin motivo anotado")}.`;
+}
+function pintarListaSus() {
+  if (!susDatos) return;
+  const f = $("#filtroSus").value, todo = $("#susVerTodo").checked, q = $("#buscaSus").value.trim().toLowerCase();
+  const lista = (susDatos.suscripciones ?? []).filter((x) => (todo || (x.estado !== "abandonada" && !x.de_prueba)) && (!f || (f === "revisar" ? x.revisar : x.estado === f)));
+  $("#listaSus").innerHTML = lista.map((x) => {
+    const u = x.uso ?? {}, viva = ["pendiente", "en_prueba", "activa", "en_gracia"].includes(x.estado);
+    const botones = (viva ? `<button class="boton linea" data-sus="cancelar" data-id="${x.id}">✖ Cancelar suscripción</button>` : "")
+      + (!x.de_prueba && x.estado !== "abandonada" ? `<button class="boton linea" data-sus="revisar" data-id="${x.id}">🔄 Revisar en Mercado Pago</button>` : "")
+      + (x.revisar && (x.revisar_motivos ?? []).length ? `<button class="boton linea" data-sus="revisado" data-id="${x.id}">✓ Marcar como revisada</button>` : "");
+    const cobros = x.cobros ?? [];
+    return `<div class="fila-g"><div class="info"><b class="cliente">${esc(x.nombre || "Sin nombre")}${x.de_prueba ? " · cuenta de prueba" : ""}</b>${chip(x.estado)}
+      <div class="ayuda">Folio <b>${esc(x.folio)}</b> · 📞 WhatsApp ${esc(x.whatsapp ?? "sin cuenta")}${x.correo ? " · ✉️ " + esc(x.correo) : ""} · desde el ${esc(diaCorto(x.creada_en))}${x.con_prueba ? " · con prueba gratis" : " · sin prueba gratis"}</div>
+      <div>${lineaSus(x)}</div>
+      <div class="ayuda">📚 Uso: <b>${esc(guiasTxt(u.guias ?? 0))}</b> en total · ${u.guias_mes ?? 0} este mes · ${u.guias_hoy ?? 0} hoy · ${u.grados ?? 0} ${u.grados === 1 ? "grado" : "grados"} · ${u.colegios ?? 0} ${u.colegios === 1 ? "colegio" : "colegios"} · ${u.dispositivos ?? 0} ${u.dispositivos === 1 ? "dispositivo" : "dispositivos"} · IA ${dinero(u.costo_ia_mxn)} MXN</div>
+      <div class="ayuda">💳 Cobrado: <b>${dinero(x.ingreso_mxn)} MXN</b>${x.mp_estado ? ` · Mercado Pago: ${esc(SUS_MP[x.mp_estado] ?? x.mp_estado)}${x.mp_medio ? " · " + esc(x.mp_medio) : ""}` : ""}</div>
+      ${cobros.length ? `<details class="sus-cobros"><summary>Ver sus ${cobros.length === 1 ? "1 cobro" : cobros.length + " cobros"}</summary><ul>${cobros.map((k) => `<li>${esc(fecha(k.fecha))} · ${dinero(k.monto_mxn)} MXN · ${esc(SUS_COBRO[k.estado] ?? k.estado)}${k.es_venta ? " (venta)" : " (no es venta)"}${k.pagado_hasta ? " · pagó hasta el " + esc(diaCorto(k.pagado_hasta)) : ""}</li>`).join("")}</ul></details>` : ""}
+      ${x.falta_cancelar_en_mp ? `<div class="sus-bandera">⚠️ Aquí ya no se cobra, pero falta confirmar la cancelación en Mercado Pago. Toca «Revisar en Mercado Pago»; si sigue igual, cancélala a mano en tu cuenta de Mercado Pago (Suscripciones).</div>` : ""}
+      ${x.mp_error ? `<div class="ayuda">Último problema con Mercado Pago: ${esc(x.mp_error)}</div>` : ""}
+      ${x.revisar && (x.revisar_motivos ?? []).length ? `<div class="sus-bandera">🚩 Para revisar (no se bloqueó nada): ${x.revisar_motivos.map(esc).join(" · ")}</div>` : ""}
+    </div>${botones ? `<div class="acciones">${botones}</div>` : ""}</div>`;
+  }).join("") || `<p class='ayuda'>${(susDatos.suscripciones ?? []).length ? "Ninguna suscripción coincide con ese filtro." : "Todavía no hay suscripciones."}</p>`;
+  for (const el of $$("#listaSus > .fila-g")) el.hidden = !!q && !el.textContent.toLowerCase().includes(q);
+  $$("#listaSus [data-sus]").forEach((b) => b.onclick = async () => {
+    const id = b.dataset.id, acto = b.dataset.sus;
+    try {
+      if (acto === "cancelar") {
+        if (!confirm("¿Cancelar esta suscripción? Deja de cobrarse en Mercado Pago, la familia conserva lo que ya pagó hasta el fin de su periodo y recibe su comprobante por WhatsApp y por correo. No se reembolsa nada.")) return;
+        b.disabled = true; const r = await api(`/suscripciones/${id}/cancelar`, { method: "POST" }); aviso(r.mensaje ?? "Suscripción cancelada.", false, 7000);
+      }
+      if (acto === "revisar") { b.disabled = true; const r = await api(`/suscripciones/${id}/revisar`, { method: "POST" }); aviso("Revisada con Mercado Pago. Ahora está: " + String(r.estado ?? "").replace("_", " ") + ".", false, 6000); }
+      if (acto === "revisado") { await api(`/suscripciones/${id}/revisado`, { method: "POST" }); aviso("Bandera quitada."); }
+      cargarSuscripciones(); cargarResumen();
+    } catch (e) { b.disabled = false; aviso(e.message, true, 6000); }
+  });
+}
+async function cargarSuscripciones() {
+  const d = await api("/suscripciones"), R = d.resumen ?? {}, A = d.ajustes ?? {};
+  susDatos = d;
+  const f = $("#formSus");
+  f.sparked_suscripcion.value = A.modo ?? "no"; f.sparked_suscripcion_precio.value = A.precio ?? "";
+  const modo = $("#susModoAhora"); modo.className = "sus-modo " + (A.modo ?? "no");
+  modo.textContent = (SUS_MODO[A.modo] ?? SUS_MODO.no) + (d.mercadopago?.encendido === false ? " ⚠️ Mercado Pago está apagado: sin él no se puede cobrar." : d.mercadopago?.prueba ? " (Mercado Pago está en modo de prueba: no cobra de verdad.)" : "");
+  $("#susDias").textContent = A.prueba_dias ?? 7; $("#susAviso").textContent = A.aviso_dias ?? 6; $("#susGracia").textContent = A.gracia_dias ?? 10;
+  $("#susProbadores").innerHTML = (A.probadores ?? []).map((p) => `<span class="sus-probador">WhatsApp ${esc(p.whatsapp)}<button class="boton linea chico" type="button" data-quitar="${esc(p.id)}">Quitar</button></span>`).join("") || "<p class='ayuda' style='margin:0'>La lista está vacía: todavía nadie puede probar la suscripción.</p>";
+  $$("#susProbadores [data-quitar]").forEach((b) => b.onclick = async () => {
+    if (!confirm("¿Quitar este número de la lista de probadores? Ya no podrá suscribirse; si ya tiene una suscripción, la conserva y puede cancelarla.")) return;
+    try { await api("/suscripciones/probadores", { method: "POST", body: { quitar: b.dataset.quitar } }); aviso("Número quitado de la lista."); cargarSuscripciones(); } catch (e) { aviso(e.message, true, 6000); }
+  });
+  $("#susNumeros").innerHTML = [
+    [R.activas ?? 0, "suscripciones activas"],
+    [R.en_prueba ?? 0, "en prueba gratis"],
+    [R.en_gracia ?? 0, "en gracia (no se pudo cobrar)"],
+    [R.canceladas ?? 0, `canceladas (${R.canceladas_vigentes ?? 0} siguen con días pagados)`],
+    [R.vencidas ?? 0, "vencidas por falta de pago"],
+    [(R.cobros_mes ?? 0) + " · " + dinero(R.ingreso_mes_mxn), "cobros aprobados este mes (ventas)"],
+    [(R.cobros ?? 0) + " · " + dinero(R.ingreso_mxn), "cobros aprobados en total (ingreso cobrado)"],
+    [(R.guias_mes ?? 0) + " · " + (R.guias ?? 0), "guías hechas con suscripción: este mes · en total (no son ventas)"],
+    [R.por_revisar ?? 0, "suscripciones con bandera «revisar»"],
+    ...(R.pendientes ? [[R.pendientes, "sin terminar de contratar"]] : []),
+  ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
+  $("#nSuscripciones").hidden = !R.por_revisar; $("#nSuscripciones").textContent = R.por_revisar || "";
+  pintarListaSus();
+}
+$("#buscaSus").addEventListener("input", pintarListaSus);
+$("#filtroSus").onchange = pintarListaSus; $("#susVerTodo").onchange = pintarListaSus;
+$("#btnRefrescarSus").onclick = () => cargarSuscripciones().catch((e) => aviso(e.message, true));
+// El interruptor del modo. Abrirla al público es el paso que más pesa: pide escribir ABRIR.
+$("#formSus").onsubmit = async (e) => {
+  e.preventDefault();
+  const f = e.target, modo = f.sparked_suscripcion.value, precio = Math.round(Number(f.sparked_suscripcion_precio.value));
+  if (!(precio >= 1)) { aviso("Escribe el precio con un número mayor que cero.", true); return; }
+  if (modo === "si") {
+    const r = prompt(`Vas a ABRIR la suscripción AL PÚBLICO: cualquier familia podrá suscribirse y Mercado Pago le cobrará $${precio} cada mes.\n\nAntes de abrirla deben estar listos:\n1) los términos y el aviso de privacidad revisados,\n2) la revisión diaria corriendo sola todos los días y\n3) el piloto con familias conocidas.\n\nSi ya está todo, escribe ABRIR para continuar.`, "");
+    if (r === null) return;
+    if (r.trim().toUpperCase() !== "ABRIR") { aviso("No se cambió nada.", true); return; }
+  } else if (!confirm(modo === "probadores" ? `¿Dejar la suscripción SOLO PARA PROBADORES, a $${precio} al mes? Solo los números de la lista podrán suscribirse; para el público sigue apagada.` : "¿APAGAR la suscripción? Nadie nuevo podrá suscribirse. Quien ya está suscrito sigue igual: se le sigue cobrando cada mes y puede cancelar cuando quiera.")) return;
+  try { await api("/config", { method: "POST", body: { sparked_suscripcion: modo, sparked_suscripcion_precio: String(precio) } }); aviso(modo === "si" ? "Suscripción abierta al público." : modo === "probadores" ? "Suscripción solo para probadores. El cambio tarda hasta un minuto en verse." : "Suscripción apagada.", false, 6000); cargarSuscripciones(); }
+  catch (err) { aviso(err.message, true, 6000); }
+};
+$("#formProbador").onsubmit = async (e) => {
+  e.preventDefault();
+  const campo = e.target.telefono, tel = campo.value.trim();
+  if (tel.replace(/\D/g, "").length < 10) { aviso("Escribe el WhatsApp completo (en México, 10 dígitos).", true); campo.focus(); return; }
+  try { const r = await api("/suscripciones/probadores", { method: "POST", body: { agregar: tel } }); campo.value = ""; aviso("Número agregado. " + (r.nota ?? ""), false, 6000); cargarSuscripciones(); }
+  catch (err) { aviso(err.message, true, 6000); }
+};
+$("#btnSusDiario").onclick = async () => {
+  if (!confirm("Se revisan todas las suscripciones con Mercado Pago. Si a alguna le toca, se le manda su aviso de renovación por WhatsApp y por correo. ¿Continuar?")) return;
+  const b = $("#btnSusDiario"), out = $("#susDiario"); b.disabled = true; out.textContent = "Revisando…";
+  try {
+    const r = await api("/suscripciones/diario", { method: "POST", body: {} });
+    out.textContent = `Lista (${fecha(r.fecha)}): ${r.revisadas} revisadas · ${r.avisos_renovacion} avisos de renovación${r.avisos_tarde ? ` (${r.avisos_tarde} salieron con menos de 5 días)` : ""} · ${r.a_gracia} pasaron a gracia · ${r.vencidas} vencidas · ${r.abandonadas} sin terminar descartadas · ${r.cancelaciones_confirmadas} cancelaciones confirmadas en Mercado Pago.${(r.errores ?? []).length ? " ⚠️ Con problemas: " + r.errores.join(" · ") : ""}${r.sin_terminar ? " Faltaron algunas: córrela otra vez." : ""}`;
+    cargarSuscripciones(); cargarResumen();
+  } catch (err) { out.textContent = ""; aviso(err.message, true, 6000); }
+  finally { b.disabled = false; }
+};
 
 // ---------- Comentarios de la portada ----------
 // Todo lo que escriben los visitantes se muestra con esc(): nunca como HTML.

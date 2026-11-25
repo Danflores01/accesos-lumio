@@ -1008,3 +1008,46 @@ existe: en el sitio sale como «Próximamente». Código del servidor 2026-11-24
 11. **Pendiente, a propósito:** la suscripción mensual; la tabla `pruebas_usadas` ya existe para su regla de «una prueba
     gratis por WhatsApp y una por tarjeta», pero nada la usa todavía. Un reembolso de un paquete en Mercado Pago no
     quita saldo solo: Daniel lo ajusta en el panel.
+
+## 39. Suscripción mensual «Guías ilimitadas»: construida y apagada, solo para probar (Daniel, 25 de noviembre de 2026)
+
+Daniel: «Solo para probar». Queda completa y desplegada, pero **apagada para el público**: la portada sigue diciendo
+«Próximamente». Decisiones del 23 al 25 nov 2026 (mandan sobre cualquier otra cosa):
+
+1. **349 pesos al mes, solo con tarjeta** (sin OXXO ni SPEI), cobrados por Mercado Pago Suscripciones. **Sin tope de
+   guías:** solo se registra el uso y el panel lo muestra.
+2. **Tres modos**, ajuste `sparked_suscripcion` (panel → Suscripciones → «Quién puede suscribirse»): `no` = apagada;
+   `probadores` = solo los WhatsApp de la lista (`sparked_suscripcion_probadores`, la llena Daniel en el panel) ven
+   «Suscribirme» dentro de «Mi cuenta»; `si` = pública. **Pasar a `si` necesita el sí de Daniel**, el aviso legal
+   revisado, la revisión diaria corriendo sola y el piloto. La portada y su botón «Próximamente» no cambian con el modo.
+3. **7 días gratis, una sola vez por WhatsApp y una por tarjeta** (tabla `pruebas_usadas`: el número, y la huella de la
+   tarjeta y de la cuenta de Mercado Pago; nunca los dígitos). Si ya se usó, la suscripción se crea sin prueba. El
+   aviso de cobro va en el mensaje de bienvenida (7 días antes). **Más de 15 guías durante la prueba:** aviso a Daniel
+   (Reportes, correo y bandera «revisar»); solo avisa, nunca bloquea.
+4. **La casilla del cobro automático es obligatoria** y queda guardado el texto que se aceptó y cuándo. La tarjeta se
+   pone en Mercado Pago: SparkEd nunca la pide ni la ve.
+5. **Guías:** se generan completas, sin vista previa, por el mismo camino del saldo del paquete (`POST /cuenta/guia`);
+   con suscripción vigente no se gasta el saldo. Siguen abiertas mientras la suscripción esté pagada (mínimo, los 7
+   días de siempre), cada una en 2 dispositivos. La cuenta admite 2 dispositivos.
+6. **Cobros:** cada pago de Mercado Pago se anota una sola vez (`suscripcion_cobros`, id del pago único) y alarga el
+   periodo una sola vez (`sparked_registrar_cobro`), aunque el aviso llegue repetido. **Venta = solo el cobro que
+   Mercado Pago aprobó** (regla de la sección 36); las guías hechas con la suscripción no son ventas.
+7. **Cobro rechazado → «en gracia»** 10 días (abre sus guías, no crea nuevas) **→ «vencida»** (se cancela en Mercado Pago).
+8. **Cancelar:** un botón en «Mi cuenta» y una sola confirmación con la fecha (también desde el link del aviso de
+   renovación, `cuenta.html?cancelar=1`). Conserva lo pagado hasta el fin del periodo, sin reembolso, y el mensaje es
+   exactamente: «Lamentamos que te vayas. Esperamos que regreses pronto al salón de clases. Tu suscripción seguirá
+   activa hasta el <fecha>; después ya no se te cobrará nada.» Si Mercado Pago no responde, la cancelación vale igual,
+   se reintenta y Daniel recibe el aviso.
+9. **Revisión diaria** (`POST /admin/suscripciones/diario`; botón en el panel): aviso de renovación 6 días antes de cada
+   cobro (la ley pide al menos 5), gracia y vencida. **No está programada**: programarla necesita el sí de Daniel.
+10. **Panel:** pestaña Suscripciones (modo, probadores, activas, en prueba, en gracia, canceladas, ingreso cobrado, uso
+    por suscriptora, bandera «revisar», cancelar y revisar en Mercado Pago) y, en el Resumen, las suscripciones aparte
+    de las guías sueltas. El WhatsApp y el correo salen a medias.
+11. **Candados:** `node herramientas/probar-suscripciones.ts` (sin internet: 145 comprobaciones con el servidor entero,
+    avisos firmados y un Mercado Pago de juguete) y `node _guardia/skill/guardia-sparked/scripts/probar-suscripcion.mjs`
+    (en vivo, con una cuenta de prueba; no toca Mercado Pago). `probar-mercadopago` da lo mismo que antes.
+12. **Falta antes de abrirla al público:** la prueba real de Daniel (suscribirse con su número de probador y su
+    tarjeta, crear una guía y cancelar), activar el tema «Planes y suscripciones» en los Webhooks de Mercado Pago,
+    los términos y el aviso de privacidad, programar la revisión diaria y el piloto con familias conocidas. No se
+    construyeron: cambiar de tarjeta (hoy es cancelar y suscribirse de nuevo), la palabra «cancelar» por WhatsApp, el
+    plan anual ni los códigos de recomendados.

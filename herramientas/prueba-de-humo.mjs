@@ -107,5 +107,28 @@ for (const [nombre, url, init] of [
   revisar(adm.st === 401, `panel · /admin/paquetes pide clave (HTTP ${adm.st})`);
 }
 
+// ---------- 6. Suscripción mensual «Guías ilimitadas» (25 nov 2026) ----------
+// Sin sesión, sin firma y con datos vacíos: no escribe nada, no manda mensajes y no toca Mercado Pago. Revisa que el
+// servidor atiende lo que pide cuenta.html y que, mientras no esté abierta al público, la portada dice «Próximamente».
+{
+  const sinRuta = (r) => r.st === 0 || r.st >= 500 || /^Ruta (de administración )?no (encontrada|reconocida)/.test(r.json?.error ?? "");
+  const info = await pedir(`${API}/suscripcion/info`);
+  revisar(info.st === 200 && typeof info.json?.disponible === "boolean" && info.json?.precio > 0, `suscripción · GET /suscripcion/info (HTTP ${info.st}): ${info.json?.disponible ? "ABIERTA AL PÚBLICO" : "apagada para el público"}, $${info.json?.precio} al mes`);
+  if (info.json?.disponible === false) revisar(/class="boton op-boton apagado"[^>]*>Próximamente</.test(paginas["index.html"].texto), "suscripción · está apagada para el público y la portada publicada dice «Próximamente»");
+  const cuentaHtml = await pedir(SITIO + "cuenta.html?humo=" + Date.now());
+  revisar(cuentaHtml.texto.includes("/suscripcion/crear") && cuentaHtml.texto.includes("/suscripcion/cancelar"), "sitio · cuenta.html trae la suscripción (suscribirse y cancelar)");
+  for (const [nombre, url, init, esperado] of [
+    ["POST /suscripcion/crear sin sesión no contrata nada", `${API}/suscripcion/crear`, { method: "POST", body: "{}" }, 401],
+    ["GET /suscripcion/estado sin sesión pide entrar", `${API}/suscripcion/estado`, undefined, 401],
+    ["POST /suscripcion/cancelar sin sesión pide entrar", `${API}/suscripcion/cancelar`, { method: "POST", body: "{}" }, 401],
+    ["POST /pago/mercadopago: un aviso de suscripción sin firma se rechaza", `${API}/pago/mercadopago?type=subscription_preapproval&data.id=humo0000`, { method: "POST", body: JSON.stringify({ type: "subscription_preapproval", data: { id: "humo0000" } }) }, 401],
+    ["GET /admin/suscripciones pide clave", `${API}/admin/suscripciones`, undefined, 401],
+    ["POST /admin/suscripciones/diario pide clave (no revisa nada)", `${API}/admin/suscripciones/diario`, { method: "POST", body: "{}" }, 401],
+  ]) {
+    const r = await pedir(url, init);
+    revisar(r.st === esperado && !sinRuta(r), `suscripción · ${nombre} (HTTP ${r.st} ${corto(r.texto)})`);
+  }
+}
+
 console.log(mal ? `\n${mal} FALLAS. Si alguna es de «ABRIR UNA GUÍA» o de «compra», las familias no pueden usar SparkEd: hay que arreglarlo o regresar a la versión anterior YA.` : "\nPrueba de humo bien: sitio y servidor contestan como deben.");
 process.exit(mal ? 1 : 0);

@@ -342,6 +342,13 @@ footer.pie a.pie-enlace:hover { color: #fff; }
 .cuenta-app .ayuda a, .cuenta-app p a { color: var(--violeta); font-weight: 700; text-underline-offset: 3px; }
 .aviso-saldo { display: flex; gap: 10px; align-items: flex-start; background: #efe9ff; border-left: 5px solid #6d28d9; border-radius: 12px; padding: 10px 14px; font-size: 16px; line-height: 1.4; color: #3b1a8a; text-align: left; }
 .aviso-saldo .ico { font-size: 18px; line-height: 1.3; flex: none; }
+/* Suscripción mensual «Guías ilimitadas» en «Mi cuenta» (25 nov 2026): aviso de algo pendiente, lista de lo que incluye y la casilla del cobro automático. */
+.aviso-saldo > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.aviso-saldo.alerta { background: #fff4d6; border-left-color: #d97706; color: #6b3a00; }
+.sus-puntos { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 16px; line-height: 1.4; }
+.permiso.sus-acepto { font-weight: 400; line-height: 1.45; background: #f6f3ff; border-radius: 14px; padding: 12px 14px; }
+.permiso.sus-acepto > span { min-width: 0; overflow-wrap: anywhere; }
+#suscripcion > b { font-size: 17px; line-height: 1.3; }
 .cta-dispositivos { margin: 0; padding-left: 22px; }
 @media (max-width: 559px) {
   .planes-cab { padding-top: 22px; }

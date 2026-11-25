@@ -67,16 +67,17 @@
     <button class="boton linea" type="button" disabled data-sin-paquete data-i18n="paq.proximamente">Próximamente</button>
   </article>
 
-  <article class="plan pronto" style="--c:#9ca3af;--c2:#d1d5db">
-    <span class="cinta gris" data-i18n="paq.proximamente">Próximamente</span>
+  <article class="plan pronto" id="plan-ilim" style="--c:#9ca3af;--c2:#d1d5db">
+    <span class="cinta gris" id="ilim-cinta" data-i18n="paq.proximamente">Próximamente</span>
     <h2 data-i18n="paq.ilim_t">Guías ilimitadas</h2>
     <div class="monto"><span id="precio-ilim">$349</span><small data-i18n="paq.ilim_sub">MXN al mes · IVA incluido</small></div>
     <div class="ahorro-linea" aria-hidden="true"></div>
-    <ul>
+    <ul id="ilim-lista">
       <li data-i18n="paq.ilim_1">Suscripción mensual con guías ilimitadas</li>
       <li data-i18n="paq.ilim_2">Todavía no está disponible: pronto podrás suscribirte aquí.</li>
     </ul>
-    <button class="boton linea" type="button" disabled data-i18n="paq.proximamente">Próximamente</button>
+    <button class="boton linea" type="button" disabled id="ilim-pronto" data-i18n="paq.proximamente">Próximamente</button>
+    <a class="boton" id="ilim-boton" href="cuenta.html?suscribir=1" hidden data-i18n="paq.ilim_boton">Suscribirme</a>
   </article>
 </div></section>
 
@@ -115,6 +116,16 @@ if (info) {
   poner($("#comprar"), "paq.tres_boton", { precio });
   const linea = $("#tres-ahorro");
   if (ahorro > 0) poner(linea, "paq.tres_ahorro", { ahorro, guias }); else { delete linea.dataset.i18n; linea.textContent = ""; }
+  // Suscripción mensual: la tarjeta solo se enciende cuando el servidor dice que está abierta AL PÚBLICO (hoy no lo
+  // está: sigue en «Próximamente»). Con la lista de probadores no cambia nada aquí: ellos la ven en «Mi cuenta».
+  if (info.suscripcion?.disponible === true) {
+    const plan = $("#plan-ilim"), cinta = $("#ilim-cinta");
+    plan.classList.remove("pronto"); plan.style.setProperty("--c", "#0ea5e9"); plan.style.setProperty("--c2", "#6d28d9");
+    cinta.classList.remove("gris"); poner(cinta, "paq.ilim_prueba", { dias: info.suscripcion.prueba_dias ?? 7 });
+    $("#ilim-lista").innerHTML = ["paq.ilim_b1", "paq.ilim_b2", "paq.ilim_b3"].map((k) => `<li data-i18n="${k}"></li>`).join("");
+    $("#ilim-lista").querySelectorAll("li").forEach((li) => poner(li, li.dataset.i18n));
+    $("#ilim-pronto").hidden = true; $("#ilim-boton").hidden = false;
+  }
 }
 </script>
 <script type="module" src="js/sin-internet.js"></script>

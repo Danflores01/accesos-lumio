@@ -92,25 +92,29 @@ const params = new URLSearchParams(location.search);
 // ---------- Guía con el saldo de un paquete (crear.html?saldo=1, desde «Mi cuenta») ----------
 // El mismo formulario, pero la guía se genera COMPLETA, sin vista previa y sin pago: gasta 1 guía del saldo de la cuenta
 // (POST /cuenta/guia) y su avance se ve en cuenta.html. Sin sesión o sin saldo, se regresa a «Mi cuenta».
+// Con la suscripción mensual (guías ilimitadas) es el mismo camino: el servidor usa la suscripción y no gasta el saldo.
 const conSaldo = params.has("saldo");
 mostrarPaquete().catch(() => {});
 if (conSaldo) {
   if (!paseGuardado()) location.replace("cuenta.html");
   else cuentaApi.get("/cuenta").then((c) => {
-    const n = Number(c.saldo?.guias) || 0;
-    if (n < 1) { location.replace("cuenta.html"); return; }
+    // Con una suscripción que da derecho a crear, la guía sale de la suscripción (ilimitadas) y el saldo no se toca.
+    const n = Number(c.saldo?.guias) || 0, ilimitadas = c.suscripcion?.actual?.puede_crear === true;
+    if (n < 1 && !ilimitadas) { location.replace("cuenta.html"); return; }
     $("#aviso-saldo").hidden = false; $("#volver-cuenta").hidden = false;
-    poner($("#aviso-saldo-texto"), n === 1 ? "crear.saldo_1" : n === 2 ? "crear.saldo_queda1" : "crear.saldo_n", { n, quedan: n - 1 });
+    if (ilimitadas) { $("#aviso-saldo .ico").textContent = "♾️"; poner($("#aviso-saldo-texto"), "crear.sus"); }
+    else poner($("#aviso-saldo-texto"), n === 1 ? "crear.saldo_1" : n === 2 ? "crear.saldo_queda1" : "crear.saldo_n", { n, quedan: n - 1 });
     poner($("#nota-crear"), "crear.nota_saldo");
     [...$("#pasos").children].slice(2).forEach((d) => { d.hidden = true; });   // sin vista previa ni pago: solo 2 pasos
   }).catch((e) => { if (e.status === 401) { olvidarPase(); location.replace("cuenta.html"); } });
 } else if (paseGuardado()) {
   // Quien ya tiene guías en su cuenta y entra por «Crear mi guía»: se le recuerda, para que no pague una guía suelta sin querer.
   cuentaApi.get("/cuenta").then((c) => {
-    const n = Number(c.saldo?.guias) || 0;
-    if (n < 1) return;
+    const n = Number(c.saldo?.guias) || 0, ilimitadas = c.suscripcion?.actual?.puede_crear === true;
+    if (n < 1 && !ilimitadas) return;
     $("#aviso-saldo").hidden = false;
-    if (n === 1) poner($("#aviso-saldo-texto"), "crear.tienes_saldo_1"); else poner($("#aviso-saldo-texto"), "crear.tienes_saldo_n", { n });
+    if (ilimitadas) { $("#aviso-saldo .ico").textContent = "♾️"; poner($("#aviso-saldo-texto"), "crear.tienes_sus"); }
+    else if (n === 1) poner($("#aviso-saldo-texto"), "crear.tienes_saldo_1"); else poner($("#aviso-saldo-texto"), "crear.tienes_saldo_n", { n });
   }).catch(() => {});
 }
 if (params.get("grado")) { form.grado.value = params.get("grado"); ajustarMateria(); }

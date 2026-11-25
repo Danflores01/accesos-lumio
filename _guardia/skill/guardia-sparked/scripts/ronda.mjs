@@ -8,6 +8,7 @@
 //   3. WhatsApp: que el teléfono de SparkEd siga enlazado.
 //   4. Compras recientes: pagadas sin guía, guías sin entregar, entregas sin correo o sin WhatsApp, guías que nadie abre.
 //      Y los paquetes de guías: pagados sin abonar, saldo de las cuentas y guías que regresaron al saldo.
+//      Y la suscripción mensual: en qué modo está, cancelaciones sin confirmar en Mercado Pago y avisos de renovación atrasados.
 //   5. Guías pagadas que la IA no terminó.
 //   6. Reportes nuevos, sobre todo los «AVISO AUTOMÁTICO» (una guía pagada no abrió).
 //   7. Publicación del sitio (GitHub Pages) y estado de la copia local.
@@ -127,8 +128,9 @@ if (!clave) {
       const min = (Date.now() - new Date(c.pagada_en ?? c.creada_en).getTime()) / 60000;
       // Una guía hecha con el saldo de un paquete se genera completa de una vez (unos 6 minutos, más con muchas páginas):
       // su margen es de 25 minutos. Si falló, el servidor la devuelve sola al saldo y la compra queda «fallida».
-      const dePaquete = c.metodo_pago === "saldo" || c.cobro === "saldo";
-      if (!c.guia_lista && dePaquete) { if (min > 25) falla(`${f} (guía de paquete): creada hace ${hace(c.pagada_en)} y todavía no está lista ni se devolvió al saldo`); }
+      // Lo mismo una guía hecha con la suscripción mensual: completa de una vez; si falla, queda «fallida» y la familia la repite.
+      const dePaquete = c.metodo_pago === "saldo" || c.cobro === "saldo", deSuscripcion = c.metodo_pago === "suscripcion" || c.cobro === "suscripcion";
+      if (!c.guia_lista && (dePaquete || deSuscripcion)) { if (min > 25) falla(`${f} (guía de ${dePaquete ? "paquete" : "suscripción"}): creada hace ${hace(c.pagada_en)} y todavía no está lista ni ${dePaquete ? "se devolvió al saldo" : "quedó como fallida"}`); }
       else if (!c.guia_lista && min > 12) falla(`${f}: pagada hace ${hace(c.pagada_en)} y su guía todavía no está lista`);
       else if (c.guia_lista && !c.entregada_en && min > 12) falla(`${f}: su guía está lista desde hace rato y no se ha entregado`);
       if (!c.entregada_en) continue;
@@ -185,6 +187,34 @@ if (!clave) {
     if (dePrueba) aviso(`hay ${dePrueba} cuenta(s) de prueba sin borrar (¿una prueba en curso?). Borrarlas: node probar-paquete.mjs --limpiar`);
     if ((R.guias_devueltas ?? 0) >= 3 && R.guias_devueltas > (R.guias_usadas ?? 0)) aviso(`${R.guias_devueltas} guías de paquete regresaron al saldo y solo ${R.guias_usadas ?? 0} se crearon bien: revisa por qué fallan (panel → Paquetes → movimientos de cada cuenta)`);
     ok(`paquete ${A.encendido ? "A LA VENTA" : "apagado"} ($${A.precio}, ${A.guias} guías, ${A.dias} días) · cobrados ${R.paquetes_cobrados ?? 0} · $${R.ingreso_mxn ?? 0} · pendientes de pago ${R.paquetes_pendientes ?? 0} · guías usadas ${R.guias_usadas ?? 0}, sin usar ${R.guias_sin_usar ?? 0}, vencidas ${R.guias_vencidas ?? 0}, devueltas ${R.guias_devueltas ?? 0} · cuentas ${R.cuentas ?? 0}`);
+  }
+
+  // ---------- 4c. Suscripción mensual «Guías ilimitadas» ----------
+  // GET /admin/suscripciones: el WhatsApp y el correo llegan enmascarados; aquí solo se imprimen folios, fechas y cifras.
+  titulo("4c. Suscripción mensual");
+  const sus = await admin("/suscripciones");
+  if (sus.st === 404) aviso("el servidor desplegado todavía no trae la suscripción mensual (/admin/suscripciones no existe)");
+  else if (sus.st !== 200 || !sus.d?.resumen) aviso(`/admin/suscripciones no respondió (HTTP ${sus.st})`);
+  else {
+    const R = sus.d.resumen, A = sus.d.ajustes ?? {}, S = (sus.d.suscripciones ?? []).filter((x) => !x.de_prueba);
+    const DIA = 86400000, vivas = S.filter((x) => ["en_prueba", "activa"].includes(x.estado));
+    for (const x of S) {
+      const f = `suscripción ${x.folio}`;
+      // Aquí ya no debe cobrarse y Mercado Pago no ha confirmado la cancelación: a esa familia le puede llegar un cobro.
+      if (x.falta_cancelar_en_mp) falla(`${f}: está «${x.estado}» y sigue sin cancelarse en Mercado Pago. Panel → Suscripciones → «Revisar en Mercado Pago»; si sigue igual, Daniel la cancela a mano en su cuenta de Mercado Pago`);
+      if (x.estado === "pendiente" && x.mp_estado === "authorized" && Date.now() - new Date(x.creada_en).getTime() > 3 * 3600000) aviso(`${f}: puso su tarjeta hace ${hace(x.creada_en)} y el primer cobro no llega (panel → Suscripciones → «Revisar en Mercado Pago»)`);
+    }
+    // La revisión diaria (POST /admin/suscripciones/diario) todavía no corre sola: si se atrasa, se nota aquí.
+    const sinAviso = vivas.filter((x) => { const c = new Date(x.proximo_cobro ?? 0).getTime(); return c > Date.now() && c - Date.now() < 5 * DIA && !(Math.abs(new Date(x.aviso_renovacion_para ?? 0).getTime() - c) < 3 * DIA); });
+    if (sinAviso.length) falla(`${sinAviso.length} suscripción(es) se cobran en menos de 5 días y no ha salido su aviso de renovación (folio ${sinAviso.map((x) => x.folio).slice(0, 5).join(", ")}): corre la revisión diaria YA (panel → Suscripciones → «Correr la revisión diaria ahora»)`);
+    const atrasadas = vivas.filter((x) => x.puede_crear === false);
+    if (atrasadas.length) aviso(`${atrasadas.length} suscripción(es) pasaron su fecha de cobro hace más de 48 horas y siguen sin pasar a «en gracia»: falta correr la revisión diaria (panel → Suscripciones)`);
+    if (R.en_gracia) aviso(`${R.en_gracia} suscripción(es) en gracia: Mercado Pago no pudo cobrar y lo está reintentando`);
+    if (R.por_revisar) aviso(`${R.por_revisar} suscripción(es) con bandera «revisar» (panel → Suscripciones)`);
+    if (R.de_prueba) aviso(`hay ${R.de_prueba} suscripción(es) de prueba sin borrar (¿una prueba en curso?). Borrarlas: node probar-suscripcion.mjs --limpiar`);
+    if (sus.d.mercadopago?.encendido === false && A.modo !== "no") falla("la suscripción está abierta y Mercado Pago está apagado: nadie puede suscribirse ni se cobra");
+    const modo = A.modo === "si" ? "ABIERTA AL PÚBLICO" : A.modo === "probadores" ? `SOLO PROBADORES (${(A.probadores ?? []).length} en la lista)` : "apagada";
+    ok(`suscripción ${modo} ($${A.precio} al mes, ${A.prueba_dias} días gratis) · activas ${R.activas ?? 0} · en prueba ${R.en_prueba ?? 0} · en gracia ${R.en_gracia ?? 0} · canceladas ${R.canceladas ?? 0} · vencidas ${R.vencidas ?? 0} · cobros aprobados ${R.cobros ?? 0} · $${R.ingreso_mxn ?? 0} · guías ${R.guias ?? 0}`);
   }
 
   // ---------- 5. Guías pagadas que no se terminaron ----------

@@ -71,6 +71,22 @@ necesitan el visto bueno de Daniel (ver «Quién decide»).
 | «El pago no se completó» al regresar de Mercado Pago | Su pago fue rechazado, o regresó con «Volver a la tienda» sin pagar (Mercado Pago manda entonces a `cuenta.html?compra=…&pago=fallido`). No hubo cargo. | Panel → Paquetes: su paquete sigue «pendiente de pago». | Que oprima «Intentar de nuevo»: usa la misma compra, no la duplica. |
 | Algo raro en todo el paquete | — | `node scripts/probar-paquete.mjs` (unas 40 comprobaciones en vivo, cerca de un minuto). | Si falla: apagar la venta del paquete en el panel (no necesita despliegue) y avisar a Daniel. |
 
+## Con la suscripción mensual «Guías ilimitadas»
+
+Nace apagada (25 nov 2026): solo la ven los WhatsApp de la lista de probadores (panel → Suscripciones). El cobro lo hace
+Mercado Pago; aquí vive el estado. Un cobro es venta solo si Mercado Pago lo aprobó.
+
+| Lo que ve o dice | Qué significa | Comprobar | Arreglar |
+|---|---|---|---|
+| «No veo dónde suscribirme» | La suscripción está apagada, o su WhatsApp no está en la lista de probadores (o no ha pasado el minuto que tarda el cambio). | Panel → Suscripciones → «Quién puede suscribirse». | Agregar su número a la lista lo decide Daniel. Abrirla al público también. |
+| «Puse mi tarjeta y sigue diciendo que falta» | Con prueba gratis se activa en segundos; sin prueba, cuando Mercado Pago aprueba el primer cobro (hasta una hora). O el correo que escribió no es el de su cuenta de Mercado Pago y el pago se rechazó. | Panel → Suscripciones → su renglón («Ver también las que no se contrataron»). | «Revisar en Mercado Pago». Si se rechazó: que cancele esa y se suscriba de nuevo con el correo correcto. |
+| «No pudimos activar tu prueba gratis» | Esa tarjeta o esa cuenta de Mercado Pago ya había usado una prueba (una por WhatsApp y una por tarjeta). No se le cobró nada. | Su renglón: «No se contrató: … ya había usado su prueba gratis». | Puede suscribirse sin prueba. Regalar otra prueba lo decide Daniel. |
+| «No puedo crear guías» y está suscrita | Su cobro no pasó: está «en gracia» (abre sus guías, no crea nuevas) y Mercado Pago lo reintenta 10 días. | Su renglón: «En gracia» y sus cobros («rechazado»). | Que pague con otra tarjeta: cancela y se suscribe de nuevo. Nada más que hacer aquí. |
+| «Cancelé y me cobraron» | Mercado Pago no confirmó la cancelación a tiempo. El cobro queda anotado y la suscripción sigue cancelada. | Su renglón: bandera «revisar» y «falta confirmar la cancelación en Mercado Pago». | «Revisar en Mercado Pago»; el reembolso lo hace Daniel en su cuenta de Mercado Pago. |
+| «Me cobraron sin avisarme» | El aviso de renovación sale en la revisión diaria (6 días antes). Si nadie la corrió, no salió. | Ronda, parte 4c («no ha salido su aviso de renovación»). | Correr la revisión diaria (panel → Suscripciones) y avisar a Daniel: programarla necesita su sí. |
+| «Mi guía no se pudo crear» (con suscripción) | La generación falló o las fotos no eran material de estudio. No hay saldo que devolver: la suscripción sigue igual. | Panel → Compras: «guía de suscripción», estado «fallida»; consulta 3. | Que la cree de nuevo con fotos claras (después de 3 fallas en un día se le pide una pausa). |
+| Algo raro en toda la suscripción | — | `node herramientas/probar-suscripciones.ts` (sin internet) y `node scripts/probar-suscripcion.mjs` (en vivo, con una cuenta de prueba; no toca Mercado Pago). | Si falla: modo «Apagada» en el panel (no necesita despliegue) y avisar a Daniel. Quien ya está suscrito sigue igual. |
+
 **Ojo al probar el cobro con un programa.** Mercado Pago no deja entrar a su página de pago a un navegador sin ventana
 (Edge «headless») ni a un programa: responde 403 «Hubo un error accediendo a esta página», y responde lo mismo con un
 link inventado. No es un fallo del paquete ni de la guía suelta. Lo que sí se puede comprobar con un programa es A DÓNDE
