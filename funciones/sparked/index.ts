@@ -10,6 +10,9 @@
 //   Cuentas y paquete de 3 guías (cuenta.ts, 24 nov 2026): GET /paquete/info · POST /cuenta/codigo · POST /cuenta/entrar ·
 //   GET /cuenta · POST /cuenta/salir · POST /cuenta/correo · POST /paquete/comprar · GET /paquete/estado/:compra · POST /paquete/reintentar/:compra ·
 //   POST /cuenta/guia · GET /cuenta/guia/:compra · y en administración /admin/paquetes y /admin/cuentas/:id
+//   Suscripción mensual «Guías ilimitadas» (suscripcion.ts, 25 nov 2026; nace apagada): GET /suscripcion/info ·
+//   POST /suscripcion/crear · GET /suscripcion/estado · POST /suscripcion/cancelar · y en administración /admin/suscripciones…
+//   Sus avisos de Mercado Pago llegan a POST /pago/mercadopago y se separan antes de la lógica de las guías sueltas.
 // Rutas internas: POST /trabajo/:id/paso (solo la propia función, cabecera x-interno)
 // Rutas de administración (cabecera x-admin-key, la misma llave del panel de accesos): /admin/...
 //
@@ -26,8 +29,9 @@ import { imagenEntrega, imagenCompartir } from "./imagen-wa.ts";
 import { matrizQr } from "./qr.ts";
 import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 import { rutasCuenta, abonarPaquete, devolverGuiaDeSaldo, notaDeSaldo } from "./cuenta.ts";
+import { rutasSuscripcion, avisoSuscripcionMP, pagoSiEsDeSuscripcion, alargarGuiaDeSuscripcion, notaDeSuscripcion, resumenSuscripciones, listaProbadores } from "./suscripcion.ts";
 
-const VERSION = "2026-11-24.3";
+const VERSION = "2026-11-25.1";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -112,7 +116,14 @@ const CONFIG_DEF: Record<string, string> = {
   // Paquete de 3 guías (Daniel, 24 nov 2026; cuenta.ts): "si" = se vende (los botones aparecen en el sitio); "no" =
   // apagado. Precio del paquete en pesos, IVA incluido, y días que dura el saldo desde la compra.
   sparked_paquete3: "no", sparked_paquete3_precio: "199", sparked_paquete3_dias: "90",
+  // Suscripción mensual «Guías ilimitadas» (Daniel, 25 nov 2026; suscripcion.ts): "no" = apagada · "probadores" = solo
+  // los WhatsApp de la lista la ven y la pueden contratar · "si" = abierta al público. Precio al mes, IVA incluido.
+  sparked_suscripcion: "no", sparked_suscripcion_precio: "349", sparked_suscripcion_probadores: "",
 };
+// La lista de probadores de la suscripción son números de WhatsApp: en las respuestas del panel (ping y ajustes) solo
+// sale cuántos son. La lista se cambia en POST /admin/suscripciones/probadores, que la enseña a medias.
+const CLAVE_PROBADORES = "sparked_suscripcion_probadores";
+const configParaPanel = (cfg: Record<string, string>): Record<string, string> => ({ ...cfg, [CLAVE_PROBADORES]: String(listaProbadores(cfg[CLAVE_PROBADORES]).length) });
 let configCache: { en: number; valores: Record<string, string> } | null = null;
 async function config(): Promise<Record<string, string>> {
   if (configCache && Date.now() - configCache.en < 60_000) return configCache.valores;
@@ -501,6 +512,21 @@ function tocaRevisarMP(compraId: string): boolean {
   return true;
 }
 
+// ---------- Suscripción mensual (suscripcion.ts): sus avisos de Mercado Pago se atienden aparte ----------
+// Los temas «Planes y suscripciones» llegan a la misma dirección que los pagos. avisoMercadoPago() los separa ANTES de
+// la lógica de las guías sueltas, con la firma ya validada. Como siempre, el aviso solo trae un id: el estado se le
+// pregunta a Mercado Pago con nuestra llave.
+const TEMAS_SUSCRIPCION = ["subscription_preapproval", "subscription_authorized_payment"];
+async function avisoDeSuscripcion(tipo: string, id: string): Promise<Response> {
+  const r = await avisoSuscripcionMP(ctxCuenta(), tipo, id);
+  return json(r.cuerpo, r.status);
+}
+// ¿Ese pago es el cobro de una suscripción? Si lo es, se aplica ahí y devuelve qué pasó; si no, devuelve null y el pago
+// sigue su camino de siempre (la compra de una guía o de un paquete).
+async function pagoDeSuscripcion(p: any): Promise<string | null> {
+  return await pagoSiEsDeSuscripcion(ctxCuenta(), p);
+}
+
 // Aviso de Mercado Pago (Webhooks, tema "Pagos"): POST /pago/mercadopago?data.id=<pago>&type=payment.
 async function avisoMercadoPago(req: Request, url: URL): Promise<Response> {
   const cuerpo = await leerJson(req);
@@ -515,11 +541,16 @@ async function avisoMercadoPago(req: Request, url: URL): Promise<Response> {
   if (!(await firmaMPValida(secreto, xSignature, req.headers.get("x-request-id"), idUrl))) return error("Firma no válida", 401);
   const tipo = String(url.searchParams.get("type") ?? cuerpo?.type ?? "");
   const pagoId = String(idUrl ?? cuerpo?.data?.id ?? "");
+  // Suscripción mensual: sus temas se atienden aparte, antes de la lógica de las guías sueltas.
+  if (TEMAS_SUSCRIPCION.includes(tipo)) return await avisoDeSuscripcion(tipo, pagoId);
   if (tipo !== "payment" || !/^\d{1,20}$/.test(pagoId)) return json({ ok: true, ignorado: tipo || "sin_tipo" });
   if (!mpToken()) return error("El motor de pagos aún no está configurado", 503);
   const r = await mp(`/v1/payments/${pagoId}`);
   if (r.status === 404) return json({ ok: true, ignorado: "pago_inexistente" }); // p. ej. la prueba "Simular" del panel
   if (!r.ok) return error(`Mercado Pago respondió ${r.status}`, 502); // Mercado Pago vuelve a mandar el aviso
+  // El cobro de una suscripción no es la compra de una guía: lo atiende suscripcion.ts y aquí termina.
+  const deSuscripcion = await pagoDeSuscripcion(r.datos);
+  if (deSuscripcion !== null) return json({ ok: true, resultado: deSuscripcion, suscripcion: true });
   return json({ ok: true, resultado: await procesarPagoMP(r.datos) });
 }
 
@@ -607,6 +638,10 @@ async function avanceDeGuia(guiaId: string, desde = 0): Promise<{ revision: bool
   return { revision: false, avance: t.progreso ?? null };
 }
 
+// Guía hecha desde una cuenta, sin cobro propio: con el saldo de un paquete o con la suscripción mensual. Su trabajo
+// «completa» lo lanza cuenta.ts (no hay vista previa ni trabajo «resto») y no es una venta.
+const deLaCuenta = (c: any) => c?.metodo_pago === "saldo" || c?.metodo_pago === "suscripcion";
+
 async function confirmarPago(compraId: string, extra: { stripe_session_id?: string; monto?: number; manual?: boolean; cobro?: "por_fuera" | "cortesia" } = {}) {
   const { data: compra } = await supabase.from("compras").select("*").eq("id", compraId).maybeSingle();
   if (!compra) throw new Error("Esa compra no existe");
@@ -644,7 +679,7 @@ async function entregar(compra: any): Promise<{ token: string; expira_en: string
     if (a) {
       const { data: g } = await supabase.from("guias").select("origen, borrador_id, completo:cartucho->completo").eq("id", compra.guia_id).maybeSingle();
       // Si la primera entrega se cortó antes de lanzar el resto de la guía, se lanza ahora (lanzarResto no lo duplica).
-      if (g && g.completo !== true && g.origen === "personalizada" && g.borrador_id && compra.metodo_pago !== "saldo") await lanzarResto(compra.guia_id, g.borrador_id).catch((e) => console.error("No se pudo lanzar el resto de la guía:", (e as Error).message));
+      if (g && g.completo !== true && g.origen === "personalizada" && g.borrador_id && !deLaCuenta(compra)) await lanzarResto(compra.guia_id, g.borrador_id).catch((e) => console.error("No se pudo lanzar el resto de la guía:", (e as Error).message));
       const r = g?.completo === true ? await entregarGuiaLista(compra.id) : { entregada: false, recien: false };
       const a2 = r.recien ? (await supabase.from("accesos").select("token, expira_en").eq("id", compra.acceso_id).maybeSingle()).data ?? a : a;
       return { token: a2.token, expira_en: a2.expira_en, link: linkDe(base, a2.token), lista: r.entregada, recien: r.recien };
@@ -676,8 +711,8 @@ async function entregar(compra: any): Promise<{ token: string; expira_en: string
     await supabase.from("guias").update(cambios).eq("id", guia.id);
     if (guia.borrador_id) {
       await supabase.from("borradores").update({ estado: "pagado", pagado_en: ahora(), nombre: compra.nombre, telefono: compra.telefono, correo: compra.correo, expira_en: enDias(DIAS_ACCESO + 1) }).eq("id", guia.borrador_id);
-      // Una guía hecha con el saldo de un paquete no pasa por aquí: su trabajo "completa" lo lanza cuenta.ts.
-      if (guia.completo !== true && compra.metodo_pago !== "saldo") {
+      // Una guía hecha con el saldo de un paquete o con la suscripción no pasa por aquí: su trabajo "completa" lo lanza cuenta.ts.
+      if (guia.completo !== true && !deLaCuenta(compra)) {
         // Si no se puede lanzar, la familia ve "Estamos revisando tu guía" (y recibe ese correo) y Daniel recibe el aviso.
         try { await lanzarResto(guia.id, guia.borrador_id); }
         catch (e) {
@@ -719,12 +754,15 @@ async function entregarGuiaLista(compraId: string): Promise<{ entregada: boolean
     await supabase.from("guias").update({ borrar_en: enDias(DIAS_ACCESO + 1) }).eq("id", g.id);
     if (g.borrador_id) await supabase.from("borradores").update({ expira_en: enDias(DIAS_ACCESO + 1) }).eq("id", g.borrador_id);
   }
+  // Guía hecha con la suscripción: sigue abierta mientras la suscripción esté pagada (como mínimo, los 7 días de siempre).
+  if (c.metodo_pago === "suscripcion") await alargarGuiaDeSuscripcion(ctxBase(), c);
   const { data: a } = await supabase.from("accesos").select("token, expira_en").eq("id", c.acceso_id).maybeSingle();
   if (!a) return { entregada: true, recien: true };
   const titulo = g.titulo ?? c.titulo ?? "Tu guía";
   const link = linkDe(await sitio(), a.token);
   // Guía hecha con el saldo de un paquete: el mensaje dice cuántas guías le quedan y dónde está su cuenta.
-  const extra = c.metodo_pago === "saldo" ? await notaDeSaldo(ctxBase(), c).catch(() => "") : "";
+  // Con la suscripción, el mensaje dice que la guía sigue abierta mientras la suscripción esté activa.
+  const extra = c.metodo_pago === "saldo" ? await notaDeSaldo(ctxBase(), c).catch(() => "") : c.metodo_pago === "suscripcion" ? await notaDeSuscripcion(ctxBase(), c).catch(() => "") : "";
   // Correo y WhatsApp son independientes: que falle uno no impide el otro.
   const [correo, whatsapp] = await Promise.allSettled([
     enviarCorreo(c, titulo, link, a.expira_en, extra),
@@ -807,19 +845,24 @@ async function enviarCorreo(compra: any, titulo: string, link: string, expira: s
   if (!Deno.env.get("RESEND_API_KEY") || !esCorreo(compra.correo)) return;
   const esc = escHtml;
   const fecha = new Date(expira).toLocaleString("es-MX", { dateStyle: "long", timeStyle: "short", timeZone: "America/Mexico_City" });
-  const conCodigo = compra.metodo_pago === "codigo", cortesia = compra.metodo_pago === "cortesia", conSaldo = compra.metodo_pago === "saldo";
+  const conCodigo = compra.metodo_pago === "codigo", cortesia = compra.metodo_pago === "cortesia", conSaldo = compra.metodo_pago === "saldo", conSus = compra.metodo_pago === "suscripcion";
   // El correo se escribe como lo escribiría una persona (saludo con nombre, párrafos cortos, el link como texto y sin
   // banners ni botones grandes): así Gmail lo deja en la bandeja principal y no en "Notificaciones" o "Promociones".
   const nombre = String(compra.nombre ?? "").trim().split(/[ ]+/)[0] || "Hola";
   const saludo = nombre === "Hola" ? "Hola:" : `Hola, ${esc(nombre)}:`;
-  const primera = `${conCodigo ? "Tu código se aplicó" : cortesia ? "Tu acceso se activó" : conSaldo ? "Usaste 1 guía de tu paquete" : "Tu pago se confirmó"} y tu guía <b>${esc(titulo)}</b> ya está lista. Ábrela con este link:`;
+  const primera = conSus
+    ? `Tu guía <b>${esc(titulo)}</b> ya está lista; es parte de tu suscripción de guías ilimitadas. Ábrela con este link:`
+    : `${conCodigo ? "Tu código se aplicó" : cortesia ? "Tu acceso se activó" : conSaldo ? "Usaste 1 guía de tu paquete" : "Tu pago se confirmó"} y tu guía <b>${esc(titulo)}</b> ya está lista. Ábrela con este link:`;
+  const acceso = conSus
+    ? `Cómo funciona tu acceso: tu guía sigue abierta <b>mientras tu suscripción esté activa</b> (por lo pronto, hasta el ${esc(fecha)}) y acepta <b>${APARATOS} dispositivos</b>, por ejemplo tu celular y el iPad del alumno. El tercer dispositivo ve el aviso "Acceso en uso en otros dispositivos". Cada link es de una sola familia: no lo compartas en otros chats.`
+    : `Cómo funciona tu acceso: vale <b>${DIAS_ACCESO} días de acceso ilimitado a tu guía</b>, hasta el ${esc(fecha)}, y acepta <b>${APARATOS} dispositivos</b>, por ejemplo tu celular y el iPad del alumno. El tercer dispositivo ve el aviso "Acceso en uso en otros dispositivos". Cada link es de una sola familia: no lo compartas en otros chats.`;
   const nota = extra ? `\n    <p>${esc(extra)}</p>` : "";
-  const pago = conCodigo ? `Acceso con código${compra.codigo ? " " + esc(compra.codigo) : ""}` : cortesia ? "Acceso de cortesía" : conSaldo ? "Guía de tu paquete" : `$${esc(compra.monto_mxn)} MXN, IVA incluido`;
+  const pago = conCodigo ? `Acceso con código${compra.codigo ? " " + esc(compra.codigo) : ""}` : cortesia ? "Acceso de cortesía" : conSaldo ? "Guía de tu paquete" : conSus ? "Guía de tu suscripción" : `$${esc(compra.monto_mxn)} MXN, IVA incluido`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#1b1b1f;max-width:560px;margin:auto">
     <p>${saludo}</p>
     <p>${primera}</p>
     <p><a href="${esc(link)}" style="color:#1d4ed8">${esc(link)}</a></p>${nota}
-    <p>Cómo funciona tu acceso: vale <b>${DIAS_ACCESO} días de acceso ilimitado a tu guía</b>, hasta el ${esc(fecha)}, y acepta <b>${APARATOS} dispositivos</b>, por ejemplo tu celular y el iPad del alumno. El tercer dispositivo ve el aviso "Acceso en uso en otros dispositivos". Cada link es de una sola familia: no lo compartas en otros chats.</p>
+    <p>${acceso}</p>
     <p>Si tienes cualquier duda, responde a este correo y te ayudo.</p>
     <p>Daniel, de SparkEd<br><span style="color:#777;font-size:13px">sparkeducation-mx.com · Folio ${esc(folioDe(compra.id))} · ${pago}</span></p>
   </div>`;
@@ -829,7 +872,7 @@ async function enviarCorreo(compra: any, titulo: string, link: string, expira: s
 
 // Aviso a Daniel al confirmarse el pago: una venta, o un acceso con código gratis (que no es venta).
 async function avisarVenta(compra: any, titulo: string) {
-  if (compra.metodo_pago === "saldo") return;   // guía de paquete: la venta (y su aviso) fue el paquete
+  if (deLaCuenta(compra)) return;   // guía de paquete o de suscripción: la venta (y su aviso) fue el paquete o el cobro mensual
   const esc = escHtml;
   const conCodigo = compra.metodo_pago === "codigo";
   const quien = `<p>${esc(compra.nombre)} · ${esc(compra.telefono)} · ${esc(compra.correo)}</p>`;
@@ -904,7 +947,7 @@ async function autorizado(req: Request): Promise<boolean> {
   return (await autorizadoConClave(req)) || !!(await sesionAdmin(ctxBase(), req));
 }
 
-// ---------- Módulos aparte: entrada con correo y contraseña (acceso.ts), comentarios y costos (extras.ts), WhatsApp (whatsapp.ts) y cuentas y paquetes (cuenta.ts) ----------
+// ---------- Módulos aparte: entrada con correo y contraseña (acceso.ts), comentarios y costos (extras.ts), WhatsApp (whatsapp.ts), cuentas y paquetes (cuenta.ts) y suscripción mensual (suscripcion.ts) ----------
 // Cada módulo recibe este contexto (tipos.ts) y decide si la ruta es suya; si no, devuelve null.
 // Imagen de cada mensaje de WhatsApp: la entrega lleva el QR del link de esa guía; «compartir» es una imagen fija.
 const imagenWhatsApp = async (tipo: "entrega" | "compartir", idioma: "es" | "en", link?: string): Promise<Uint8Array | null> =>
@@ -912,7 +955,7 @@ const imagenWhatsApp = async (tipo: "entrega" | "compartir", idioma: "es" | "en"
 const ctxBase = (): CtxBase => ({ supabase, config, sitio, ahora, mandarCorreo, avisarDaniel, enSegundoPlano, imagenWhatsApp });
 // Lo que cuenta.ts (cuentas, saldo y paquete de 3 guías) necesita de aquí: el cobro, la entrega y el arranque de un trabajo.
 const extrasCuenta = (): ExtrasCuenta => ({
-  limpiarTel, mpToken, revisarCompraMP, tocaRevisarMP, entregar, entregarGuiaLista, avanceDeGuia, archivosSubidos, borrarCarpeta, disparar, linkDe,
+  limpiarTel, mpToken, mpPrueba, mp, revisarCompraMP, tocaRevisarMP, entregar, entregarGuiaLista, avanceDeGuia, archivosSubidos, borrarCarpeta, disparar, linkDe,
   crearPreferenciaPaquete: (compra, precio, guias, dias) => crearPreferenciaMP(compra, `Paquete de ${guias} guías`, precio, { pagina: "cuenta.html", articulo: `SparkEd: paquete de ${guias} guías`, descripcion: `${guias} guías completas; se pueden usar durante ${dias} días` }),
   diasAcceso: DIAS_ACCESO, dispositivos: APARATOS,
 });
@@ -926,7 +969,7 @@ async function devolverSiEraDeSaldo(guiaId: string | null | undefined, motivo: s
 }
 async function rutasAparte(req: Request, m: string, ruta: string[]): Promise<Response | null> {
   const c: CtxRutas = { ...ctxBase(), req, m, ruta, json, error, leerJson, esAdmin: () => autorizado(req), ip: ipDe(req) };
-  return (await rutasAcceso({ ...c, conClave: () => autorizadoConClave(req) })) ?? (await rutasExtras(c)) ?? (await rutasWhatsApp(c)) ?? (await rutasCuenta({ ...c, ...extrasCuenta() }));
+  return (await rutasAcceso({ ...c, conClave: () => autorizadoConClave(req) })) ?? (await rutasExtras(c)) ?? (await rutasWhatsApp(c)) ?? (await rutasCuenta({ ...c, ...extrasCuenta() })) ?? (await rutasSuscripcion({ ...c, ...extrasCuenta() }));
 }
 // avisarPorWhatsApp(ctxBase(), compra, { titulo, link, expira_en }) se llama en entregarGuiaLista(), junto con el correo.
 
@@ -1264,15 +1307,15 @@ Deno.serve(async (req: Request) => {
 
       if (rec === "ping") {
         const cfg = await config();
-        return json({ ok: true, version: VERSION, sitio: base, motores: { ia: !!Deno.env.get("ANTHROPIC_API_KEY"), whatsapp: motorWhatsApp(), mercadopago: !!Deno.env.get("MP_ACCESS_TOKEN"), mercadopago_webhook: !!Deno.env.get("MP_WEBHOOK_SECRET"), mercadopago_prueba: mpPrueba(), stripe: !!Deno.env.get("STRIPE_SECRET_KEY"), webhook: !!Deno.env.get("STRIPE_WEBHOOK_SECRET"), correo: !!Deno.env.get("RESEND_API_KEY"), helicone: !!Deno.env.get("HELICONE_API_KEY") }, config: cfg });
+        return json({ ok: true, version: VERSION, sitio: base, motores: { ia: !!Deno.env.get("ANTHROPIC_API_KEY"), whatsapp: motorWhatsApp(), mercadopago: !!Deno.env.get("MP_ACCESS_TOKEN"), mercadopago_webhook: !!Deno.env.get("MP_WEBHOOK_SECRET"), mercadopago_prueba: mpPrueba(), stripe: !!Deno.env.get("STRIPE_SECRET_KEY"), webhook: !!Deno.env.get("STRIPE_WEBHOOK_SECRET"), correo: !!Deno.env.get("RESEND_API_KEY"), helicone: !!Deno.env.get("HELICONE_API_KEY") }, config: configParaPanel(cfg) });
       }
       if (rec === "config" && m === "POST") {
         const b = await leerJson(req);
-        const filas = Object.keys(CONFIG_DEF).filter((k) => typeof b[k] === "string").map((k) => ({ clave: k, valor: String(b[k]).trim() }));
+        const filas = Object.keys(CONFIG_DEF).filter((k) => k !== CLAVE_PROBADORES && typeof b[k] === "string").map((k) => ({ clave: k, valor: String(b[k]).trim() }));
         if (!filas.length) return error("Nada que guardar");
         const { error: e } = await supabase.from("config").upsert(filas); if (e) throw e;
         configCache = null;
-        return json({ ok: true, config: await config() });
+        return json({ ok: true, config: configParaPanel(await config()) });
       }
       if (rec === "resumen" && m === "GET") {
         // El «día de ventas» del Resumen termina a las 11 de la noche de Ciudad de México (pedido de Daniel, 11 nov 2026:
@@ -1301,6 +1344,9 @@ Deno.serve(async (req: Request) => {
         // hechas con su saldo (metodo_pago "saldo") no son ventas ni cortesías y se cuentan aparte.
         const esPaquete = (c: any) => c.producto === "paquete3";
         const dePaquete = (c: any) => tipoSinCobro(c) === "saldo";
+        // Suscripción mensual: las guías hechas con ella (metodo_pago "suscripcion") tampoco son ventas. Sus cobros
+        // mensuales van en su propio bloque («suscripciones»), separados de las guías sueltas y de los paquetes.
+        const deSuscripcion = (c: any) => tipoSinCobro(c) === "suscripcion";
         const hoyIso = hoy;
         // Guías pagadas cuyo trabajo "resto" falló y siguen sin terminar (aviso en el Resumen del panel).
         const F = fallidos.data ?? [];
@@ -1308,8 +1354,9 @@ Deno.serve(async (req: Request) => {
         const entregasConError = F.map((t) => ({ t, g: (gF ?? []).find((x: any) => x.id === t.guia_id) })).filter(({ g }) => g && g.completo !== true).map(({ t, g }) => ({ trabajo_id: t.id, guia_id: t.guia_id, titulo: g.titulo, paso: t.paso, error: t.error, desde: t.actualizado_en }));
         return json({
           guias: { publicadas: cuenta(G, (g) => g.estado === "publicada" && g.origen === "biblioteca"), borradores: cuenta(G, (g) => g.estado === "borrador" && g.origen === "biblioteca"), personalizadas: cuenta(G, (g) => g.origen === "personalizada" && g.estado !== "archivada"), archivadas: cuenta(G, (g) => g.estado === "archivada") },
-          compras: { pendientes: cuenta(C, (c) => c.estado === "pendiente" && !esPaquete(c)), pagadas_hoy: cuenta(C, (c) => venta(c) && c.pagada_en >= hoyIso), ingresos_hoy: suma(C, (c) => venta(c) && c.pagada_en >= hoyIso), pagadas_mes: cuenta(C, (c) => venta(c) && c.pagada_en >= mes), ingresos_mes: suma(C, (c) => venta(c) && c.pagada_en >= mes), con_codigo_hoy: cuenta(C, (c) => gratis(c) && c.pagada_en >= hoyIso), con_codigo_mes: cuenta(C, (c) => gratis(c) && c.pagada_en >= mes), cortesias_hoy: cuenta(C, (c) => cortesia(c) && c.pagada_en >= hoyIso), cortesias_mes: cuenta(C, (c) => cortesia(c) && c.pagada_en >= mes), de_paquete_hoy: cuenta(C, (c) => dePaquete(c) && c.pagada_en >= hoyIso), de_paquete_mes: cuenta(C, (c) => dePaquete(c) && c.pagada_en >= mes) },
+          compras: { pendientes: cuenta(C, (c) => c.estado === "pendiente" && !esPaquete(c)), pagadas_hoy: cuenta(C, (c) => venta(c) && c.pagada_en >= hoyIso), ingresos_hoy: suma(C, (c) => venta(c) && c.pagada_en >= hoyIso), pagadas_mes: cuenta(C, (c) => venta(c) && c.pagada_en >= mes), ingresos_mes: suma(C, (c) => venta(c) && c.pagada_en >= mes), con_codigo_hoy: cuenta(C, (c) => gratis(c) && c.pagada_en >= hoyIso), con_codigo_mes: cuenta(C, (c) => gratis(c) && c.pagada_en >= mes), cortesias_hoy: cuenta(C, (c) => cortesia(c) && c.pagada_en >= hoyIso), cortesias_mes: cuenta(C, (c) => cortesia(c) && c.pagada_en >= mes), de_paquete_hoy: cuenta(C, (c) => dePaquete(c) && c.pagada_en >= hoyIso), de_paquete_mes: cuenta(C, (c) => dePaquete(c) && c.pagada_en >= mes), de_suscripcion_hoy: cuenta(C, (c) => deSuscripcion(c) && c.pagada_en >= hoyIso), de_suscripcion_mes: cuenta(C, (c) => deSuscripcion(c) && c.pagada_en >= mes) },
           paquetes: { pendientes: cuenta(C, (c) => esPaquete(c) && c.estado === "pendiente"), vendidos_hoy: cuenta(C, (c) => esPaquete(c) && venta(c) && c.pagada_en >= hoyIso), vendidos_mes: cuenta(C, (c) => esPaquete(c) && venta(c) && c.pagada_en >= mes), ingresos_mes: suma(C, (c) => esPaquete(c) && venta(c) && c.pagada_en >= mes) },
+          suscripciones: await resumenSuscripciones(ctxBase(), hoyIso, mes).catch((e) => { console.warn("suscripciones en el Resumen:", (e as Error).message); return null; }),
           entregas_con_error: entregasConError,
           solicitudes_sin_guia: solicitudes.count ?? 0, reportes_nuevos: reportes.count ?? 0, borradores_activos: borradores.count ?? 0,
           ia: { trabajos_mes: T.length, corriendo: cuenta(T, (t) => ["pendiente", "corriendo"].includes(t.estado)), errores: cuenta(T, (t) => t.estado === "error"), costo_usd_mes: T.reduce((n, t) => n + Number(t.costo_usd ?? 0), 0) },

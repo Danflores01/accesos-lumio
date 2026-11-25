@@ -1,4 +1,4 @@
-// Contrato compartido entre index.ts y los módulos aparte (extras.ts y whatsapp.ts).
+// Contrato compartido entre index.ts y los módulos aparte (extras.ts, whatsapp.ts, cuenta.ts y suscripcion.ts).
 // index.ts arma estos objetos y se los pasa a cada módulo; los módulos NO importan nada de index.ts.
 // deno-lint-ignore-file no-explicit-any
 
@@ -29,14 +29,19 @@ export type CtxRutas = CtxBase & {
 };
 
 // Datos de una entrega (guía 100 % lista) para avisar a la familia. extra (opcional) = un renglón más al final del
-// mensaje; lo usan las guías hechas con el saldo de un paquete para decir cuántas guías quedan (cuenta.ts).
+// mensaje; lo usan las guías hechas con el saldo de un paquete para decir cuántas guías quedan (cuenta.ts) y las de la
+// suscripción para decir que siguen abiertas mientras esté activa (suscripcion.ts).
 export type Entrega = { titulo: string; link: string; expira_en: string; extra?: string };
 
-// Lo que el módulo de cuentas y paquetes (cuenta.ts) necesita de index.ts además de lo común: el cobro con Mercado
-// Pago, la entrega de una guía y el arranque de un trabajo. Así cuenta.ts no importa nada de index.ts.
+// Lo que los módulos de cuentas y paquetes (cuenta.ts) y de la suscripción mensual (suscripcion.ts) necesitan de index.ts
+// además de lo común: el cobro con Mercado Pago, la entrega de una guía y el arranque de un trabajo. Así ninguno de los
+// dos importa nada de index.ts.
 export type ExtrasCuenta = {
   limpiarTel: (t: unknown) => string;               // teléfono en formato internacional ("+52" + 10 dígitos) o ""
   mpToken: () => string;                            // llave de Mercado Pago ("" = cobro en línea apagado)
+  mpPrueba: () => boolean;                          // true = la llave es de prueba (TEST-…): no cobra de verdad
+  // Llamada a la API de Mercado Pago con nuestra llave (suscripcion.ts: crear, consultar y cancelar suscripciones y sus cobros).
+  mp: (ruta: string, op?: { method?: string; body?: unknown }) => Promise<{ ok: boolean; status: number; datos: any }>;
   // Link de pago (preferencia de Checkout Pro: tarjeta, OXXO y SPEI) de un paquete; regresa a cuenta.html.
   crearPreferenciaPaquete: (compra: any, precio: number, guias: number, dias: number) => Promise<{ id: string; url: string }>;
   revisarCompraMP: (compraId: string, pagoId?: string | null) => Promise<string | null>;

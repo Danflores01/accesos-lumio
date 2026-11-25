@@ -13,7 +13,8 @@
 //     funciones/ir, funciones/admin);
 //   · sintaxis de cada .js, .mjs, .ts y .json, y de los guiones escritos dentro de cada .html;
 //   · si va código del servidor: herramientas/probar-rutas.mjs (ningún módulo tapa una ruta ajena), probar-ventas.mjs,
-//     probar-codigos.ts, probar-mercadopago.ts y probar-saldo.ts (las cuentas del dinero y del saldo de guías);
+//     probar-codigos.ts, probar-mercadopago.ts, probar-saldo.ts y probar-suscripciones.ts (las cuentas del dinero, del
+//     saldo de guías y de la suscripción mensual);
 //   · prueba de humo del sitio TAL COMO QUEDARÍA (esta copia, servida en local) contra el servidor de producción:
 //     atrapa, antes de publicar, que el reproductor nuevo pida una dirección que el servidor no atiende.
 // DESPUÉS de subir: espera a que GitHub Pages termine y corre la ronda completa (ronda.mjs) contra producción.
@@ -122,7 +123,7 @@ async function revisar(archivos) {
   if (revisados === archivos.length) bien(`sintaxis de ${archivos.length} archivo(s)`);
   if (archivos.some((f) => f.startsWith("funciones/sparked/"))) {
     // Los candados del servidor: cada uno nació de un fallo real y debe pasar antes de subir código del servidor.
-    for (const [prueba, queCuida] of [["probar-rutas.mjs", "ningún módulo tapa una ruta ajena"], ["probar-ventas.mjs", "solo cuenta como venta lo que de verdad se cobró"], ["probar-codigos.ts", "los códigos de descuento cobran lo que deben"], ["probar-mercadopago.ts", "un pago aprobado se aplica una sola vez y un aviso sin firma no entra"], ["probar-saldo.ts", "el saldo de guías cuadra: un paquete pagado abona una vez y una guía que falla se devuelve"]]) {
+    for (const [prueba, queCuida] of [["probar-rutas.mjs", "ningún módulo tapa una ruta ajena"], ["probar-ventas.mjs", "solo cuenta como venta lo que de verdad se cobró"], ["probar-codigos.ts", "los códigos de descuento cobran lo que deben"], ["probar-mercadopago.ts", "un pago aprobado se aplica una sola vez y un aviso sin firma no entra"], ["probar-saldo.ts", "el saldo de guías cuadra: un paquete pagado abona una vez y una guía que falla se devuelve"], ["probar-suscripciones.ts", "la suscripción mensual: un cobro alarga el periodo una sola vez, cancelar es un clic y apagada nadie la contrata"]]) {
       if (!fs.existsSync(path.join(REPO, "herramientas", prueba))) continue;
       const r = await correr(path.join(REPO, "herramientas", prueba), [], true);
       if (r.codigo === 0) bien(`servidor: ${queCuida} (${prueba})`);

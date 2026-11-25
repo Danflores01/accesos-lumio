@@ -264,7 +264,8 @@ export function validarServicios(lista: unknown): Servicio[] | string {
 }
 
 type TrabajoCosto = { id: string; alcance: string; estado: string; costo_usd: number | string | null; creado_en: string; guia_id: string | null; metricas: any[] | null };
-type CompraCosto = { estado: string; monto_mxn: number | string | null; pagada_en: string | null; metodo_pago: string | null; mp_estado?: string | null; stripe_session_id?: string | null };
+// producto "suscripcion" = un cobro mensual de la suscripción (viene de suscripcion_cobros, no de compras).
+type CompraCosto = { estado: string; monto_mxn: number | string | null; pagada_en: string | null; metodo_pago: string | null; mp_estado?: string | null; stripe_session_id?: string | null; producto?: string | null };
 
 // ---------- ¿Qué cuenta como venta? ----------
 // Una compra «pagada» solo es VENTA (ingreso, impuestos) si de verdad se cobró:
@@ -275,13 +276,15 @@ type CompraCosto = { estado: string; monto_mxn: number | string | null; pagada_e
 // confirmada a mano sin decir cómo se cobró (metodo_pago vacío: así quedaron las anteriores al 11 nov 2026).
 // Tampoco es venta una guía hecha con el saldo de un paquete (metodo_pago "saldo", 24 nov 2026): lo que se cobró fue el
 // PAQUETE (compras.producto "paquete3"), que cuenta como una sola venta de su monto cuando Mercado Pago lo aprueba.
+// Ni una guía hecha con la suscripción mensual (metodo_pago "suscripcion", 25 nov 2026): la venta es cada COBRO mensual
+// (tabla suscripcion_cobros), que cuenta con esta misma regla: solo si Mercado Pago lo aprobó.
 // Nació del 10 nov 2026: el panel decía 5 ventas y $500 cuando Mercado Pago solo había cobrado 3; las otras 2 eran
 // compras marcadas como pagadas a mano, sin cobro. Prueba: herramientas/probar-ventas.mjs.
 export type CompraCobro = { estado?: string | null; metodo_pago?: string | null; mp_estado?: string | null; stripe_session_id?: string | null };
 export const ventaCobrada = (c: CompraCobro): boolean => c.estado === "pagada" && (c.mp_estado === "approved" || c.metodo_pago === "manual" || !!c.stripe_session_id);
 /** Para una compra pagada que no es venta: "codigo" (código gratis), "saldo" (guía hecha con el saldo de un paquete ya
- *  cobrado) o "cortesia" (confirmada a mano sin cobro). */
-export const tipoSinCobro = (c: CompraCobro): "codigo" | "saldo" | "cortesia" | null => c.estado !== "pagada" || ventaCobrada(c) ? null : c.metodo_pago === "codigo" ? "codigo" : c.metodo_pago === "saldo" ? "saldo" : "cortesia";
+ *  cobrado), "suscripcion" (guía hecha con la suscripción mensual) o "cortesia" (confirmada a mano sin cobro). */
+export const tipoSinCobro = (c: CompraCobro): "codigo" | "saldo" | "suscripcion" | "cortesia" | null => c.estado !== "pagada" || ventaCobrada(c) ? null : c.metodo_pago === "codigo" ? "codigo" : c.metodo_pago === "saldo" ? "saldo" : c.metodo_pago === "suscripcion" ? "suscripcion" : "cortesia";
 /** Inicio del «día de ventas» y del mes para el Resumen del panel: el día termina a las 11 pm de Ciudad de México
  *  (UTC−6 todo el año), o sea a la medianoche de UTC−5. Devuelve fechas ISO en UTC (hoy y mes empiezan a las 05:00 UTC). */
 export function inicioDiaVentas(ahoraMs: number): { hoy: string; mes: string } {
@@ -289,8 +292,8 @@ export function inicioDiaVentas(ahoraMs: number): { hoy: string; mes: string } {
   const y = d.getUTCFullYear(), m = d.getUTCMonth();
   return { hoy: new Date(Date.UTC(y, m, d.getUTCDate(), 5)).toISOString(), mes: new Date(Date.UTC(y, m, 1, 5)).toISOString() };
 }
-/** ¿Se confirmó a mano? (ni Mercado Pago ni Stripe ni código ni saldo de un paquete): solo a estas se les puede cambiar «cobrada por fuera» ↔ «cortesía». */
-export const confirmadaAMano = (c: CompraCobro): boolean => c.estado === "pagada" && c.mp_estado !== "approved" && !c.stripe_session_id && c.metodo_pago !== "codigo" && c.metodo_pago !== "saldo";
+/** ¿Se confirmó a mano? (ni Mercado Pago ni Stripe ni código ni saldo de un paquete ni suscripción): solo a estas se les puede cambiar «cobrada por fuera» ↔ «cortesía». */
+export const confirmadaAMano = (c: CompraCobro): boolean => c.estado === "pagada" && c.mp_estado !== "approved" && !c.stripe_session_id && c.metodo_pago !== "codigo" && c.metodo_pago !== "saldo" && c.metodo_pago !== "suscripcion";
 
 /** Cálculo puro de la ficha de costos (se prueba sin base de datos). */
 export function calcularCostos(e: {
@@ -353,16 +356,19 @@ export function calcularCostos(e: {
   }
 
   // Ingresos: solo las compras que de verdad se cobraron (ventaCobrada). Las de código gratis, las cortesías
-  // (confirmadas a mano sin cobro) y las guías hechas con el saldo de un paquete no son ventas: se cuentan aparte.
-  type Ingreso = { mxn: number; ventas: number; con_codigo: number; cortesias: number; de_paquete: number };
-  const cero = (): Ingreso => ({ mxn: 0, ventas: 0, con_codigo: 0, cortesias: 0, de_paquete: 0 });
+  // (confirmadas a mano sin cobro) y las guías hechas con el saldo de un paquete o con la suscripción no son ventas: se
+  // cuentan aparte. cobros_suscripcion = cuántas de las ventas son cobros mensuales de la suscripción.
+  type Ingreso = { mxn: number; ventas: number; con_codigo: number; cortesias: number; de_paquete: number; de_suscripcion: number; cobros_suscripcion: number };
+  const cero = (): Ingreso => ({ mxn: 0, ventas: 0, con_codigo: 0, cortesias: 0, de_paquete: 0, de_suscripcion: 0, cobros_suscripcion: 0 });
   const ingresos = { periodo: cero(), mes: cero(), d7: cero(), hoy: cero() };
   for (const c of e.compras) {
     if (c.estado !== "pagada" || !c.pagada_en) continue;
     const dia = diaMx(c.pagada_en);
     const cobrada = ventaCobrada(c), sinCobro = tipoSinCobro(c);
+    // Un cobro de suscripción que Mercado Pago no aprobó (rechazado, reembolsado…) no es venta ni cortesía: no cuenta.
+    if (c.producto === "suscripcion" && !cobrada) continue;
     const monto = cobrada ? Number(c.monto_mxn ?? 0) || 0 : 0;
-    const sumar = (p: Ingreso) => { if (cobrada) { p.mxn += monto; p.ventas++; } else if (sinCobro === "codigo") p.con_codigo++; else if (sinCobro === "saldo") p.de_paquete++; else p.cortesias++; };
+    const sumar = (p: Ingreso) => { if (cobrada) { p.mxn += monto; p.ventas++; if (c.producto === "suscripcion") p.cobros_suscripcion++; } else if (sinCobro === "codigo") p.con_codigo++; else if (sinCobro === "saldo") p.de_paquete++; else if (sinCobro === "suscripcion") p.de_suscripcion++; else p.cortesias++; };
     if (dia === hoy) sumar(ingresos.hoy);
     if (dia >= d7 && dia <= hoy) sumar(ingresos.d7);
     if (dia >= mes && dia <= hoy) sumar(ingresos.mes);
@@ -533,12 +539,23 @@ async function adminCostos(c: CtxRutas): Promise<Response> {
   if (trab.error) throw trab.error;
   if (comp.error) throw comp.error;
   const T = (trab.data ?? []) as TrabajoCosto[];
+  // Cobros de la suscripción mensual: cada uno entra a las cuentas como una venta más, con la misma regla (ventaCobrada:
+  // solo si Mercado Pago lo aprobó). Si la tabla todavía no existe, simplemente no hay cobros.
+  const cobrosDeSuscripcion = async (desdeIso2: string, hastaIso2?: string): Promise<CompraCosto[]> => {
+    try {
+      let q = c.supabase.from("suscripcion_cobros").select("mp_estado, monto_mxn, cobrado_en").eq("de_prueba", false).eq("mp_estado", "approved").gte("cobrado_en", desdeIso2).limit(5000);
+      if (hastaIso2) q = q.lt("cobrado_en", hastaIso2);
+      const { data, error } = await q;
+      if (error) { console.warn("cobros de suscripción en Costos:", error.message); return []; }
+      return ((data ?? []) as any[]).map((x) => ({ estado: "pagada", monto_mxn: x.monto_mxn, pagada_en: x.cobrado_en, metodo_pago: "tarjeta", mp_estado: x.mp_estado, stripe_session_id: null, producto: "suscripcion" }));
+    } catch (e2) { console.warn("cobros de suscripción en Costos:", (e2 as Error).message); return []; }
+  };
   // Vistas previas de las guías que se terminaron con un trabajo "resto" (pueden ser de antes del periodo).
   const idsResto = [...new Set(T.filter((t) => t.alcance === "resto" && t.guia_id).map((t) => t.guia_id as string))];
   const prev = idsResto.length ? await c.supabase.from("trabajos").select("guia_id, costo_usd").eq("alcance", "vista_previa").in("guia_id", idsResto) : { data: [] };
   const ajusteTc = Number(cfg.sparked_tipo_cambio) || 18.5;
 
-  const r = calcularCostos({ trabajos: T, previasDeGuias: (prev.data ?? []) as any[], compras: (comp.data ?? []) as CompraCosto[], tipos, ajusteTc, hoy, dias, servicios: serv.servicios });
+  const r = calcularCostos({ trabajos: T, previasDeGuias: (prev.data ?? []) as any[], compras: [...((comp.data ?? []) as CompraCosto[]), ...(await cobrosDeSuscripcion(desdeIso))], tipos, ajusteTc, hoy, dias, servicios: serv.servicios });
   const tc = tcDelDia(tipos, hoy);
   const fecha = (ymd: string) => new Date(ymd + "T12:00:00Z").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
   let aviso = "";
@@ -550,7 +567,7 @@ async function adminCostos(c: CtxRutas): Promise<Response> {
   const inicioMes = hoy.slice(0, 8) + "01", finAnterior = sumarDias(inicioMes, -1), inicioAnterior = finAnterior.slice(0, 8) + "01";
   const ant = await c.supabase.from("compras").select("estado, monto_mxn, metodo_pago, mp_estado, stripe_session_id").eq("estado", "pagada").gte("pagada_en", inicioDiaIso(inicioAnterior)).lt("pagada_en", inicioDiaIso(inicioMes)).limit(5000);
   let cobradoAnt = 0, ventasAnt = 0;
-  for (const x of (ant.data ?? []) as any[]) { const m = ventaCobrada(x) ? Number(x.monto_mxn ?? 0) || 0 : 0; if (m > 0) { cobradoAnt += m; ventasAnt++; } }
+  for (const x of [...((ant.data ?? []) as any[]), ...(await cobrosDeSuscripcion(inicioDiaIso(inicioAnterior), inicioDiaIso(inicioMes)))]) { const m = ventaCobrada(x) ? Number(x.monto_mxn ?? 0) || 0 : 0; if (m > 0) { cobradoAnt += m; ventasAnt++; } }
   const ajusteImp = leerAjusteImpuestos(cfg);
   const impuestos = { ...calcularImpuestos(ajusteImp, r.ingresos.mes.mxn, r.ingresos.mes.ventas, Number(cfg.sparked_precio) || 100), mes_desde: inicioMes, mes_anterior: { desde: inicioAnterior, hasta: finAnterior, ...impuestosDelMes(ajusteImp, cobradoAnt, ventasAnt) } };
   return c.json({

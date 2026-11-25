@@ -31,6 +31,15 @@
 //   POST /admin/cuentas/:id/prueba { accion } → solo cuentas de prueba: usar o devolver una guía sin generar nada
 //   DELETE /admin/cuentas/:id                 → solo cuentas de prueba: borra la cuenta y todo lo que creó
 //
+// Suscripción mensual «Guías ilimitadas» (25 nov 2026; la lógica vive en suscripcion.ts, aquí solo se reciben sus rutas
+// de la familia porque este módulo es el que conoce la sesión):
+//   GET  /suscripcion/info                    → { disponible, precio, prueba_dias } (solo dice si está abierta al público)
+//   POST /suscripcion/crear (x-cuenta) { acepta: true, nombre?, correo?, correo_pago? } → página de Mercado Pago
+//   GET  /suscripcion/estado (x-cuenta)       → cómo va la suscripción (pregunta a Mercado Pago si falta confirmar algo)
+//   POST /suscripcion/cancelar (x-cuenta)     → cancelar en un clic (conserva lo pagado hasta el fin del periodo)
+// Con una suscripción que da derecho a crear, POST /cuenta/guia hace la guía con la suscripción (metodo_pago
+// "suscripcion", sin tocar el saldo del paquete).
+//
 // El ajuste sparked_paquete3 ('si' | 'no') enciende la VENTA. Apagado: /paquete/info dice que no está disponible (el
 // sitio esconde los botones), no se puede comprar ni se crean cuentas nuevas, y no se manda ningún código a un número
 // que no tenga cuenta. Quien ya tiene cuenta puede seguir entrando y usar el saldo que ya pagó.
@@ -39,6 +48,7 @@
 import type { CtxBase, CtxRutasCuenta } from "./tipos.ts";
 import { mandarTextoA, telefonoInternacional, idiomaDe, motorWhatsApp } from "./whatsapp.ts";
 import { ventaCobrada, tipoSinCobro } from "./extras.ts";
+import { ajustesSuscripcion, puedeSuscribirse, infoSuscripcion, resumenSuscripcion, crearSuscripcion, estadoSuscripcion, cancelarDeFamilia, suscripcionParaCrear, suscripcionDetenida, revisarUsoEnPrueba, avisarGuiaFallida, borrarSuscripcionesDePrueba, MSG_EN_GRACIA, MSG_FALLO_GUIA_SUS, FALLAS_POR_DIA } from "./suscripcion.ts";
 
 // ---------- Reglas (números que deciden cómo se comporta) ----------
 export const GUIAS_PAQUETE = 3;            // guías que abona un paquete
@@ -115,6 +125,13 @@ export function ajustesPaquete(cfg: Record<string, string> | null | undefined): 
     guias: GUIAS_PAQUETE,
   };
 }
+
+/** ¿Se pueden abrir cuentas nuevas con ese WhatsApp? Con el paquete a la venta, cualquiera; si no, solo quien puede
+ *  contratar la suscripción (abierta al público, o un número de la lista de probadores). */
+const cuentasAbiertas = (cfg: Record<string, string> | null | undefined, telefono: string): boolean => ajustesPaquete(cfg).encendido || puedeSuscribirse(ajustesSuscripcion(cfg), telefono);
+/** Guía hecha desde la cuenta, sin cobro propio: con el saldo de un paquete o con la suscripción. */
+const deLaCuenta = (x: { metodo_pago?: string | null }) => x.metodo_pago === "saldo" || x.metodo_pago === "suscripcion";
+const METODOS_DE_CUENTA = ["saldo", "suscripcion"];
 
 // ---------- El saldo (cálculo puro sobre el libro; se prueba sin base de datos) ----------
 export type Movimiento = { id: number; cuenta_id: string; cambio: number; motivo: string; compra_id?: string | null; guia_id?: string | null; lote_id?: number | null; revierte_id?: number | null; vence_en?: string | null; de_prueba?: boolean; nota?: string | null; creado_en: string };
@@ -218,7 +235,7 @@ async function pedirCodigo(c: CtxRutasCuenta): Promise<Response> {
 
   // Venta apagada: solo entra quien ya tiene cuenta. A un número sin cuenta no se le manda nada, pero la respuesta (y
   // los frenos) son iguales: por eso queda anotada una fila con una huella que ningún código puede igualar.
-  if (!ajustesPaquete(cfg).encendido && !cuenta && !simular) {
+  if (!cuentasAbiertas(cfg, telefono) && !cuenta && !simular) {
     await guardar(canalPedido, "sin_cuenta", "x" + alAzar(40));
     return respuesta(canalPedido);
   }
@@ -284,7 +301,7 @@ async function entrar(c: CtxRutasCuenta): Promise<Response> {
   let { data: cuenta } = await c.supabase.from("cuentas").select(columnas).eq("telefono", telefono).maybeSingle();
   if (!cuenta) {
     // Cuenta nueva: solo con la venta encendida (o en una prueba automática).
-    if (!ajustesPaquete(await c.config()).encendido && !simulado) return c.error(MSG_NO_DISPONIBLE, 503);
+    if (!cuentasAbiertas(await c.config(), telefono) && !simulado) return c.error(MSG_NO_DISPONIBLE, 503);
     const nueva = { telefono, correo: correoNuevo, nombre: texto(r.res_nombre, 80) || null, de_prueba: simulado, telefono_verificado_en: porWhatsApp && !simulado ? c.ahora() : null, correo_verificado_en: !porWhatsApp && !simulado ? c.ahora() : null };
     const alta = await c.supabase.from("cuentas").insert(nueva).select(columnas).single();
     if (alta.error && alta.error.code !== "23505") throw alta.error;
@@ -343,7 +360,7 @@ async function resumenCuenta(c: CtxRutasCuenta, cuenta: Cuenta, canal: string | 
   // Red de seguridad: una guía de saldo que se quedó a medias (el arranque se cortó, o el trabajo falló sin avisar) se
   // revisa aquí y, si de verdad falló, se devuelve al saldo. Así una guía pagada nunca se pierde en silencio.
   let reparadas = 0;
-  for (const g of compras.filter((x) => x.metodo_pago === "saldo" && x.guia_id)) {
+  for (const g of compras.filter((x) => deLaCuenta(x) && x.guia_id)) {
     const edadMin = (Date.now() - new Date(g.pagada_en ?? g.creada_en).getTime()) / 60000;
     if (g.estado === "pendiente" && edadMin > 2) { if (await devolverGuiaDeSaldo(c, g.guia_id!, MSG_FALLO_GUIA)) reparadas++; }
     else if (g.estado === "pagada" && !g.entregada_en && edadMin > MINUTOS_PARA_REVISAR) {
@@ -354,7 +371,8 @@ async function resumenCuenta(c: CtxRutasCuenta, cuenta: Cuenta, canal: string | 
   if (reparadas) compras = ((await c.supabase.from("compras").select(COLUMNAS_COMPRA).eq("cuenta_id", cuenta.id).order("creada_en", { ascending: false }).limit(80)).data ?? compras) as CompraCuenta[];
 
   const conDescuento = new Set(movimientos.filter((m) => m.motivo === "guia" && m.compra_id).map((m) => m.compra_id));
-  const deGuia = compras.filter((x) => x.metodo_pago === "saldo" && x.estado !== "pendiente" && conDescuento.has(x.id));
+  // Las guías de la cuenta: las hechas con saldo (con su descuento en el libro) y las hechas con la suscripción.
+  const deGuia = compras.filter((x) => x.estado !== "pendiente" && ((x.metodo_pago === "saldo" && conDescuento.has(x.id)) || x.metodo_pago === "suscripcion"));
   const idsAcceso = deGuia.map((x) => x.acceso_id).filter(Boolean), idsGuia = deGuia.map((x) => x.guia_id).filter(Boolean);
   const [{ data: accesos }, { data: guias }] = await Promise.all([
     idsAcceso.length ? c.supabase.from("accesos").select("id, token, expira_en").in("id", idsAcceso) : Promise.resolve({ data: [] as any[] }),
@@ -364,8 +382,9 @@ async function resumenCuenta(c: CtxRutasCuenta, cuenta: Cuenta, canal: string | 
   const notaDevolucion = (compraId: string) => movimientos.find((m) => m.motivo === "devolucion" && m.compra_id === compraId)?.nota ?? null;
   const listaGuias = deGuia.map((x) => {
     const a = (accesos ?? []).find((y: any) => y.id === x.acceso_id), g = (guias ?? []).find((y: any) => y.id === x.guia_id);
-    const comun = { id: x.id, titulo: g?.titulo ?? x.titulo ?? null, grado: x.grado, materia: x.materia, creada_en: x.pagada_en ?? x.creada_en };
-    if (x.estado === "fallida") return { ...comun, estado: "devuelta", mensaje: notaDevolucion(x.id) };
+    const conSus = x.metodo_pago === "suscripcion";
+    const comun = { id: x.id, titulo: g?.titulo ?? x.titulo ?? null, grado: x.grado, materia: x.materia, creada_en: x.pagada_en ?? x.creada_en, con_suscripcion: conSus };
+    if (x.estado === "fallida") return { ...comun, estado: "devuelta", mensaje: conSus ? MSG_FALLO_GUIA_SUS : notaDevolucion(x.id) };
     if (x.entregada_en && a) return new Date(a.expira_en).getTime() > Date.now() ? { ...comun, estado: "lista", link: c.linkDe(base, a.token), expira_en: a.expira_en } : { ...comun, estado: "vencida", expira_en: a.expira_en };
     return { ...comun, estado: "generando" };
   });
@@ -382,7 +401,8 @@ async function resumenCuenta(c: CtxRutasCuenta, cuenta: Cuenta, canal: string | 
     paquetes,
     paquete: { disponible: aj.encendido, precio: aj.precio, guias: aj.guias, dias: aj.dias },
     dispositivos: { abiertos: abiertas ?? sesiones?.count ?? 1, maximo: SESIONES_MAX },
-    suscripcion: { disponible: false },   // la suscripción mensual todavía no existe (se construye después del paquete)
+    // La suscripción mensual (suscripcion.ts). Si algo falla ahí, «Mi cuenta» y el paquete siguen funcionando.
+    suscripcion: await resumenSuscripcion(c, cuenta).catch((e) => { console.warn("suscripción en Mi cuenta:", (e as Error).message); return { disponible: false, actual: null }; }),
   };
 }
 
@@ -409,7 +429,7 @@ async function cambiarCorreo(c: CtxRutasCuenta): Promise<Response> {
 // GET /paquete/info (público): lo que el sitio necesita para mostrar u ocultar los botones.
 async function infoPaquete(c: CtxRutasCuenta): Promise<Response> {
   const cfg = await c.config(), aj = ajustesPaquete(cfg);
-  return c.json({ disponible: aj.encendido, precio: aj.precio, guias: aj.guias, dias: aj.dias, precio_guia: Number(cfg.sparked_precio) || 100, whatsapp: motorWhatsApp(), suscripcion: { disponible: false, precio: 349 } });
+  return c.json({ disponible: aj.encendido, precio: aj.precio, guias: aj.guias, dias: aj.dias, precio_guia: Number(cfg.sparked_precio) || 100, whatsapp: motorWhatsApp(), suscripcion: infoSuscripcion(cfg) });
 }
 
 /** ¿Se puede vender ahora? Con la venta apagada solo pasa una cuenta de prueba que venga con la clave de administrador. */
@@ -568,46 +588,61 @@ async function crearGuiaConSaldo(c: CtxRutasCuenta): Promise<Response> {
   const subidos = await c.archivosSubidos(`borradores/${bo.id}`);
   const archivos = ((bo.archivos ?? []) as any[]).filter((a) => subidos.has(a.ruta));
   if (!archivos.length) return c.error("No llegaron las páginas. Intenta subirlas de nuevo.");
-  // Cada intento gasta inteligencia artificial aunque la guía se devuelva: con varias devoluciones seguidas, una pausa.
-  const { count: devueltas } = await c.supabase.from("cuenta_saldo_movimientos").select("id", { count: "exact", head: true }).eq("cuenta_id", cuenta.id).eq("motivo", "devolucion").gte("creado_en", haceMs(86400_000));
-  if ((devueltas ?? 0) >= DEVOLUCIONES_POR_DIA && !cuenta.de_prueba) return c.error("Hoy varias de tus guías no se pudieron crear. Tus guías siguen en tu saldo: inténtalo de nuevo mañana o escríbenos por WhatsApp.", 429);
+  // Con una suscripción que da derecho a crear, la guía sale de la suscripción y el saldo del paquete se guarda para después.
+  const sus = await suscripcionParaCrear(c, cuenta.id).catch((e) => { console.warn("suscripción al crear una guía:", (e as Error).message); return null; });
+  // Cada intento gasta inteligencia artificial aunque la guía no salga: con varias fallas seguidas, una pausa.
+  if (sus) {
+    const { count: fallidas } = await c.supabase.from("compras").select("id", { count: "exact", head: true }).eq("cuenta_id", cuenta.id).eq("metodo_pago", "suscripcion").eq("estado", "fallida").gte("creada_en", haceMs(86400_000));
+    if ((fallidas ?? 0) >= FALLAS_POR_DIA && !cuenta.de_prueba) return c.error("Hoy varias de tus guías no se pudieron crear. Tu suscripción sigue activa: inténtalo de nuevo mañana o escríbenos por WhatsApp.", 429);
+  } else {
+    const { count: devueltas } = await c.supabase.from("cuenta_saldo_movimientos").select("id", { count: "exact", head: true }).eq("cuenta_id", cuenta.id).eq("motivo", "devolucion").gte("creado_en", haceMs(86400_000));
+    if ((devueltas ?? 0) >= DEVOLUCIONES_POR_DIA && !cuenta.de_prueba) return c.error("Hoy varias de tus guías no se pudieron crear. Tus guías siguen en tu saldo: inténtalo de nuevo mañana o escríbenos por WhatsApp.", 429);
+  }
   const saldoAntes = resumirSaldo(await movimientosDe(c, cuenta.id));
-  if (saldoAntes.guias < 1) return c.json({ error: MSG_SIN_SALDO, sin_saldo: true }, 402);
+  if (!sus && saldoAntes.guias < 1) {
+    // Sin saldo y con la suscripción detenida por un cobro pendiente: se le dice eso, no «compra un paquete».
+    if (await suscripcionDetenida(c, cuenta.id).catch(() => false)) return c.json({ error: MSG_EN_GRACIA, sin_saldo: true, en_gracia: true }, 402);
+    return c.json({ error: MSG_SIN_SALDO, sin_saldo: true }, 402);
+  }
 
   // 1) Apartar el borrador (una sola petición gana: dos pestañas con las mismas páginas no lanzan dos guías).
   const { data: ganado } = await c.supabase.from("borradores").update({ estado: "generando", archivos, paginas: archivos.length }).eq("id", bo.id).eq("estado", "subiendo").is("trabajo_id", null).is("guia_id", null).select("id");
   if (!ganado?.length) return c.error("Estas páginas ya se usaron para otra guía. Sube tus fotos de nuevo.", 409);
   const tituloInicial = `${bo.materia ?? "Guía"} · ${bo.grado ?? ""}`.replace(/ · $/, "").slice(0, 120);
-  let guiaId: string | null = null, compra: any = null, descontada = false, trabajoId: string | null = null;
+  let guiaId: string | null = null, compra: any = null, descontada = false, pagada = false, quedan = saldoAntes.guias, trabajoId: string | null = null;
   const soltar = async () => {
     // Nada se gastó (o ya se devolvió): el borrador vuelve a quedar libre y la guía vacía se quita.
     await c.supabase.from("borradores").update({ estado: "subiendo", guia_id: null, trabajo_id: null }).eq("id", bo.id).neq("estado", "pagado");
     if (guiaId) await c.supabase.from("guias").delete().eq("id", guiaId).is("cartucho", null);
   };
   try {
-    // 2) La guía (vacía) y su compra sin cobro: metodo_pago "saldo" no cuenta como venta (la venta fue el paquete).
+    // 2) La guía (vacía) y su compra sin cobro: metodo_pago "saldo" (o "suscripcion") no cuenta como venta (la venta fue
+    //    el paquete, o cada cobro mensual de la suscripción).
     const g = await c.supabase.from("guias").insert({ estado: "borrador", origen: "personalizada", titulo: tituloInicial, grado: bo.grado ?? null, materia: bo.materia ?? null, colegio_id: bo.colegio_id ?? null, borrador_id: bo.id }).select("id").single();
     if (g.error) throw g.error;
     guiaId = g.data.id as string;
     const contacto = cuenta.de_prueba ? { telefono: null, correo: null } : { telefono: cuenta.telefono, correo: cuenta.correo };
-    const alta = await c.supabase.from("compras").insert({ producto: "guia", cuenta_id: cuenta.id, guia_id: guiaId, borrador_id: bo.id, monto_mxn: 0, estado: "pendiente", metodo_pago: "saldo", nombre: cuenta.nombre ?? null, ...contacto, colegio_texto: bo.colegio_texto ?? null, grado: bo.grado ?? null, materia: bo.materia ?? null, titulo: tituloInicial }).select("*").single();
+    const alta = await c.supabase.from("compras").insert({ producto: "guia", cuenta_id: cuenta.id, guia_id: guiaId, borrador_id: bo.id, monto_mxn: 0, estado: "pendiente", metodo_pago: sus ? "suscripcion" : "saldo", ...(sus ? { suscripcion_id: sus.id } : {}), nombre: cuenta.nombre ?? null, ...contacto, colegio_texto: bo.colegio_texto ?? null, grado: bo.grado ?? null, materia: bo.materia ?? null, titulo: tituloInicial }).select("*").single();
     if (alta.error) throw alta.error;
     compra = alta.data;
     // 3) El descuento: paso atómico en la base. Sin saldo vigente no devuelve fila y aquí no se gasta nada.
-    const uso = await c.supabase.rpc("sparked_usar_guia_de_saldo", { p_cuenta: cuenta.id, p_compra: compra.id, p_guia: guiaId, p_nota: null });
-    if (uso.error) throw uso.error;
-    const u = Array.isArray(uso.data) ? uso.data[0] : null;
-    if (!u) {
-      await c.supabase.from("compras").delete().eq("id", compra.id).eq("estado", "pendiente").eq("metodo_pago", "saldo");
-      await soltar();
-      return c.json({ error: MSG_SIN_SALDO, sin_saldo: true }, 402);
+    //    Con la suscripción no se descuenta nada: las guías son ilimitadas.
+    if (!sus) {
+      const uso = await c.supabase.rpc("sparked_usar_guia_de_saldo", { p_cuenta: cuenta.id, p_compra: compra.id, p_guia: guiaId, p_nota: null });
+      if (uso.error) throw uso.error;
+      const u = Array.isArray(uso.data) ? uso.data[0] : null;
+      if (!u) {
+        await c.supabase.from("compras").delete().eq("id", compra.id).eq("estado", "pendiente").eq("metodo_pago", "saldo");
+        await soltar();
+        return c.json({ error: MSG_SIN_SALDO, sin_saldo: true }, 402);
+      }
+      descontada = true; quedan = Number(u.res_quedan ?? 0);
     }
-    descontada = true;
     // 4) La compra queda «pagada» (con saldo) y arranca el trabajo de la guía completa.
     const paga = await c.supabase.from("compras").update({ estado: "pagada", pagada_en: c.ahora() }).eq("id", compra.id).eq("estado", "pendiente").select("*");
     if (paga.error) throw paga.error;
     if (!paga.data?.length) throw new Error("La compra de la guía cambió de estado antes de arrancar");
-    compra = paga.data[0];
+    compra = paga.data[0]; pagada = true;
     // 5) El acceso de 7 días y 2 dispositivos se crea ya (el borrador queda «pagado», como en una guía suelta); el link
     //    no se enseña ni se manda hasta que la guía está completa y verificada.
     await c.entregar(compra);
@@ -617,16 +652,18 @@ async function crearGuiaConSaldo(c: CtxRutasCuenta): Promise<Response> {
     trabajoId = t.data.id as string;
     await c.supabase.from("borradores").update({ trabajo_id: trabajoId, guia_id: guiaId }).eq("id", bo.id);
     c.disparar(trabajoId);
-    return c.json({ ok: true, compra_id: compra.id, quedan: Number(u.res_quedan ?? 0), usadas_de: saldoAntes.guias }, 202);
+    // Suscripción en prueba gratis: si pasa de 15 guías se le avisa a Daniel (solo avisa; no hay topes).
+    if (sus) c.enSegundoPlano(revisarUsoEnPrueba(c, sus).catch((e) => { console.warn("uso de la prueba gratis:", (e as Error).message); return false; }));
+    return c.json({ ok: true, compra_id: compra.id, quedan, usadas_de: saldoAntes.guias, con_suscripcion: !!sus }, 202);
   } catch (e) {
     console.error("No se pudo arrancar la guía con saldo:", (e as Error).message);
     try {
       if (trabajoId) await c.supabase.from("trabajos").update({ estado: "error", error: "La guía no arrancó", actualizado_en: c.ahora() }).eq("id", trabajoId).in("estado", ["pendiente", "corriendo"]);
-      if (descontada && guiaId) await devolverGuiaDeSaldo(c, guiaId, "No pudimos empezar tu guía. Inténtalo de nuevo.", { avisar: false });
-      else if (compra) await c.supabase.from("compras").delete().eq("id", compra.id).eq("estado", "pendiente").eq("metodo_pago", "saldo");
-      if (!descontada) await soltar();
+      if ((descontada || pagada) && guiaId) await devolverGuiaDeSaldo(c, guiaId, "No pudimos empezar tu guía. Inténtalo de nuevo.", { avisar: false });
+      else if (compra) await c.supabase.from("compras").delete().eq("id", compra.id).eq("estado", "pendiente").in("metodo_pago", METODOS_DE_CUENTA);
+      if (!descontada && !pagada) await soltar();
     } catch (e2) { console.error("No se pudo deshacer el arranque de la guía con saldo:", (e2 as Error).message); }
-    return c.json({ error: "No pudimos empezar tu guía. No se usó ninguna guía de tu saldo; inténtalo de nuevo.", devuelta: descontada }, 500);
+    return c.json({ error: sus ? "No pudimos empezar tu guía. Tu suscripción sigue activa; inténtalo de nuevo." : "No pudimos empezar tu guía. No se usó ninguna guía de tu saldo; inténtalo de nuevo.", devuelta: descontada }, 500);
   }
 }
 
@@ -634,12 +671,18 @@ async function crearGuiaConSaldo(c: CtxRutasCuenta): Promise<Response> {
  *  una sola vez. Devuelve true si esa guía era de saldo y ya quedó devuelta (ahora o antes); false si no era de saldo
  *  o si ya se había entregado. La llaman index.ts (cuando un trabajo «completa» falla) y las revisiones de este módulo. */
 export async function devolverGuiaDeSaldo(c: CtxBase, guiaId: string, motivo: string, op: { avisar?: boolean } = {}): Promise<boolean> {
-  const { data: comp } = await c.supabase.from("compras").select("id, cuenta_id, estado, entregada_en, titulo, nombre").eq("guia_id", guiaId).eq("metodo_pago", "saldo").order("creada_en", { ascending: false }).limit(1).maybeSingle();
+  const { data: comp } = await c.supabase.from("compras").select("id, cuenta_id, estado, entregada_en, titulo, nombre, metodo_pago").eq("guia_id", guiaId).in("metodo_pago", METODOS_DE_CUENTA).order("creada_en", { ascending: false }).limit(1).maybeSingle();
   if (!comp?.cuenta_id || comp.entregada_en) return false;
   // Paso atómico: una compra entregada ya no se devuelve, y una devuelta ya no se entrega (la entrega exige «pagada»).
-  await c.supabase.from("compras").update({ estado: "fallida" }).eq("id", comp.id).in("estado", ["pagada", "pendiente"]).is("entregada_en", null);
+  const { data: cambiadas } = await c.supabase.from("compras").update({ estado: "fallida" }).eq("id", comp.id).in("estado", ["pagada", "pendiente"]).is("entregada_en", null).select("id");
   const { data: actual } = await c.supabase.from("compras").select("estado, entregada_en").eq("id", comp.id).maybeSingle();
   if (actual?.estado !== "fallida") return false;
+  if (comp.metodo_pago === "suscripcion") {
+    // Guía de la suscripción: no hay saldo que devolver. La familia recibe UN aviso (lo manda quien dejó la compra como
+    // fallida) y puede intentarlo de nuevo cuando quiera.
+    if (cambiadas?.length && op.avisar !== false) c.enSegundoPlano(avisarGuiaFallida(c, comp.cuenta_id, texto(motivo, 300) || MSG_FALLO_GUIA_SUS).catch((e) => console.error("aviso de guía fallida:", (e as Error).message)));
+    return true;
+  }
   const { data: mov } = await c.supabase.from("cuenta_saldo_movimientos").select("id").eq("compra_id", comp.id).eq("motivo", "guia").order("id").limit(1).maybeSingle();
   if (!mov) return true;   // no se había descontado nada
   const { data: dev, error } = await c.supabase.rpc("sparked_devolver_guia_de_saldo", { p_movimiento: mov.id, p_nota: texto(motivo, 300) || MSG_FALLO_GUIA, p_gracia_horas: GRACIA_DEVOLUCION_HORAS });
@@ -679,15 +722,23 @@ export async function notaDeSaldo(c: CtxBase, compra: any): Promise<string> {
 async function estadoGuia(c: CtxRutasCuenta, compraId: string): Promise<Response> {
   const s = await sesionDe(c);
   if (!s) return c.error(MSG_SESION, 401);
-  const leer = async () => (await c.supabase.from("compras").select(COLUMNAS_COMPRA).eq("id", compraId).eq("cuenta_id", s.cuenta.id).eq("metodo_pago", "saldo").maybeSingle()).data as CompraCuenta | null;
+  const leer = async () => (await c.supabase.from("compras").select(COLUMNAS_COMPRA).eq("id", compraId).eq("cuenta_id", s.cuenta.id).in("metodo_pago", METODOS_DE_CUENTA).maybeSingle()).data as CompraCuenta | null;
   let x = await leer();
   if (!x || !x.guia_id) return c.error("Esa guía no existe", 404);
   const { data: g } = await c.supabase.from("guias").select("titulo, completo:cartucho->completo").eq("id", x.guia_id).maybeSingle();
-  const titulo = g?.titulo ?? x.titulo ?? null;
+  const titulo = g?.titulo ?? x.titulo ?? null, conSus = x.metodo_pago === "suscripcion";
   const saldo = async () => resumirSaldo(await movimientosDe(c, s.cuenta.id));
   const devuelta = async () => {
     const { data: m } = await c.supabase.from("cuenta_saldo_movimientos").select("nota").eq("compra_id", compraId).eq("motivo", "devolucion").limit(1).maybeSingle();
-    return c.json({ estado: "devuelta", titulo, mensaje: m?.nota ?? MSG_FALLO_GUIA, saldo: await saldo() });
+    // Guía de la suscripción: no hay movimiento de devolución. El motivo en palabras sencillas (por ejemplo, «las fotos no
+    // parecen material de estudio») quedó en el avance del trabajo que falló: se le dice para que no repita las mismas fotos.
+    let motivo: string | null = m?.nota ?? null;
+    if (!motivo && conSus && x?.guia_id) {
+      const { data: t } = await c.supabase.from("trabajos").select("progreso").eq("guia_id", x.guia_id).eq("estado", "error").order("creado_en", { ascending: false }).limit(1).maybeSingle();
+      const dicho = texto((t?.progreso as any)?.mensaje, 300);
+      if (dicho && !/^Estamos revisando/.test(dicho)) motivo = dicho;
+    }
+    return c.json({ estado: "devuelta", titulo, mensaje: motivo ?? (conSus ? MSG_FALLO_GUIA_SUS : MSG_FALLO_GUIA), saldo: await saldo(), con_suscripcion: conSus });
   };
   if (x.estado === "fallida") return await devuelta();
   if (x.estado === "pagada" && !x.entregada_en && g?.completo === true) {
@@ -696,7 +747,7 @@ async function estadoGuia(c: CtxRutasCuenta, compraId: string): Promise<Response
   }
   if (x.estado === "pagada" && x.entregada_en && x.acceso_id) {
     const { data: a } = await c.supabase.from("accesos").select("token, expira_en").eq("id", x.acceso_id).maybeSingle();
-    if (a) return c.json({ estado: "lista", titulo, link: c.linkDe(await c.sitio(), a.token), expira_en: a.expira_en, saldo: await saldo() });
+    if (a) return c.json({ estado: "lista", titulo, link: c.linkDe(await c.sitio(), a.token), expira_en: a.expira_en, saldo: await saldo(), con_suscripcion: conSus });
   }
   const desde = new Date(x.pagada_en ?? x.creada_en).getTime();
   const av = await c.avanceDeGuia(x.guia_id, desde);
@@ -705,7 +756,7 @@ async function estadoGuia(c: CtxRutasCuenta, compraId: string): Promise<Response
     if (await devolverGuiaDeSaldo(c, x.guia_id, MSG_FALLO_GUIA)) return await devuelta();
   }
   const pct = Math.max(1, Math.min(99, Number(av.avance?.pct ?? 1) || 1));
-  return c.json({ estado: "generando", titulo, progreso: av.revision ? { pct, mensaje: "Revisando que todo esté perfecto ✅" } : av.avance ?? { pct: 1, mensaje: "Preparando tus páginas 📖" }, iniciada_en: x.pagada_en ?? x.creada_en });
+  return c.json({ estado: "generando", titulo, progreso: av.revision ? { pct, mensaje: "Revisando que todo esté perfecto ✅" } : av.avance ?? { pct: 1, mensaje: "Preparando tus páginas 📖" }, iniciada_en: x.pagada_en ?? x.creada_en, con_suscripcion: conSus });
 }
 
 // ---------- Administración ----------
@@ -824,10 +875,11 @@ async function adminCuentas(c: CtxRutasCuenta, id: string, accion: string | unde
       const dc = await c.supabase.from("compras").delete().eq("id", x.id).eq("cuenta_id", id);
       if (!dc.error) borrado.compras++;
     }
+    const suscripciones = await borrarSuscripcionesDePrueba(c, id);
     await c.supabase.from("cuenta_codigos").delete().eq("telefono", cuenta.telefono);
     const dq = await c.supabase.from("cuentas").delete().eq("id", id).eq("de_prueba", true);
     if (dq.error) throw dq.error;
-    return c.json({ ok: true, borrado });
+    return c.json({ ok: true, borrado: { ...borrado, suscripciones } });
   }
   return null;
 }
@@ -835,7 +887,7 @@ async function adminCuentas(c: CtxRutasCuenta, id: string, accion: string | unde
 // ---------- Rutas ----------
 export async function rutasCuenta(c: CtxRutasCuenta): Promise<Response | null> {
   const [r0, r1, r2, r3] = c.ruta;
-  const mia = r0 === "cuenta" || r0 === "paquete" || (r0 === "admin" && (r1 === "paquetes" || r1 === "cuentas"));
+  const mia = r0 === "cuenta" || r0 === "paquete" || r0 === "suscripcion" || (r0 === "admin" && (r1 === "paquetes" || r1 === "cuentas"));
   if (!mia) return null;
   try {
     if (r0 === "paquete") {
@@ -844,6 +896,18 @@ export async function rutasCuenta(c: CtxRutasCuenta): Promise<Response | null> {
       if (r1 === "estado" && esUuid(r2) && !r3 && c.m === "GET") return await estadoPaquete(c, r2);
       if (r1 === "reintentar" && esUuid(r2) && !r3 && c.m === "POST") return await reintentarPaquete(c, r2);
       return null;
+    }
+    if (r0 === "suscripcion") {
+      // La suscripción mensual: aquí se comprueba la sesión y lo demás lo hace suscripcion.ts.
+      if (r2) return null;
+      if (r1 === "info" && c.m === "GET") return c.json(infoSuscripcion(await c.config()));
+      const suya = (r1 === "crear" && c.m === "POST") || (r1 === "estado" && c.m === "GET") || (r1 === "cancelar" && c.m === "POST");
+      if (!suya) return null;
+      const s = await sesionDe(c);
+      if (!s) return c.error(MSG_SESION, 401);
+      if (r1 === "crear") return await crearSuscripcion(c, s.cuenta, s.sesion.canal);
+      if (r1 === "estado") return await estadoSuscripcion(c, s.cuenta);
+      return await cancelarDeFamilia(c, s.cuenta);
     }
     if (r0 === "cuenta") {
       if (!r1 && c.m === "GET") return await miCuenta(c);

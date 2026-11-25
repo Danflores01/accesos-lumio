@@ -62,6 +62,16 @@ const r3 = calcularCostos({ ...base, compras: [...compras, paquete("spei", "appr
 revisar(r3.ingresos.mes.ventas === 4 && r3.ingresos.mes.mxn === 499, `un paquete cobrado por SPEI suma UNA venta de $199: 4 ventas y $499 (salió ${r3.ingresos.mes.ventas} y $${r3.ingresos.mes.mxn})`);
 revisar(r3.ingresos.mes.de_paquete === 2 && r3.ingresos.mes.cortesias === 3 && r3.ingresos.mes.con_codigo === 4, `las 2 guías hechas con saldo no son ventas ni cortesías; un paquete de cortesía tampoco es venta (salió ${r3.ingresos.mes.de_paquete} de paquete y ${r3.ingresos.mes.cortesias} cortesías)`);
 
+// ---------- Suscripción mensual (25 nov 2026): la venta es cada COBRO aprobado; las guías hechas con ella no ----------
+revisar(ventaCobrada({ ...P, metodo_pago: "suscripcion" }) === false && tipoSinCobro({ ...P, metodo_pago: "suscripcion" }) === "suscripcion", "guía hecha con la suscripción: no es venta ni cortesía (se cuenta aparte)");
+revisar(!confirmadaAMano({ ...P, metodo_pago: "suscripcion" }), "a una guía hecha con la suscripción no se le puede «cambiar a cobrada por fuera»");
+const cobroSus = (mp_estado, pagada_en) => ({ estado: "pagada", monto_mxn: "349.00", metodo_pago: "tarjeta", mp_estado, pagada_en, producto: "suscripcion" });
+const deSus = (pagada_en) => ({ estado: "pagada", monto_mxn: "0.00", metodo_pago: "suscripcion", mp_estado: null, pagada_en, producto: "guia" });
+const r4 = calcularCostos({ ...base, compras: [...compras, cobroSus("approved", "2026-11-10T16:00:00Z"), cobroSus("rejected", "2026-11-10T16:05:00Z"), cobroSus("refunded", "2026-11-09T16:00:00Z"), deSus("2026-11-10T16:30:00Z"), deSus("2026-11-10T17:30:00Z"), deSus("2026-11-10T18:30:00Z")] });
+revisar(r4.ingresos.mes.ventas === 4 && r4.ingresos.mes.mxn === 649 && r4.ingresos.mes.cobros_suscripcion === 1, `un cobro de suscripción aprobado suma UNA venta de $349; el rechazado y el reembolsado no: 4 ventas y $649 (salió ${r4.ingresos.mes.ventas} y $${r4.ingresos.mes.mxn})`);
+revisar(r4.ingresos.mes.de_suscripcion === 3 && r4.ingresos.mes.cortesias === 2 && r4.ingresos.mes.de_paquete === 0, `las 3 guías hechas con la suscripción no son ventas ni cortesías (salió ${r4.ingresos.mes.de_suscripcion} de suscripción y ${r4.ingresos.mes.cortesias} cortesías)`);
+revisar(r.ingresos.mes.ventas === 3 && r.ingresos.mes.mxn === 300 && r.ingresos.mes.de_suscripcion === 0 && r.ingresos.mes.cobros_suscripcion === 0, "sin suscripciones, noviembre sigue en 3 ventas y $300");
+
 // ---------- El «día de ventas» del Resumen termina a las 11 pm de México (pedido de Daniel, 11 nov 2026) ----------
 // Horas en UTC; México = UTC−6. 22:59 de México (04:59 UTC del día siguiente) todavía es «hoy»; 23:00 ya es mañana.
 const dv = (iso) => inicioDiaVentas(Date.parse(iso));
@@ -78,6 +88,9 @@ const consultas = [...fuentes.matchAll(/\.from\("compras"\)\.select\("([^"]+)"\)
 revisar(consultas.length >= 3 && consultas.every((s) => s.includes("mp_estado") && s.includes("stripe_session_id") && s.includes("estado")), `las ${consultas.length} consultas de cuentas (Resumen, Costos y mes anterior) traen estado, mp_estado y stripe_session_id`);
 revisar(/pendientes: cuenta\(C, \(c\) => c\.estado === "pendiente" && !esPaquete\(c\)\)/.test(fuentes) && /const dePaquete = \(c: any\) => tipoSinCobro\(c\) === "saldo";/.test(fuentes), "el Resumen cuenta los paquetes aparte de las guías, y las guías hechas con saldo aparte de las cortesías");
 revisar(/const venta = \(c: any\) => ventaCobrada\(c\);/.test(fuentes) && !/const venta = \(c: any\) => c\.estado === "pagada" && c\.metodo_pago !== "codigo"/.test(fuentes), "el Resumen usa la misma regla (ventaCobrada) y ya no «todo lo pagado que no sea con código»");
+
+revisar(/const deSuscripcion = \(c: any\) => tipoSinCobro\(c\) === "suscripcion";/.test(fuentes) && /suscripciones: await resumenSuscripciones\(/.test(fuentes), "el Resumen cuenta aparte las guías hechas con la suscripción y trae los cobros de suscripción en su propio bloque");
+revisar(/producto: "suscripcion" \}\)\);/.test(fuentes) && /\.from\("suscripcion_cobros"\)\.select\("mp_estado, monto_mxn, cobrado_en"\)\.eq\("de_prueba", false\)/.test(fuentes), "Costos e impuestos suman los cobros de suscripción con la misma regla (ventaCobrada) y sin los de prueba");
 
 console.log(mal ? `\n${mal} FALLAS: las cuentas del panel no coinciden con lo cobrado.` : "\nCuentas bien: solo cuenta como venta lo que de verdad se cobró.");
 process.exit(mal ? 1 : 0);

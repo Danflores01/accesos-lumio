@@ -220,6 +220,10 @@ async function leerJson(req: Request): Promise<Record<string, any>> { try { retu
 const esUuid = (u: unknown): u is string => typeof u === "string" && /^[0-9a-f-]{36}$/i.test(u);
 const mpToken = () => env.MP_ACCESS_TOKEN ?? "";
 const ctxBase = () => (globalThis as any).__saldo.ctx();
+// Suscripción mensual (25 nov 2026): aquí no hay ninguna; sus avisos se prueban en herramientas/probar-suscripciones.ts.
+const avisoDeSuscripcion = async (_tipo: string, _id: string) => json({ ok: true, ignorado: "suscripcion" });
+const pagoDeSuscripcion = async (_p: unknown) => null;
+${lineaDe(/const TEMAS_SUSCRIPCION = [^;]*;/)}
 ${lineaDe(/const MP_VIVOS = [^;]*;/)}
 ${extraer("limpiarTel")}
 ${extraer("firmaMPValida")}

@@ -1,6 +1,6 @@
 // Candado contra el fallo del 10 nov 2026: un módulo aparte se quedó con una ruta que no era suya.
 //
-// En funciones/sparked/index.ts los módulos aparte (acceso.ts, extras.ts, whatsapp.ts, cuenta.ts) se ejecutan ANTES que las rutas
+// En funciones/sparked/index.ts los módulos aparte (acceso.ts, extras.ts, whatsapp.ts, cuenta.ts, suscripcion.ts) se ejecutan ANTES que las rutas
 // principales. Si un módulo responde algo en una ruta ajena, la ruta de verdad nunca se ejecuta. Así pasó con
 // POST /acceso/<clave de la familia> (la que abre una guía pagada): acceso.ts respondía «Ruta no encontrada» y ninguna
 // familia pudo abrir su guía durante unas horas.
@@ -19,8 +19,8 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ENV = { SUPABASE_URL: "https://demo.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "llave-de-prueba" };
 globalThis.Deno = { env: { get: (k) => ENV[k] } };
 const traer = (f) => import(pathToFileURL(path.join(REPO, "funciones/sparked", f)).href);
-const [{ rutasAcceso }, { rutasExtras }, { rutasWhatsApp }, { rutasCuenta }] = await Promise.all([traer("acceso.ts"), traer("extras.ts"), traer("whatsapp.ts"), traer("cuenta.ts")]);
-const MODULOS = { "acceso.ts": rutasAcceso, "extras.ts": rutasExtras, "whatsapp.ts": rutasWhatsApp, "cuenta.ts": rutasCuenta };
+const [{ rutasAcceso }, { rutasExtras }, { rutasWhatsApp }, { rutasCuenta }, { rutasSuscripcion }] = await Promise.all([traer("acceso.ts"), traer("extras.ts"), traer("whatsapp.ts"), traer("cuenta.ts"), traer("suscripcion.ts")]);
+const MODULOS = { "acceso.ts": rutasAcceso, "extras.ts": rutasExtras, "whatsapp.ts": rutasWhatsApp, "cuenta.ts": rutasCuenta, "suscripcion.ts": rutasSuscripcion };
 
 // En una ruta ajena un módulo no debe tocar nada: ni la base de datos, ni internet, ni preguntar quién es.
 const tocado = [];
@@ -36,7 +36,7 @@ function contexto(m, ruta, cuerpo) {
     mandarCorreo: async () => { tocado.push("correo"); }, avisarDaniel: async () => { tocado.push("aviso"); }, enSegundoPlano: () => { tocado.push("segundo plano"); },
     // Lo que cuenta.ts recibe además de lo común (ExtrasCuenta, en tipos.ts).
     limpiarTel: (t) => { const d = String(t ?? "").replace(/\D/g, ""); return d.length === 10 ? "+52" + d : ""; }, mpToken: () => "",
-    ...Object.fromEntries(["crearPreferenciaPaquete", "revisarCompraMP", "tocaRevisarMP", "entregar", "entregarGuiaLista", "avanceDeGuia", "archivosSubidos", "borrarCarpeta", "disparar", "linkDe"].map((n) => [n, (...a) => { tocado.push(n); return prohibido(n)(...a); }])),
+    ...Object.fromEntries(["crearPreferenciaPaquete", "revisarCompraMP", "tocaRevisarMP", "entregar", "entregarGuiaLista", "avanceDeGuia", "archivosSubidos", "borrarCarpeta", "disparar", "linkDe", "mp", "mpPrueba"].map((n) => [n, (...a) => { tocado.push(n); return prohibido(n)(...a); }])),
     diasAcceso: 7, dispositivos: 2,
   };
 }
@@ -50,6 +50,7 @@ const DE_INDEX = [
   ...CLAVES.flatMap((k) => [["POST", ["acceso", k]], ["POST", ["acceso", k, "abrir"]], ["GET", ["acceso", k, "estado"]], ["POST", ["progreso", k]]]),
   ["GET", ["vista-previa", UUID]], ["POST", ["borrador"]], ["GET", ["borrador", CLAVE_BORRADOR]], ["POST", ["borrador", CLAVE_BORRADOR, "generar"]],
   ["POST", ["pago", "crear"]], ["GET", ["pago", "estado", UUID]], ["POST", ["pago", "reintentar", UUID]], ["POST", ["pago", "mercadopago"]], ["POST", ["pago", "webhook"]],
+  ["POST", ["pago", "mercadopago", "suscripcion"]], ["GET", ["pago", "suscripcion"]],
   ["POST", ["reporte"]], ["GET", ["datos-curiosos"]], ["GET", ["colegios"]], ["POST", ["buscar"]], ["POST", ["solicitud"]],
   ["POST", ["trabajo", UUID, "paso"]], ["GET", ["trabajo", UUID]],
   ["GET", ["admin", "ping"]], ["GET", ["admin", "resumen"]], ["GET", ["admin", "compras"]], ["POST", ["admin", "compras", UUID, "pagar"]], ["POST", ["admin", "compras", UUID, "cobro"]], ["POST", ["admin", "compras", UUID, "revisar"]],
@@ -116,6 +117,35 @@ await revisar("cuenta.ts atiende lo suyo (cuentas y paquete de 3 guías) y nada 
   assert.equal(await estado(rutasCuenta, "GET", ["cuentas"]), null);
   assert.equal(await estado(rutasCuenta, "GET", ["admin", "cuenta"]), null);
   assert.equal(await estado(rutasCuenta, "POST", ["acceso", "entrar"]), null);
+});
+await revisar("la suscripción mensual: sus rutas de la familia las recibe cuenta.ts (que conoce la sesión) y nada más", async () => {
+  assert.equal(await estado(rutasCuenta, "GET", ["suscripcion", "info"]), 200);
+  assert.equal(await estado(rutasCuenta, "POST", ["suscripcion", "crear"], { acepta: true }), 401);     // sin sesión
+  assert.equal(await estado(rutasCuenta, "GET", ["suscripcion", "estado"]), 401);
+  assert.equal(await estado(rutasCuenta, "POST", ["suscripcion", "cancelar"]), 401);
+  assert.equal(await estado(rutasCuenta, "GET", ["suscripcion"]), null);
+  assert.equal(await estado(rutasCuenta, "GET", ["suscripcion", "crear"]), null);
+  assert.equal(await estado(rutasCuenta, "POST", ["suscripcion", "estado"]), null);
+  assert.equal(await estado(rutasCuenta, "GET", ["suscripcion", "cancelar"]), null);
+  assert.equal(await estado(rutasCuenta, "POST", ["suscripcion", "crear", "otra"]), null);
+  assert.equal(await estado(rutasCuenta, "GET", ["suscripciones"]), null);
+  assert.equal(await estado(rutasCuenta, "GET", ["admin", "suscripciones"]), null);                     // esa es de suscripcion.ts
+});
+await revisar("suscripcion.ts atiende solo su administración", async () => {
+  assert.equal(await estado(rutasSuscripcion, "GET", ["admin", "suscripciones"]), 401);
+  assert.equal(await estado(rutasSuscripcion, "POST", ["admin", "suscripciones", "diario"]), 401);
+  assert.equal(await estado(rutasSuscripcion, "POST", ["admin", "suscripciones", "probadores"], { agregar: "5512345678" }), 401);
+  assert.equal(await estado(rutasSuscripcion, "GET", ["admin", "suscripciones", UUID]), 401);
+  assert.equal(await estado(rutasSuscripcion, "POST", ["admin", "suscripciones", UUID, "cancelar"]), 401);
+  assert.equal(await estado(rutasSuscripcion, "POST", ["admin", "suscripciones", UUID, "prueba"], { accion: "pago" }), 401);
+  // Las rutas de la familia, el aviso de Mercado Pago y lo demás del panel no son suyas.
+  assert.equal(await estado(rutasSuscripcion, "GET", ["suscripcion", "info"]), null);
+  assert.equal(await estado(rutasSuscripcion, "POST", ["suscripcion", "crear"]), null);
+  assert.equal(await estado(rutasSuscripcion, "POST", ["suscripcion", "cancelar"]), null);
+  assert.equal(await estado(rutasSuscripcion, "GET", ["admin", "suscripcion"]), null);
+  assert.equal(await estado(rutasSuscripcion, "GET", ["admin", "paquetes"]), null);
+  assert.equal(await estado(rutasSuscripcion, "GET", ["admin", "cuentas", UUID]), null);
+  assert.equal(await estado(rutasSuscripcion, "GET", ["cuenta"]), null);
 });
 console.log(`${fallas ? "FALLA" : "ok   "} cada módulo sigue atendiendo sus propias rutas`);
 

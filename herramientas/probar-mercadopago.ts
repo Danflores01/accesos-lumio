@@ -4,7 +4,8 @@
 // Toma del código real las funciones firmaMPValida, metodoMP, procesarPagoMP y avisoMercadoPago, les pone una base de
 // datos y una API de Mercado Pago de juguete y revisa: la firma de los avisos (con vectores calculados aparte con
 // node:crypto), que el aviso rechace firmas malas con 401, que un pago pendiente de OXXO quede anotado y que un pago
-// aprobado entregue la guía una sola vez aunque el aviso llegue repetido o dos veces al mismo tiempo.
+// aprobado entregue la guía una sola vez aunque el aviso llegue repetido o dos veces al mismo tiempo. Y que los avisos de
+// la suscripción mensual (25 nov 2026) se separen ANTES de la lógica de las guías sueltas, sin tocar ninguna compra.
 import { createHmac } from "node:crypto";
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -53,7 +54,12 @@ function consulta(tabla: string) {
 }
 const pagos: Record<string, any> = {};
 const confirmados: string[] = [];
+// Suscripción mensual: avisoMercadoPago le pasa sus temas a suscripcion.ts (aquí, dos dobles que anotan lo que reciben).
+const SUSCRIPCION = "99999999-9999-4999-8999-999999999999";
+const avisosSus: string[] = [], pagosPreguntados: string[] = [], cobrosSus: string[] = [];
 Object.assign(globalThis as any, {
+  __avisoSus: async (tipo: string, id: string) => { avisosSus.push(`${tipo}:${id}`); return new Response(JSON.stringify({ ok: true, suscripcion: true, resultado: "al_dia" }), { status: 200, headers: { "content-type": "application/json" } }); },
+  __pagoSus: async (p: any) => { pagosPreguntados.push(String(p.id)); if (p.external_reference !== SUSCRIPCION) return null; cobrosSus.push(String(p.id)); return "cobrado"; },
   __env: env,
   __supabase: { from: consulta },
   __mp: async (ruta: string) => {
@@ -78,6 +84,9 @@ const mpToken = () => env.MP_ACCESS_TOKEN ?? "";
 const mp = (ruta: string, op?: unknown) => globalThis.__mp(ruta, op);
 const confirmarPago = (id: string) => globalThis.__confirmar(id);
 const supabase = globalThis.__supabase;
+const avisoDeSuscripcion = (tipo: string, id: string) => globalThis.__avisoSus(tipo, id);
+const pagoDeSuscripcion = (p: unknown) => globalThis.__pagoSus(p);
+${lineaDe(/const TEMAS_SUSCRIPCION = [^;]*;/)}
 ${lineaDe(/const MP_VIVOS = [^;]*;/)}
 ${extraer("firmaMPValida")}
 ${extraer("metodoMP")}
@@ -197,6 +206,31 @@ res = await revisarCompraMP(C4, "9010");
 revisa(res === "pagada" && compra(C4).estado === "pagada" && confirmados.filter((x) => x === C4).length === 1, `la búsqueda encuentra el pago aprobado → se entrega (${res})`);
 res = await revisarCompraMP(C4, "9012");
 revisa(res === "ya_pagada" && confirmados.filter((x) => x === C4).length === 1, `revisar otra vez → ya_pagada, sin repetir (${res})`);
+
+// ---------- 5. Suscripción mensual: sus avisos van aparte y no tocan las guías sueltas ----------
+console.log("5. Avisos de la suscripción mensual");
+env.MP_WEBHOOK_SECRET = secreto;
+{
+  const fotoCompras = JSON.stringify(db.compras), entregasAntes = confirmados.length;
+  const PRE = "2c938084726fca480172750000000000";
+  r = await aviso(`?data.id=${PRE}&type=subscription_preapproval`, firmado(PRE), { type: "subscription_preapproval", data: { id: PRE } });
+  revisa(r.status === 200 && r.datos.suscripcion === true && avisosSus.at(-1) === `subscription_preapproval:${PRE}`, `aviso de suscripción (alta o cambio) con firma válida → lo atiende el módulo de suscripciones (${r.status})`);
+  r = await aviso("?data.id=6114264375&type=subscription_authorized_payment", firmado("6114264375"), { type: "subscription_authorized_payment", data: { id: "6114264375" } });
+  revisa(r.status === 200 && avisosSus.at(-1) === "subscription_authorized_payment:6114264375", "aviso de un cobro de suscripción con firma válida → lo atiende el módulo de suscripciones");
+  const antes = avisosSus.length;
+  r = await aviso(`?data.id=${PRE}&type=subscription_preapproval`, firmado(PRE, "clave-de-otro"), { type: "subscription_preapproval", data: { id: PRE } });
+  const sinFirma = await aviso(`?data.id=${PRE}&type=subscription_preapproval`, {}, { type: "subscription_preapproval", data: { id: PRE } });
+  revisa(r.status === 401 && sinFirma.status === 401 && avisosSus.length === antes, `aviso de suscripción con firma falsa o sin firma → 401 y no llega al módulo (${r.status} / ${sinFirma.status})`);
+  pagos["9100"] = { id: 9100, status: "approved", payment_type_id: "credit_card", payment_method_id: "visa", external_reference: SUSCRIPCION, transaction_amount: 349, currency_id: "MXN" };
+  r = await aviso("?data.id=9100&type=payment", firmado("9100"), pagoCuerpo("9100"));
+  revisa(r.status === 200 && r.datos.suscripcion === true && r.datos.resultado === "cobrado" && cobrosSus.includes("9100"), `el pago de una suscripción (tema «Pagos») → se aplica a la suscripción, no a una compra (${r.datos.resultado})`);
+  revisa(JSON.stringify(db.compras) === fotoCompras && confirmados.length === entregasAntes, "ningún aviso de suscripción tocó una compra ni entregó una guía");
+  const C5 = "55555555-5555-4555-8555-555555555555";
+  db.compras.push({ id: C5, estado: "pendiente", monto_mxn: 100 });
+  pagos["9101"] = { id: 9101, status: "approved", payment_type_id: "credit_card", payment_method_id: "visa", external_reference: C5, transaction_amount: 100, currency_id: "MXN" };
+  r = await aviso("?data.id=9101&type=payment", firmado("9101"), pagoCuerpo("9101"));
+  revisa(r.status === 200 && r.datos.resultado === "pagada" && r.datos.suscripcion === undefined && compra(C5).estado === "pagada" && confirmados.filter((x) => x === C5).length === 1 && pagosPreguntados.includes("9101") && !cobrosSus.includes("9101"), `el pago de una guía suelta sigue su camino de siempre: se entrega una vez (${r.datos.resultado})`);
+}
 
 console.log(fallas ? `\n${fallas} prueba(s) fallaron` : "\nTodo bien");
 process.exit(fallas ? 1 : 0);
