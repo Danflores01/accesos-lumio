@@ -9,8 +9,7 @@
 //
 // Revisiones ANTES de subir (si una falla, no se sube nada):
 //   · la copia local está al día con GitHub;
-//   · ningún archivo es privado (CLAVES.txt) ni de la fase 1 (accesos/, entrar.html, panel.html de la raíz, icons/,
-//     funciones/ir, funciones/admin);
+//   · ningún archivo es privado (CLAVES.txt) (la fase 1, Accesos Lumio, se retiró el 26 nov 2026);
 //   · sintaxis de cada .js, .mjs, .ts y .json, y de los guiones escritos dentro de cada .html;
 //   · si va código del servidor: herramientas/probar-rutas.mjs (ningún módulo tapa una ruta ajena), probar-ventas.mjs,
 //     probar-codigos.ts, probar-mercadopago.ts, probar-saldo.ts y probar-suscripciones.ts (las cuentas del dinero, del
@@ -69,7 +68,6 @@ const alto = (t) => { console.log("ALTO  " + t); process.exit(1); };
 // ---------- Revisiones de antes ----------
 const PROHIBIDOS = [
   [/^(CLAVES\.txt|\.prueba_ids)$|^(\.dev|\.claude)\//, "es privado y nunca se sube"],
-  [/^(accesos\/|icons\/|funciones\/(ir|admin)\/)|^(entrar|panel)\.html$/, "es de la fase 1, que no se toca"],
 ];
 const relativo = (f) => {
   const porAqui = path.resolve(process.cwd(), f), porRepo = path.resolve(REPO, f);

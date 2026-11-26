@@ -106,4 +106,4 @@ navegador de verdad, sin pagar: debe decir «SparkEd: paquete de 3 guías · $ 1
   confirmar un pago a mano, extender o liberar un acceso, reembolsar, borrar datos, cambiar llaves o ajustes de sus
   cuentas, desplegar el servidor si el permiso fue rechazado.
 - **Nunca:** abrir el link de una familia para «probar» (gasta uno de sus 2 dispositivos), imprimir claves, teléfonos,
-  correos o nombres, tocar la fase 1.
+  correos o nombres.

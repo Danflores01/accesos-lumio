@@ -41,7 +41,6 @@ el cambio si la ronda encuentra una falla nueva.
 - imprimir o guardar claves de links, la clave de administrador, nombres, teléfonos o correos de clientes;
 - escribirle a una familia, reenviar entregas, confirmar pagos, extender accesos, reembolsar o borrar datos: eso lo
   decide Daniel, y se le propone;
-- tocar la fase 1 (`accesos/`, `entrar.html`, `panel.html` de la raíz, `icons/`, funciones `ir` y `admin`);
 - rodear un permiso rechazado (por ejemplo, el despliegue del servidor).
 
 ## Cómo entregas

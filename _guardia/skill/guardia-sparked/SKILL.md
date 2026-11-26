@@ -80,7 +80,7 @@ Todo cambio de SparkEd pasa por aquí, por pequeño que parezca. El del 10 de no
 **Lanzar**
 
 - **Sitio** (todo lo de `sparked/`, herramientas, documentos): con la compuerta. Revisa sintaxis, que no vaya nada
-  privado ni de la fase 1, prueba esta copia contra el servidor real, sube una sola vez, espera a GitHub Pages y corre
+  privado, prueba esta copia contra el servidor real, sube una sola vez, espera a GitHub Pages y corre
   la ronda. Un comando, de 1 a 2 minutos:
 
   ```bash
@@ -157,8 +157,8 @@ en claro. Cada `AVISO`, en una línea, con lo que significa y si a él le toca h
   Para diagnosticar bastan folios, horas y estados; las consultas de esta skill ya vienen sin datos personales.
 - **A una familia solo le escribe Daniel.** Reenviar una entrega, confirmar un pago a mano, extender o liberar un
   acceso, reembolsar o borrar datos lo decide él, cada vez (`references/sintomas.md`, «Quién decide»).
-- **La fase 1 no se toca:** `accesos/`, `entrar.html`, el `panel.html` de la raíz, `icons/`, las funciones `ir` y
-  `admin`. Es otro producto y sigue vivo. La compuerta se niega a subir esos archivos.
+- **La fase 1 (Accesos Lumio) ya no existe** (retirada el 26 nov 2026): `entrar.html`, `accesos/` y el `panel.html` de
+  la raíz solo redirigen a SparkEd. Sus datos viejos (clases tipo `lumio`) se guardan; no se borran sin el sí de Daniel.
 - **Si el sistema de permisos rechaza un despliegue, no lo rodees.** Resuelve por el sitio si se puede y pide a Daniel
   su sí en una línea.
 - **Un solo push por minuto y nunca `git add -A`:** dos seguidos tumban la publicación, y `CLAVES.txt` jamás se sube.

@@ -37,7 +37,7 @@ y corre la ronda. Si las revisiones de antes fallan, no sube nada:
 node _guardia/skill/guardia-sparked/scripts/lanzar.mjs -m "URGENTE: <qué se arregla>" <archivo> [<archivo> …]
 ```
 
-Lo que revisa antes: copia al día con GitHub, nada privado ni de la fase 1, sintaxis de cada archivo (también los
+Lo que revisa antes: copia al día con GitHub, nada privado, sintaxis de cada archivo (también los
 guiones dentro de las páginas), `probar-rutas` si va código del servidor y la prueba de humo **de esta copia** contra
 el servidor real. Esa última es la que habría atrapado un reproductor que pide una dirección que el servidor no
 atiende. `--revisar` hace solo las revisiones; `--esperar` espera lo ya subido y corre la ronda.

@@ -127,5 +127,6 @@ La generación vive en `pipeline.ts` y `prompts.ts`. El despliegue es por puente
 
 ## Lo que no se toca
 
-La fase 1 (`accesos/`, `entrar.html`, el `panel.html` de la raíz, las funciones `ir` y `admin`, la carpeta `icons/`)
-es otro producto que sigue vivo. Un arreglo de SparkEd nunca la modifica.
+La fase 1 (Accesos Lumio, el prototipo) se retiró el 26 nov 2026 por decisión de Daniel: `entrar.html`, `accesos/` y el
+`panel.html` de la raíz solo redirigen a SparkEd, y las funciones `ir` y `admin` ya no atienden. Sus datos se guardan
+en la base (clases tipo `lumio` y sus accesos) sin usarse: no se borran sin el sí de Daniel.

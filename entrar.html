@@ -1,94 +1,14 @@
 <!doctype html>
-<!--
-  Página de entrada para los alumnos (marca SparkEd). Se hospeda en GitHub Pages porque el dominio
-  gratuito de Supabase convierte todo HTML a texto plano.
-  Los links de alumnos son  https://<sitio>/entrar.html#TOKEN  : el token va después de "#", así que
-  las vistas previas de WhatsApp nunca lo ven ni lo consumen.
-  Regla de familia: la primera vez que este aparato entra, el servidor le asigna un secreto que se guarda
-  aquí (localStorage, clave "disp_" + token) y se manda en cada entrada; así cada link acepta solo los
-  aparatos permitidos por la clase. Sin almacenamiento (navegación privada) la entrada funciona igual,
-  pero cada vez cuenta como un aparato nuevo.
--->
+<!-- Fase 1 (Accesos Lumio) retirada el 26 nov 2026 por decisión de Daniel. Los links viejos llevan a SparkEd. -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#FFD400">
-<meta property="og:title" content="SparkEd · Acceso a tu clase">
-<meta property="og:description" content="Enlace personal. Ábrelo para entrar a la clase.">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-<title>SparkEd · Acceso a tu clase</title>
-<style>
-  /* Marca SparkEd: amarillo #FFD400, texto negro, fondo blanco */
-  * { box-sizing: border-box; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
-         font-family: Poppins, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #FFFFFF; color: #111111; }
-  .tarjeta { background: #fff; border: 1px solid #EBE6D2; border-top: 6px solid #FFD400; border-radius: 24px; padding: 32px 24px; max-width: 420px; width: 100%; box-shadow: 0 16px 40px rgba(0,0,0,.08); text-align: center; }
-  .marca { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 14px; }
-  .marca svg { width: 36px; height: 60px; }
-  .marca .nombre { font-weight: 700; font-size: 1.5rem; letter-spacing: -.02em; }
-  .marca .nombre span { color: #FFD400; }
-  h1 { font-size: 1.4rem; margin: 0 0 8px; font-weight: 700; }
-  p { margin: 8px 0; line-height: 1.5; }
-  .nota { font-size: .85rem; color: #6B6B6B; margin-top: 20px; }
-  .familia { background: #FFF7CC; border-radius: 14px; padding: 10px 14px; font-size: .9rem; margin-top: 14px; }
-  button { margin-top: 20px; width: 100%; padding: 18px; font-size: 1.1rem; font-weight: 600; border: 0; border-radius: 999px; background: #FFD400; color: #111; cursor: pointer; font-family: inherit; box-shadow: 0 8px 18px rgba(255,212,0,.45); }
-  button:disabled { opacity: .6; }
-  .icono { font-size: 2.2rem; margin-bottom: 6px; }
-</style>
+<meta name="robots" content="noindex">
+<title>SparkEd</title>
+<script>location.replace("sparked/");</script>
 </head>
 <body>
-<div class="tarjeta" id="t"><div class="marca"><svg viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg><div class="nombre">Spark<span>Ed</span></div></div><div class="icono">⏳</div><h1>Verificando tu acceso…</h1></div>
-<script>
-(function () {
-  var IR = 'https://wfqfqfsbkqbaejnkhidz.supabase.co/functions/v1/ir/';
-  var MARCA = '<div class="marca"><svg viewBox="0 0 60 100"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg><div class="nombre">Spark<span>Ed</span></div></div>';
-  var MENSAJES = {
-    inexistente: ['🔗', 'Enlace no válido', 'Este enlace no existe o está incompleto. Revisa que lo hayas abierto completo.'],
-    borrador: ['⏳', 'Enlace aún no activo', 'Este enlace todavía no está activo. Pídele al profesor que te lo envíe de nuevo.'],
-    expirado: ['⏰', 'Enlace vencido', 'Este enlace ya pasó su fecha de vigencia.'],
-    cerrado: ['🔒', 'Enlace cerrado', 'Este enlace ya fue abierto y su tiempo de uso terminó.'],
-    agotado: ['🔒', 'Enlace agotado', 'Este enlace ya se usó el máximo de veces permitido.'],
-    revocado: ['⛔', 'Acceso cancelado', 'Este acceso fue cancelado por el profesor.'],
-    clase_inactiva: ['📕', 'Clase cerrada', 'Esta clase ya no está disponible.'],
-    otro_dispositivo: ['📵', 'Acceso en uso en otros aparatos', 'Este acceso ya se usa en los aparatos permitidos. Si es tu propio aparato, cierra la navegación privada y vuelve a abrir el link; si no, pídele al profesor un link nuevo.'],
-    error: ['⚠️', 'Algo falló', 'No se pudo validar el enlace. Intenta de nuevo en un momento.']
-  };
-  var t = document.getElementById('t');
-  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function mostrar(estado) {
-    var m = MENSAJES[estado] || MENSAJES.inexistente;
-    var pie = estado === 'otro_dispositivo' ? 'Cada link es de una sola familia y acepta pocos aparatos.' : 'Si eres el alumno, pídele al profesor un enlace nuevo. Los enlaces son de una sola familia y no se pueden compartir.';
-    t.innerHTML = MARCA + '<div class="icono">' + m[0] + '</div><h1>' + esc(m[1]) + '</h1><p>' + esc(m[2]) + '</p><p class="nota">' + esc(pie) + '</p>';
-  }
-  var token = (location.hash || '').replace(/^#/, '') || new URLSearchParams(location.search).get('t') || '';
-  if (!/^[A-Za-z0-9]{8,64}$/.test(token)) { mostrar('inexistente'); return; }
-
-  // Secreto de este aparato para este link. Si el navegador no guarda nada, la entrada funciona igual.
-  var CLAVE_DISP = 'disp_' + token;
-  function leerSecreto() { try { return localStorage.getItem(CLAVE_DISP) || ''; } catch (e) { return ''; } }
-  function guardarSecreto(s) { try { if (s) localStorage.setItem(CLAVE_DISP, s); } catch (e) {} }
-
-  fetch(IR + token + '?json=1').then(function (r) { return r.json(); }).then(function (r) {
-    if (r.estado !== 'pendiente' && r.estado !== 'abierto') return mostrar(r.estado);
-    t.innerHTML = MARCA + '<div class="icono">🎓</div><h1>Tu acceso está listo</h1><p>Clase: <strong>' + esc(r.clase) + '</strong></p>' +
-      (r.alumno ? '<p>Acceso de: <strong>' + esc(r.alumno) + '</strong></p>' : '') +
-      '<p class="familia">Este acceso es para el alumno. Si eres mamá o papá, reenvíaselo a tu hijo o deja que escanee el código; no hace falta que presiones Entrar.</p>' +
-      '<button id="b">Entrar a la clase</button><p class="nota">Este enlace es de tu familia: no lo compartas con otras personas.</p>';
-    document.getElementById('b').addEventListener('click', function () {
-      var b = this; b.disabled = true; b.textContent = 'Entrando…';
-      var secreto = leerSecreto();
-      fetch(IR + token + '?json=1', { method: 'POST', body: JSON.stringify(secreto ? { dispositivo: secreto } : {}) })
-        .then(function (r) { return r.json(); }).then(function (r) {
-          if (r.dispositivo) guardarSecreto(r.dispositivo);
-          if (r.estado === 'ok' && r.url) location.replace(r.url); else mostrar(r.estado);
-        }).catch(function () { mostrar('error'); });
-    });
-  }).catch(function () { mostrar('error'); });
-})();
-</script>
+<p>Abriendo <a href="sparked/">SparkEd</a>…</p>
 </body>
 </html>
