@@ -14,7 +14,11 @@
 //   · la guía de la suscriptora se genera completa, no gasta el saldo del paquete, no es venta y sigue abierta mientras
 //     la suscripción esté pagada; más de 15 guías en la prueba avisa a Daniel y no bloquea;
 //   · la tarea diaria con fechas simuladas: aviso de renovación 6 días antes (una vez), gracia → vencida;
-//   · las cuentas del panel: un cobro es venta solo si Mercado Pago lo aprobó; el WhatsApp nunca sale completo.
+//   · las cuentas del panel: un cobro es venta solo si Mercado Pago lo aprobó; el WhatsApp nunca sale completo;
+//   · cambiar el método de pago SIN cancelar (25 nov 2026): activa, en prueba y en gracia; el contrato anterior se
+//     cancela solo después de que Mercado Pago confirma el nuevo; abandonar a la mitad no toca nada; el aviso repetido
+//     no lo aplica dos veces; no hay cobro doble ni otra prueba gratis; la tarjeta nueva queda en pruebas_usadas; y el
+//     aviso de cobro fallido trae el link directo a «Cambiar método de pago».
 // La prueba en vivo (contra producción, con una cuenta de prueba) es _guardia/skill/guardia-sparked/scripts/probar-suscripcion.mjs.
 import { createHmac, createHash } from "node:crypto";
 import { readFileSync, writeFileSync, mkdtempSync, rmSync, readdirSync } from "node:fs";
@@ -54,8 +58,9 @@ const DEFECTO: Record<string, () => Fila> = {
   trabajos: () => ({ actualizado_en: ahoraIso(), intentos: 0, costo_usd: 0, error: null }),
   accesos: () => ({ primer_uso_en: null, revocado: false, usos: 0 }),
   reportes: () => ({ estado: "nuevo" }),
-  suscripciones: () => ({ estado: "pendiente", motor: "mercadopago", frecuencia: "mensual", correo_pago: null, con_prueba: false, primer_cobro_en: null, prueba_hasta: null, acepto_en: null, acepto_texto: null, mp_preapproval_id: null, mp_estado: null, mp_init_point: null, mp_medio: null, mp_error: null, mp_revisado_en: null, periodo_inicio: null, periodo_fin: null, proximo_cobro: null, aviso_renovacion_en: null, aviso_renovacion_para: null, gracia_desde: null, gracia_hasta: null, cancelada_en: null, cancelada_por: null, cancelada_mp_en: null, motivo_fin: null, vencida_en: null, revisar: false, revisar_motivo: null, aviso_uso_prueba_en: null, de_prueba: false, actualizada_en: ahoraIso() }),
+  suscripciones: () => ({ estado: "pendiente", motor: "mercadopago", frecuencia: "mensual", correo_pago: null, con_prueba: false, primer_cobro_en: null, prueba_hasta: null, acepto_en: null, acepto_texto: null, mp_preapproval_id: null, mp_estado: null, mp_init_point: null, mp_medio: null, mp_tarjeta: null, mp_error: null, mp_revisado_en: null, periodo_inicio: null, periodo_fin: null, proximo_cobro: null, aviso_renovacion_en: null, aviso_renovacion_para: null, gracia_desde: null, gracia_hasta: null, cancelada_en: null, cancelada_por: null, cancelada_mp_en: null, motivo_fin: null, vencida_en: null, revisar: false, revisar_motivo: null, aviso_uso_prueba_en: null, de_prueba: false, actualizada_en: ahoraIso() }),
   pruebas_usadas: () => ({ cuenta_id: null, telefono: null, huella_tarjeta: null, suscripcion_id: null, usada_en: ahoraIso() }),
+  suscripcion_cambios_pago: () => ({ estado: "pendiente", motivo: null, estado_al_pedir: null, inmediato: false, primer_cobro_en: null, correo_pago: null, mp_preapproval_id: null, mp_estado: null, mp_init_point: null, mp_medio: null, mp_tarjeta: null, mp_error: null, mp_preapproval_anterior: null, aplicando_desde: null, anterior_cancelado_en: null, nuevo_cancelado_en: null, aplicado_en: null, de_prueba: false, actualizado_en: ahoraIso() }),
 };
 const DUPLICADO = { code: "23505", message: "duplicate key value violates unique constraint" };
 function consulta(tabla: string) {
@@ -84,6 +89,8 @@ function consulta(tabla: string) {
         // Los índices únicos parciales de la migración: una suscripción viva por cuenta; una prueba gratis por WhatsApp y por tarjeta.
         if (tabla === "suscripciones" && VIVAS.includes(n.estado ?? "pendiente") && db[tabla].some((f) => f.cuenta_id === n.cuenta_id && VIVAS.includes(f.estado))) return { data: null, error: DUPLICADO };
         if (tabla === "pruebas_usadas" && db[tabla].some((f) => (n.telefono && f.telefono === n.telefono) || (n.huella_tarjeta && f.huella_tarjeta === n.huella_tarjeta))) return { data: null, error: DUPLICADO };
+        // Los de la migración del método de pago: un solo cambio pendiente por suscripción y un contrato por cambio.
+        if (tabla === "suscripcion_cambios_pago" && db[tabla].some((f) => (f.suscripcion_id === n.suscripcion_id && f.estado === "pendiente" && (n.estado ?? "pendiente") === "pendiente") || (n.mp_preapproval_id && f.mp_preapproval_id === n.mp_preapproval_id))) return { data: null, error: DUPLICADO };
         const fila: Fila = { id: NUMERADAS.includes(tabla) ? ++serie : crypto.randomUUID(), [FECHA_ALTA[tabla] ?? "creado_en"]: ahoraIso(), ...(DEFECTO[tabla]?.() ?? {}), ...n };
         db[tabla].push(fila); hechas.push(fila); reloj += 1;
       }
@@ -188,6 +195,23 @@ const RPC: Record<string, (p: any) => Fila[]> = {
     }
     return [{ res_cobro: c.id, res_nuevo: nuevo, res_estado_anterior: prev, res_aplicado: aplicado, res_antes: antes, res_ahora: s.estado, res_periodo_inicio: s.periodo_inicio, res_periodo_fin: s.periodo_fin }];
   },
+  // sql/migraciones/20261125_sparked_suscripcion_metodo_de_pago.sql: la suscripción pasa al contrato nuevo y el cambio
+  // queda aplicado, las dos cosas o ninguna.
+  sparked_aplicar_cambio_pago(p) {
+    const k = (db.suscripcion_cambios_pago ?? []).find((x) => x.id === p.p_cambio);
+    const s = k ? (db.suscripciones ?? []).find((x) => x.id === k.suscripcion_id) : null;
+    if (!k || !s) return [];
+    const fila = (estado: string, anterior = k.mp_preapproval_anterior) => [{ res_estado: estado, res_suscripcion: s.id, res_estado_suscripcion: s.estado, res_anterior: anterior ?? null, res_nuevo: k.mp_preapproval_id }];
+    if (k.estado === "aplicado") return fila("ya_aplicado");
+    if (k.estado !== "pendiente" || !k.mp_preapproval_id) return fila("descartado");
+    if (!["en_prueba", "activa", "en_gracia"].includes(s.estado)) return fila("suscripcion_terminada");
+    if ((k.mp_preapproval_anterior ?? null) !== (s.mp_preapproval_id ?? null)) return fila("no_coincide");
+    const anterior = s.mp_preapproval_id;
+    Object.assign(s, { mp_preapproval_id: k.mp_preapproval_id, mp_estado: "authorized", mp_medio: p.p_medio ?? k.mp_medio ?? null, mp_tarjeta: k.mp_tarjeta ?? null, mp_init_point: null, correo_pago: k.correo_pago ?? s.correo_pago, mp_error: null, mp_revisado_en: ahoraIso(), actualizada_en: ahoraIso() });
+    Object.assign(k, { estado: "aplicado", aplicado_en: ahoraIso(), mp_estado: "authorized", mp_medio: p.p_medio ?? k.mp_medio ?? null, aplicando_desde: null, mp_error: null, actualizado_en: ahoraIso() });
+    reloj += 1;
+    return fila("aplicado", anterior);
+  },
 };
 const subidas = new Set<string>();
 const almacen = {
@@ -198,7 +222,7 @@ const almacen = {
 const supabase = { from: consulta, storage: { from: () => almacen }, async rpc(nombre: string, p: any) { await null; return RPC[nombre] ? { data: RPC[nombre](p), error: null } : { data: null, error: { message: "función desconocida: " + nombre } }; } };
 
 // ---------- Mercado Pago de juguete: suscripciones (preapproval), cuotas (authorized_payments) y pagos ----------
-const MP = { pre: {} as Record<string, any>, pagos: {} as Record<string, any>, cuotas: {} as Record<string, any>, llamadas: [] as string[], n: 0, caido: false, soloCanceled: false, ignoraFecha: false };
+const MP = { pre: {} as Record<string, any>, pagos: {} as Record<string, any>, cuotas: {} as Record<string, any>, llamadas: [] as string[], n: 0, caido: false, soloCanceled: false, ignoraFecha: false, noCancela: new Set<string>() };
 let nPago = 500000;
 const responder = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { "content-type": "application/json" } });
 function mercadoPago(metodo: string, ruta: string, cuerpo: any): Response {
@@ -218,12 +242,17 @@ function mercadoPago(metodo: string, ruta: string, cuerpo: any): Response {
     if (!pre) return responder({ message: "preapproval not found" }, 404);
     if (metodo === "PUT") {
       if (cuerpo.status === "cancelled" && MP.soloCanceled) return responder({ message: "status: invalid value" }, 400);
+      if (/^cancel/.test(String(cuerpo.status ?? "")) && MP.noCancela.has(pre.id)) return responder({ message: "internal_error" }, 500);   // así se vería un contrato que Mercado Pago no deja cancelar
       if (/^cancel/.test(String(cuerpo.status ?? ""))) pre.status = cuerpo.status;
     }
     return responder(pre);
   }
   if ((m = ruta.match(/^\/authorized_payments\/(\d+)$/))) return MP.cuotas[m[1]] ? responder(MP.cuotas[m[1]]) : responder({ message: "not found" }, 404);
-  if (ruta.startsWith("/authorized_payments/search")) return responder({ results: Object.values(MP.cuotas).filter((f: any) => f.preapproval_id === consultaUrl.get("preapproval_id")) });
+  if (ruta.startsWith("/authorized_payments/search")) {
+    // Las cuotas se buscan por contrato (preapproval_id) o por pago (payment_id): así se sabe de qué contrato es un pago.
+    const deContrato = consultaUrl.get("preapproval_id"), dePago = consultaUrl.get("payment_id");
+    return responder({ results: Object.values(MP.cuotas).filter((f: any) => (deContrato || dePago) && (!deContrato || f.preapproval_id === deContrato) && (!dePago || String(f.payment?.id) === dePago)) });
+  }
   if ((m = ruta.match(/^\/v1\/payments\/(\d+)$/))) return MP.pagos[m[1]] ? responder(MP.pagos[m[1]]) : responder({ message: "Payment not found" }, 404);
   if (ruta.startsWith("/v1/payments/search")) return responder({ results: Object.values(MP.pagos).filter((p: any) => String(p.external_reference ?? "") === consultaUrl.get("external_reference")) });
   return responder({ message: "ruta desconocida de la prueba: " + ruta }, 404);
@@ -233,9 +262,9 @@ const TARJETA_X: Tarjeta = ["415231", "4242", 11, 2029], TARJETA_Y: Tarjeta = ["
 /** La familia terminó en la página de Mercado Pago: la suscripción queda autorizada. */
 const autorizar = (pre: string, x: { proximo?: string | null; pagador?: number } = {}) => Object.assign(MP.pre[pre], { status: "authorized", payer_id: x.pagador ?? null, payment_method_id: "visa", next_payment_date: x.proximo === undefined ? MP.pre[pre].auto_recurring.start_date ?? null : x.proximo });
 /** Mercado Pago intenta un cobro: crea el pago y su cuota. conReferencia: false = el pago no lleva la referencia de la suscripción. */
-function cobrar(pre: string, x: { estado?: string; monto?: number; tarjeta?: Tarjeta; pagador?: number; proximo?: string; cuota?: boolean; conReferencia?: boolean } = {}): { pago: string; cuota: string } {
+function cobrar(pre: string, x: { estado?: string; monto?: number; tarjeta?: Tarjeta; pagador?: number; proximo?: string; cuota?: boolean; conReferencia?: boolean; diceContrato?: boolean } = {}): { pago: string; cuota: string } {
   const p = MP.pre[pre], id = ++nPago, estado = x.estado ?? "approved";
-  MP.pagos[id] = { id, status: estado, status_detail: estado === "approved" ? "accredited" : "cc_rejected_insufficient_amount", transaction_amount: x.monto ?? 349, currency_id: "MXN", payment_type_id: "credit_card", payment_method_id: "visa", external_reference: x.conReferencia === false ? null : p.external_reference, date_created: ahoraIso(), date_approved: estado === "approved" ? ahoraIso() : null, card: x.tarjeta ? { first_six_digits: x.tarjeta[0], last_four_digits: x.tarjeta[1], expiration_month: x.tarjeta[2], expiration_year: x.tarjeta[3] } : {}, payer: { id: x.pagador ?? p.payer_id ?? null, email: p.payer_email } };
+  MP.pagos[id] = { id, status: estado, status_detail: estado === "approved" ? "accredited" : "cc_rejected_insufficient_amount", transaction_amount: x.monto ?? 349, currency_id: "MXN", payment_type_id: "credit_card", payment_method_id: "visa", external_reference: x.conReferencia === false ? null : p.external_reference, date_created: ahoraIso(), date_approved: estado === "approved" ? ahoraIso() : null, card: x.tarjeta ? { first_six_digits: x.tarjeta[0], last_four_digits: x.tarjeta[1], expiration_month: x.tarjeta[2], expiration_year: x.tarjeta[3] } : {}, payer: { id: x.pagador ?? p.payer_id ?? null, email: p.payer_email }, ...(x.diceContrato ? { point_of_interaction: { transaction_data: { subscription_id: pre } } } : {}) };
   const cuota = id + 1_000_000;
   if (x.cuota !== false) MP.cuotas[cuota] = { id: cuota, preapproval_id: pre, external_reference: p.external_reference, status: estado === "approved" ? "processed" : "recycling", transaction_amount: x.monto ?? 349, payment: { id, status: estado } };
   if (x.proximo) p.next_payment_date = x.proximo;
@@ -887,6 +916,533 @@ titulo("19. El interruptor y el panel");
   const una = await admin("GET", `suscripciones/${susDe(A)[0].id}`);
   ok(una.st === 200 && una.d.cobros.length === 6 && una.d.cobros.filter((x: any) => x.estado === "aprobado").length === 3 && una.d.cobros.filter((x: any) => x.estado === "rechazado").length === 3 && una.d.guias.length === 19 && una.d.guias.filter((g: any) => g.estado === "fallida").length === 1 && una.d.whatsapp === "••• ••• 0001" && /prueba gratis de 7 días/.test(una.d.acepto_texto), "el detalle de una suscripción trae sus cobros (3 aprobados y 3 rechazados), sus 19 guías (una no se pudo crear) y el texto que aceptó");
   ok((await admin("GET", "suscripciones/otra-cosa")).st === 404 && (await admin("POST", `suscripciones/${ultimaSus(F).id}/prueba`, { accion: "pago" })).st === 403, "las acciones de prueba no sirven con la suscripción de una familia");
+}
+
+// ====================================================================================================================
+// Cambiar el método de pago SIN cancelar la suscripción («como Xbox», Daniel, 25 nov 2026)
+// La tarjeta nueva se pone en Mercado Pago, en un contrato nuevo de la MISMA suscripción. El contrato anterior se
+// cancela solo después de que Mercado Pago confirma el nuevo. Lo que se cuida: que nunca queden dos contratos con
+// permiso de cobrar, que no haya cobro doble, que no se pierdan días y que no haya otra prueba gratis.
+// ====================================================================================================================
+const cambiosDe = (tel: string) => (db.suscripcion_cambios_pago ?? []).filter((k) => susDe(tel).some((s) => s.id === k.suscripcion_id));
+const ultimoCambio = (tel: string) => cambiosDe(tel).at(-1)!;
+/** Contratos de esa familia que Mercado Pago tiene con permiso de cobrar. Lo sano es 1 (o 0 si ya canceló). */
+const vivos = (tel: string) => Object.values(MP.pre).filter((p: any) => susDe(tel).some((s) => s.id === p.external_reference) && p.status === "authorized").length;
+const cobrosDe = (tel: string, estado?: string) => (db.suscripcion_cobros ?? []).filter((x) => susDe(tel).some((s) => s.id === x.suscripcion_id) && (!estado || x.estado === estado));
+const mensajesA = (tel: string) => whatsapps.filter((x) => String(x.chat).includes(tel)).length;
+const T: Record<string, Tarjeta> = { k1: ["411111", "1111", 1, 2030], k2: ["422222", "2222", 2, 2030], l1: ["433333", "3331", 3, 2030], p1: ["444444", "4441", 4, 2030], p2: ["444445", "4442", 4, 2031], q1: ["455555", "5551", 5, 2030], q2: ["455556", "5552", 5, 2031], r1: ["466666", "6661", 6, 2030], r2: ["466667", "6662", 6, 2031], u1: ["477777", "7771", 7, 2030], v1: ["488888", "8881", 8, 2030], w1: ["499999", "9991", 9, 2030], x1: ["400001", "0011", 10, 2030], y1: ["400002", "0021", 11, 2030], y2: ["400003", "0022", 11, 2031] };
+let nPagador = 9100;
+/** Una familia nueva se suscribe con prueba gratis y pone su tarjeta en Mercado Pago: queda «en prueba». */
+async function familiaEnPrueba(tel: string, nombre: string, tarjeta: Tarjeta) {
+  const pagador = ++nPagador, correo = `${nombre.split(" ")[0].toLowerCase()}@correo.com`;
+  await admin("POST", "suscripciones/probadores", { agregar: tel }); reloj += 61_000;
+  const sesion = await entrar(tel, nombre, correo);
+  await servidor("POST", "suscripcion/crear", { acepta: true, nombre, correo }, { sesion });
+  const pre = ultimaSus(tel).mp_preapproval_id as string;
+  const v = cobrar(pre, { monto: 5, tarjeta, pagador, cuota: false });
+  autorizar(pre, { pagador });
+  await avisoMP("subscription_preapproval", pre);
+  await avisoMP("payment", v.pago);
+  return { sesion, pre, pagador, correo };
+}
+/** …y ya pasó su prueba: Mercado Pago cobró el primer mes y queda «activa». */
+async function familiaActiva(tel: string, nombre: string, tarjeta: Tarjeta) {
+  const f = await familiaEnPrueba(tel, nombre, tarjeta);
+  const fin = ms(ultimaSus(tel).periodo_fin);
+  reloj = fin + 10 * MIN;
+  await avisoMP("subscription_authorized_payment", cobrar(f.pre, { tarjeta, pagador: f.pagador, proximo: iso(masUnMes(fin)) }).cuota);
+  return f;
+}
+/** …o su primer cobro no pasó: queda «en gracia». */
+async function familiaEnGracia(tel: string, nombre: string, tarjeta: Tarjeta) {
+  const f = await familiaEnPrueba(tel, nombre, tarjeta);
+  reloj = ms(ultimaSus(tel).periodo_fin) + 10 * MIN;
+  await avisoMP("subscription_authorized_payment", cobrar(f.pre, { estado: "rejected", tarjeta, pagador: f.pagador }).cuota);
+  return f;
+}
+const pedirCambio = (sesion: string, cuerpo: unknown = {}) => servidor("POST", "suscripcion/metodo-de-pago", cuerpo, { sesion });
+const metodoDe = async (sesion: string) => (await servidor("GET", "cuenta", undefined, { sesion })).d?.suscripcion?.actual?.metodo ?? null;
+/** Corre algo que se espera que falle sin llenar la salida con el error que el servidor anota en su registro. */
+async function sinRuido<X>(fn: () => Promise<X>): Promise<X> { const original = console.error; console.error = () => {}; try { return await fn(); } finally { console.error = original; } }
+
+titulo("20. Cambiar el método de pago con la suscripción activa: sin cancelar, sin cobro hoy y sin cobro doble");
+const K = "5511120001", M2 = "5511120002";
+{
+  const t0 = reloj, s = (estado: string, extra: Fila = {}) => ({ estado, periodo_fin: iso(t0 + 10 * DIA), ...extra });
+  const g = S.puedeCambiarMetodo(s("en_gracia"), t0), a = S.puedeCambiarMetodo(s("activa"), t0), p = S.puedeCambiarMetodo(s("en_prueba"), t0), cerca3 = S.puedeCambiarMetodo(s("activa", { periodo_fin: iso(t0 + 2 * HORA) }), t0), pasado = S.puedeCambiarMetodo(s("activa", { periodo_fin: iso(t0 - HORA) }), t0);
+  ok(g.puede && g.inmediato && a.puede && !a.inmediato && a.primerCobroMs === t0 + 10 * DIA && p.puede && !p.inmediato && !cerca3.puede && cerca3.cobroCerca && !pasado.puede && pasado.cobroCerca && ["cancelada", "vencida", "pendiente", "abandonada"].every((e) => !S.puedeCambiarMetodo(s(e), t0).puede) && !S.puedeCambiarMetodo(null, t0).puede, "la regla: en gracia se cambia cuando sea (y se cobra ese día); activa o en prueba, si faltan más de 3 horas para el cobro (y el contrato nuevo cobra ese día); sin suscripción viva, no");
+
+  const f = await familiaActiva(K, "Karla Activa", T.k1);
+  const s0 = { ...ultimaSus(K) }, A0 = f.pre, fin = s0.periodo_fin as string;
+  reloj += 3 * DIA;
+  const m0 = await metodoDe(f.sesion);
+  ok(s0.estado === "activa" && m0?.tarjeta === "1111" && m0.puede_cambiar === true && m0.inmediato === false && m0.cobro_cerca === false && m0.cambio === null && m0.cambiado_en === null && !JSON.stringify(m0).includes("411111"), "«Mi cuenta» dice con qué tarjeta se cobra (solo los últimos 4 dígitos) y que se puede cambiar");
+  ok((await servidor("POST", "suscripcion/metodo-de-pago", {})).st === 401, "sin sesión no se puede cambiar el método de pago");
+  const antes = { pre: Object.keys(MP.pre).length, wa: mensajesA(K), cobros: cobrosDe(K).length };
+  const r = await pedirCambio(f.sesion);
+  const k = ultimoCambio(K), B = k?.mp_preapproval_id as string, pedido = MP.pre[B]?.pedido ?? {}, ar = pedido.auto_recurring ?? {};
+  ok(r.st === 200 && r.d.modo === "mercadopago" && r.d.url === MP.pre[B]?.init_point && r.d.inmediato === false && r.d.primer_cobro_en === fin && r.d.cambio_id === k.id && r.d.precio === 349, "«Cambiar método de pago» abre la página de Mercado Pago para poner la tarjeta nueva (aquí nunca se pide una tarjeta)");
+  ok(pedido.status === "pending" && pedido.external_reference === s0.id && pedido.payer_email === f.correo && pedido.reason === "SparkEd · Guías ilimitadas" && ar.transaction_amount === 349 && ar.frequency === 1 && ar.frequency_type === "months" && ar.currency_id === "MXN" && ar.start_date === fin && ms(ar.end_date) > ms(fin) + 365 * DIA && !("card_token_id" in pedido) && String(pedido.back_url ?? "").endsWith("cuenta.html?metodo=" + k.id), "a Mercado Pago se le pide un contrato nuevo de la MISMA suscripción (misma referencia y precio) cuyo primer cobro es el día en que termina lo ya pagado: hoy no se cobra y no se pierden días");
+  const s1 = ultimaSus(K);
+  ok(s1.estado === "activa" && s1.mp_preapproval_id === A0 && s1.periodo_fin === fin && MP.pre[A0].status === "authorized" && k.estado === "pendiente" && k.inmediato === false && k.estado_al_pedir === "activa" && mensajesA(K) === antes.wa, "mientras la familia no termine en Mercado Pago NADA cambia: sigue activa con su contrato de siempre");
+  const otra = await pedirCambio(f.sesion);
+  ok(otra.st === 200 && otra.d.url === r.d.url && otra.d.cambio_id === k.id && Object.keys(MP.pre).length === antes.pre + 1 && cambiosDe(K).length === 1, "oprimir el botón otra vez reutiliza el mismo: no se abre otro contrato");
+  reloj += 20_000;
+  const est = await servidor("GET", "suscripcion/estado", undefined, { sesion: f.sesion });
+  const m1 = est.d?.suscripcion?.actual?.metodo;
+  ok(est.st === 200 && m1?.cambio?.estado === "pendiente" && m1.cambio.link === r.d.url && m1.cambio.id === k.id && est.d.suscripcion.actual.estado === "activa" && est.d.suscripcion.actual.puede_crear === true && ultimoCambio(K).estado === "pendiente" && MP.pre[A0].status === "authorized", "si abandona a la mitad, «Mi cuenta» le ofrece continuar y todo sigue igual (se le preguntó a Mercado Pago: todavía no pone su tarjeta)");
+
+  // La familia pone su tarjeta nueva en Mercado Pago: cobro mínimo de validación y contrato nuevo autorizado.
+  const v = cobrar(B, { monto: 5, tarjeta: T.k2, pagador: f.pagador, cuota: false });
+  autorizar(B, { pagador: f.pagador });
+  const falso = await avisoMP("subscription_preapproval", B, "clave-de-otro");
+  ok(falso.st === 401 && ultimaSus(K).mp_preapproval_id === A0 && MP.pre[A0].status === "authorized" && ultimoCambio(K).estado === "pendiente", "un aviso con firma falsa no cambia nada (el contrato anterior sigue intacto)");
+  const [a1, a2] = await Promise.all([avisoMP("subscription_preapproval", B), avisoMP("subscription_preapproval", B)]);
+  const a3 = await avisoMP("subscription_preapproval", B);
+  const s2 = ultimaSus(K), k2 = ultimoCambio(K), res = [a1, a2, a3].map((x) => String(x.d?.resultado));
+  ok([a1, a2, a3].every((x) => x.st === 200) && res.filter((x) => x === "metodo_cambiado").length === 1 && res.every((x) => ["metodo_cambiado", "metodo_ya_cambiado", "cambio_en_curso", "al_dia"].includes(x)), `tres avisos firmados del contrato nuevo (dos a la vez): el cambio se aplica UNA sola vez (${res.join(" / ")})`);
+  ok(s2.id === s0.id && s2.estado === "activa" && s2.mp_preapproval_id === B && s2.periodo_fin === fin && s2.proximo_cobro === s0.proximo_cobro && s2.cancelada_en === null && susDe(K).length === 1, "la suscripción es la MISMA (mismo folio y misma fecha de cobro) y sigue activa: no se canceló; solo cambió el contrato con el que cobra Mercado Pago");
+  ok(/^cancel/.test(MP.pre[A0].status) && MP.pre[B].status === "authorized" && vivos(K) === 1 && k2.estado === "aplicado" && k2.mp_preapproval_anterior === A0 && !!k2.anterior_cancelado_en && !!k2.aplicado_en, "el contrato anterior se canceló en Mercado Pago DESPUÉS de confirmar el nuevo: queda UN solo contrato con permiso de cobrar");
+  const wa = waDe(K, /cambiamos tu método de pago/);
+  ok(cobrosDe(K).length === antes.cobros && wa.length === 1 && /sigue igual; no se canceló/.test(wa[0].texto) && /Hoy no se cobró nada/.test(wa[0].texto) && wa[0].texto.includes(`Tu próximo cobro será el *${fechaLarga(fin)}* por $349 MXN`) && /Es normal que Mercado Pago te avise/.test(wa[0].texto), "hoy no se cobró nada, y la familia recibe UN WhatsApp: su suscripción sigue igual y cuándo es su próximo cobro");
+  ok(correos.filter((x) => x.to?.[0] === f.correo && /Cambiamos tu método de pago/.test(x.subject)).length === 1 && paraDaniel(/cambió su método de pago/).length === 1, "también UN correo a la familia y UN aviso a Daniel");
+  // Mercado Pago avisa que el contrato anterior quedó cancelado: eso NO termina la suscripción.
+  const aA = await avisoMP("subscription_preapproval", A0);
+  ok(aA.st === 200 && aA.d.resultado === "contrato_anterior_cancelado" && ultimaSus(K).estado === "activa" && ultimaSus(K).mp_preapproval_id === B && ultimaSus(K).mp_estado === "authorized" && waDe(K, /se canceló en Mercado Pago/).length === 0, "el aviso de «contrato anterior cancelado» NO cancela la suscripción (ya cobra con el nuevo)");
+  const vv = await avisoMP("payment", v.pago);
+  const m2 = await metodoDe(f.sesion);
+  ok(vv.d.resultado === "validacion_de_tarjeta" && ultimaSus(K).estado === "activa" && m2.tarjeta === "2222" && m2.cambio?.estado === "aplicado" && !!m2.cambiado_en && m2.puede_cambiar === true && m2.cambio.link === null, "«Mi cuenta» ya dice la tarjeta nueva (terminada en 2222) y cuándo se cambió");
+  const usadas = (db.pruebas_usadas ?? []).filter((x) => x.suscripcion_id === s0.id && x.huella_tarjeta);
+  ok(usadas.length === 3 && !JSON.stringify(db.pruebas_usadas).includes("2222") && !JSON.stringify(db.pruebas_usadas).includes("422222"), "la tarjeta nueva queda anotada en pruebas_usadas (una prueba gratis por tarjeta), sin sus dígitos");
+  // Otra familia, con otro número, intenta su prueba gratis con esa misma tarjeta nueva.
+  await admin("POST", "suscripciones/probadores", { agregar: M2 }); reloj += 61_000;
+  const sesM = await entrar(M2, "Mora Otra", "mora@correo.com");
+  await servidor("POST", "suscripcion/crear", { acepta: true, nombre: "Mora Otra", correo: "mora@correo.com" }, { sesion: sesM });
+  const preM = ultimaSus(M2).mp_preapproval_id;
+  cobrar(preM, { monto: 5, tarjeta: T.k2, pagador: 9199, cuota: false }); autorizar(preM, { pagador: 9199 });
+  const aM = await avisoMP("subscription_preapproval", preM);
+  ok(aM.d.resultado === "prueba_negada" && ultimaSus(M2).estado === "abandonada" && ultimaSus(M2).motivo_fin === "prueba_ya_usada", "esa tarjeta ya no sirve para otra prueba gratis con otro número: la regla de una prueba por tarjeta sigue en pie");
+
+  // El día del cobro cobra SOLO el contrato nuevo.
+  reloj = ms(fin) + 10 * MIN;
+  const prox = iso(masUnMes(ms(fin)));
+  const c = cobrar(B, { tarjeta: T.k2, pagador: f.pagador, proximo: prox });
+  const rc = await avisoMP("payment", c.pago);
+  const s3 = ultimaSus(K);
+  ok(rc.d.resultado === "cobrado" && s3.estado === "activa" && s3.periodo_fin === prox && cobrosDe(K, "aprobado").length === 2 && cobrosDe(K).at(-1)!.mp_preapproval_id === B && cobrosDe(K)[0].mp_preapproval_id === A0 && !/cobro doble/.test(s3.revisar_motivo ?? "") && Object.values(MP.cuotas).filter((q: any) => q.preapproval_id === A0).length === 1, "el día del cobro cobra solo el contrato nuevo: un cobro por mes, sin cobro doble (y queda anotado qué contrato hizo cada cobro)");
+  const panel = await admin("GET", "suscripciones"), fila = panel.d.suscripciones.find((x: any) => x.id === s0.id) ?? {};
+  const una = await admin("GET", `suscripciones/${s0.id}`);
+  ok(fila.metodo_pago?.cambios === 1 && fila.metodo_pago.tarjeta === "2222" && fila.metodo_pago.ultimo_cambio_en === k2.aplicado_en && fila.metodo_pago.historial?.length === 1 && fila.metodo_pago.historial[0].fecha === k2.aplicado_en && fila.metodo_pago.historial[0].con_cobro === false && fila.metodo_pago.en_curso === false && fila.metodo_pago.falta_cancelar === 0, "panel: el renglón de la suscripción trae cuántas veces cambió su método de pago, la fecha de cada cambio y la tarjeta de ahora");
+  ok(una.st === 200 && una.d.cambios_pago?.length === 1 && una.d.cambios_pago[0].estado === "aplicado" && una.d.cambios_pago[0].anterior_cancelado === true && una.d.metodo_pago?.cambios === 1 && !JSON.stringify(una.d).includes(B) && !JSON.stringify(panel.d).includes(B) && !JSON.stringify(panel.d).includes(K), "y el detalle, cada cambio con lo que pasó (sin identificadores de Mercado Pago ni datos de la familia)");
+}
+
+titulo("21. Cambiar el método de pago durante la prueba gratis: sigue la misma prueba (ni se pierde ni se repite)");
+const L = "5511120003";
+{
+  const f = await familiaEnPrueba(L, "Luis Prueba", T.l1);
+  const s0 = { ...ultimaSus(L) }, A0 = f.pre, finPrueba = s0.prueba_hasta as string;
+  reloj += 2 * DIA;   // van 2 de los 7 días
+  const r = await pedirCambio(f.sesion);
+  const k = ultimoCambio(L), B = k.mp_preapproval_id as string, ar = MP.pre[B]?.pedido?.auto_recurring ?? {};
+  ok(r.st === 200 && r.d.inmediato === false && r.d.primer_cobro_en === finPrueba && ar.start_date === finPrueba && ms(ar.start_date) < reloj + 6 * DIA && ms(ar.start_date) > reloj + 4 * DIA && k.estado_al_pedir === "en_prueba", "el contrato nuevo hará su primer cobro el día en que termina la prueba de siempre: no hay otros 7 días gratis, ni se cobra antes");
+  // La tarjeta nueva es una que YA usó una prueba gratis en otra cuenta (la de Ana, al principio de esta prueba).
+  const v = cobrar(B, { monto: 5, tarjeta: TARJETA_X, pagador: 9001, cuota: false });
+  autorizar(B, { pagador: 9001 });
+  const rv = await avisoMP("payment", v.pago);   // llega primero el aviso del cobro mínimo de validación (tema «Pagos»)
+  const s1 = ultimaSus(L), k1 = ultimoCambio(L);
+  ok(rv.st === 200 && rv.d.resultado === "validacion_de_tarjeta" && s1.estado === "en_prueba" && s1.motivo_fin === null && waDe(L, /ya había usado una/).length === 0, "una tarjeta que ya tuvo su prueba en otra cuenta NO le cancela esta suscripción: la prueba se le dio a la tarjeta con la que se contrató");
+  ok(k1.estado === "aplicado" && s1.mp_preapproval_id === B && /^cancel/.test(MP.pre[A0].status) && vivos(L) === 1, "y con ese pago del contrato nuevo el cambio se termina de aplicar (se le preguntó a Mercado Pago), sin esperar otro aviso");
+  const ap = await avisoMP("subscription_preapproval", B);
+  ok(ap.d.resultado === "al_dia" && s1.prueba_hasta === finPrueba && s1.periodo_fin === finPrueba && s1.proximo_cobro === finPrueba && s1.con_prueba === true && cobrosDe(L).length === 0, "sigue en prueba hasta la MISMA fecha y no se cobró nada");
+  const wa = waDe(L, /cambiamos tu método de pago/);
+  ok(wa.length === 1 && wa[0].texto.includes(`Tu prueba gratis sigue hasta el *${fechaLarga(finPrueba)}*`) && /Ese día se cobrarán \$349 MXN con tu método de pago nuevo/.test(wa[0].texto), "el aviso dice que su prueba gratis sigue hasta la misma fecha y que ese día se cobra con el método nuevo");
+  reloj = ms(finPrueba) + 10 * MIN;
+  const rc = await avisoMP("subscription_authorized_payment", cobrar(B, { tarjeta: TARJETA_X, pagador: 9001, proximo: iso(masUnMes(ms(finPrueba))) }).cuota);
+  ok(rc.d.resultado === "cobrado" && ultimaSus(L).estado === "activa" && cobrosDe(L).length === 1 && cobrosDe(L)[0].mp_preapproval_id === B && waDe(L, /Tu prueba gratis terminó y cobramos \$349 MXN/).length === 1, "al terminar la prueba cobra el contrato nuevo, una sola vez, y queda activa");
+}
+
+titulo("22. Cobro fallido (en gracia): el aviso trae «Cambiar método de pago»; al cambiarlo se cobra ese día y vuelve a activa");
+const P = "5511120005";
+{
+  const f = await familiaEnGracia(P, "Paty Gracia", T.p1);
+  const s0 = { ...ultimaSus(P) }, A0 = f.pre;
+  const aviso = waDe(P, /No pudimos cobrar tu suscripción de SparkEd\./), correoAviso = correos.filter((x) => x.to?.[0] === f.correo && /No pudimos cobrar/.test(x.subject));
+  ok(s0.estado === "en_gracia" && aviso.length === 1 && /¿Quieres cambiar tu método de pago\? Puedes agregar otra tarjeta de crédito o débito aquí, sin cancelar tu suscripción:\n\S+cuenta\.html\?metodo=1/.test(aviso[0].texto) && !/suscríbete de nuevo/.test(aviso[0].texto) && /puedes abrir tus guías, pero no crear guías nuevas/.test(aviso[0].texto), "el WhatsApp de cobro fallido pregunta «¿Quieres cambiar tu método de pago?» y trae el link directo (ya no pide cancelar y suscribirse de nuevo)");
+  ok(correoAviso.length === 1 && /cuenta\.html\?metodo=1/.test(correoAviso[0].html) && /¿Quieres cambiar tu método de pago\?/.test(correoAviso[0].html), "el correo de cobro fallido trae el mismo link");
+  const m0 = await metodoDe(f.sesion);
+  ok(m0.puede_cambiar === true && m0.inmediato === true && m0.tarjeta === "4441" && (await servidor("GET", "cuenta", undefined, { sesion: f.sesion })).d.suscripcion.actual.puede_crear === false, "en gracia «Mi cuenta» ofrece cambiar el método de pago en cualquier momento (y avisa que el cobro se hace ese día)");
+  reloj += 9 * DIA;   // noveno día de los 10 de gracia
+  const r = await pedirCambio(f.sesion);
+  const k = ultimoCambio(P), B = k.mp_preapproval_id as string, ar = MP.pre[B]?.pedido?.auto_recurring ?? {};
+  ok(r.st === 200 && r.d.inmediato === true && r.d.primer_cobro_en === null && !("start_date" in ar) && !("end_date" in ar) && ar.transaction_amount === 349 && MP.pre[B].pedido.external_reference === s0.id && k.estado_al_pedir === "en_gracia" && k.inmediato === true, "el contrato nuevo se pide SIN fecha de inicio: Mercado Pago cobra al poner la tarjeta");
+  ok(ultimaSus(P).estado === "en_gracia" && ultimaSus(P).mp_preapproval_id === A0 && MP.pre[A0].status === "authorized" && vivos(P) === 1, "si abandona a la mitad, sigue en gracia con su contrato anterior (Mercado Pago lo sigue reintentando)");
+  cobrar(B, { monto: 5, tarjeta: T.p2, pagador: f.pagador, cuota: false });
+  autorizar(B, { pagador: f.pagador, proximo: iso(reloj + HORA) });
+  const a = await avisoMP("subscription_preapproval", B);
+  const s1 = ultimaSus(P), k1 = ultimoCambio(P);
+  ok(a.d.resultado === "metodo_cambiado" && s1.estado === "en_gracia" && s1.mp_preapproval_id === B && /^cancel/.test(MP.pre[A0].status) && vivos(P) === 1 && k1.estado === "aplicado" && k1.mp_tarjeta === "4442" && s1.mp_tarjeta === "4442", "al terminar en Mercado Pago se cancela el contrato anterior (ya no habrá más reintentos con la tarjeta vieja) y queda solo el nuevo");
+  ok(cerca(s1.gracia_hasta, reloj + 3 * DIA) && ms(s1.gracia_hasta) <= ms(s0.gracia_desde) + 13 * DIA && ms(s1.gracia_hasta) > ms(s0.gracia_hasta), "como cambió su tarjeta al final de la gracia, se le dan 3 días para que el cobro pase (no vence al día siguiente)");
+  const wa = waDe(P, /cambiamos tu método de pago/);
+  ok(wa.length === 1 && /Mercado Pago hará el cobro de \$349 MXN con tu método de pago nuevo en unos minutos/.test(wa[0].texto) && /podrás crear guías nuevas/.test(wa[0].texto), "el aviso dice que Mercado Pago cobrará en unos minutos y que entonces podrá crear guías");
+  reloj += 20 * MIN;
+  const prox = iso(masUnMes(reloj));
+  const rc = await avisoMP("subscription_authorized_payment", cobrar(B, { tarjeta: T.p2, pagador: f.pagador, proximo: prox }).cuota);
+  const s2 = ultimaSus(P);
+  ok(rc.d.resultado === "cobrado" && s2.estado === "activa" && s2.gracia_hasta === null && s2.periodo_fin === prox && cobrosDe(P, "aprobado").length === 1 && cobrosDe(P, "rechazado").length === 1 && cobrosDe(P, "aprobado")[0].mp_preapproval_id === B && (await servidor("GET", "cuenta", undefined, { sesion: f.sesion })).d.suscripcion.actual.puede_crear === true && waDe(P, /Ya pudimos cobrar tu suscripción \(\$349 MXN\)/).length === 1, "Mercado Pago cobra con la tarjeta nueva: vuelve a activa, ya puede crear guías y hubo UN solo cobro aprobado");
+  // Rechazos viejos del contrato anterior que llegan tarde: uno que dice su contrato (por su cuota) y uno que no lo dice.
+  const t1 = cobrar(A0, { estado: "rejected", tarjeta: T.p1, pagador: f.pagador });
+  const t2 = cobrar(A0, { estado: "rejected", tarjeta: T.p1, pagador: f.pagador, cuota: false });
+  MP.pagos[t2.pago].date_created = iso(ms(k1.aplicado_en) - HORA);
+  const [rt1, rt2] = [await avisoMP("payment", t1.pago), await avisoMP("payment", t2.pago)];
+  ok(rt1.d.resultado === "rechazado_del_contrato_anterior" && rt2.d.resultado === "rechazado_del_contrato_anterior" && ultimaSus(P).estado === "activa" && ultimaSus(P).mp_tarjeta === "4442" && waDe(P, /No pudimos cobrar tu suscripción de SparkEd\./).length === 1, "un rechazo viejo del contrato anterior que llega tarde NO la regresa a gracia, ni repite el aviso, ni cambia la tarjeta que se enseña");
+}
+
+titulo("22b. En gracia, recién cambiado el método de pago: se espera el cobro del método nuevo (no se abre otro cambio encima)");
+const P2 = "5511120019", P3 = "5511120020";
+Object.assign(T, { pe1: ["445001", "4501", 4, 2032], pe2: ["445002", "4502", 5, 2032], pf1: ["445003", "4503", 6, 2032] });
+{
+  const f = await familiaEnGracia(P2, "Pilar Espera", T.pe1);
+  await pedirCambio(f.sesion);
+  const B = ultimoCambio(P2).mp_preapproval_id as string;
+  autorizar(B, { pagador: f.pagador, proximo: iso(reloj + HORA) });
+  await avisoMP("subscription_preapproval", B);
+  const m1 = await metodoDe(f.sesion), contratos = Object.keys(MP.pre).length;
+  const otra = await pedirCambio(f.sesion);
+  ok(ultimaSus(P2).estado === "en_gracia" && ultimaSus(P2).mp_preapproval_id === B && m1.esperando_cobro === true && m1.puede_cambiar === false && otra.st === 409 && otra.d.esperando_cobro === true && /Mercado Pago está haciendo el cobro/.test(otra.d.error) && Object.keys(MP.pre).length === contratos && cambiosDe(P2).length === 1, "recién puesta la tarjeta nueva (con un cobro sin pasar), «Mi cuenta» dice que Mercado Pago está cobrando y no deja abrir otro cambio encima: nunca hay dos contratos cobrando al mismo tiempo");
+  // El método nuevo tampoco pasa: se le avisa (una sola vez) y ya puede cambiarlo otra vez.
+  reloj += 10 * MIN;
+  const rj = await avisoMP("subscription_authorized_payment", cobrar(B, { estado: "rejected", tarjeta: T.pe2, pagador: f.pagador }).cuota);
+  const m2 = await metodoDe(f.sesion), tampoco = waDe(P2, /Tampoco pudimos cobrar tu suscripción de SparkEd con tu método de pago nuevo\./);
+  ok(rj.d.resultado === "rechazado" && ultimaSus(P2).estado === "en_gracia" && tampoco.length === 1 && /cuenta\.html\?metodo=1/.test(tampoco[0]?.texto ?? "") && m2.esperando_cobro === false && m2.puede_cambiar === true, "si el método de pago nuevo tampoco pasa, la familia recibe el aviso con el link para cambiarlo y «Mi cuenta» se lo vuelve a ofrecer");
+  reloj += DIA;
+  await avisoMP("subscription_authorized_payment", cobrar(B, { estado: "rejected", tarjeta: T.pe2, pagador: f.pagador }).cuota);
+  const r3 = await pedirCambio(f.sesion);
+  ok(waDe(P2, /Tampoco pudimos cobrar/).length === 1 && waDe(P2, /No pudimos cobrar tu suscripción de SparkEd\./).length === 1 && r3.st === 200 && r3.d.inmediato === true && cambiosDe(P2).length === 2, "los reintentos rechazados de Mercado Pago no repiten el aviso, y la familia puede cambiar su método de pago otra vez");
+  // Si ese cobro nunca llega, a los 90 minutos se deja de esperar.
+  const g = await familiaEnGracia(P3, "Pía Tarda", T.pf1);
+  await pedirCambio(g.sesion);
+  const B3 = ultimoCambio(P3).mp_preapproval_id as string;
+  autorizar(B3, { pagador: g.pagador, proximo: iso(reloj + HORA) });
+  await avisoMP("subscription_preapproval", B3);
+  const antes = (await pedirCambio(g.sesion)).st;
+  reloj += 91 * MIN;
+  const m3 = await metodoDe(g.sesion), r4 = await pedirCambio(g.sesion);
+  ok(antes === 409 && m3.esperando_cobro === false && m3.puede_cambiar === true && r4.st === 200 && cambiosDe(P3).length === 2, "si el cobro del método nuevo no llega en 90 minutos, se puede cambiar otra vez");
+}
+
+titulo("23. Sin cobro doble: el reintento de la tarjeta vieja pasa mientras la familia pone la nueva");
+const Q = "5511120006";
+{
+  const f = await familiaEnGracia(Q, "Quique Doble", T.q1);
+  const s0 = { ...ultimaSus(Q) }, A0 = f.pre;
+  reloj += DIA;
+  const r = await pedirCambio(f.sesion);
+  const B = ultimoCambio(Q).mp_preapproval_id as string;
+  reloj += 5 * MIN;
+  const prox = iso(masUnMes(ms(s0.periodo_fin)));
+  const rb = await avisoMP("payment", cobrar(A0, { tarjeta: T.q1, pagador: f.pagador, proximo: prox }).pago);
+  ok(r.d.inmediato === true && rb.d.resultado === "cobrado" && ultimaSus(Q).estado === "activa" && ultimoCambio(Q).estado === "pendiente" && cobrosDe(Q, "aprobado")[0].mp_preapproval_id === A0, "(mientras la familia está en la página de Mercado Pago, el reintento con la tarjeta de siempre SÍ pasa: ya está activa otra vez)");
+  reloj += 2 * MIN;
+  cobrar(B, { monto: 5, tarjeta: T.q2, pagador: f.pagador, cuota: false });
+  autorizar(B, { pagador: f.pagador, proximo: iso(reloj + HORA) });
+  const a = await avisoMP("subscription_preapproval", B);
+  const s1 = ultimaSus(Q), k1 = ultimoCambio(Q);
+  ok(a.d.resultado === "cambio_descartado" && k1.estado === "descartado" && k1.motivo === "ya_se_cobro" && /^cancel/.test(MP.pre[B].status) && !!k1.nuevo_cancelado_en && MP.pre[A0].status === "authorized" && s1.mp_preapproval_id === A0 && s1.estado === "activa" && s1.periodo_fin === prox && vivos(Q) === 1, "el contrato nuevo iba a cobrar otra vez el mismo mes: se cancela ANTES de que cobre y la suscripción sigue con el de siempre");
+  ok(cobrosDe(Q, "aprobado").length === 1 && waDe(Q, /No pudimos cambiar tu método de pago\. El cobro que estaba pendiente ya pasó con tu método de pago de siempre/).length === 1 && waDe(Q, /cambiamos tu método de pago/).length === 0 && !/cobro doble/.test(s1.revisar_motivo ?? ""), "un solo cobro aprobado, y a la familia se le explica por qué no se cambió");
+  reloj += 20_000;
+  const r2 = await pedirCambio(f.sesion);
+  ok(r2.st === 200 && r2.d.inmediato === false && r2.d.primer_cobro_en === prox && ultimoCambio(Q).id !== k1.id && cambiosDe(Q).length === 2, "si todavía quiere cambiarla, lo pide de nuevo: ahora el contrato nuevo cobrará hasta su próxima fecha");
+}
+
+titulo("24. Si el aviso del contrato nuevo no llega: basta el aviso de su primer cobro, o que la familia vuelva a su cuenta");
+const R = "5511120007", Y1 = "5511120012";
+{
+  const f = await familiaEnGracia(R, "Rita Aviso", T.r1);
+  const A0 = f.pre;
+  await pedirCambio(f.sesion);
+  const B = ultimoCambio(R).mp_preapproval_id as string;
+  autorizar(B, { pagador: f.pagador });   // puso su tarjeta, pero el aviso de «Planes y suscripciones» nunca llega
+  reloj += 30 * MIN;
+  const prox = iso(masUnMes(reloj));
+  const rc = await avisoMP("payment", cobrar(B, { tarjeta: T.r2, pagador: f.pagador, proximo: prox }).pago);   // solo llega el tema «Pagos»
+  const s1 = ultimaSus(R), k1 = ultimoCambio(R);
+  ok(rc.d.resultado === "cobrado" && s1.estado === "activa" && s1.periodo_fin === prox && s1.mp_preapproval_id === B && k1.estado === "aplicado" && /^cancel/.test(MP.pre[A0].status) && vivos(R) === 1, "el primer cobro del contrato nuevo (aprobado) la deja activa Y termina el cambio: el contrato anterior se cancela en ese momento");
+  ok(cobrosDe(R, "aprobado").length === 1 && cobrosDe(R, "aprobado")[0].mp_preapproval_id === B && s1.mp_tarjeta === "6662" && waDe(R, /El cobro de \$349 MXN ya pasó con tu método de pago nuevo/).length === 1 && waDe(R, /Ya pudimos cobrar tu suscripción/).length === 1 && !/cobro doble/.test(s1.revisar_motivo ?? ""), "un solo cobro (el del contrato nuevo), la tarjeta nueva en «Mi cuenta» y el aviso de que el cobro ya pasó");
+  // Activa, sin avisos de ningún tipo: la familia regresa a «Mi cuenta» y la página pregunta cómo va.
+  const g = await familiaActiva(Y1, "Yael Regresa", T.y1);
+  const AY = g.pre, finY = ultimaSus(Y1).periodo_fin;
+  reloj += DIA;
+  await pedirCambio(g.sesion);
+  const BY = ultimoCambio(Y1).mp_preapproval_id as string;
+  cobrar(BY, { monto: 5, tarjeta: T.y2, pagador: g.pagador, cuota: false });
+  autorizar(BY, { pagador: g.pagador });
+  reloj += 20_000;
+  const est = await servidor("GET", "suscripcion/estado", undefined, { sesion: g.sesion });
+  const sY = ultimaSus(Y1), mY = est.d?.suscripcion?.actual?.metodo;
+  ok(est.st === 200 && mY?.cambio?.estado === "aplicado" && mY.tarjeta === "0022" && sY.mp_preapproval_id === BY && sY.estado === "activa" && sY.periodo_fin === finY && /^cancel/.test(MP.pre[AY].status) && vivos(Y1) === 1 && waDe(Y1, /cambiamos tu método de pago/).length === 1, "sin ningún aviso de Mercado Pago: al volver a «Mi cuenta» el servidor le pregunta a Mercado Pago y aplica el cambio");
+}
+
+titulo("25. Si Mercado Pago no deja cancelar el contrato anterior, el cambio no se aplica: nunca quedan dos cobrando");
+const U = "5511120008";
+{
+  const f = await familiaActiva(U, "Ulises Terco", T.u1);
+  const A0 = f.pre;
+  reloj += DIA;
+  await pedirCambio(f.sesion);
+  const B = ultimoCambio(U).mp_preapproval_id as string;
+  autorizar(B, { pagador: f.pagador });
+  MP.noCancela.add(A0);
+  const a = await avisoMP("subscription_preapproval", B);
+  const s1 = ultimaSus(U), k1 = ultimoCambio(U);
+  ok(a.st === 200 && a.d.resultado === "cambio_descartado" && k1.estado === "descartado" && k1.motivo === "no_se_pudo_cancelar_el_anterior" && /^cancel/.test(MP.pre[B].status) && MP.pre[A0].status === "authorized" && s1.mp_preapproval_id === A0 && s1.estado === "activa" && vivos(U) === 1 && waDe(U, /No pudimos cambiar tu método de pago\. Mercado Pago no respondió a tiempo\./).length === 1, "si el contrato anterior no se deja cancelar, se cancela el NUEVO y todo queda como estaba (un solo contrato vivo); la familia recibe el aviso para intentarlo de nuevo");
+  MP.noCancela.clear(); reloj += 20_000;
+  await pedirCambio(f.sesion);
+  const B2 = ultimoCambio(U).mp_preapproval_id as string;
+  autorizar(B2, { pagador: f.pagador });
+  MP.noCancela.add(A0); MP.noCancela.add(B2);
+  const reportesAntes = (db.reportes ?? []).length;
+  const a2 = await sinRuido(() => avisoMP("subscription_preapproval", B2));
+  const s2 = ultimaSus(U);
+  ok(a2.st === 500 && ultimoCambio(U).estado === "pendiente" && ultimoCambio(U).aplicando_desde === null && s2.mp_preapproval_id === A0 && s2.estado === "activa" && s2.revisar === true && /quedó a medias/.test(s2.revisar_motivo ?? "") && (db.reportes ?? []).slice(reportesAntes).filter((x) => /quedó a medias/.test(x.comentario)).length === 1, "si Mercado Pago no deja cancelar NINGUNO de los dos, el servidor contesta con error (Mercado Pago repetirá el aviso), la suscripción no cambia y Daniel recibe UN aviso");
+  const a2b = await sinRuido(() => avisoMP("subscription_preapproval", B2));
+  ok(a2b.st === 500 && (db.reportes ?? []).slice(reportesAntes).filter((x) => /quedó a medias/.test(x.comentario)).length === 1, "el aviso repetido no llena los Reportes de Daniel");
+  MP.noCancela.clear();
+  const a3 = await avisoMP("subscription_preapproval", B2);
+  ok(a3.st === 200 && a3.d.resultado === "metodo_cambiado" && ultimaSus(U).mp_preapproval_id === B2 && /^cancel/.test(MP.pre[A0].status) && vivos(U) === 1, "cuando Mercado Pago vuelve a contestar, el mismo aviso termina el cambio");
+}
+
+titulo("26. Fechas: con el cobro encima no se abre un cambio; si la fecha cambió, no se aplica");
+const V = "5511120009", W = "5511120010";
+{
+  const f = await familiaActiva(V, "Vera Cerca", T.v1);
+  const fin = ms(ultimaSus(V).periodo_fin);
+  reloj = fin - 2 * HORA;
+  const antesPre = Object.keys(MP.pre).length;
+  const m = await metodoDe(f.sesion), r = await pedirCambio(f.sesion);
+  ok(m.puede_cambiar === false && m.cobro_cerca === true && r.st === 409 && r.d.cobro_cerca === true && /Mercado Pago está haciendo tu cobro/.test(r.d.error) && cambiosDe(V).length === 0 && Object.keys(MP.pre).length === antesPre, "a menos de 3 horas del cobro no se abre un cambio: el cobro del contrato anterior y el del nuevo podrían cruzarse");
+  reloj = fin + 49 * HORA;
+  const r2 = await pedirCambio(f.sesion);
+  ok(r2.st === 200 && r2.d.inmediato === true && ultimaSus(V).estado === "en_gracia" && waDe(V, /No pudimos cobrar tu suscripción de SparkEd\./).length === 1, "si el cobro nunca llegó y ya pasaron las 48 horas de espera, cuenta como cobro sin pasar: queda en gracia y el contrato nuevo cobrará al poner la tarjeta");
+
+  const g = await familiaActiva(W, "Wendy Fecha", T.w1);
+  const A0 = g.pre, fin1 = ms(ultimaSus(W).periodo_fin);
+  reloj = fin1 - 5 * HORA;
+  await pedirCambio(g.sesion);
+  const B = ultimoCambio(W).mp_preapproval_id as string;
+  // La familia deja abierta la página de Mercado Pago; llega el día del cobro y cobra el contrato de siempre…
+  reloj = fin1 + 5 * MIN;
+  const fin2 = iso(masUnMes(fin1));
+  await avisoMP("subscription_authorized_payment", cobrar(A0, { tarjeta: T.w1, pagador: g.pagador, proximo: fin2 }).cuota);
+  // …y entonces termina de poner su tarjeta nueva.
+  reloj += HORA;
+  autorizar(B, { pagador: g.pagador });
+  const a = await avisoMP("subscription_preapproval", B);
+  const s1 = ultimaSus(W);
+  ok(a.d.resultado === "cambio_descartado" && ultimoCambio(W).motivo === "fecha_no_coincide" && /^cancel/.test(MP.pre[B].status) && s1.mp_preapproval_id === A0 && s1.estado === "activa" && s1.periodo_fin === fin2 && cobrosDe(W, "aprobado").length === 2 && vivos(W) === 1 && waDe(W, /Tu fecha de cobro cambió mientras ponías tu tarjeta nueva/).length === 1, "si el contrato de siempre ya cobró ese periodo, el contrato nuevo (que iba a cobrar ese mismo día) se cancela: sin cobro doble");
+  reloj += 20_000;
+  const r3 = await pedirCambio(g.sesion);
+  const B3 = ultimoCambio(W).mp_preapproval_id as string;
+  autorizar(B3, { pagador: g.pagador, proximo: iso(reloj + HORA) });   // Mercado Pago dice que cobrará HOY, no el día pedido
+  const reportesAntes = (db.reportes ?? []).length;
+  const a3 = await avisoMP("subscription_preapproval", B3);
+  ok(r3.d.primer_cobro_en === fin2 && a3.d.resultado === "cambio_descartado" && ultimoCambio(W).motivo === "fecha_no_respetada" && /^cancel/.test(MP.pre[B3].status) && ultimaSus(W).mp_preapproval_id === A0 && vivos(W) === 1 && (db.reportes ?? []).slice(reportesAntes).some((x) => /no respetó la fecha del primer cobro en un cambio de método de pago/.test(x.comentario)), "si Mercado Pago fuera a cobrar con el contrato nuevo antes del día pedido, el cambio no se aplica (se cancela el nuevo) y Daniel recibe el aviso");
+  let ultimo: any = null;
+  for (let i = 0; i < 6; i++) { reloj += 20_000; ultimo = await pedirCambio(g.sesion, { correo_pago: `wendy${i}@correo.com` }); }
+  const pendW = cambiosDe(W).filter((x) => x.estado === "pendiente");
+  ok(ultimo.st === 429 && /varias veces hoy/.test(ultimo.d.error) && cambiosDe(W).length === 6 && pendW.length === 1 && pendW[0].correo_pago === "wendy3@correo.com" && MP.pre[pendW[0].mp_preapproval_id].pedido.payer_email === "wendy3@correo.com" && MP.pre[pendW[0].mp_preapproval_id].status === "pending" && cuentaDe(W).correo === "wendy@correo.com" && vivos(W) === 1, "freno: 6 cambios por día; al llegar al tope no se abre otro contrato ni se pierde el que ya tenía (y puede poner otro correo de Mercado Pago sin cambiar el de su cuenta)");
+}
+
+titulo("26b. Lo que pasa del lado de Mercado Pago mientras se cambia el método de pago");
+const Z1 = "5511120013", Z2 = "5511120014", Z3 = "5511120015", Z4 = "5511120016", Z5 = "5511120017", Z6 = "5511120018";
+Object.assign(T, { z1: ["410001", "1001", 1, 2031], z2: ["410002", "1002", 2, 2031], z3: ["410003", "1003", 3, 2031], z4: ["410004", "1004", 4, 2031], z5: ["410005", "1005", 5, 2031], z5b: ["410006", "1006", 6, 2031], z6: ["410007", "1007", 7, 2031] });
+{
+  // (1) Con un cambio a medias, la familia cancela su contrato de siempre desde su cuenta de Mercado Pago.
+  const f = await familiaActiva(Z1, "Zoe Cancela", T.z1);
+  const A1 = f.pre, fin1 = ultimaSus(Z1).periodo_fin;
+  reloj += DIA;
+  await pedirCambio(f.sesion);
+  const B1 = ultimoCambio(Z1).mp_preapproval_id as string;
+  MP.pre[A1].status = "cancelled";
+  const a1 = await avisoMP("subscription_preapproval", A1);
+  const s1 = ultimaSus(Z1);
+  ok(a1.d.resultado === "cancelada" && s1.estado === "cancelada" && s1.cancelada_por === "mercadopago" && s1.periodo_fin === fin1 && ultimoCambio(Z1).estado === "descartado" && ultimoCambio(Z1).motivo === "suscripcion_terminada" && /^cancel/.test(MP.pre[B1].status) && vivos(Z1) === 0, "si el contrato de siempre se cancela en Mercado Pago y la tarjeta nueva todavía no está puesta, la suscripción queda cancelada (conserva su periodo) y el cambio a medias se descarta");
+  // (2) Lo mismo, pero ya había puesto su tarjeta nueva: la suscripción sigue con el contrato nuevo.
+  const g = await familiaActiva(Z2, "Zara Sigue", T.z2);
+  const A2 = g.pre, fin2 = ultimaSus(Z2).periodo_fin;
+  reloj += DIA;
+  await pedirCambio(g.sesion);
+  const B2 = ultimoCambio(Z2).mp_preapproval_id as string;
+  autorizar(B2, { pagador: g.pagador });
+  MP.pre[A2].status = "cancelled";
+  const a2 = await avisoMP("subscription_preapproval", A2);
+  const s2 = ultimaSus(Z2);
+  ok(a2.d.resultado === "metodo_cambiado" && s2.estado === "activa" && s2.mp_preapproval_id === B2 && s2.periodo_fin === fin2 && ultimoCambio(Z2).estado === "aplicado" && vivos(Z2) === 1 && waDe(Z2, /se canceló en Mercado Pago/).length === 0, "si el contrato de siempre aparece cancelado y el nuevo ya está autorizado, la suscripción NO se cancela: sigue con el contrato nuevo");
+  // (3) El servidor se corta justo después de cancelar el contrato anterior y antes de terminar el cambio.
+  const h = await familiaActiva(Z3, "Zoila Corte", T.z3);
+  const A3 = h.pre;
+  reloj += DIA;
+  await pedirCambio(h.sesion);
+  const k3 = ultimoCambio(Z3), B3 = k3.mp_preapproval_id as string;
+  autorizar(B3, { pagador: h.pagador });
+  Object.assign(k3, { aplicando_desde: ahoraIso(), mp_preapproval_anterior: A3 }); MP.pre[A3].status = "cancelled";
+  const a3 = await avisoMP("subscription_preapproval", A3);   // el aviso de «contrato anterior cancelado» llega enseguida
+  ok(a3.d.resultado === "cambio_en_curso" && ultimaSus(Z3).estado === "activa" && ultimaSus(Z3).mp_preapproval_id === A3 && waDe(Z3, /se canceló en Mercado Pago/).length === 0, "mientras un cambio se está aplicando, el aviso de «contrato anterior cancelado» NO cancela la suscripción");
+  reloj += 2 * MIN;
+  const a3b = await avisoMP("subscription_preapproval", B3);
+  ok(a3b.d.resultado === "metodo_cambiado" && ultimaSus(Z3).mp_preapproval_id === B3 && ultimaSus(Z3).estado === "activa" && ultimoCambio(Z3).estado === "aplicado" && !!ultimoCambio(Z3).anterior_cancelado_en && vivos(Z3) === 1, "y si el servidor se cortó a la mitad (con el contrato anterior ya cancelado), el siguiente aviso termina el cambio: la familia no se queda sin contrato");
+  // (4) El contrato nuevo de un cambio descartado que Mercado Pago no deja cancelar: se reintenta hasta que quede cancelado.
+  const j = await familiaActiva(Z6, "Zulma Suelto", T.z6);
+  const A6 = j.pre;
+  reloj += DIA;
+  await pedirCambio(j.sesion);
+  const B6 = ultimoCambio(Z6).mp_preapproval_id as string;
+  autorizar(B6, { pagador: j.pagador, proximo: iso(reloj + HORA) });   // Mercado Pago no respeta la fecha: el cambio se descarta
+  MP.noCancela.add(B6);
+  const a6 = await avisoMP("subscription_preapproval", B6);
+  const fila6 = (await admin("GET", "suscripciones")).d.suscripciones.find((x: any) => x.id === ultimaSus(Z6).id) ?? {};
+  ok(a6.d.resultado === "cambio_descartado" && ultimoCambio(Z6).estado === "descartado" && ultimoCambio(Z6).nuevo_cancelado_en === null && vivos(Z6) === 2 && ultimaSus(Z6).mp_preapproval_id === A6 && ultimaSus(Z6).revisar === true && /su contrato nuevo no se pudo cancelar/.test(ultimaSus(Z6).revisar_motivo ?? "") && fila6.metodo_pago?.falta_cancelar === 1, "si el contrato nuevo de un cambio descartado no se deja cancelar, queda la bandera para Daniel (el panel dice que falta cancelarlo)");
+  MP.noCancela.clear(); reloj += 20_000;
+  await servidor("GET", "suscripcion/estado", undefined, { sesion: j.sesion });
+  ok(/^cancel/.test(MP.pre[B6].status) && !!ultimoCambio(Z6).nuevo_cancelado_en && vivos(Z6) === 1 && MP.pre[A6].status === "authorized", "y se reintenta solo (al volver la familia a su cuenta, o en la revisión diaria) hasta que queda cancelado: un solo contrato vivo");
+}
+
+titulo("26c. Si de todos modos hubiera un cobro doble, Daniel lo sabe");
+{
+  const f = await familiaActiva(Z5, "Zuri Doble", T.z5);
+  const A0 = f.pre, fin = ultimaSus(Z5).periodo_fin as string;
+  reloj += DIA;
+  await pedirCambio(f.sesion);
+  const B = ultimoCambio(Z5).mp_preapproval_id as string;
+  autorizar(B, { pagador: f.pagador });
+  await avisoMP("subscription_preapproval", B);
+  reloj = ms(fin) + 5 * MIN;
+  const reportesAntes = (db.reportes ?? []).length;
+  // Un cobro del contrato anterior (que ya estaba cancelado: no debería pasar) y, enseguida, el cobro normal del nuevo.
+  const r1 = await avisoMP("subscription_authorized_payment", cobrar(A0, { tarjeta: T.z5, pagador: f.pagador }).cuota);
+  const s1 = ultimaSus(Z5);
+  ok(r1.d.resultado === "cobrado" && s1.estado === "activa" && s1.mp_preapproval_id === B && /del contrato anterior, después de cambiar el método de pago/.test(s1.revisar_motivo ?? "") && (db.reportes ?? []).slice(reportesAntes).some((x) => /cobro de \$349 MXN del contrato anterior/.test(x.comentario)) && /^cancel/.test(MP.pre[A0].status), "si el contrato anterior llegara a cobrar después del cambio, el mes pagado se conserva, se vuelve a pedir su cancelación y Daniel recibe el aviso para reembolsar");
+  const pagadaHasta = s1.periodo_fin;
+  const r2 = await avisoMP("subscription_authorized_payment", cobrar(B, { tarjeta: T.z5b, pagador: f.pagador, proximo: iso(masUnMes(ms(fin))) }).cuota);
+  const s2 = ultimaSus(Z5);
+  ok(r2.d.resultado === "cobrado" && s2.periodo_fin === pagadaHasta && /Dos cobros aprobados con menos de 15 días de diferencia/.test(s2.revisar_motivo ?? "") && (db.reportes ?? []).slice(reportesAntes).some((x) => /dos cobros aprobados con menos de 15 días/.test(x.comentario)) && paraDaniel(/posible cobro doble/).length === 1 && cobrosDe(Z5, "aprobado").length === 3 && s2.mp_tarjeta === "1006", "y con dos cobros aprobados el mismo mes, Daniel recibe el aviso de posible cobro doble (el periodo no se alarga dos veces)");
+  // Con una familia en gracia y un cambio a medias: si se acaba la gracia, vence y no queda ningún contrato vivo.
+  const g = await familiaEnGracia(Z4, "Zenón Vence", T.z4);
+  await pedirCambio(g.sesion);
+  const B4 = ultimoCambio(Z4).mp_preapproval_id as string;
+  reloj = ms(ultimaSus(Z4).gracia_hasta) + HORA;
+  await admin("POST", "suscripciones/diario", {});
+  ok(ultimaSus(Z4).estado === "vencida" && ultimoCambio(Z4).estado === "descartado" && /^cancel/.test(MP.pre[B4].status) && /^cancel/.test(MP.pre[g.pre].status) && vivos(Z4) === 0, "si se acaba la gracia sin pagar, la suscripción vence y el cambio a medias se descarta: los dos contratos quedan cancelados");
+}
+
+titulo("27. Abandonar a la mitad, cancelar con un cambio a medias y la limpieza diaria");
+const X1 = "5511120011";
+{
+  const f = await familiaActiva(X1, "Ximena Deja", T.x1);
+  const s0 = { ...ultimaSus(X1) }, A0 = f.pre;
+  reloj += DIA;
+  await pedirCambio(f.sesion);
+  const B = ultimoCambio(X1).mp_preapproval_id as string, antesWa = mensajesA(X1);
+  reloj += 20 * HORA;
+  await admin("POST", "suscripciones/diario", {});
+  ok(ultimoCambio(X1).estado === "pendiente" && MP.pre[B].status === "pending", "la revisión diaria no toca un cambio de menos de un día (la familia todavía puede terminar)");
+  reloj += 5 * HORA;
+  const d2 = await admin("POST", "suscripciones/diario", {});
+  const s1 = ultimaSus(X1);
+  ok(d2.st === 200 && d2.d.cambios_descartados >= 1 && ultimoCambio(X1).estado === "descartado" && ultimoCambio(X1).motivo === "sin_terminar" && /^cancel/.test(MP.pre[B].status) && s1.estado === "activa" && s1.mp_preapproval_id === A0 && MP.pre[A0].status === "authorized" && s1.periodo_fin === s0.periodo_fin && mensajesA(X1) === antesWa, "el cambio que nadie terminó en un día se descarta (su link deja de servir) sin tocar la suscripción ni molestar a la familia");
+  // Apagada para todos: quien ya tiene suscripción puede seguir cambiando su tarjeta (igual que puede cancelar).
+  await admin("POST", "config", { sparked_suscripcion: "no" }); reloj += 61_000;
+  const r = await pedirCambio(f.sesion);
+  const B2 = ultimoCambio(X1).mp_preapproval_id as string;
+  ok(r.st === 200 && r.d.modo === "mercadopago" && ultimoCambio(X1).estado === "pendiente", "con la suscripción apagada para el público, quien ya la tiene puede cambiar su método de pago");
+  const c = await servidor("POST", "suscripcion/cancelar", {}, { sesion: f.sesion });
+  ok(c.d.estado === "cancelada" && ultimoCambio(X1).estado === "descartado" && ultimoCambio(X1).motivo === "suscripcion_terminada" && /^cancel/.test(MP.pre[B2].status) && /^cancel/.test(MP.pre[A0].status) && vivos(X1) === 0, "si cancela su suscripción con un cambio a medias, también se cancela el contrato nuevo: no queda nada que pueda cobrar");
+  MP.pre[B2].status = "authorized";   // como si alguien terminara ese link viejo
+  const a = await avisoMP("subscription_preapproval", B2);
+  ok(a.d.resultado === "contrato_cancelado" && /^cancel/.test(MP.pre[B2].status) && ultimaSus(X1).estado === "cancelada" && vivos(X1) === 0, "un contrato descartado que Mercado Pago reportara vivo se cancela otra vez: no puede cobrar");
+  ok((await pedirCambio(f.sesion)).st === 409, "una suscripción cancelada ya no tiene método de pago que cambiar");
+}
+
+titulo("28. Cuenta de prueba: el cambio de método de pago también se simula, sin tocar Mercado Pago ni mandar nada");
+{
+  const NUM = "0007654321";
+  const cod = await servidor("POST", "cuenta/codigo", { telefono: NUM, simular: true }, { admin: true });
+  const ent = await servidor("POST", "cuenta/entrar", { telefono: NUM, codigo: cod.d?.codigo });
+  const ses = ent.d?.sesion ?? "", cta = db.cuentas.find((c) => c.telefono === "+52" + NUM)!;
+  const antes = { mp: MP.llamadas.length, wa: whatsapps.length, correo: correos.length };
+  await servidor("POST", "suscripcion/crear", { acepta: true, nombre: "Prueba", correo: "prueba@sparked.invalid" }, { sesion: ses, admin: true });
+  const sus = db.suscripciones.find((x) => x.cuenta_id === cta.id)!;
+  const p = (cuerpo: unknown) => admin("POST", `suscripciones/${sus.id}/prueba`, cuerpo);
+  await p({ accion: "preapproval", datos: { status: "authorized", next_payment_date: sus.primer_cobro_en, payer_id: 778 }, pagos: [] });
+  const A0 = sus.mp_preapproval_id, fin = sus.periodo_fin;
+  ok((await p({ accion: "preapproval", contrato: "nuevo", datos: { status: "authorized" } })).st === 400, "(sin un cambio pedido no hay contrato nuevo que simular)");
+  const r = await pedirCambio(ses);
+  const k = (db.suscripcion_cambios_pago ?? []).find((x) => x.suscripcion_id === sus.id)!;
+  ok(sus.estado === "en_prueba" && r.st === 200 && r.d.modo === "simulada" && r.d.inmediato === false && r.d.primer_cobro_en === fin && k.de_prueba === true && /^prueba-/.test(k.mp_preapproval_id) && k.mp_preapproval_id !== A0, "una cuenta de prueba pide el cambio y se le arma un contrato simulado (el primer cobro, el día en que termina su prueba)");
+  const a = await p({ accion: "preapproval", contrato: "nuevo", datos: { status: "authorized", next_payment_date: k.primer_cobro_en, payer_id: 778, payment_method_id: "master" }, pagos: [{ id: "v-1", transaction_amount: 5, date_created: ahoraIso(), card: { first_six_digits: "433334", last_four_digits: "3334", expiration_month: 3, expiration_year: 2031 }, payer: { id: 778 } }] });
+  ok(a.st === 200 && a.d.resultado === "metodo_cambiado" && a.d.suscripcion.mp_preapproval_id === k.mp_preapproval_id && a.d.suscripcion.estado === "en_prueba" && a.d.suscripcion.periodo_fin === fin && a.d.suscripcion.mp_tarjeta === "3334" && a.d.suscripcion.mp_medio === "master" && k.estado === "aplicado" && k.mp_preapproval_anterior === A0, "el aviso simulado de «tarjeta nueva autorizada» pasa por el mismo código de verdad: misma suscripción, misma fecha, contrato nuevo");
+  const rep = await p({ accion: "preapproval", contrato: "nuevo", datos: { status: "authorized", next_payment_date: k.primer_cobro_en } });
+  const viejo = await p({ accion: "preapproval", contrato: "anterior", datos: { status: "cancelled" } });
+  ok(rep.d.resultado === "al_dia" && viejo.d.resultado === "contrato_anterior_cancelado" && viejo.d.suscripcion.estado === "en_prueba", "repetir el aviso no cambia nada, y el aviso de «contrato anterior cancelado» no cancela la suscripción");
+  ok(MP.llamadas.length === antes.mp && whatsapps.length === antes.wa && correos.length === antes.correo, "en todo el cambio simulado no salió ni una llamada a Mercado Pago, ni un WhatsApp, ni un correo");
+  const fila = (await admin("GET", "suscripciones")).d.suscripciones.find((x: any) => x.id === sus.id);
+  ok(fila?.metodo_pago?.cambios === 1 && fila.metodo_pago.tarjeta === "3334" && fila.de_prueba === true, "el panel enseña el cambio en la suscripción de prueba");
+  const borrar = await admin("DELETE", `cuentas/${cta.id}`);
+  ok(borrar.st === 200 && !(db.suscripcion_cambios_pago ?? []).some((x) => x.suscripcion_id === sus.id) && !db.suscripciones.some((x) => x.cuenta_id === cta.id), "la cuenta de prueba se borra con sus cambios de método de pago");
+  const textoPanel = JSON.stringify((await admin("GET", "suscripciones")).d);
+  ok([K, M2, L, P, Q, R, Y1, U, V, W, X1].every((t) => !textoPanel.includes(t)) && !/@correo\.com/.test(textoPanel.replace(/•••@correo\.com/g, "")), "y en el panel siguen sin salir completos ni un WhatsApp ni un correo");
+}
+
+titulo("28b. Cuenta de prueba: el mismo recorrido de la prueba en vivo (activa sin cobro; cobro fallido → método nuevo → activa)");
+{
+  const NUM = "0007654322", PG = 779;
+  const cod = await servidor("POST", "cuenta/codigo", { telefono: NUM, simular: true }, { admin: true });
+  const ses = (await servidor("POST", "cuenta/entrar", { telefono: NUM, codigo: cod.d?.codigo })).d?.sesion ?? "";
+  const cta = db.cuentas.find((c) => c.telefono === "+52" + NUM)!;
+  const antes = { mp: MP.llamadas.length, wa: whatsapps.length, correo: correos.length };
+  const act = async () => (await servidor("GET", "cuenta", undefined, { sesion: ses })).d?.suscripcion?.actual ?? null;
+  const p = (id: string, cuerpo: unknown) => admin("POST", `suscripciones/${id}/prueba`, cuerpo);
+  const cobrosDeSus = (id: string, estado?: string) => (db.suscripcion_cobros ?? []).filter((x) => x.suscripcion_id === id && (!estado || x.estado === estado));
+  const rechazo = (id: string) => ({ id, status: "rejected", status_detail: "cc_rejected_insufficient_amount", transaction_amount: 349, currency_id: "MXN", payment_type_id: "credit_card" });
+  const aprobado = (id: string) => ({ id, status: "approved", status_detail: "accredited", transaction_amount: 349, currency_id: "MXN", payment_type_id: "credit_card", date_approved: ahoraIso() });
+  // Activa: cambia su método de pago sin cancelar y sin cobro.
+  const alta = await servidor("POST", "suscripcion/crear", { acepta: true, nombre: "Prueba", correo: "prueba@sparked.invalid" }, { sesion: ses, admin: true });
+  const id1 = alta.d.suscripcion_id as string;
+  await p(id1, { accion: "preapproval", datos: { status: "authorized", next_payment_date: alta.d.primer_cobro_en, payer_id: PG, payment_method_id: "visa" }, pagos: [] });
+  await p(id1, { accion: "pago", pago: aprobado("vivo-1") });
+  const a0 = await act();
+  const c1 = await pedirCambio(ses), c2 = await pedirCambio(ses), aMitad = await act();
+  const apl = await p(id1, { accion: "preapproval", contrato: "nuevo", datos: { status: "authorized", next_payment_date: a0.periodo_fin, payer_id: PG, payment_method_id: "master" }, pagos: [] });
+  const a1 = await act(), det = (await admin("GET", `suscripciones/${id1}`)).d;
+  ok(a0.estado === "activa" && a0.metodo.puede_cambiar === true && a0.metodo.inmediato === false && a0.metodo.cambio === null && c1.st === 200 && c1.d.modo === "simulada" && c1.d.inmediato === false && c1.d.primer_cobro_en === a0.periodo_fin && c2.d.cambio_id === c1.d.cambio_id && aMitad.estado === "activa" && aMitad.periodo_fin === a0.periodo_fin && aMitad.metodo.cambio.estado === "pendiente", "(en vivo 4b) activa: pedir el cambio abre un contrato simulado para el día en que termina lo pagado; repetirlo lo reutiliza y, a la mitad, todo sigue igual");
+  ok(apl.d.resultado === "metodo_cambiado" && a1.estado === "activa" && a1.id === a0.id && a1.folio === a0.folio && a1.periodo_fin === a0.periodo_fin && cerca(a1.proximo_cobro, ms(a0.proximo_cobro)) && a1.puede_crear === true && a1.metodo.cambio.estado === "aplicado" && !!a1.metodo.cambiado_en && a1.metodo.medio === "master" && det.cobros.length === 1 && det.metodo_pago.cambios === 1 && !JSON.stringify(det).includes("prueba-"), "(en vivo 4b) al autorizarse la tarjeta nueva: misma suscripción, mismo periodo y mismo próximo cobro; ningún cobro; el panel cuenta 1 cambio y no enseña identificadores de Mercado Pago");
+  const rep = await p(id1, { accion: "preapproval", contrato: "nuevo", datos: { status: "authorized", next_payment_date: a0.periodo_fin, payer_id: PG }, pagos: [] });
+  const viejo = await p(id1, { accion: "preapproval", contrato: "anterior", datos: { status: "cancelled" }, pagos: [] });
+  const fila = (await admin("GET", "suscripciones")).d.suscripciones.find((x: any) => x.id === id1);
+  ok(["al_dia", "metodo_ya_cambiado"].includes(rep.d.resultado) && viejo.d.resultado === "contrato_anterior_cancelado" && (await act()).estado === "activa" && fila.metodo_pago.cambios === 1 && fila.metodo_pago.historial.length === 1 && !!fila.metodo_pago.ultimo_cambio_en && fila.metodo_pago.en_curso === false && fila.metodo_pago.falta_cancelar === 0, "(en vivo 4b) el aviso repetido y el de «contrato anterior cancelado» no cambian nada; el panel enseña el cambio con su fecha");
+  // El cobro del mes siguiente no pasa: gracia normal (no «esperando el cobro del método nuevo»), y luego vence.
+  reloj += 2 * MIN;
+  const malo = await p(id1, { accion: "pago", pago: rechazo("vivo-malo") });
+  const a4 = await act();
+  ok(malo.d.resultado === "rechazado" && a4.estado === "en_gracia" && a4.metodo.puede_cambiar === true && a4.metodo.inmediato === true && a4.metodo.esperando_cobro === false, "(en vivo 5) un cobro que no pasa poco después de un cambio hecho al corriente es un cobro fallido normal: «Mi cuenta» ofrece cambiar el método de pago");
+  const d4 = await admin("POST", "suscripciones/diario", { fecha: iso(reloj + 10 * DIA + HORA) });
+  ok(d4.d.vencidas === 1 && (await act()).estado === "vencida", "(en vivo 5) pasados los 10 días de gracia queda vencida");
+  // Segunda suscripción (sin prueba): el primer cobro no pasa → cambia su método de pago → se cobra con el nuevo.
+  const alta2 = await servidor("POST", "suscripcion/crear", { acepta: true }, { sesion: ses, admin: true });
+  const id2 = alta2.d.suscripcion_id as string;
+  const aut2 = await p(id2, { accion: "preapproval", datos: { status: "authorized", payer_id: PG }, pagos: [] });
+  const malo6 = await p(id2, { accion: "pago", pago: rechazo("vivo-malo6") });
+  const g6 = await act();
+  ok(alta2.d.con_prueba === false && aut2.d.resultado === "esperando_primer_cobro" && malo6.d.resultado === "rechazado" && g6.estado === "en_gracia" && g6.puede_crear === false && g6.metodo.puede_cambiar === true && g6.metodo.inmediato === true, "(en vivo 6) sin prueba gratis, el primer cobro no pasa: queda en gracia y puede cambiar su método de pago");
+  const cg = await pedirCambio(ses), sinTocar = await act();
+  const aplG = await p(id2, { accion: "preapproval", contrato: "nuevo", datos: { status: "authorized", payer_id: PG, payment_method_id: "debvisa" }, pagos: [] });
+  const esperando = await act(), otro = await pedirCambio(ses);
+  ok(cg.st === 200 && cg.d.inmediato === true && cg.d.primer_cobro_en === null && sinTocar.estado === "en_gracia" && sinTocar.metodo.cambio.estado === "pendiente" && aplG.d.resultado === "metodo_cambiado" && esperando.estado === "en_gracia" && esperando.id === g6.id && esperando.metodo.esperando_cobro === true && esperando.metodo.puede_cambiar === false && otro.st === 409 && otro.d.esperando_cobro === true, "(en vivo 6) el cambio se pide sin fecha de inicio; al autorizarse queda esperando el cobro del método nuevo y no deja abrir otro encima");
+  const k5 = await p(id2, { accion: "pago", contrato: "nuevo", pago: aprobado("vivo-2") });
+  const a7 = await act(), det6 = (await admin("GET", `suscripciones/${id2}`)).d;
+  ok(k5.d.resultado === "cobrado" && a7.estado === "activa" && a7.puede_crear === true && cerca(a7.periodo_fin, masUnMes(reloj), DIA) && a7.metodo.esperando_cobro === false && det6.cobros.filter((x: any) => x.estado === "aprobado").length === 1 && det6.metodo_pago.cambios === 1 && cobrosDeSus(id2, "aprobado").length === 1, "(en vivo 6) Mercado Pago cobra con el método nuevo: activa por un mes, con UN solo cobro aprobado");
+  ok(MP.llamadas.length === antes.mp && whatsapps.length === antes.wa && correos.length === antes.correo, "y en todo el recorrido no salió ni una llamada a Mercado Pago, ni un WhatsApp, ni un correo");
+  await admin("DELETE", `cuentas/${cta.id}`);
+  ok(!db.suscripciones.some((x) => x.cuenta_id === cta.id) && !(db.suscripcion_cambios_pago ?? []).some((x) => x.suscripcion_id === id1 || x.suscripcion_id === id2), "la cuenta de prueba se borra con sus dos suscripciones y sus cambios");
 }
 
 console.log(`\n${fallas ? `${fallas} de ${total} comprobaciones FALLARON` : `${total} de ${total} comprobaciones bien.`}`);

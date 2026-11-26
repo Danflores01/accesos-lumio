@@ -11,7 +11,8 @@
 //   GET /cuenta · POST /cuenta/salir · POST /cuenta/correo · POST /paquete/comprar · GET /paquete/estado/:compra · POST /paquete/reintentar/:compra ·
 //   POST /cuenta/guia · GET /cuenta/guia/:compra · y en administración /admin/paquetes y /admin/cuentas/:id
 //   Suscripción mensual «Guías ilimitadas» (suscripcion.ts, 25 nov 2026; nace apagada): GET /suscripcion/info ·
-//   POST /suscripcion/crear · GET /suscripcion/estado · POST /suscripcion/cancelar · y en administración /admin/suscripciones…
+//   POST /suscripcion/crear · GET /suscripcion/estado · POST /suscripcion/cancelar · POST /suscripcion/metodo-de-pago (cambiar la
+//   tarjeta sin cancelar) · y en administración /admin/suscripciones…
 //   Sus avisos de Mercado Pago llegan a POST /pago/mercadopago y se separan antes de la lógica de las guías sueltas.
 // Rutas internas: POST /trabajo/:id/paso (solo la propia función, cabecera x-interno)
 // Rutas de administración (cabecera x-admin-key, la misma llave del panel de accesos): /admin/...
@@ -31,7 +32,7 @@ import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 import { rutasCuenta, abonarPaquete, devolverGuiaDeSaldo, notaDeSaldo } from "./cuenta.ts";
 import { rutasSuscripcion, avisoSuscripcionMP, pagoSiEsDeSuscripcion, alargarGuiaDeSuscripcion, notaDeSuscripcion, resumenSuscripciones, listaProbadores } from "./suscripcion.ts";
 
-const VERSION = "2026-11-25.2";
+const VERSION = "2026-11-25.3";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });

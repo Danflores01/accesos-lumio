@@ -37,6 +37,8 @@
 //   POST /suscripcion/crear (x-cuenta) { acepta: true, nombre?, correo?, correo_pago? } → página de Mercado Pago
 //   GET  /suscripcion/estado (x-cuenta)       → cómo va la suscripción (pregunta a Mercado Pago si falta confirmar algo)
 //   POST /suscripcion/cancelar (x-cuenta)     → cancelar en un clic (conserva lo pagado hasta el fin del periodo)
+//   POST /suscripcion/metodo-de-pago (x-cuenta) { correo_pago? } → cambiar el método de pago SIN cancelar: abre la página
+//                                                de Mercado Pago para poner la tarjeta nueva
 // Con una suscripción que da derecho a crear, POST /cuenta/guia hace la guía con la suscripción (metodo_pago
 // "suscripcion", sin tocar el saldo del paquete).
 //
@@ -48,7 +50,7 @@
 import type { CtxBase, CtxRutasCuenta } from "./tipos.ts";
 import { mandarTextoA, telefonoInternacional, idiomaDe, motorWhatsApp } from "./whatsapp.ts";
 import { ventaCobrada, tipoSinCobro } from "./extras.ts";
-import { ajustesSuscripcion, puedeSuscribirse, infoSuscripcion, resumenSuscripcion, crearSuscripcion, estadoSuscripcion, cancelarDeFamilia, suscripcionParaCrear, suscripcionDetenida, revisarUsoEnPrueba, avisarGuiaFallida, borrarSuscripcionesDePrueba, MSG_EN_GRACIA, MSG_FALLO_GUIA_SUS, FALLAS_POR_DIA } from "./suscripcion.ts";
+import { ajustesSuscripcion, puedeSuscribirse, infoSuscripcion, resumenSuscripcion, crearSuscripcion, estadoSuscripcion, cancelarDeFamilia, cambiarMetodoDePago, suscripcionParaCrear, suscripcionDetenida, revisarUsoEnPrueba, avisarGuiaFallida, borrarSuscripcionesDePrueba, MSG_EN_GRACIA, MSG_FALLO_GUIA_SUS, FALLAS_POR_DIA } from "./suscripcion.ts";
 
 // ---------- Reglas (números que deciden cómo se comporta) ----------
 export const GUIAS_PAQUETE = 3;            // guías que abona un paquete
@@ -901,12 +903,13 @@ export async function rutasCuenta(c: CtxRutasCuenta): Promise<Response | null> {
       // La suscripción mensual: aquí se comprueba la sesión y lo demás lo hace suscripcion.ts.
       if (r2) return null;
       if (r1 === "info" && c.m === "GET") return c.json(infoSuscripcion(await c.config()));
-      const suya = (r1 === "crear" && c.m === "POST") || (r1 === "estado" && c.m === "GET") || (r1 === "cancelar" && c.m === "POST");
+      const suya = (r1 === "crear" && c.m === "POST") || (r1 === "estado" && c.m === "GET") || (r1 === "cancelar" && c.m === "POST") || (r1 === "metodo-de-pago" && c.m === "POST");
       if (!suya) return null;
       const s = await sesionDe(c);
       if (!s) return c.error(MSG_SESION, 401);
       if (r1 === "crear") return await crearSuscripcion(c, s.cuenta, s.sesion.canal);
       if (r1 === "estado") return await estadoSuscripcion(c, s.cuenta);
+      if (r1 === "metodo-de-pago") return await cambiarMetodoDePago(c, s.cuenta);
       return await cancelarDeFamilia(c, s.cuenta);
     }
     if (r0 === "cuenta") {

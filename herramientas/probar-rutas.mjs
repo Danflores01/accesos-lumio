@@ -123,6 +123,11 @@ await revisar("la suscripción mensual: sus rutas de la familia las recibe cuent
   assert.equal(await estado(rutasCuenta, "POST", ["suscripcion", "crear"], { acepta: true }), 401);     // sin sesión
   assert.equal(await estado(rutasCuenta, "GET", ["suscripcion", "estado"]), 401);
   assert.equal(await estado(rutasCuenta, "POST", ["suscripcion", "cancelar"]), 401);
+  assert.equal(await estado(rutasCuenta, "POST", ["suscripcion", "metodo-de-pago"]), 401);              // cambiar el método de pago: sin sesión no pasa
+  assert.equal(await estado(rutasCuenta, "POST", ["suscripcion", "metodo-de-pago"], { correo_pago: "alguien@ejemplo.com" }), 401);
+  assert.equal(await estado(rutasCuenta, "GET", ["suscripcion", "metodo-de-pago"]), null);
+  assert.equal(await estado(rutasCuenta, "POST", ["suscripcion", "metodo-de-pago", "otra"]), null);
+  assert.equal(await estado(rutasCuenta, "POST", ["suscripcion", "metodo"]), null);
   assert.equal(await estado(rutasCuenta, "GET", ["suscripcion"]), null);
   assert.equal(await estado(rutasCuenta, "GET", ["suscripcion", "crear"]), null);
   assert.equal(await estado(rutasCuenta, "POST", ["suscripcion", "estado"]), null);
@@ -142,6 +147,7 @@ await revisar("suscripcion.ts atiende solo su administración", async () => {
   assert.equal(await estado(rutasSuscripcion, "GET", ["suscripcion", "info"]), null);
   assert.equal(await estado(rutasSuscripcion, "POST", ["suscripcion", "crear"]), null);
   assert.equal(await estado(rutasSuscripcion, "POST", ["suscripcion", "cancelar"]), null);
+  assert.equal(await estado(rutasSuscripcion, "POST", ["suscripcion", "metodo-de-pago"]), null);
   assert.equal(await estado(rutasSuscripcion, "GET", ["admin", "suscripcion"]), null);
   assert.equal(await estado(rutasSuscripcion, "GET", ["admin", "paquetes"]), null);
   assert.equal(await estado(rutasSuscripcion, "GET", ["admin", "cuentas", UUID]), null);
