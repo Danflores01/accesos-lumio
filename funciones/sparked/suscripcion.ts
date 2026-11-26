@@ -862,8 +862,14 @@ async function aplicarCambio(c: CtxCuenta, sus0: Sus, k0: Cambio, pre: Pre, op: 
     } else {
       // El contrato nuevo cobra el día en que termina lo ya pagado: esa fecha debe seguir siendo la misma (si el contrato
       // anterior ya cobró o falló, ya no lo es), faltar un rato para ella y ser la que Mercado Pago dice.
+      // Salvo que el contrato nuevo YA haya cobrado (la familia puso su tarjeta nueva, nadie avisó y llegó el día del
+      // cobro): entonces ya no hay nada que esperar; se sigue con el nuevo y el anterior se cancela ahora mismo, antes de
+      // que cobre el mismo periodo.
+      const { data: suyos, error: eSuyos } = await c.supabase.from("suscripcion_cobros").select("id").eq("suscripcion_id", sus.id).eq("estado", "aprobado").eq("mp_preapproval_id", k.mp_preapproval_id!).limit(1);
+      if (eSuyos) throw eSuyos;
+      yaCobroElNuevo = ((suyos ?? []) as any[]).length > 0;
       const pedido = ms(k.primer_cobro_en), fin = ms(sus.periodo_fin), dicho = ms(pre.proximo ?? pre.inicio);
-      const motivo = sus.estado === "en_gracia" || !Number.isFinite(pedido) || !Number.isFinite(fin) || Math.abs(fin - pedido) > HORA ? "fecha_no_coincide"
+      const motivo = yaCobroElNuevo ? "" : sus.estado === "en_gracia" || !Number.isFinite(pedido) || !Number.isFinite(fin) || Math.abs(fin - pedido) > HORA ? "fecha_no_coincide"
         : pedido - ahora < CAMBIO_MARGEN_APLICAR_MIN * 60_000 ? "cobro_muy_cerca"
         : Number.isFinite(dicho) && Math.abs(dicho - pedido) > 36 * HORA ? "fecha_no_respetada" : "";
       if (motivo) {
@@ -1047,9 +1053,14 @@ export async function aplicarPago(c: CtxCuenta, sus0: Sus, p: any, facturaId: st
   const de = origenDelPago(sus, cambios, p, contrato, esMensualidad);
   // Un pago del contrato nuevo de un cambio pendiente quiere decir que la familia ya terminó en Mercado Pago: el cambio
   // se termina de aplicar ahora (se cancela el contrato anterior), sin esperar a otro aviso.
+  // Y una mensualidad (cobrada o rechazada) del contrato de siempre, con un cambio a medias, también lo revisa en el
+  // momento: si la familia ya había puesto su tarjeta nueva y nadie avisó (cerró la página y el aviso de Mercado Pago no
+  // llegó), el contrato nuevo cobraría este mismo periodo. Aquí se aplica o se descarta —y se cancela— antes de que pase.
   const terminarCambio = async () => {
-    if (de.cambio?.estado !== "pendiente" || op.enSincronizacion) return;
-    try { await revisarCambio(c, (await porId(c, sus.id)) ?? sus, de.cambio); } catch (e) { console.warn("cambio de método de pago, al llegar un pago del contrato nuevo:", sinCorreos((e as Error)?.message ?? e)); }
+    if (op.enSincronizacion) return;
+    const pendiente = de.cambio?.estado === "pendiente" ? de.cambio : !de.previo && esMensualidad ? cambios.find((x) => x.estado === "pendiente") ?? null : null;
+    if (!pendiente) return;
+    try { await revisarCambio(c, (await porId(c, sus.id)) ?? sus, pendiente); } catch (e) { console.warn("cambio de método de pago, al llegar un pago:", sinCorreos((e as Error)?.message ?? e)); }
   };
   if (!esMensualidad && monto < precio * 0.2) {
     // El cobro mínimo con el que Mercado Pago comprueba la tarjeta (y que devuelve solo) no es una mensualidad. Sirve

@@ -1334,6 +1334,55 @@ titulo("26c. Si de todos modos hubiera un cobro doble, Daniel lo sabe");
   ok(ultimaSus(Z4).estado === "vencida" && ultimoCambio(Z4).estado === "descartado" && /^cancel/.test(MP.pre[B4].status) && /^cancel/.test(MP.pre[g.pre].status) && vivos(Z4) === 0, "si se acaba la gracia sin pagar, la suscripción vence y el cambio a medias se descarta: los dos contratos quedan cancelados");
 }
 
+titulo("26d. Si nadie avisó de que la tarjeta nueva ya estaba puesta, el día del cobro no se quedan cobrando los dos contratos");
+const N1 = "5511120021", N2 = "5511120022", N3 = "5511120023", N4 = "5511120024";
+Object.assign(T, { n1: ["420001", "2101", 1, 2033], n2: ["420002", "2201", 2, 2033], n2b: ["420003", "2202", 3, 2033], n3: ["420004", "2301", 4, 2033], n4: ["420005", "2401", 5, 2033] });
+{
+  // La familia terminó en Mercado Pago, pero cerró la página y el aviso de Mercado Pago nunca llegó: el servidor no sabe
+  // que el contrato nuevo ya está autorizado, y los dos contratos tienen fecha de cobro el mismo día.
+  const sinAviso = async (tel: string, nombre: string, tarjeta: Tarjeta) => {
+    const f = await familiaActiva(tel, nombre, tarjeta);
+    const A = f.pre, fin = ultimaSus(tel).periodo_fin as string;
+    reloj += DIA;
+    await pedirCambio(f.sesion);
+    const B = ultimoCambio(tel).mp_preapproval_id as string;
+    autorizar(B, { pagador: f.pagador });
+    reloj = ms(fin) + 5 * MIN;   // llega el día del cobro
+    return { ...f, A, B, fin };
+  };
+  // (1) Cobra primero el contrato de siempre: el nuevo se descarta y se cancela en ese momento, antes de que cobre.
+  const f = await sinAviso(N1, "Nora Calla", T.n1);
+  const rA = await avisoMP("subscription_authorized_payment", cobrar(f.A, { tarjeta: T.n1, pagador: f.pagador, proximo: iso(masUnMes(ms(f.fin))) }).cuota);
+  ok(ultimoCambio(N1).mp_estado !== "authorized" || ultimoCambio(N1).estado !== "pendiente", "(el servidor no sabía que el contrato nuevo ya estaba autorizado)");
+  ok(rA.d.resultado === "cobrado" && ultimaSus(N1).estado === "activa" && ultimaSus(N1).mp_preapproval_id === f.A && ultimoCambio(N1).estado === "descartado" && ultimoCambio(N1).motivo === "fecha_no_coincide" && /^cancel/.test(MP.pre[f.B].status) && MP.pre[f.A].status === "authorized" && vivos(N1) === 1 && cobrosDe(N1, "aprobado").length === 2 && waDe(N1, /No pudimos cambiar tu método de pago/).length === 1, "al cobrar el contrato de siempre se revisa el cambio a medias: el contrato nuevo (que nadie avisó) se cancela antes de que cobre el mismo mes, y la familia recibe el aviso");
+  // (2) Cobra primero el contrato NUEVO (llega el aviso de su pago): se sigue con él y el de siempre se cancela ahí mismo.
+  const g = await sinAviso(N2, "Noel Calla", T.n2);
+  const rB = await avisoMP("payment", cobrar(g.B, { tarjeta: T.n2b, pagador: g.pagador, proximo: iso(masUnMes(ms(g.fin))) }).pago);
+  const s2 = ultimaSus(N2);
+  ok(rB.d.resultado === "cobrado" && s2.estado === "activa" && s2.mp_preapproval_id === g.B && /^cancel/.test(MP.pre[g.A].status) && vivos(N2) === 1 && ultimoCambio(N2).estado === "aplicado" && cerca(s2.periodo_fin, masUnMes(ms(g.fin)), DIA) && cobrosDe(N2, "aprobado").length === 2 && s2.mp_tarjeta === "2202" && waDe(N2, /cambiamos tu método de pago/).length === 1 && waDe(N2, /No pudimos cambiar/).length === 0, "al cobrar el contrato nuevo se termina el cambio en ese momento: el contrato de siempre se cancela antes de que cobre el mismo mes (UN cobro, con la tarjeta nueva)");
+  // …y si el contrato de siempre alcanzó a cobrar también, Daniel recibe el aviso de cobro doble (lo pagado de más se conserva hasta que él lo revise).
+  const rA2 = await avisoMP("subscription_authorized_payment", cobrar(g.A, { tarjeta: T.n2, pagador: g.pagador }).cuota);
+  ok(rA2.d.resultado === "cobrado" && ms(ultimaSus(N2).periodo_fin) >= ms(s2.periodo_fin) && ultimaSus(N2).mp_preapproval_id === g.B && vivos(N2) === 1 && /del contrato anterior, después de cambiar el método de pago/.test(ultimaSus(N2).revisar_motivo ?? "") && paraDaniel(/posible cobro doble/).length >= 1, "si aun así el contrato anterior alcanzó a cobrar, queda la bandera y el aviso a Daniel para reembolsar");
+  // (3) El cobro del contrato de siempre NO pasa: el nuevo se descarta; queda en gracia y ahí puede cambiar su método de pago.
+  const h = await sinAviso(N3, "Nuria Calla", T.n3);
+  const rR = await avisoMP("subscription_authorized_payment", cobrar(h.A, { estado: "rejected", tarjeta: T.n3, pagador: h.pagador }).cuota);
+  const m3 = await metodoDe(h.sesion);
+  ok(rR.d.resultado === "rechazado" && ultimaSus(N3).estado === "en_gracia" && ultimaSus(N3).mp_preapproval_id === h.A && ultimoCambio(N3).estado === "descartado" && /^cancel/.test(MP.pre[h.B].status) && vivos(N3) === 1 && m3.puede_cambiar === true && m3.inmediato === true && waDe(N3, /No pudimos cobrar tu suscripción de SparkEd\./).length === 1, "si el cobro del contrato de siempre no pasa, el contrato nuevo que nadie avisó también se cancela (no cobra por su cuenta): queda en gracia y «Mi cuenta» le ofrece cambiar su método de pago");
+  // (4) Con el cambio todavía sin terminar en Mercado Pago (lo pidió unas horas antes y nunca puso su tarjeta), el cobro de siempre pasa y no se toca nada.
+  const j = await familiaActiva(N4, "Néstor Calla", T.n4);
+  const fin4 = ultimaSus(N4).periodo_fin as string;
+  reloj = ms(fin4) - 5 * HORA;
+  await pedirCambio(j.sesion);
+  const B4 = ultimoCambio(N4).mp_preapproval_id as string;
+  reloj = ms(fin4) + 5 * MIN;
+  const r4 = await avisoMP("subscription_authorized_payment", cobrar(j.pre, { tarjeta: T.n4, pagador: j.pagador, proximo: iso(masUnMes(ms(fin4))) }).cuota);
+  ok(r4.d.resultado === "cobrado" && ultimaSus(N4).estado === "activa" && ultimaSus(N4).mp_preapproval_id === j.pre && ultimoCambio(N4).estado === "pendiente" && MP.pre[B4].status === "pending" && vivos(N4) === 1 && waDe(N4, /No pudimos cambiar/).length === 0, "si la familia nunca terminó en Mercado Pago, el cobro de siempre pasa normal y el cambio a medias sigue a medias (sin avisos de más)");
+  // …y si después sí pone su tarjeta, ese cambio ya no vale (su fecha era la del cobro que ya pasó): se descarta y se le avisa.
+  autorizar(B4, { pagador: j.pagador });
+  const r4b = await avisoMP("subscription_preapproval", B4);
+  ok(r4b.d.resultado === "cambio_descartado" && ultimoCambio(N4).motivo === "fecha_no_coincide" && /^cancel/.test(MP.pre[B4].status) && ultimaSus(N4).mp_preapproval_id === j.pre && vivos(N4) === 1 && cobrosDe(N4, "aprobado").length === 2 && waDe(N4, /No pudimos cambiar tu método de pago/).length === 1, "y si termina en Mercado Pago después de ese cobro, el cambio ya no se aplica (cobraría el mismo mes otra vez): se cancela y se le avisa");
+}
+
 titulo("27. Abandonar a la mitad, cancelar con un cambio a medias y la limpieza diaria");
 const X1 = "5511120011";
 {

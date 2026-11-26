@@ -32,7 +32,7 @@ import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 import { rutasCuenta, abonarPaquete, devolverGuiaDeSaldo, notaDeSaldo } from "./cuenta.ts";
 import { rutasSuscripcion, avisoSuscripcionMP, pagoSiEsDeSuscripcion, alargarGuiaDeSuscripcion, notaDeSuscripcion, resumenSuscripciones, listaProbadores } from "./suscripcion.ts";
 
-const VERSION = "2026-11-25.3";
+const VERSION = "2026-11-25.4";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });

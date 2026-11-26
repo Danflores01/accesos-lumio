@@ -1046,7 +1046,7 @@ Daniel: «Solo para probar». Queda completa y desplegada, pero **apagada para e
 10. **Panel:** pestaña Suscripciones (modo, probadores, activas, en prueba, en gracia, canceladas, ingreso cobrado, uso
     por suscriptora, bandera «revisar», cancelar y revisar en Mercado Pago) y, en el Resumen, las suscripciones aparte
     de las guías sueltas. El WhatsApp y el correo salen a medias.
-11. **Candados:** `node herramientas/probar-suscripciones.ts` (sin internet: 237 comprobaciones con el servidor entero,
+11. **Candados:** `node herramientas/probar-suscripciones.ts` (sin internet: 244 comprobaciones con el servidor entero,
     avisos firmados y un Mercado Pago de juguete) y `node _guardia/skill/guardia-sparked/scripts/probar-suscripcion.mjs`
     (en vivo, con una cuenta de prueba; no toca Mercado Pago). `probar-mercadopago` da lo mismo que antes.
 12. **Falta antes de abrirla al público:** la prueba real de Daniel (suscribirse con su número de probador y su
@@ -1059,7 +1059,7 @@ Daniel: «Solo para probar». Queda completa y desplegada, pero **apagada para e
 
 Daniel pidió que funcione «como Xbox»: la cuenta tiene un método de pago; si el cobro no pasa, se le pregunta «¿Quieres
 cambiar tu método de pago?» y un botón le deja agregar otra tarjeta de crédito o débito **sin cancelar la suscripción**.
-También puede cambiarla cuando quiera. Servidor 2026-11-25.3; sigue en modo «solo probadores» y la portada en
+También puede cambiarla cuando quiera. Servidor 2026-11-25.4; sigue en modo «solo probadores» y la portada en
 «Próximamente». Quien ya tiene una suscripción puede cambiar su tarjeta en cualquier modo (igual que puede cancelar).
 
 1. **Cómo se hace (y por qué así).** La tarjeta nueva se pone en la página de Mercado Pago, en un **contrato de cobro
@@ -1084,6 +1084,11 @@ También puede cambiarla cuando quiera. Servidor 2026-11-25.3; sigue en modo «s
    que no es el de la suscripción ni un cambio pendiente se cancela en cuanto se ve. Cada cobro guarda con qué contrato
    se hizo; dos cobros aprobados con menos de 15 días de diferencia, o un cobro del contrato anterior después del
    cambio, dejan bandera y aviso a Daniel para reembolsar.
+   **Si nadie avisó de que la tarjeta nueva ya estaba puesta** (la familia cerró la página de Mercado Pago y su aviso
+   no llegó), los dos contratos tendrían cobro el mismo día. Por eso, al llegar el cobro de cualquiera de los dos se
+   revisa el cambio a medias en ese momento: si cobró (o falló) el de siempre, el nuevo se descarta y se cancela; si
+   cobró el nuevo, se sigue con él y el de siempre se cancela. Además el cambio se revisa cada vez que la familia abre
+   «Mi cuenta» y en la revisión diaria.
 6. **Una prueba gratis por WhatsApp y por tarjeta:** la tarjeta nueva también queda anotada en `pruebas_usadas`. La
    prueba se le dio a la tarjeta con la que contrató: cambiar de tarjeta ni la quita ni da otra.
 7. **Lo que ve la familia** (`cuenta.html`, textos en español e inglés): en «Suscripción mensual», el renglón «Método
@@ -1099,9 +1104,10 @@ También puede cambiarla cuando quiera. Servidor 2026-11-25.3; sigue en modo «s
 10. **Base de datos** (solo se agregó; `sql/migraciones/20261125_sparked_suscripcion_metodo_de_pago.sql`): tabla
     `suscripcion_cambios_pago`, `suscripciones.mp_tarjeta`, `suscripcion_cobros.mp_preapproval_id` y la función
     `sparked_aplicar_cambio_pago`. Ruta nueva: `POST /suscripcion/metodo-de-pago` (la recibe `cuenta.ts`; pide sesión).
-11. **Candados:** `probar-suscripciones.ts` (237 comprobaciones; las nuevas: cambio en activa, en prueba y en gracia,
+11. **Candados:** `probar-suscripciones.ts` (244 comprobaciones; las nuevas: cambio en activa, en prueba y en gracia,
     abandono a la mitad, aviso repetido, sin cobro doble, huella nueva en `pruebas_usadas`, Mercado Pago que no deja
-    cancelar, servidor que se corta a la mitad), `probar-rutas.mjs` (la ruta nueva), `probar-suscripcion.mjs` (en vivo,
+    cancelar, servidor que se corta a la mitad, y el día del cobro con un contrato nuevo del que nadie avisó),
+    `probar-rutas.mjs` (la ruta nueva), `probar-suscripcion.mjs` (en vivo,
     con contratos simulados) y la ronda (FALLA si queda un contrato de cambio sin cancelar).
 12. **Falta probar con Mercado Pago de verdad** (va junto con la prueba real de Daniel del §39): que respete la fecha
     de inicio del contrato nuevo, qué correos manda Mercado Pago al cancelar el contrato anterior, que deje cancelar un
