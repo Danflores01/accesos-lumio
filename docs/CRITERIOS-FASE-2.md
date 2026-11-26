@@ -949,6 +949,17 @@ compras marcadas como pagadas a mano en el panel (botón «Marcar pagada»), sin
 5. El correo a la familia de una cortesía dice «Tu acceso se activó» y «Acceso de cortesía», no «Tu pago se confirmó».
 6. El panel funciona con el servidor anterior y con el nuevo: lo nuevo solo aparece cuando el servidor manda los
    datos (`cortesias_mes` en el Resumen, `cobro` y `a_mano` en cada compra).
+7. **Compra de prueba** (Daniel, 26 de noviembre de 2026). Él compró con su propio dinero un paquete de 3 guías ($199,
+   aprobado por Mercado Pago) para probarlo y pidió: «márcalo como compra de prueba, ya que el dinero que usé para hacer
+   la prueba salió de ventas reales». Desde el código 2026-11-26.1, la columna `compras.de_prueba` (migración
+   `20261126_sparked_compras_de_prueba.sql`, solo agrega) aparta esa compra de todas las cuentas: `ventaCobrada`
+   devuelve `false` y `tipoSinCobro` dice `prueba`, así que no es venta ni cortesía en el Resumen (ventas de hoy y del
+   mes), en Paquetes, en Costos e impuestos ni en la ronda de la guardia. El saldo de sus guías, la entrega y Mercado
+   Pago no cambian (no se borra ni se reembolsa nada). En Compras y en Paquetes, cada compra pagada trae el botón
+   «Marcar como compra de prueba» o «Quitar marca de prueba» (`POST /admin/compras/<id>/prueba`, con confirmación), y la
+   marcada dice «Compra de prueba (no cuenta como venta)». Es distinto de `cuentas.de_prueba`, que es para las cuentas
+   simuladas de las pruebas automáticas. Candado: `probar-ventas.mjs` (una compra aprobada con la marca no cuenta;
+   al quitarla vuelve a contar) y `probar-rutas.mjs` (la ruta nueva).
 
 ## 37. Universidad: que no se vea infantil (Daniel, 12 y 17 de noviembre de 2026)
 

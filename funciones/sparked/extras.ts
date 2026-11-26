@@ -265,7 +265,7 @@ export function validarServicios(lista: unknown): Servicio[] | string {
 
 type TrabajoCosto = { id: string; alcance: string; estado: string; costo_usd: number | string | null; creado_en: string; guia_id: string | null; metricas: any[] | null };
 // producto "suscripcion" = un cobro mensual de la suscripción (viene de suscripcion_cobros, no de compras).
-type CompraCosto = { estado: string; monto_mxn: number | string | null; pagada_en: string | null; metodo_pago: string | null; mp_estado?: string | null; stripe_session_id?: string | null; producto?: string | null };
+type CompraCosto = { estado: string; monto_mxn: number | string | null; pagada_en: string | null; metodo_pago: string | null; mp_estado?: string | null; stripe_session_id?: string | null; producto?: string | null; de_prueba?: boolean | null };
 
 // ---------- ¿Qué cuenta como venta? ----------
 // Una compra «pagada» solo es VENTA (ingreso, impuestos) si de verdad se cobró:
@@ -280,11 +280,16 @@ type CompraCosto = { estado: string; monto_mxn: number | string | null; pagada_e
 // (tabla suscripcion_cobros), que cuenta con esta misma regla: solo si Mercado Pago lo aprobó.
 // Nació del 10 nov 2026: el panel decía 5 ventas y $500 cuando Mercado Pago solo había cobrado 3; las otras 2 eran
 // compras marcadas como pagadas a mano, sin cobro. Prueba: herramientas/probar-ventas.mjs.
-export type CompraCobro = { estado?: string | null; metodo_pago?: string | null; mp_estado?: string | null; stripe_session_id?: string | null };
-export const ventaCobrada = (c: CompraCobro): boolean => c.estado === "pagada" && (c.mp_estado === "approved" || c.metodo_pago === "manual" || !!c.stripe_session_id);
-/** Para una compra pagada que no es venta: "codigo" (código gratis), "saldo" (guía hecha con el saldo de un paquete ya
- *  cobrado), "suscripcion" (guía hecha con la suscripción mensual) o "cortesia" (confirmada a mano sin cobro). */
-export const tipoSinCobro = (c: CompraCobro): "codigo" | "saldo" | "suscripcion" | "cortesia" | null => c.estado !== "pagada" || ventaCobrada(c) ? null : c.metodo_pago === "codigo" ? "codigo" : c.metodo_pago === "saldo" ? "saldo" : c.metodo_pago === "suscripcion" ? "suscripcion" : "cortesia";
+// Tampoco es venta una COMPRA DE PRUEBA (compras.de_prueba, 26 nov 2026): Daniel compró un paquete con su propio dinero para
+// probarlo y pidió que no cuente como venta en ningún lugar («el dinero que usé para hacer la prueba salió de ventas
+// reales»). La marca la pone y la quita él en el panel (POST /admin/compras/<id>/prueba); el saldo, la entrega y Mercado
+// Pago no cambian. Es distinto de cuentas.de_prueba (cuentas simuladas de las pruebas automáticas).
+export type CompraCobro = { estado?: string | null; metodo_pago?: string | null; mp_estado?: string | null; stripe_session_id?: string | null; de_prueba?: boolean | null };
+export const ventaCobrada = (c: CompraCobro): boolean => c.de_prueba !== true && c.estado === "pagada" && (c.mp_estado === "approved" || c.metodo_pago === "manual" || !!c.stripe_session_id);
+/** Para una compra pagada que no es venta: "prueba" (compra de prueba, marcada en el panel), "codigo" (código gratis),
+ *  "saldo" (guía hecha con el saldo de un paquete ya cobrado), "suscripcion" (guía hecha con la suscripción mensual) o
+ *  "cortesia" (confirmada a mano sin cobro). */
+export const tipoSinCobro = (c: CompraCobro): "prueba" | "codigo" | "saldo" | "suscripcion" | "cortesia" | null => c.estado !== "pagada" || ventaCobrada(c) ? null : c.de_prueba === true ? "prueba" : c.metodo_pago === "codigo" ? "codigo" : c.metodo_pago === "saldo" ? "saldo" : c.metodo_pago === "suscripcion" ? "suscripcion" : "cortesia";
 /** Inicio del «día de ventas» y del mes para el Resumen del panel: el día termina a las 11 pm de Ciudad de México
  *  (UTC−6 todo el año), o sea a la medianoche de UTC−5. Devuelve fechas ISO en UTC (hoy y mes empiezan a las 05:00 UTC). */
 export function inicioDiaVentas(ahoraMs: number): { hoy: string; mes: string } {
@@ -363,6 +368,8 @@ export function calcularCostos(e: {
   const ingresos = { periodo: cero(), mes: cero(), d7: cero(), hoy: cero() };
   for (const c of e.compras) {
     if (c.estado !== "pagada" || !c.pagada_en) continue;
+    // Una compra de prueba (compras.de_prueba, 26 nov 2026) no entra en ninguna cuenta: ni venta, ni cortesía, ni «con código».
+    if (c.de_prueba === true) continue;
     const dia = diaMx(c.pagada_en);
     const cobrada = ventaCobrada(c), sinCobro = tipoSinCobro(c);
     // Un cobro de suscripción que Mercado Pago no aprobó (rechazado, reembolsado…) no es venta ni cortesía: no cuenta.
@@ -532,7 +539,7 @@ async function adminCostos(c: CtxRutas): Promise<Response> {
   const [{ tipos, consulta, fallo }, trab, comp, serv, cfg] = await Promise.all([
     tiposDeCambio(c, desde, hoy),
     c.supabase.from("trabajos").select("id, alcance, estado, costo_usd, creado_en, guia_id, metricas:datos->metricas").gte("creado_en", desdeIso).order("creado_en").limit(5000),
-    c.supabase.from("compras").select("estado, monto_mxn, pagada_en, metodo_pago, mp_estado, stripe_session_id").eq("estado", "pagada").gte("pagada_en", desdeIso).limit(5000),
+    c.supabase.from("compras").select("estado, monto_mxn, pagada_en, metodo_pago, mp_estado, stripe_session_id, de_prueba").eq("estado", "pagada").gte("pagada_en", desdeIso).limit(5000),
     leerServicios(c),
     c.config(),
   ]);
@@ -565,7 +572,7 @@ async function adminCostos(c: CtxRutas): Promise<Response> {
   const fuente = tc ? tc.fuente : "ajuste";
   // Impuestos estimados: lo que va del mes y el mes anterior completo (el que toca declarar).
   const inicioMes = hoy.slice(0, 8) + "01", finAnterior = sumarDias(inicioMes, -1), inicioAnterior = finAnterior.slice(0, 8) + "01";
-  const ant = await c.supabase.from("compras").select("estado, monto_mxn, metodo_pago, mp_estado, stripe_session_id").eq("estado", "pagada").gte("pagada_en", inicioDiaIso(inicioAnterior)).lt("pagada_en", inicioDiaIso(inicioMes)).limit(5000);
+  const ant = await c.supabase.from("compras").select("estado, monto_mxn, metodo_pago, mp_estado, stripe_session_id, de_prueba").eq("estado", "pagada").gte("pagada_en", inicioDiaIso(inicioAnterior)).lt("pagada_en", inicioDiaIso(inicioMes)).limit(5000);
   let cobradoAnt = 0, ventasAnt = 0;
   for (const x of [...((ant.data ?? []) as any[]), ...(await cobrosDeSuscripcion(inicioDiaIso(inicioAnterior), inicioDiaIso(inicioMes)))]) { const m = ventaCobrada(x) ? Number(x.monto_mxn ?? 0) || 0 : 0; if (m > 0) { cobradoAnt += m; ventasAnt++; } }
   const ajusteImp = leerAjusteImpuestos(cfg);

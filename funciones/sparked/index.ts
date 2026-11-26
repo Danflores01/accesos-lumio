@@ -32,7 +32,7 @@ import { rutasAcceso, sesionAdmin } from "./acceso.ts";
 import { rutasCuenta, abonarPaquete, devolverGuiaDeSaldo, notaDeSaldo } from "./cuenta.ts";
 import { rutasSuscripcion, avisoSuscripcionMP, pagoSiEsDeSuscripcion, alargarGuiaDeSuscripcion, notaDeSuscripcion, resumenSuscripciones, listaProbadores } from "./suscripcion.ts";
 
-const VERSION = "2026-11-25.4";
+const VERSION = "2026-11-26.1";
 const SUPABASE_URL = (Deno.env.get("SUPABASE_URL") ?? "").replace(/\/$/, "");
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -1326,7 +1326,7 @@ Deno.serve(async (req: Request) => {
         const { hoy, mes } = inicioDiaVentas(Date.now());
         const [guias, compras, solicitudes, reportes, trabajos, borradores, fallidos] = await Promise.all([
           supabase.from("guias").select("estado, origen"),
-          supabase.from("compras").select("estado, monto_mxn, pagada_en, creada_en, metodo_pago, mp_estado, stripe_session_id, producto").gte("creada_en", new Date(Date.now() - 45 * 86400 * 1000).toISOString()),
+          supabase.from("compras").select("estado, monto_mxn, pagada_en, creada_en, metodo_pago, mp_estado, stripe_session_id, producto, de_prueba").gte("creada_en", new Date(Date.now() - 45 * 86400 * 1000).toISOString()),
           supabase.from("solicitudes").select("id", { count: "exact", head: true }).eq("estado", "sin_guia"),
           supabase.from("reportes").select("id", { count: "exact", head: true }).eq("estado", "nuevo"),
           supabase.from("trabajos").select("estado, costo_usd, creado_en").gte("creado_en", mes),
@@ -1547,6 +1547,23 @@ Deno.serve(async (req: Request) => {
         const { error: e } = await supabase.from("compras").update({ metodo_pago: metodo }).eq("id", id);
         if (e) throw e;
         return json({ ok: true, metodo_pago: metodo });
+      }
+      // Compra de prueba (Daniel, 26 nov 2026): una compra pagada que él hizo con su propio dinero para probar. Marcada así
+      // deja de contar como venta en todo el panel (ventaCobrada, en extras.ts) y nada más cambia: ni el saldo de la
+      // cuenta, ni la entrega, ni Mercado Pago. { de_prueba: true } la marca; { de_prueba: false } le quita la marca y
+      // vuelve a contar como lo que era. Prueba: herramientas/probar-ventas.mjs.
+      if (rec === "compras" && esUuid(id) && accion === "prueba" && m === "POST") {
+        const b = await leerJson(req);
+        if (typeof b.de_prueba !== "boolean") return error("Di si es compra de prueba: de_prueba true o false");
+        const { data: c, error: e0 } = await supabase.from("compras").select("id, estado, de_prueba").eq("id", id).maybeSingle();
+        if (e0 && (e0.code === "42703" || e0.code === "PGRST204" || /de_prueba/i.test(e0.message ?? ""))) return error("Todavía no se puede marcar: falta aplicar en la base de datos la migración 20261126_sparked_compras_de_prueba.sql", 409);
+        if (e0) throw e0;
+        if (!c) return error("Esa compra no existe", 404);
+        if (c.estado !== "pagada") return error("Solo una compra pagada se puede marcar como compra de prueba");
+        if (c.de_prueba === b.de_prueba) return json({ ok: true, de_prueba: b.de_prueba, sin_cambio: true });
+        const { error: e } = await supabase.from("compras").update({ de_prueba: b.de_prueba }).eq("id", id);
+        if (e) throw e;
+        return json({ ok: true, de_prueba: b.de_prueba });
       }
       if (rec === "compras" && esUuid(id) && accion === "revisar" && m === "POST") {
         // Botón del panel: pregunta a Mercado Pago por los pagos de esta compra y aplica lo que encuentre.

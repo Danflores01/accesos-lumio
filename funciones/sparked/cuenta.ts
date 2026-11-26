@@ -770,7 +770,7 @@ const movimientoParaPanel = (m: Movimiento) => ({ id: m.id, fecha: m.creado_en, 
 // cada cuenta con su saldo y sus movimientos. El WhatsApp y el correo salen siempre enmascarados.
 async function adminPaquetes(c: CtxRutasCuenta): Promise<Response> {
   const [comprasR, movsR, cuentasR, cfg] = await Promise.all([
-    c.supabase.from("compras").select("id, estado, producto, monto_mxn, pagada_en, creada_en, metodo_pago, mp_estado, stripe_session_id, mp_preferencia_id, mp_vence_en, cuenta_id, entregada_en").eq("producto", "paquete3").order("creada_en", { ascending: false }).limit(1000),
+    c.supabase.from("compras").select("id, estado, producto, monto_mxn, pagada_en, creada_en, metodo_pago, mp_estado, stripe_session_id, mp_preferencia_id, mp_vence_en, cuenta_id, entregada_en, de_prueba").eq("producto", "paquete3").order("creada_en", { ascending: false }).limit(1000),
     c.supabase.from("cuenta_saldo_movimientos").select(COLUMNAS_MOV).order("id").limit(20000),
     c.supabase.from("cuentas").select("id, telefono, correo, nombre, de_prueba, creada_en, ultimo_acceso_en, telefono_verificado_en").order("creada_en", { ascending: false }).limit(5000),
     c.config(),
@@ -780,7 +780,10 @@ async function adminPaquetes(c: CtxRutasCuenta): Promise<Response> {
   const dePrueba = new Set(cuentas.filter((x) => x.de_prueba).map((x) => x.id));
   const reales = movs.filter((m) => !m.de_prueba && !dePrueba.has(m.cuenta_id));
   const comprasReales = compras.filter((x) => !dePrueba.has(x.cuenta_id));
-  const pagados = comprasReales.filter((x) => x.estado === "pagada"), cobrados = pagados.filter((x) => ventaCobrada(x));
+  // Una compra marcada como COMPRA DE PRUEBA (compras.de_prueba, 26 nov 2026: Daniel probó el paquete con su propio dinero)
+  // no es un paquete vendido ni cobrado: se cuenta aparte (paquetes_de_prueba). Sus guías sí están en el saldo de su cuenta.
+  const esCompraDePrueba = (x: any) => x.de_prueba === true;
+  const pagados = comprasReales.filter((x) => x.estado === "pagada" && !esCompraDePrueba(x)), cobrados = pagados.filter((x) => ventaCobrada(x));
   const saldoTotal = resumirSaldo(reales);
   const movsPorCuenta = new Map<string, Movimiento[]>();
   for (const m of movs) { if (!movsPorCuenta.has(m.cuenta_id)) movsPorCuenta.set(m.cuenta_id, []); movsPorCuenta.get(m.cuenta_id)!.push(m); }
@@ -789,7 +792,7 @@ async function adminPaquetes(c: CtxRutasCuenta): Promise<Response> {
     ajustes: { encendido: aj.encendido, precio: aj.precio, dias: aj.dias, guias: aj.guias },
     resumen: {
       paquetes_vendidos: pagados.length, paquetes_cobrados: cobrados.length, ingreso_mxn: cobrados.reduce((n, x) => n + (Number(x.monto_mxn) || 0), 0),
-      paquetes_sin_cobro: pagados.length - cobrados.length, paquetes_pendientes: comprasReales.filter((x) => x.estado === "pendiente").length,
+      paquetes_sin_cobro: pagados.length - cobrados.length, paquetes_de_prueba: comprasReales.filter((x) => x.estado === "pagada" && esCompraDePrueba(x)).length, paquetes_pendientes: comprasReales.filter((x) => x.estado === "pendiente").length,
       guias_abonadas: reales.filter((m) => m.motivo === "compra").reduce((n, m) => n + Number(m.cambio), 0),
       guias_usadas: guiasUsadas(reales), guias_sin_usar: saldoTotal.guias, guias_vencidas: saldoTotal.vencidas,
       guias_devueltas: reales.filter((m) => m.motivo === "devolucion").length,
@@ -797,7 +800,7 @@ async function adminPaquetes(c: CtxRutasCuenta): Promise<Response> {
     },
     paquetes: compras.slice(0, 200).map((x) => {
       const cta = cuentas.find((y) => y.id === x.cuenta_id);
-      return { id: x.id, folio: folioDe(x.id), estado: x.estado, cobro: x.estado !== "pagada" ? null : ventaCobrada(x) ? (x.metodo_pago === "manual" ? "por_fuera" : "linea") : tipoSinCobro(x), monto_mxn: Number(x.monto_mxn ?? 0), metodo_pago: x.metodo_pago, mp_estado: x.mp_estado, con_link_de_pago: !!x.mp_preferencia_id, mp_vence_en: x.estado === "pendiente" ? x.mp_vence_en : null, creada_en: x.creada_en, pagada_en: x.pagada_en, abonado: movs.some((m) => m.motivo === "compra" && m.compra_id === x.id), cuenta_id: x.cuenta_id, nombre: primerNombre(cta?.nombre) || null, whatsapp: cta ? enmascararTelefono(cta.telefono) : null, de_prueba: !!cta?.de_prueba };
+      return { id: x.id, folio: folioDe(x.id), estado: x.estado, cobro: x.estado !== "pagada" ? null : ventaCobrada(x) ? (x.metodo_pago === "manual" ? "por_fuera" : "linea") : tipoSinCobro(x), monto_mxn: Number(x.monto_mxn ?? 0), metodo_pago: x.metodo_pago, mp_estado: x.mp_estado, con_link_de_pago: !!x.mp_preferencia_id, mp_vence_en: x.estado === "pendiente" ? x.mp_vence_en : null, creada_en: x.creada_en, pagada_en: x.pagada_en, abonado: movs.some((m) => m.motivo === "compra" && m.compra_id === x.id), cuenta_id: x.cuenta_id, nombre: primerNombre(cta?.nombre) || null, whatsapp: cta ? enmascararTelefono(cta.telefono) : null, compra_de_prueba: esCompraDePrueba(x), de_prueba: !!cta?.de_prueba };
     }),
     cuentas: cuentas.slice(0, 500).map((x) => {
       const propios = movsPorCuenta.get(x.id) ?? [], saldo = resumirSaldo(propios);

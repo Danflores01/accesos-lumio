@@ -186,7 +186,7 @@ if (!clave) {
     const dePrueba = (paq.d.cuentas ?? []).filter((c) => c.de_prueba).length;
     if (dePrueba) aviso(`hay ${dePrueba} cuenta(s) de prueba sin borrar (¿una prueba en curso?). Borrarlas: node probar-paquete.mjs --limpiar`);
     if ((R.guias_devueltas ?? 0) >= 3 && R.guias_devueltas > (R.guias_usadas ?? 0)) aviso(`${R.guias_devueltas} guías de paquete regresaron al saldo y solo ${R.guias_usadas ?? 0} se crearon bien: revisa por qué fallan (panel → Paquetes → movimientos de cada cuenta)`);
-    ok(`paquete ${A.encendido ? "A LA VENTA" : "apagado"} ($${A.precio}, ${A.guias} guías, ${A.dias} días) · cobrados ${R.paquetes_cobrados ?? 0} · $${R.ingreso_mxn ?? 0} · pendientes de pago ${R.paquetes_pendientes ?? 0} · guías usadas ${R.guias_usadas ?? 0}, sin usar ${R.guias_sin_usar ?? 0}, vencidas ${R.guias_vencidas ?? 0}, devueltas ${R.guias_devueltas ?? 0} · cuentas ${R.cuentas ?? 0}`);
+    ok(`paquete ${A.encendido ? "A LA VENTA" : "apagado"} ($${A.precio}, ${A.guias} guías, ${A.dias} días) · cobrados ${R.paquetes_cobrados ?? 0} · $${R.ingreso_mxn ?? 0}${R.paquetes_de_prueba ? ` · de prueba ${R.paquetes_de_prueba} (no cuentan como venta)` : ""} · pendientes de pago ${R.paquetes_pendientes ?? 0} · guías usadas ${R.guias_usadas ?? 0}, sin usar ${R.guias_sin_usar ?? 0}, vencidas ${R.guias_vencidas ?? 0}, devueltas ${R.guias_devueltas ?? 0} · cuentas ${R.cuentas ?? 0}`);
   }
 
   // ---------- 4c. Suscripción mensual «Guías ilimitadas» ----------

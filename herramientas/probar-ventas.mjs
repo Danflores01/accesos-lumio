@@ -72,6 +72,24 @@ revisar(r4.ingresos.mes.ventas === 4 && r4.ingresos.mes.mxn === 649 && r4.ingres
 revisar(r4.ingresos.mes.de_suscripcion === 3 && r4.ingresos.mes.cortesias === 2 && r4.ingresos.mes.de_paquete === 0, `las 3 guías hechas con la suscripción no son ventas ni cortesías (salió ${r4.ingresos.mes.de_suscripcion} de suscripción y ${r4.ingresos.mes.cortesias} cortesías)`);
 revisar(r.ingresos.mes.ventas === 3 && r.ingresos.mes.mxn === 300 && r.ingresos.mes.de_suscripcion === 0 && r.ingresos.mes.cobros_suscripcion === 0, "sin suscripciones, noviembre sigue en 3 ventas y $300");
 
+// ---------- Compra de prueba (Daniel, 26 nov 2026): compró un paquete con su propio dinero para probar; no es venta ----------
+// «Márcalo como compra de prueba, ya que el dinero que usé para hacer la prueba salió de ventas reales.» La marca
+// (compras.de_prueba, puesta o quitada en el panel) aparta esa compra de TODAS las cuentas; quitarla la vuelve a contar.
+// El saldo de sus guías y la entrega no cambian, y en Mercado Pago no se toca nada.
+const dePrueba = { ...P, metodo_pago: "tarjeta", mp_estado: "approved", de_prueba: true };
+revisar(ventaCobrada(dePrueba) === false && tipoSinCobro(dePrueba) === "prueba", "una compra aprobada por Mercado Pago y marcada como compra de prueba: NO es venta (ni cortesía, ni código)");
+revisar(ventaCobrada({ ...dePrueba, de_prueba: false }) === true && tipoSinCobro({ ...dePrueba, de_prueba: false }) === null, "al quitar la marca de prueba, la misma compra vuelve a contar como venta");
+revisar(ventaCobrada({ ...P, metodo_pago: "manual", de_prueba: true }) === false && ventaCobrada({ ...P, stripe_session_id: "cs_x", de_prueba: true }) === false, "la marca de prueba manda también sobre lo cobrado por fuera o por Stripe");
+revisar(ventaCobrada({ ...P, metodo_pago: "tarjeta", mp_estado: "approved", de_prueba: null }) === true && confirmadaAMano(dePrueba) === false, "sin la marca (nula o ausente) todo sigue como antes, y a una compra de Mercado Pago de prueba no se le puede «cambiar a cobrada por fuera»");
+const paqPrueba = (de_prueba) => ({ ...paquete("tarjeta", "approved", "2026-11-10T19:23:00Z"), de_prueba });
+const r5 = calcularCostos({ ...base, compras: [...compras, paqPrueba(true)] });
+revisar(r5.ingresos.mes.ventas === 3 && r5.ingresos.mes.mxn === 300 && r5.ingresos.mes.cortesias === 2 && r5.ingresos.mes.con_codigo === 4 && r5.balance.mes.ingresos_mxn === 300, `el paquete de prueba de $199 no suma como venta ni como cortesía: noviembre sigue en 3 ventas y $300 (salió ${r5.ingresos.mes.ventas} y $${r5.ingresos.mes.mxn}, ${r5.ingresos.mes.cortesias} cortesías)`);
+const d10 = r5.por_dia.find((d) => d.fecha === "2026-11-10") ?? {};
+revisar(d10.ventas === 1 && d10.ingresos_mxn === 100, `el 10 de noviembre sigue con una venta de $100: el paquete de prueba tampoco entra en la tabla por día (salió ${d10.ventas} y $${d10.ingresos_mxn})`);
+revisar(impuestosDelMes({ iva: 16, isrModo: "resico", isrTasa: 0 }, r5.ingresos.mes.mxn, r5.ingresos.mes.ventas).cobrado_mxn === 300, "los impuestos se calculan sin la compra de prueba (sobre $300)");
+const r6 = calcularCostos({ ...base, compras: [...compras, paqPrueba(false)] });
+revisar(r6.ingresos.mes.ventas === 4 && r6.ingresos.mes.mxn === 499, `con la marca quitada, el mismo paquete vuelve a ser UNA venta de $199: 4 ventas y $499 (salió ${r6.ingresos.mes.ventas} y $${r6.ingresos.mes.mxn})`);
+
 // ---------- El «día de ventas» del Resumen termina a las 11 pm de México (pedido de Daniel, 11 nov 2026) ----------
 // Horas en UTC; México = UTC−6. 22:59 de México (04:59 UTC del día siguiente) todavía es «hoy»; 23:00 ya es mañana.
 const dv = (iso) => inicioDiaVentas(Date.parse(iso));
@@ -83,9 +101,14 @@ revisar(/inicioDiaVentas\(Date\.now\(\)\)/.test(fs.readFileSync(path.join(REPO, 
 
 // ---------- Que el servidor pida los datos que la regla necesita ----------
 // Si una consulta no trae mp_estado, ventaCobrada diría que nada se cobró y el panel mostraría 0 ventas.
-const fuentes = ["index.ts", "extras.ts"].map((f) => fs.readFileSync(path.join(REPO, "funciones", "sparked", f), "utf8")).join("\n");
+// Y si no trae de_prueba, una compra de prueba volvería a contar como venta.
+const fuentes = ["index.ts", "extras.ts", "cuenta.ts"].map((f) => fs.readFileSync(path.join(REPO, "funciones", "sparked", f), "utf8")).join("\n");
 const consultas = [...fuentes.matchAll(/\.from\("compras"\)\.select\("([^"]+)"\)/g)].map((x) => x[1]).filter((s) => s.includes("monto_mxn") && s.includes("metodo_pago") && !s.includes("nombre"));
-revisar(consultas.length >= 3 && consultas.every((s) => s.includes("mp_estado") && s.includes("stripe_session_id") && s.includes("estado")), `las ${consultas.length} consultas de cuentas (Resumen, Costos y mes anterior) traen estado, mp_estado y stripe_session_id`);
+revisar(consultas.length >= 4 && consultas.every((s) => s.includes("mp_estado") && s.includes("stripe_session_id") && s.includes("estado") && s.includes("de_prueba")), `las ${consultas.length} consultas de cuentas (Resumen, Costos, mes anterior y Paquetes) traen estado, mp_estado, stripe_session_id y de_prueba`);
+revisar(/accion === "prueba" && m === "POST"/.test(fuentes) && /update\(\{ de_prueba: b\.de_prueba \}\)/.test(fuentes) && /Solo una compra pagada se puede marcar como compra de prueba/.test(fuentes), "el servidor tiene POST /admin/compras/<id>/prueba para poner o quitar la marca de compra de prueba (solo en compras pagadas)");
+revisar(/esCompraDePrueba/.test(fuentes) && /paquetes_de_prueba:/.test(fuentes) && /compra_de_prueba: esCompraDePrueba\(x\)/.test(fuentes), "la sección Paquetes aparta las compras de prueba de los paquetes vendidos y cobrados, y lo dice en cada fila");
+const panel = fs.readFileSync(path.join(REPO, "sparked", "panel.html"), "utf8");
+revisar(/Compra de prueba<\/b> \(no cuenta como venta\)/.test(panel) && /Marcar como compra de prueba/.test(panel) && /Quitar marca de prueba/.test(panel) && /\/compras\/\$\{[^}]+\}\/prueba`/.test(panel), "el panel muestra «Compra de prueba (no cuenta como venta)» y trae los botones «Marcar como compra de prueba» y «Quitar marca de prueba»");
 revisar(/pendientes: cuenta\(C, \(c\) => c\.estado === "pendiente" && !esPaquete\(c\)\)/.test(fuentes) && /const dePaquete = \(c: any\) => tipoSinCobro\(c\) === "saldo";/.test(fuentes), "el Resumen cuenta los paquetes aparte de las guías, y las guías hechas con saldo aparte de las cortesías");
 revisar(/const venta = \(c: any\) => ventaCobrada\(c\);/.test(fuentes) && !/const venta = \(c: any\) => c\.estado === "pagada" && c\.metodo_pago !== "codigo"/.test(fuentes), "el Resumen usa la misma regla (ventaCobrada) y ya no «todo lo pagado que no sea con código»");
 
