@@ -1,0 +1,16 @@
+{
+  "id": "/sparked/panel.html",
+  "name": "Panel SparkEd",
+  "short_name": "Panel SparkEd",
+  "description": "Panel de administración de SparkEd.",
+  "lang": "es-MX",
+  "start_url": "/sparked/panel.html",
+  "scope": "/sparked/panel",
+  "display": "standalone",
+  "background_color": "#1B1340",
+  "theme_color": "#1B1340",
+  "icons": [
+    { "src": "img/iconos/panel-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/iconos/panel-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
