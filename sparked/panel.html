@@ -63,6 +63,12 @@
   .barra-sesion .inicial { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--pn-amarillo); color: var(--pn-noche); font-weight: 700; font-size: 14px; flex: 0 0 auto; }
   .barra-sesion .correo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
   body.panel.sitio.claro:has(#abrirMenu[hidden]) .barra-sesion { display: none; }
+  /* «Inicio» en la barra (26 nov 2026): regresa a la cuadrícula desde cualquier sección; en el inicio no se muestra. */
+  body.panel.sitio.claro .ir-inicio { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; margin-left: auto; padding: 0 14px 0 10px; border-radius: 12px; background: rgba(255,255,255,.08); color: #fff; font: 600 14px var(--pn-letra); text-decoration: none; white-space: nowrap; flex: 0 0 auto; }
+  body.panel.sitio.claro .ir-inicio:hover { background: rgba(255,255,255,.14); color: #fff; }
+  .ir-inicio svg { width: 20px; height: 20px; }
+  .ir-inicio[hidden] { display: none !important; }
+  body.panel.sitio.claro:has(#irInicio:not([hidden])) .barra-sesion { margin-left: 0; }
 
   /* ---------- Menú lateral ---------- */
   .velo { position: fixed; inset: 0; background: rgba(27,19,64,.45); z-index: 60; }
@@ -75,12 +81,22 @@
   .menu-cab button svg { width: 20px; height: 20px; }
   .menu-quien { margin: 0; padding: 14px 20px 6px; font-size: 12.5px; color: #B9B1DB; overflow-wrap: anywhere; }
   .menu .tabs { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 2px; margin: 0; padding: 6px 12px 12px; }
-  .menu .tabs button { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 46px; padding: 0 14px; border: 0; border-radius: 14px; background: none; color: #fff; font: 500 15.5px var(--pn-letra); text-align: left; cursor: pointer; }
+  /* Cada renglón del menú: el dibujo de la sección, su nombre y, si hay algo pendiente, el número en amarillo (26 nov 2026). */
+  .menu .tabs button { position: relative; display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 0 14px; border: 0; border-radius: 14px; background: none; color: #fff; font: 500 15.5px var(--pn-letra); text-align: left; cursor: pointer; }
+  .menu .tabs button .txt { flex: 1 1 auto; min-width: 0; }
+  .menu .tabs button .ico svg { width: 20px; height: 20px; }
   .menu .tabs button:hover { background: rgba(255,255,255,.06); }
   .menu .tabs button.on { background: var(--pn-noche-2); color: var(--pn-amarillo); font-weight: 600; }
   .menu .tabs button.on::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; background: var(--pn-amarillo); }
   .menu .tabs button[hidden] { display: none; }
   .menu .tabs button .n { display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; margin: 0; border-radius: 999px; background: var(--pn-amarillo); color: var(--pn-noche); font: 700 12px/1 var(--pn-letra); }
+  .menu .tabs button .n[hidden] { display: none; }
+  /* Los apartados de Compras y de Comentarios cuelgan de su sección, un poco más chicos y metidos a la derecha. */
+  .menu .tabs .sub { display: flex; flex-direction: column; gap: 1px; margin: 0 0 4px; }
+  .menu .tabs .sub button { min-height: 40px; padding-left: 46px; font-size: 14px; color: #DCD6F2; }
+  .menu .tabs .sub button .ico svg { width: 17px; height: 17px; }
+  .menu .tabs .sub button.on { color: var(--pn-amarillo); }
+  .menu .tabs .sub button.on::before { left: 30px; top: 11px; bottom: 11px; }
   .menu-pie { margin-top: auto; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid rgba(255,255,255,.10); padding: 10px 12px 14px; }
   body.panel.sitio.claro .menu-pie a { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 14px; font-weight: 500; font-size: 14.5px; color: #DCD6F2; text-decoration: none; }
   body.panel.sitio.claro .menu-pie a:hover { background: rgba(255,255,255,.06); color: #fff; }
@@ -109,7 +125,6 @@
   body.panel.sitio.claro #alertas .caja-clave { background: var(--pn-pel-fondo); }
   body.panel.sitio.claro #alertas .caja-clave > b { color: var(--pn-pel-texto); }
   body.panel.sitio.claro #alertas .caja-clave .ayuda { color: #5B4660; }
-  body.panel.sitio.claro #alertaComentarios .caja-clave b { font-weight: 600; }
 
   /* Botones en forma de píldora */
   body.panel.sitio.claro .boton { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 18px; border: 0; border-radius: 999px; font: 600 14.5px/1.2 var(--pn-letra); letter-spacing: 0; word-spacing: 0; background: var(--pn-amarillo); color: var(--pn-texto); box-shadow: 0 4px 12px rgba(255,212,0,.35); text-decoration: none; white-space: normal; transform: none; transition: background-color .15s, box-shadow .15s, filter .15s; }
@@ -293,7 +308,7 @@
   /* ---------- Resumen: chats de WhatsApp (10 nov 2026) ----------
      Una tarjeta con dos partes: a la izquierda la lista de chats y a la derecha la conversación. En celular se ve
      una sola parte a la vez (la lista; al tocar un chat, la conversación con su flecha para volver). */
-  .chats { margin-top: 22px; background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); overflow: hidden; }
+  .chats { margin-top: 0; background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); overflow: hidden; }
   .chats-cab { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 14px 20px; border-bottom: 1px solid var(--pn-linea); }
   body.panel.sitio.claro .chats-cab h2 { margin: 0; font-size: 17px; font-weight: 600; white-space: nowrap; }
   body.panel.sitio.claro .chats-cab .ayuda { flex: 1 1 140px; min-width: 0; font-size: 13px; }
@@ -376,7 +391,9 @@
     body.panel.sitio.claro header.cab .contenedor { padding: 0 14px; gap: 10px; min-height: 58px; }
     body.panel.sitio.claro header.cab .marca .marca-sub { display: none; }
     .barra-sesion .correo { display: none; }
-    .seccion-actual { padding-left: 10px; }
+    .seccion-actual { display: none; }   /* en celular el nombre de la sección ya se lee en el título de la página */
+    body.panel.sitio.claro .ir-inicio { width: 40px; padding: 0; justify-content: center; }
+    .ir-inicio span { display: none; }
     body.panel.sitio.claro .flujo { padding: 20px 0 48px; }
     body.panel.sitio.claro .flujo > .contenedor { width: calc(100% - 32px); }
     body.panel.sitio.claro h1 { font-size: 24px; }
@@ -452,32 +469,114 @@
   .fila-g details.sus-cobros ul { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; line-height: 1.5; }
   .sus-ver { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
   .sus-ver input { width: 18px; height: 18px; accent-color: var(--pn-violeta); }
+
+  /* ================= Inicio: cuadrícula de botones, grupos y pantalla vacía (26 nov 2026) =================
+     El inicio del panel es una cuadrícula de nueve botones cuadrados e iguales (3 × 3 en computadora, tableta y celular),
+     centrada y con un ancho máximo para que no se vean enormes. Cada botón: su dibujo arriba, el nombre abajo y, como
+     mucho, un dato pequeño (en celular, su versión corta). Lo pidió Daniel el 26 nov 2026 tras ver la primera muestra. */
+  .pag-titulo:empty { display: none; }
+  .inicio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; width: min(680px, 100%); margin: 0 auto; }
+  .ficha { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; aspect-ratio: 1 / 1; min-width: 0; padding: 14px 12px; border: 0; border-radius: 20px; background: #fff; color: var(--pn-texto); font: inherit; text-align: center; box-shadow: var(--pn-sombra); cursor: pointer; transition: box-shadow .15s, transform .15s; }
+  .ficha:hover { box-shadow: 0 2px 4px rgba(27,19,64,.06), 0 14px 34px rgba(27,19,64,.13); transform: translateY(-1px); }
+  .ficha-ico { display: grid; place-items: center; flex: 0 0 auto; width: 64px; height: 64px; margin-bottom: 12px; border-radius: 20px; background: var(--pn-lila-caja); color: var(--pn-violeta); }
+  .ficha-ico svg { width: 34px; height: 34px; }
+  .ficha-txt { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; max-width: 100%; }
+  .ficha-txt b { font-size: 16px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; }
+  /* El renglón del dato mide siempre lo mismo (aunque esté vacío, como en Ajustes): así el dibujo y el nombre quedan a la misma altura en los nueve botones. */
+  .ficha-txt small { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 20px; max-width: 100%; font-size: 12.5px; font-weight: 500; line-height: 1.3; color: var(--pn-suave); }
+  .ficha-txt small.corto { display: none; }
+  .ficha-txt small.atencion { color: var(--pn-ambar-texto); font-weight: 600; }
+  .pronto { display: inline-block; padding: 3px 10px; border-radius: 999px; background: var(--pn-amarillo); color: var(--pn-noche); font: 700 12px/1.4 var(--pn-letra); letter-spacing: .01em; }
+  .ficha-txt small.pronto { padding: 0 10px; line-height: 1; }
+  .subnav button { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 6px 14px 6px 12px; border: 0; border-radius: 999px; background: var(--pn-sec); color: var(--pn-texto); font: 600 13.5px var(--pn-letra); white-space: nowrap; cursor: pointer; }
+  .subnav button:hover { background: #E7E2F5; }
+  .ico { display: inline-grid; place-items: center; flex: 0 0 auto; }
+  .ico svg { width: 18px; height: 18px; }
+  .subnav .ico { color: var(--pn-violeta); }
+  .subnav .n { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--pn-amarillo); color: var(--pn-noche); font: 700 11.5px/1 var(--pn-letra); }
+  .subnav .n[hidden] { display: none; }
+  @media (max-width: 600px) {
+    /* Celular: tres columnas de botones cuadrados (unos 113 px a 390 px de ancho). Letra más chica y el dato en su versión corta. */
+    .inicio { gap: 10px; }
+    .ficha { padding: 8px 6px; border-radius: 16px; }
+    .ficha-ico { width: 38px; height: 38px; margin-bottom: 6px; border-radius: 12px; }
+    .ficha-ico svg { width: 22px; height: 22px; }
+    .ficha-txt { gap: 2px; }
+    .ficha-txt b { font-size: 13px; line-height: 1.15; }
+    .ficha-txt small { height: 15px; font-size: 11px; line-height: 1.2; white-space: nowrap; }
+    .ficha-txt small.largo { display: none; }
+    .ficha-txt small.corto { display: inline-flex; }
+    .ficha-txt small.pronto { font-size: 10px; padding: 0 8px; }
+    .subnav button { font-size: 13px; padding: 6px 12px 6px 10px; }
+  }
+  @media (max-width: 380px) {
+    /* Teléfonos más angostos (360 px): botones de unos 103 px; todo baja un poco para que sigan cuadrados e iguales. */
+    .ficha { padding: 6px 5px; }
+    .ficha-ico { width: 34px; height: 34px; margin-bottom: 5px; }
+    .ficha-ico svg { width: 20px; height: 20px; }
+    .ficha-txt b { font-size: 12px; }
+    .ficha-txt small { height: 14px; font-size: 10.5px; }
+    .ficha-txt small.pronto { font-size: 9.5px; padding: 0 7px; }
+  }
+  /* Compras y Comentarios reúnen varias divisiones: debajo del título, la barra para cambiar de división y luego sus cifras. */
+  .grupo-cab[hidden] { display: none; }
+  .grupo-cab .numeros { margin-bottom: 18px; }
+  .subnav { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .subnav button { background: #fff; box-shadow: var(--pn-sombra); min-height: 42px; padding: 8px 16px 8px 14px; font-size: 14px; }
+  .subnav button.on { background: var(--pn-noche); color: #fff; }
+  .subnav button.on .ico { color: var(--pn-amarillo); }
+  .subnav button.on:hover { background: var(--pn-noche-2); }
+  .numeros.dos { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 560px; }
+  .numeros:empty { display: none; }
+  #numerosGuias { margin-bottom: 16px; }
+  /* Pantalla vacía (Colaboraciones): qué habrá aquí, con tres lugares de muestra sin nombre. */
+  .vacio { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; background: #fff; border-radius: 20px; box-shadow: var(--pn-sombra); padding: 28px 26px; }
+  .vacio-ico { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: var(--pn-lila-caja); color: var(--pn-violeta); }
+  .vacio-ico svg { width: 34px; height: 34px; }
+  body.panel.sitio.claro .vacio h2 { margin: 4px 0 0; font-size: 20px; }
+  .vacio p { margin: 0; max-width: 560px; color: #3E3760; line-height: 1.55; }
+  .vacio-muestra { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; width: 100%; margin-top: 10px; }
+  .vacio-muestra span { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 0 16px; border: 2px dashed var(--pn-campo); border-radius: 16px; }
+  .vacio-muestra span::before { content: ""; width: 36px; height: 36px; border-radius: 50%; background: var(--pn-sec); flex: 0 0 auto; }
+  .vacio-muestra span::after { content: ""; flex: 1 1 auto; height: 10px; border-radius: 5px; background: var(--pn-sec); }
+  @media (max-width: 600px) { .vacio { padding: 22px 18px; border-radius: 18px; } }
 </style>
 </head>
 <body class="sitio claro panel">
 <header class="cab"><div class="contenedor">
   <button class="hamb" id="abrirMenu" type="button" aria-label="Abrir el menú" aria-expanded="false" aria-controls="menu" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-  <a class="marca" href="panel.html"><svg class="rayo" viewBox="0 0 60 100" aria-hidden="true"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span><small class="marca-sub">&nbsp;· Panel</small></a>
+  <a class="marca" href="#inicio" title="Ir al inicio"><svg class="rayo" viewBox="0 0 60 100" aria-hidden="true"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span><small class="marca-sub">&nbsp;· Panel</small></a>
   <span class="seccion-actual" id="seccionActual"></span>
+  <a class="ir-inicio" id="irInicio" href="#inicio" title="Volver al inicio" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 11.5 12 4.5l8.5 7"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5.5h4V20" fill="#FFD400"/></svg><span>Inicio</span></a>
   <div class="barra-sesion" id="barraSesion"><span class="inicial" id="barraInicial" aria-hidden="true">A</span><span class="correo" id="barraCorreo"></span></div>
 </div></header>
 <div class="velo" id="velo" hidden></div>
 <aside class="menu" id="menu" aria-label="Menú del panel" hidden>
   <div class="menu-cab"><span class="marca"><svg class="rayo" viewBox="0 0 60 100" aria-hidden="true"><polygon points="25,0 43,0 33,36 45,36 17,100 24,56 15,56" fill="#FFD400"/></svg>Spark<span>Ed</span><small class="marca-sub">&nbsp;· Panel</small></span><button type="button" id="cerrarMenu" aria-label="Cerrar el menú"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <p class="menu-quien" id="menuQuien"></p>
+  <!-- El menú lleva las mismas secciones, en el mismo orden y con los mismos dibujos que la cuadrícula del inicio (26 nov 2026).
+       Los dibujos se pintan desde el guion (data-ico). Las marcas amarillas (data-marca) dicen cuántas cosas hay pendientes. -->
   <div class="tabs" id="tabs">
-    <button data-tab="resumen" class="on">Resumen</button>
-    <button data-tab="guias">Guías</button>
-    <button data-tab="compras">Compras <span class="n" id="nCompras" hidden></span></button>
-    <button data-tab="paquetes">Paquetes <span class="n" id="nPaquetes" hidden></span></button>
-    <button data-tab="suscripciones">Suscripciones <span class="n" id="nSuscripciones" title="Suscripciones por revisar" hidden></span></button>
-    <button data-tab="codigos">Códigos</button>
-    <button data-tab="solicitudes" hidden>Pedidos sin guía <span class="n" id="nSolicitudes" hidden></span></button>
-    <button data-tab="reportes">Reportes <span class="n" id="nReportes" hidden></span></button>
-    <button data-tab="comentarios">Comentarios <span class="n" id="nComentarios" hidden></span></button>
-    <button data-tab="costos">Costos</button>
-    <button data-tab="motores">Motores <span class="n" id="nMotores" title="Algún motor necesita atención" hidden>!</span></button>
-    <button data-tab="ajustes">Ajustes</button>
+    <button type="button" data-tab="inicio" class="on"><span class="ico" data-ico="inicio"></span><span class="txt">Inicio</span></button>
+    <button type="button" data-tab="guias"><span class="ico" data-ico="guias"></span><span class="txt">Guías</span></button>
+    <button type="button" data-tab="compras"><span class="ico" data-ico="compras"></span><span class="txt">Compras</span><span class="n" id="nCompras" data-marca="compras-todo" title="Pendientes en Compras" hidden></span></button>
+    <div class="sub">
+      <button type="button" data-tab="compras"><span class="ico" data-ico="sueltas"></span><span class="txt">Guías sueltas</span><span class="n" data-marca="compras" title="Compras pendientes de pago" hidden></span></button>
+      <button type="button" data-tab="paquetes"><span class="ico" data-ico="paquetes"></span><span class="txt">Paquetes</span><span class="n" id="nPaquetes" data-marca="paquetes" title="Paquetes pendientes de pago" hidden></span></button>
+      <button type="button" data-tab="suscripciones"><span class="ico" data-ico="suscripciones"></span><span class="txt">Suscripciones</span><span class="n" id="nSuscripciones" data-marca="suscripciones" title="Suscripciones por revisar" hidden></span></button>
+    </div>
+    <button type="button" data-tab="codigos"><span class="ico" data-ico="codigos"></span><span class="txt">Códigos</span></button>
+    <button type="button" data-tab="solicitudes" hidden><span class="ico" data-ico="sueltas"></span><span class="txt">Pedidos sin guía</span><span class="n" id="nSolicitudes" data-marca="solicitudes" hidden></span></button>
+    <button type="button" data-tab="colaboraciones"><span class="ico" data-ico="colaboraciones"></span><span class="txt">Colaboraciones</span></button>
+    <button type="button" data-tab="costos"><span class="ico" data-ico="costos"></span><span class="txt">Costos</span></button>
+    <button type="button" data-tab="motores"><span class="ico" data-ico="motores"></span><span class="txt">Motores</span><span class="n" id="nMotores" data-marca="motores" title="Algún motor necesita atención" hidden>!</span></button>
+    <button type="button" data-tab="ajustes"><span class="ico" data-ico="ajustes"></span><span class="txt">Ajustes</span></button>
+    <button type="button" data-tab="comentarios"><span class="ico" data-ico="comentarios"></span><span class="txt">Comentarios</span><span class="n" id="nComentarios" data-marca="pendientes" title="Reseñas y reportes sin revisar" hidden></span></button>
+    <div class="sub">
+      <button type="button" data-tab="comentarios"><span class="ico" data-ico="resenas"></span><span class="txt">Reseñas</span><span class="n" data-marca="comentarios" title="Reseñas nuevas" hidden></span></button>
+      <button type="button" data-tab="reportes"><span class="ico" data-ico="reportes"></span><span class="txt">Reportes</span><span class="n" id="nReportes" data-marca="reportes" title="Reportes nuevos" hidden></span></button>
+    </div>
+    <button type="button" data-tab="chats"><span class="ico" data-ico="chats"></span><span class="txt">Chats</span><span class="n" data-marca="chats" title="Mensajes sin contestar" hidden></span></button>
   </div>
   <div class="menu-pie"><a href="index.html" target="_blank" rel="noopener">Ver el sitio ↗</a><a href="#" id="salir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>Cerrar sesión</a></div>
 </aside>
@@ -497,11 +596,46 @@
   <div id="app" hidden>
     <h1 class="pag-titulo" id="tituloSeccion"></h1>
 
-    <section data-panel="resumen">
-      <div id="alertas"></div>
-      <div id="alertaComentarios"></div>
+    <!-- Compras y Comentarios reúnen varias divisiones (26 nov 2026): arriba sus cifras y la barra para cambiar de división.
+         Las cifras de ventas que antes estaban en el Resumen viven aquí, en Compras; las de reseñas y reportes, en Comentarios. -->
+    <div class="grupo-cab" data-grupo="compras" hidden>
+      <nav class="subnav" aria-label="Divisiones de Compras">
+        <button type="button" data-tab="compras"><span class="ico" data-ico="sueltas"></span>Guías sueltas<span class="n" data-marca="compras" title="Compras pendientes de pago" hidden></span></button>
+        <button type="button" data-tab="paquetes"><span class="ico" data-ico="paquetes"></span>Paquetes<span class="n" data-marca="paquetes" title="Paquetes pendientes de pago" hidden></span></button>
+        <button type="button" data-tab="suscripciones"><span class="ico" data-ico="suscripciones"></span>Suscripciones<span class="n" data-marca="suscripciones" title="Suscripciones por revisar" hidden></span></button>
+      </nav>
       <div class="numeros" id="numeros"></div>
-      <!-- Chats de WhatsApp: la lista y los mensajes salen del historial de Green API, a través del servidor. -->
+    </div>
+    <div class="grupo-cab" data-grupo="comentarios" hidden>
+      <nav class="subnav" aria-label="Divisiones de Comentarios">
+        <button type="button" data-tab="comentarios"><span class="ico" data-ico="resenas"></span>Reseñas<span class="n" data-marca="comentarios" title="Reseñas nuevas" hidden></span></button>
+        <button type="button" data-tab="reportes"><span class="ico" data-ico="reportes"></span>Reportes<span class="n" data-marca="reportes" title="Reportes nuevos" hidden></span></button>
+      </nav>
+      <div class="numeros dos" id="numerosComentarios"></div>
+    </div>
+
+    <!-- Inicio (26 nov 2026): nueve botones cuadrados e iguales, 3 × 3. Cada botón lleva su dibujo, su nombre y, como mucho,
+         un dato pequeño: el largo (data-dato) en computadora y el corto (data-dato-corto) en celular. Las alertas de guías
+         pagadas que no se terminaron siguen arriba, porque piden que Daniel haga algo. Las tres divisiones de Compras
+         (Guías sueltas, Paquetes, Suscripciones) ya no van en el botón: están dentro de la sección Compras, arriba de todo. -->
+    <section data-panel="inicio">
+      <div id="alertas"></div>
+      <nav class="inicio" aria-label="Secciones del panel">
+        <button type="button" class="ficha" data-tab="guias"><span class="ficha-ico" data-ico="guias"></span><span class="ficha-txt"><b>Guías</b><small class="largo" data-dato="guias"></small><small class="corto" data-dato-corto="guias"></small></span></button>
+        <button type="button" class="ficha" data-tab="compras"><span class="ficha-ico" data-ico="compras"></span><span class="ficha-txt"><b>Compras</b><small class="largo" data-dato="compras"></small><small class="corto" data-dato-corto="compras"></small></span></button>
+        <button type="button" class="ficha" data-tab="codigos"><span class="ficha-ico" data-ico="codigos"></span><span class="ficha-txt"><b>Códigos</b><small class="largo" data-dato="codigos"></small><small class="corto" data-dato-corto="codigos"></small></span></button>
+        <button type="button" class="ficha" data-tab="colaboraciones"><span class="ficha-ico" data-ico="colaboraciones"></span><span class="ficha-txt"><b>Colabora&shy;ciones</b><small class="pronto">Próximamente</small></span></button>
+        <button type="button" class="ficha" data-tab="costos"><span class="ficha-ico" data-ico="costos"></span><span class="ficha-txt"><b>Costos</b><small class="largo" data-dato="costos"></small><small class="corto" data-dato-corto="costos"></small></span></button>
+        <button type="button" class="ficha" data-tab="motores"><span class="ficha-ico" data-ico="motores"></span><span class="ficha-txt"><b>Motores</b><small class="largo" data-dato="motores"></small><small class="corto" data-dato-corto="motores"></small></span></button>
+        <button type="button" class="ficha" data-tab="ajustes"><span class="ficha-ico" data-ico="ajustes"></span><span class="ficha-txt"><b>Ajustes</b><small class="largo" data-dato="ajustes"></small><small class="corto" data-dato-corto="ajustes"></small></span></button>
+        <button type="button" class="ficha" data-tab="comentarios"><span class="ficha-ico" data-ico="comentarios"></span><span class="ficha-txt"><b>Comentarios</b><small class="largo" data-dato="comentarios"></small><small class="corto" data-dato-corto="comentarios"></small></span></button>
+        <button type="button" class="ficha" data-tab="chats"><span class="ficha-ico" data-ico="chats"></span><span class="ficha-txt"><b>Chats</b><small class="largo" data-dato="chats"></small><small class="corto" data-dato-corto="chats"></small></span></button>
+      </nav>
+    </section>
+
+    <!-- Chats de WhatsApp: sección propia desde el 26 nov 2026 (antes estaba dentro del Resumen). La lista y los mensajes salen
+         del historial de Green API, a través del servidor. -->
+    <section data-panel="chats" hidden>
       <div class="chats" id="chats" hidden>
         <div class="chats-cab">
           <h2>Chats de WhatsApp</h2>
@@ -543,6 +677,8 @@
         <select id="diasGuias" class="filtro" aria-label="Periodo de la lista"><option value="30">Lista: últimos 30 días</option><option value="90" selected>Lista: últimos 90 días</option><option value="365">Lista: último año</option></select>
         <button class="boton linea chico" id="btnRefrescarGuias">⟳ Actualizar</button>
       </div>
+      <!-- Cuántas guías personalizadas siguen vivas: antes era una cifra del Resumen (26 nov 2026). -->
+      <div class="numeros" id="numerosGuias"></div>
       <div id="costosGuias"><p class="ayuda">Cargando…</p></div>
       <div class="caja-clave" style="margin-top:18px">
         <b>¿De dónde sale el costo de cada guía?</b>
@@ -653,6 +789,17 @@
       <h2 style="margin:22px 0 6px">Últimos intentos</h2>
       <p class="ayuda">Cada vez que alguien escribe un código queda aquí. Con 5 intentos fallidos en una hora (mismo teléfono, correo o conexión), los siguientes se rechazan solos.</p>
       <div id="listaIntentos"></div>
+    </section>
+
+    <!-- Colaboraciones (26 nov 2026): todavía no existe. Solo la pantalla vacía que explica qué habrá aquí; sin nombres, sin tablas ni rutas. -->
+    <section data-panel="colaboraciones" hidden>
+      <div class="vacio">
+        <span class="vacio-ico" data-ico="colaboraciones"></span>
+        <span class="pronto">Próximamente</span>
+        <h2>Aquí estarán tus colaboradores</h2>
+        <p>Habrá un botón por persona. Al abrirlo verás sus comisiones y lo que se le debe por cada guía comprada con su promoción.</p>
+        <div class="vacio-muestra" aria-hidden="true"><span></span><span></span><span></span></div>
+      </div>
     </section>
 
     <section data-panel="solicitudes" hidden><p class="ayuda">Familias que buscaron una guía que todavía no existe. Cuando publiques esa guía, aquí aparecen marcadas para avisarles.</p><div id="listaSolicitudes"></div></section>
@@ -825,18 +972,68 @@ $("#formLogin").onsubmit = (e) => { e.preventDefault(); guardarSesion(null); cla
 $("#salir").onclick = (e) => { e.preventDefault(); salir(); };
 if (sesion || clave) entrar();
 
-// ---------- Pestañas ----------
-$("#tabs").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; mostrarTab(b.dataset.tab); };
+// ---------- Secciones ----------
+// Los dibujos de cada sección (26 nov 2026): trazos del color del texto y un acento amarillo, dibujados aquí mismo (sin
+// emojis ni logotipos ajenos). Se usan en el menú, en la cuadrícula del inicio, en las barras de división y en la
+// pantalla vacía de Colaboraciones: todo elemento con data-ico recibe su dibujo al cargar.
+const ICONOS = {
+  inicio: `<path d="M3.5 11.5 12 4.5l8.5 7"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5.5h4V20" fill="#FFD400"/>`,
+  guias: `<path d="M4.5 6A2.5 2.5 0 0 1 7 3.5h1.5v17H7A2.5 2.5 0 0 1 4.5 18z" fill="#FFD400"/><rect x="4.5" y="3.5" width="15" height="17" rx="2.5"/><path d="M8.5 3.5v17M11.5 8.5h5M11.5 12h5M11.5 15.5h3"/>`,
+  compras: `<path d="M5.5 8.5h13l-.4 4.5H5.9z" fill="#FFD400"/><path d="M5.5 8.5h13l-1 12H6.5z"/><path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/>`,
+  sueltas: `<path d="M14 3.5v4h4z" fill="#FFD400"/><path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4M9.5 12h5M9.5 15.5h5"/>`,
+  paquetes: `<path d="M4 8.5 12 4.5l8 4-8 4z" fill="#FFD400"/><path d="M4 8.5 12 4.5l8 4v8L12 20.5 4 16.5z"/><path d="M4 8.5l8 4 8-4M12 12.5v8"/>`,
+  suscripciones: `<path d="M3.5 7.5A2.5 2.5 0 0 1 6 5h12a2.5 2.5 0 0 1 2.5 2.5v2h-17z" fill="#FFD400"/><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><path d="M9.3 15.8a2.8 2.8 0 0 1 4.6-2.3M14.7 14.2a2.8 2.8 0 0 1-4.6 2.3"/><path d="M13.9 11.6v2.1h-2.1M10.1 18.4v-2.1h2.1"/>`,
+  codigos: `<path d="M3.5 4.5h7.6l9.4 9.4-7.6 7.6-9.4-9.4z" fill="#FFD400"/><circle cx="8" cy="9" r="1.6" fill="#fff"/>`,
+  colaboraciones: `<circle cx="9" cy="8" r="3.2" fill="#FFD400"/><circle cx="16.5" cy="9.5" r="2.4"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M15 19.5a4 4 0 0 1 5.5-3.6"/>`,
+  costos: `<rect x="5.5" y="3.5" width="13" height="17" rx="2.5"/><rect x="8" y="6" width="8" height="3.5" rx="1" fill="#FFD400"/><path d="M8.6 13h.01M12 13h.01M15.4 13h.01M8.6 16.5h.01M12 16.5h.01M15.4 16.5h.01" stroke-width="2.6"/>`,
+  motores: `<path d="M6.5 8h11v3a5.5 5.5 0 0 1-11 0z" fill="#FFD400"/><path d="M9 3.5V8M15 3.5V8M12 16.5v4"/>`,
+  ajustes: `<path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.3" fill="#FFD400"/><circle cx="15" cy="12" r="2.3" fill="#FFD400"/><circle cx="7.5" cy="17" r="2.3" fill="#FFD400"/>`,
+  comentarios: `<path d="M4 6A2.5 2.5 0 0 1 6.5 3.5h11A2.5 2.5 0 0 1 20 6v7.5a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z"/><path d="M12 6.2l1.4 2.8 3.1.4-2.2 2.1.5 3.1L12 13.1l-2.8 1.5.5-3.1-2.2-2.1 3.1-.4z" fill="#FFD400"/>`,
+  resenas: `<path d="M12 3.8l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.1l-4.8 2.6.9-5.4-3.9-3.8 5.4-.8z" fill="#FFD400"/>`,
+  reportes: `<path d="M6 21V3.5"/><path d="M6 4h11.5l-2.2 4 2.2 4H6z" fill="#FFD400"/>`,
+  chats: `<path d="M3.5 6.5A2.5 2.5 0 0 1 6 4h8a2.5 2.5 0 0 1 2.5 2.5v4A2.5 2.5 0 0 1 14 13H8.5L5 16v-3A2.5 2.5 0 0 1 3.5 10.5z" fill="#FFD400"/><path d="M18 9.5h.5a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H18v3l-3.5-3H12"/>`,
+};
+const icono = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[k] ?? ""}</svg>`;
+for (const el of $$("[data-ico]")) el.innerHTML = icono(el.dataset.ico);
+
+// Compras reúne Guías sueltas, Paquetes y Suscripciones; Comentarios reúne Reseñas y Reportes. Arriba se lee el nombre del grupo.
+const GRUPO = { compras: "compras", paquetes: "compras", suscripciones: "compras", comentarios: "comentarios", reportes: "comentarios" };
+const NOMBRE = { inicio: "", guias: "Guías", compras: "Compras", codigos: "Códigos", solicitudes: "Pedidos sin guía", colaboraciones: "Colaboraciones", costos: "Costos", motores: "Motores", ajustes: "Ajustes", comentarios: "Comentarios", chats: "Chats" };
+const SECCIONES = $$("[data-panel]").map((s) => s.dataset.panel);
+let tabActual = "";
+// Cualquier botón con data-tab (menú, cuadrícula del inicio, apartados de Compras, barras de división) abre su sección.
+document.addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b && !$("#app").hidden) mostrarTab(b.dataset.tab); });
 function mostrarTab(t) {
-  if (!$$("#tabs button").some((b) => b.dataset.tab === t)) t = "resumen";
-  $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
+  if (!SECCIONES.includes(t)) t = "inicio";   // también «resumen», el nombre que tenía el inicio antes del 26 nov 2026
+  tabActual = t;
+  const grupo = GRUPO[t];
+  $$("#tabs button[data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === t || (!!grupo && !b.closest(".sub") && b.dataset.tab === grupo)));
+  $$(".subnav button[data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
   $$("[data-panel]").forEach((s) => { s.hidden = s.dataset.panel !== t; });
-  location.hash = t;
-  $("#seccionActual").textContent = $$("#tabs button").find((b) => b.dataset.tab === t)?.firstChild?.textContent?.trim() ?? "";
+  $$(".grupo-cab").forEach((g) => { g.hidden = g.dataset.grupo !== grupo; });
+  if (location.hash.slice(1) !== t) location.hash = t;
+  $("#seccionActual").textContent = NOMBRE[grupo ?? t] ?? "";
+  $("#irInicio").hidden = t === "inicio";
   cerrarMenu();
-  ({ resumen: () => { cargarChats(); return cargarResumen(); }, guias: cargarCostosGuias, compras: cargarCompras, paquetes: cargarPaquetes, suscripciones: cargarSuscripciones, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: cargarReportes, comentarios: cargarComentarios, costos: cargarCostos, motores: cargarMotores, ajustes: cargarAjustes })[t]?.();
+  ({ inicio: cargarInicio, guias: () => { cargarResumen(); return cargarCostosGuias(); }, compras: () => { cargarResumen(); return cargarCompras(); }, paquetes: () => { cargarResumen(); return cargarPaquetes(); }, suscripciones: () => { cargarResumen(); return cargarSuscripciones(); }, codigos: cargarCodigos, solicitudes: cargarSolicitudes, reportes: () => { cargarResumen(); return cargarReportes(); }, comentarios: () => { cargarResumen(); return cargarComentarios(); }, costos: cargarCostos, motores: cargarMotores, ajustes: cargarAjustes, chats: cargarChats })[t]?.();
 }
-function cargarTodo() { mostrarTab(location.hash.replace("#", "") || "resumen"); }
+function cargarTodo() { mostrarTab(location.hash.replace("#", "") || "inicio"); }
+// La flecha «atrás» del navegador y los links «#inicio» de la barra (el logotipo y el botón Inicio) cambian de sección sin recargar.
+addEventListener("hashchange", () => { const t = location.hash.slice(1); if (!$("#app").hidden && t !== tabActual) mostrarTab(t); });
+
+// ---------- Inicio ----------
+// El dato chico de cada botón de la cuadrícula: una cifra por sección y nada más. Si pide atención, va en ámbar.
+// «corto» es la versión para celular (botones de unos 113 px); si no se da, se usa el mismo texto.
+function dato(clave, texto, atencion = false, corto = texto) {
+  for (const el of $$(`[data-dato="${clave}"]`)) { el.textContent = texto; el.classList.toggle("atencion", !!atencion && !!texto); }
+  for (const el of $$(`[data-dato-corto="${clave}"]`)) { el.textContent = corto; el.classList.toggle("atencion", !!atencion && !!corto); }
+}
+// Las marcas amarillas con lo pendiente: el mismo número en el menú, en la cuadrícula y en la barra de división. «true» pinta «!».
+function marca(clave, n) { for (const el of $$(`[data-marca="${clave}"]`)) { el.hidden = !n; el.textContent = n === true ? "!" : n || ""; } }
+function cargarInicio() { cargarResumen(); cargarMotores(); cargarChats(); cargarDatoCodigos(); }
+async function cargarDatoCodigos() {
+  try { const r = await api("/codigos"); const n = r.codigos.filter((c) => estadoCodigo(c) === "activo").length; dato("codigos", n ? `${n} ${n === 1 ? "activo" : "activos"}` : "Ninguno activo"); } catch {}
+}
 
 // Bloques que se abren y se cierran: recuerdan si los dejaste abiertos (cerrados la primera vez).
 for (const d of $$("details.plegable")) {
@@ -865,13 +1062,17 @@ function preguntarCobro(paquete = false) {
     d.addEventListener("close", () => listo(elegido), { once: true });
   });
 }
+// Desde el 26 nov 2026 el Resumen ya no existe como pantalla: sus cifras viven en la sección que les toca (las ventas en
+// Compras, las guías vivas en Guías, lo nuevo de reseñas y reportes en Comentarios) y cada botón del inicio lleva su dato.
 async function cargarResumen() {
   const r = await api("/resumen");
   const SERVIDOR_CON_COBRO = r.compras?.cortesias_mes !== undefined;
-  // Sin «guías publicadas», «borradores por revisar» ni «generaciones en curso» (pedido de Daniel, 10 nov 2026):
+  const tarjeta = ([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`;
+  // Guías: cuántas guías personalizadas siguen vivas (lo demás de esa sección sale de /costos/guias).
+  $("#numerosGuias").innerHTML = [[r.guias.personalizadas, "guías personalizadas vivas"]].map(tarjeta).join("");
+  // Compras: las ventas. Sin «guías publicadas», «borradores por revisar» ni «generaciones en curso» (pedido de Daniel, 10 nov 2026):
   // SparkEd ya solo genera guías personalizadas que cada familia pide y paga por su cuenta; él no publica ni revisa borradores.
   $("#numeros").innerHTML = [
-    [r.guias.personalizadas, "guías personalizadas vivas"],
     [r.compras.pendientes, "compras pendientes de pago"], [r.compras.pagadas_hoy + " · " + dinero(r.compras.ingresos_hoy), SERVIDOR_CON_COBRO ? "ventas cobradas hoy" : "ventas de hoy"], [r.compras.pagadas_mes + " · " + dinero(r.compras.ingresos_mes), SERVIDOR_CON_COBRO ? "ventas cobradas este mes" : "ventas del mes"],
     SERVIDOR_CON_COBRO
       ? [(r.compras.con_codigo_mes ?? 0) + (r.compras.cortesias_mes ?? 0), `guías sin cobro este mes: ${r.compras.con_codigo_mes ?? 0} con código y ${r.compras.cortesias_mes ?? 0} de cortesía (no son ventas)`]
@@ -887,16 +1088,21 @@ async function cargarResumen() {
       [r.suscripciones.cobros_mes + " · " + dinero(r.suscripciones.ingresos_mes), "cobros de suscripción aprobados este mes (aparte de las ventas de guías)"],
       [r.compras.de_suscripcion_mes ?? 0, "guías hechas con suscripción este mes (no son ventas)"],
     ] : []),
-    [r.reportes_nuevos, "reportes nuevos"], ["US$" + r.ia.costo_usd_mes.toFixed(2), "gasto de IA este mes"],
-  ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
+  ].map(tarjeta).join("");
+  // Comentarios: los reportes nuevos de la banderita (las reseñas nuevas se preguntan aparte, abajo).
+  reportesNuevos = r.reportes_nuevos ?? 0; pintarPendientes();
+  // Los datos chicos de los botones del inicio. Venta = guía que de verdad se cobró; las de código gratis, las cortesías y las compras de prueba no cuentan.
+  const vivas = Number(r.guias.personalizadas) || 0, ventas = Number(r.compras.pagadas_mes) || 0, ia = Number(r.ia?.costo_usd_mes ?? 0).toFixed(2);
+  dato("guias", `${vivas} ${vivas === 1 ? "guía viva" : "guías vivas"}`, false, `${vivas} ${vivas === 1 ? "viva" : "vivas"}`);
+  dato("compras", `${ventas} ${ventas === 1 ? "venta" : "ventas"} · ${dinero(r.compras.ingresos_mes)} este mes`, false, `${ventas} este mes`);
+  dato("costos", `IA este mes: US$${ia}`, false, `IA: US$${ia}`);
   // Guías pagadas que la IA no pudo terminar: la familia ve "Estamos revisando tu guía" hasta que se reintente.
   $("#alertas").innerHTML = (r.entregas_con_error ?? []).map((x) => `<div class="caja-clave" style="border-left-color:#dc2626;margin-bottom:12px"><b>⚠️ Una guía pagada no se terminó</b><div class="ayuda" style="margin:4px 0 8px">La IA no pudo terminar los bloques que faltan (paso ${esc(x.paso ?? "")}, ${esc(fecha(x.desde))}). La familia ve "Estamos revisando tu guía; te avisamos por correo en cuanto esté lista". Toca ↻ Reintentar; al terminar, a la familia le llega sola su guía.</div><button class="boton chico" data-reintentar="${esc(x.trabajo_id)}">↻ Reintentar</button></div>`).join("");
   $$("#alertas [data-reintentar]").forEach((b) => b.onclick = async () => { b.disabled = true; try { await api(`/trabajos/${b.dataset.reintentar}/reintentar`, { method: "POST" }); aviso("Reintentando… la guía se envía sola cuando esté lista", false, 6000); cargarResumen(); } catch (e) { b.disabled = false; aviso(e.message, true, 6000); } });
-  $("#nCompras").hidden = !r.compras.pendientes; $("#nCompras").textContent = r.compras.pendientes;
-  $("#nPaquetes").hidden = !r.paquetes?.pendientes; $("#nPaquetes").textContent = r.paquetes?.pendientes ?? "";
-  $("#nSuscripciones").hidden = !r.suscripciones?.por_revisar; $("#nSuscripciones").textContent = r.suscripciones?.por_revisar || "";
-  $("#nSolicitudes").hidden = !r.solicitudes_sin_guia; $("#nSolicitudes").textContent = r.solicitudes_sin_guia;
-  $("#nReportes").hidden = !r.reportes_nuevos; $("#nReportes").textContent = r.reportes_nuevos;
+  // Las marcas amarillas de lo pendiente (menú, cuadrícula y barras de división). La de «Compras» suma sus tres divisiones.
+  const pendCompras = Number(r.compras.pendientes) || 0, pendPaquetes = Number(r.paquetes?.pendientes) || 0, revSus = Number(r.suscripciones?.por_revisar) || 0;
+  marca("compras", pendCompras); marca("paquetes", pendPaquetes); marca("suscripciones", revSus); marca("compras-todo", pendCompras + pendPaquetes + revSus);
+  marca("solicitudes", r.solicitudes_sin_guia);
   // Comentarios nuevos de la portada (si la ruta todavía no existe, no se muestra nada).
   api("/comentarios?estado=nuevo").then((c) => pintarNuevosComentarios(c.nuevos ?? 0)).catch(() => {});
 }
@@ -920,8 +1126,9 @@ function pintarResumenMotores() {
   const avisos = MOTORES_CLAVE.filter(([k]) => !["ok", "apagado", undefined].includes(estadoMotores[k])).map(([k, n]) => `${n}: ${estadoMotores[k]}`);
   el.className = "motores-estado " + (apagados.length ? "rojo" : avisos.length ? "amarillo" : "verde");
   el.textContent = `${bien} de ${MOTORES_CLAVE.length} encendidos` + (apagados.length ? ` · apagado: ${apagados.join(", ")}` : "") + (avisos.length ? ` · ${avisos.join(" · ")}` : "");
-  // En el menú, «Motores» lleva una marca solo cuando alguno de los cinco necesita atención.
-  $("#nMotores").hidden = !(apagados.length || avisos.length);
+  // En el menú, «Motores» lleva una marca solo cuando alguno de los cinco necesita atención; el botón del inicio dice cuántos están encendidos.
+  marca("motores", apagados.length || avisos.length ? true : 0);
+  dato("motores", `${bien} de ${MOTORES_CLAVE.length} encendidos`, bien < MOTORES_CLAVE.length, `${bien} de ${MOTORES_CLAVE.length}`);
 }
 // WhatsApp está encendido de verdad cuando, además de tener las llaves, el teléfono sigue enlazado en Green API:
 // se le pregunta el estado y la tarjeta lo dice con palabras (verde = entrega mensajes; amarillo = hay algo que arreglar).
@@ -942,16 +1149,16 @@ async function pintarMotorWhatsApp() {
   } catch { /* si no se pudo preguntar, se queda con lo que dice el servidor: llaves configuradas */ }
 }
 
-// ---------- Chats de WhatsApp (en el Resumen) ----------
+// ---------- Chats de WhatsApp (sección «Chats»; hasta el 26 nov 2026 estaban en el Resumen) ----------
 // La lista y los mensajes salen del historial de Green API a través del servidor: la llave de WhatsApp nunca llega al
-// navegador y el panel no guarda nada. Mientras el Resumen está a la vista se pregunta cada 30 segundos por la lista y
+// navegador y el panel no guarda nada. Mientras la sección está a la vista se pregunta cada 30 segundos por la lista y
 // cada 12 por el chat abierto. Un mensaje recién enviado puede tardar hasta 2 minutos en salir en ese historial; por
 // eso se muestra de inmediato (CHATS.propios) y deja de ser «propio» cuando el historial ya lo trae.
 const CHATS = { motor: false, lista: null, dias: 7, listaEn: 0, abierto: null, mensajes: [], firma: "", firmaLista: "", propios: new Map(), borradores: new Map(), pidiendoLista: false, pidiendoConv: null, enviando: false };
 const TIPO_CHAT = { foto: "Foto", video: "Video", audio: "Audio", documento: "Documento", sticker: "Sticker", ubicacion: "Ubicación", contacto: "Contacto", encuesta: "Encuesta", eliminado: "Mensaje eliminado", otro: "Mensaje que no se puede mostrar aquí" };
 const ESTADO_ENVIO = { sent: "Enviado", delivered: "Entregado", read: "Leído", failed: "No se envió", noAccount: "No se envió: el número no tiene WhatsApp", yellowCard: "WhatsApp detuvo el envío" };
 const punteroFino = () => matchMedia("(pointer: fine)").matches;
-const chatsALaVista = () => CHATS.motor && !document.hidden && !$("#app").hidden && !$('[data-panel="resumen"]').hidden;
+const chatsALaVista = () => CHATS.motor && !document.hidden && !$("#app").hidden && !$('[data-panel="chats"]').hidden;
 const ahoraSeg = () => Math.floor(Date.now() / 1000);
 const horaChat = (seg) => new Date(seg * 1000).toLocaleTimeString("es-MX", { hour: "numeric", minute: "2-digit" });
 const diaDe = (seg) => { const d = new Date(seg * 1000); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
@@ -976,7 +1183,7 @@ function iniciarChats(p) {
   CHATS.motor = !!p.motores?.whatsapp;
   $("#chats").hidden = false;
   $("#chatsCuerpo").hidden = !CHATS.motor; $("#chatsActualizar").hidden = !CHATS.motor;
-  if (!CHATS.motor) { $("#chatsNota").hidden = true; $("#chatsEstado").textContent = "WhatsApp no está conectado. Puedes revisarlo en el menú, en Motores."; }
+  if (!CHATS.motor) { $("#chatsNota").hidden = true; $("#chatsEstado").textContent = "WhatsApp no está conectado. Puedes revisarlo en el menú, en Motores."; dato("chats", "WhatsApp no conectado", false, "No conectado"); marca("chats", 0); }
 }
 // Al cerrar sesión no queda ninguna conversación en la pantalla ni en la memoria de la página.
 function limpiarChats() {
@@ -995,6 +1202,9 @@ async function cargarChats() {
     const r = await api("/whatsapp/chats");
     CHATS.lista = r.chats ?? []; CHATS.dias = r.dias ?? 7; CHATS.listaEn = Date.now();
     pintarListaChats();
+    // El dato del botón «Chats» del inicio: cuántos mensajes siguen sin contestar.
+    const sin = CHATS.lista.map(chatAlDia).reduce((n, c) => n + (Number(c.sin_responder) || 0), 0);
+    marca("chats", sin); dato("chats", sin ? `${sin} sin contestar` : "Sin mensajes pendientes", sin > 0, sin ? `${sin} sin contestar` : "Sin pendientes");
     $("#chatsEstado").textContent = `Últimos ${CHATS.dias} días · actualizado a las ${horaChat(ahoraSeg())}`;
   } catch (e) {
     if ($("#app").hidden) return;   // la sesión terminó: ya se ve la pantalla de entrada
@@ -1541,7 +1751,7 @@ async function cargarSuscripciones() {
     [R.por_revisar ?? 0, "suscripciones con bandera «revisar»"],
     ...(R.pendientes ? [[R.pendientes, "sin terminar de contratar"]] : []),
   ].map(([n, t]) => `<div class="numero"><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("");
-  $("#nSuscripciones").hidden = !R.por_revisar; $("#nSuscripciones").textContent = R.por_revisar || "";
+  marca("suscripciones", R.por_revisar);
   pintarListaSus();
 }
 $("#buscaSus").addEventListener("input", pintarListaSus);
@@ -1583,11 +1793,16 @@ $("#btnSusDiario").onclick = async () => {
 const RELACION = { mama_papa: "Mamá o papá", alumno: "Alumno", docente: "Docente", otro: "Otro" };
 const ESTADO_COM = { nuevo: "nuevo", leido: "leído", destacado: "destacado", oculto: "oculto" };
 let textosComentarios = {};
-function pintarNuevosComentarios(n) {
-  $("#nComentarios").hidden = !n; $("#nComentarios").textContent = n || "";
-  $("#alertaComentarios").innerHTML = n ? `<div class="caja-clave" style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b style="flex:1;min-width:200px">💬 ${n === 1 ? "Tienes 1 comentario nuevo" : `Tienes ${n} comentarios nuevos`} de la portada</b><button class="boton chico" id="irComentarios">Ver comentarios</button></div>` : "";
-  if (n) $("#irComentarios").onclick = () => { $("#filtroComentarios").value = "nuevo"; mostrarTab("comentarios"); };
+// Lo pendiente de Comentarios (26 nov 2026): reseñas nuevas de la portada + reportes nuevos de la banderita. El mismo
+// total va en el botón del inicio, en la marca del menú y, dentro de la sección, en sus dos cifras.
+let comentariosNuevos = 0, reportesNuevos = 0;
+function pintarPendientes() {
+  const n = comentariosNuevos + reportesNuevos;
+  marca("pendientes", n); marca("comentarios", comentariosNuevos); marca("reportes", reportesNuevos);
+  dato("comentarios", n ? `${n} sin revisar` : "Sin pendientes", n > 0);
+  $("#numerosComentarios").innerHTML = [[comentariosNuevos, "reseñas nuevas de la portada"], [reportesNuevos, "reportes nuevos desde la banderita"]].map(([x, t]) => `<div class="numero"><b>${esc(x)}</b><span>${esc(t)}</span></div>`).join("");
 }
+function pintarNuevosComentarios(n) { comentariosNuevos = Number(n) || 0; pintarPendientes(); }
 async function cargarComentarios() {
   const f = $("#filtroComentarios").value;
   let r;
