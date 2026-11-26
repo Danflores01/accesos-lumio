@@ -1046,11 +1046,65 @@ Daniel: «Solo para probar». Queda completa y desplegada, pero **apagada para e
 10. **Panel:** pestaña Suscripciones (modo, probadores, activas, en prueba, en gracia, canceladas, ingreso cobrado, uso
     por suscriptora, bandera «revisar», cancelar y revisar en Mercado Pago) y, en el Resumen, las suscripciones aparte
     de las guías sueltas. El WhatsApp y el correo salen a medias.
-11. **Candados:** `node herramientas/probar-suscripciones.ts` (sin internet: 147 comprobaciones con el servidor entero,
+11. **Candados:** `node herramientas/probar-suscripciones.ts` (sin internet: 237 comprobaciones con el servidor entero,
     avisos firmados y un Mercado Pago de juguete) y `node _guardia/skill/guardia-sparked/scripts/probar-suscripcion.mjs`
     (en vivo, con una cuenta de prueba; no toca Mercado Pago). `probar-mercadopago` da lo mismo que antes.
 12. **Falta antes de abrirla al público:** la prueba real de Daniel (suscribirse con su número de probador y su
     tarjeta, crear una guía y cancelar), activar el tema «Planes y suscripciones» en los Webhooks de Mercado Pago,
     los términos y el aviso de privacidad, programar la revisión diaria y el piloto con familias conocidas. No se
-    construyeron: cambiar de tarjeta (hoy es cancelar y suscribirse de nuevo), la palabra «cancelar» por WhatsApp, el
-    plan anual ni los códigos de recomendados.
+    construyeron: la palabra «cancelar» por WhatsApp, el plan anual ni los códigos de recomendados. Cambiar de tarjeta
+    sin cancelar ya está construido: §40.
+
+## 40. Cambiar el método de pago sin cancelar, «como Xbox» (Daniel, 25 de noviembre de 2026)
+
+Daniel pidió que funcione «como Xbox»: la cuenta tiene un método de pago; si el cobro no pasa, se le pregunta «¿Quieres
+cambiar tu método de pago?» y un botón le deja agregar otra tarjeta de crédito o débito **sin cancelar la suscripción**.
+También puede cambiarla cuando quiera. Servidor 2026-11-25.3; sigue en modo «solo probadores» y la portada en
+«Próximamente». Quien ya tiene una suscripción puede cambiar su tarjeta en cualquier modo (igual que puede cancelar).
+
+1. **Cómo se hace (y por qué así).** La tarjeta nueva se pone en la página de Mercado Pago, en un **contrato de cobro
+   nuevo de la MISMA suscripción** (mismo folio, mismo periodo, mismas guías). El contrato anterior se cancela **solo
+   después** de que Mercado Pago confirma el nuevo (se le pregunta a Mercado Pago; nunca se confía en el aviso solo), y
+   la suscripción pasa al contrato nuevo en un paso atómico (`sparked_aplicar_cambio_pago`). La otra opción que da
+   Mercado Pago (cambiarle la tarjeta al contrato de siempre con `card_token_id`) se descartó: obliga a poner un
+   formulario de tarjeta de Mercado Pago dentro de nuestro sitio con otra llave, no cobra el cobro que falló (hay que
+   esperar al siguiente reintento, y se pierde la suscripción si ya no quedan) y no se puede probar sin tarjetas reales.
+2. **Activa o en prueba:** el contrato nuevo empieza a cobrar el día en que termina lo ya pagado (o la prueba). Hoy no
+   se cobra nada, no se pierden días y no hay otra prueba gratis. Con el cobro a menos de 3 horas no se abre un cambio
+   («Mercado Pago está haciendo tu cobro…»), y al aplicarlo se vuelve a revisar la fecha: si ya no coincide, no se
+   aplica.
+3. **Con un cobro sin pasar (en gracia):** el contrato nuevo cobra al autorizarse y, con el cobro aprobado, vuelve a
+   activa. Si mientras tanto el reintento de la tarjeta vieja sí pasó, el cambio se descarta (no hay cobro doble).
+   Recién cambiado, se espera ese cobro hasta 90 minutos y no se abre otro cambio encima. Si el método nuevo tampoco
+   pasa, la familia recibe otro aviso con el link.
+4. **Si la familia abandona a la mitad, no pasa nada:** el contrato de siempre sigue intacto; el cambio a medias se
+   descarta a las 24 horas (o al cancelar, vencer o pedir otro) y su contrato se cancela en Mercado Pago.
+5. **Nunca dos contratos cobrando.** Orden fijo: confirmar el nuevo → cancelar el anterior (confirmado) → pasar la
+   suscripción. Si Mercado Pago no deja cancelar el anterior, el cambio no se aplica y se cancela el nuevo. Un contrato
+   que no es el de la suscripción ni un cambio pendiente se cancela en cuanto se ve. Cada cobro guarda con qué contrato
+   se hizo; dos cobros aprobados con menos de 15 días de diferencia, o un cobro del contrato anterior después del
+   cambio, dejan bandera y aviso a Daniel para reembolsar.
+6. **Una prueba gratis por WhatsApp y por tarjeta:** la tarjeta nueva también queda anotada en `pruebas_usadas`. La
+   prueba se le dio a la tarjeta con la que contrató: cambiar de tarjeta ni la quita ni da otra.
+7. **Lo que ve la familia** (`cuenta.html`, textos en español e inglés): en «Suscripción mensual», el renglón «Método
+   de pago: Tarjeta terminada en 1234» (o «Tarjeta registrada en Mercado Pago» si no se saben los dígitos) y el botón
+   «Cambiar método de pago» (en prueba, activa o en gracia). Con un cobro sin pasar, arriba de todo aparece el recuadro
+   «No pudimos cobrar tu suscripción. ¿Quieres cambiar tu método de pago?» con el botón grande. El botón abre una
+   pantalla que dice qué va a pasar y manda a Mercado Pago; al regresar (`cuenta.html?metodo=<id>`) se ve cómo quedó.
+   SparkEd nunca ve ni guarda la tarjeta: solo los últimos 4 dígitos, si Mercado Pago los deja ver.
+8. **Avisos:** el WhatsApp y el correo de cobro fallido traen el link directo `cuenta.html?metodo=1` (ya no dicen
+   «cancela y suscríbete de nuevo»). Al cambiarlo sale «Listo: cambiamos tu método de pago…» y, si no se pudo, por qué.
+9. **Panel:** en la fila de la suscripción, el método de pago, el número de cambios, «Método de pago cambiado el
+   <fecha>» y su historial; aviso si un cambio está a medias o si quedó un contrato sin cancelar.
+10. **Base de datos** (solo se agregó; `sql/migraciones/20261125_sparked_suscripcion_metodo_de_pago.sql`): tabla
+    `suscripcion_cambios_pago`, `suscripciones.mp_tarjeta`, `suscripcion_cobros.mp_preapproval_id` y la función
+    `sparked_aplicar_cambio_pago`. Ruta nueva: `POST /suscripcion/metodo-de-pago` (la recibe `cuenta.ts`; pide sesión).
+11. **Candados:** `probar-suscripciones.ts` (237 comprobaciones; las nuevas: cambio en activa, en prueba y en gracia,
+    abandono a la mitad, aviso repetido, sin cobro doble, huella nueva en `pruebas_usadas`, Mercado Pago que no deja
+    cancelar, servidor que se corta a la mitad), `probar-rutas.mjs` (la ruta nueva), `probar-suscripcion.mjs` (en vivo,
+    con contratos simulados) y la ronda (FALLA si queda un contrato de cambio sin cancelar).
+12. **Falta probar con Mercado Pago de verdad** (va junto con la prueba real de Daniel del §39): que respete la fecha
+    de inicio del contrato nuevo, qué correos manda Mercado Pago al cancelar el contrato anterior, que deje cancelar un
+    contrato que quedó a medias y que el aviso de cada cobro diga de qué contrato es. Y activar el tema «Planes y
+    suscripciones» en los Webhooks: sin él, un cambio se aplica hasta que la familia regresa a «Mi cuenta» o corre la
+    revisión diaria.

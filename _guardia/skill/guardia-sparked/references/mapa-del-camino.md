@@ -87,6 +87,7 @@ suscribirse») vale `no` (nadie), `probadores` (solo los WhatsApp de la lista `s
 | S2 | Crear guías | «Guías ilimitadas» y el mismo formulario; la guía sale completa | `crear.html?saldo=1`, `cuenta.html?guia=<folio>` | `POST /cuenta/guia` (usa la suscripción y no toca el saldo) | `compras` (`metodo_pago = suscripcion`, monto 0, `suscripcion_id`) |
 | S3 | Cobro de cada mes | Aviso 6 días antes y «Cobramos $349» | — | Mercado Pago avisa a `POST /pago/mercadopago` (temas `subscription_preapproval`, `subscription_authorized_payment` y `payment`); `sparked_registrar_cobro` alarga el periodo una sola vez | `suscripcion_cobros` (el id del pago es único), `suscripciones.periodo_fin` |
 | S4 | Cobro rechazado | «No pudimos cobrar»: abre sus guías, no crea nuevas; a los 10 días, vencida | `cuenta.html` | el mismo aviso; `POST /admin/suscripciones/diario` | `suscripciones` (`en_gracia` → `vencida`) |
+| S4b | Cambiar el método de pago (sin cancelar) | El renglón «Método de pago» con su botón; con un cobro sin pasar, el recuadro «No pudimos cobrar tu suscripción. ¿Quieres cambiar tu método de pago?»; pone su tarjeta nueva en Mercado Pago | `cuenta.html` (botón o `?metodo=1`, el link del aviso), regreso `cuenta.html?metodo=<id>` | `POST /suscripcion/metodo-de-pago` (abre un contrato nuevo de la misma suscripción); al confirmarlo Mercado Pago se cancela el anterior y `sparked_aplicar_cambio_pago` pasa la suscripción al nuevo | `suscripcion_cambios_pago` (`pendiente` → `aplicado` o `descartado`), `suscripciones.mp_preapproval_id` y `mp_tarjeta`, `suscripcion_cobros.mp_preapproval_id` |
 | S5 | Cancelar | «Cancelar suscripción» → una confirmación con la fecha → el mensaje de Daniel | `cuenta.html` y `cuenta.html?cancelar=1` (link del aviso) | `POST /suscripcion/cancelar` (cancela en Mercado Pago: `PUT /preapproval/<id>`) | `suscripciones` (`cancelada`; conserva lo pagado hasta `periodo_fin`) |
 
 **Qué puede romperlo y cómo se comprueba**
@@ -102,6 +103,11 @@ suscribirse») vale `no` (nadie), `probadores` (solo los WhatsApp de la lista `s
   (5 días antes): la ronda lo marca FALLA. Programarla necesita el sí de Daniel.
 - **«Me cobraron y había cancelado».** El cobro queda anotado, la suscripción sigue cancelada y Daniel recibe el aviso
   para reembolsar en Mercado Pago. → Panel → Suscripciones → bandera «revisar».
+- **Cambió su método de pago.** La suscripción es la misma; lo que cambia es el contrato con el que cobra Mercado Pago.
+  El anterior se cancela solo cuando el nuevo está confirmado, así que nunca cobran dos. Si la familia abandona a la
+  mitad, sigue con su tarjeta de siempre. La ronda marca FALLA si un contrato de un cambio que no se aplicó sigue sin
+  cancelarse en Mercado Pago (podría cobrar) → «Revisar en Mercado Pago»; si sigue igual, Daniel lo cancela a mano.
+  Un posible cobro doble deja bandera «revisar» y aviso a Daniel (el reembolso lo hace él).
 - **Las cuentas no cuadran.** Un cobro es venta solo si Mercado Pago lo aprobó; las guías de suscripción no son ventas.
   → `node herramientas/probar-suscripciones.ts` (sin internet) y `scripts/probar-suscripcion.mjs` (en vivo).
 - **Remedio rápido:** poner el modo en «Apagada» (panel → Suscripciones). Nadie nuevo puede suscribirse; quien ya está

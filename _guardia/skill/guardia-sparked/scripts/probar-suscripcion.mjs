@@ -12,6 +12,8 @@
 //   · el aviso de más de 15 guías durante la prueba (solo la bandera);
 //   · la tarea diaria SOLO sobre suscripciones de prueba: aviso de renovación una vez, gracia y vencida con fecha simulada;
 //   · el cobro: activa, pagada un mes más; el mismo cobro repetido no alarga dos veces;
+//   · cambiar el método de pago SIN cancelar («como Xbox»): con la suscripción activa (mismo folio, mismo periodo, sin
+//     cobro) y con un cobro sin pasar (se cobra con el método nuevo y vuelve a activa; no deja abrir otro cambio encima);
 //   · cobro rechazado → en gracia (no crea guías) → vencida;
 //   · volver a suscribirse ya sin prueba gratis, y cancelar en un clic con el mensaje que pidió Daniel;
 //   · una guía con una foto en blanco hecha con la suscripción: falla, queda como fallida y no gasta saldo (gasta
@@ -210,10 +212,30 @@ try {
   const P2 = await delPanel(), V2 = (await admin("GET", "resumen")).d;
   ok(P2.resumen?.cobros === cifrasAntes.R0.cobros && P2.resumen.ingreso_mxn === cifrasAntes.R0.ingreso_mxn && P2.resumen.de_prueba === 1 && cifras(V2?.suscripciones) === cifras(V0.suscripciones) && V2.compras.ingresos_mes === V0.compras.ingresos_mes, "nada de esto cuenta como venta: los cobros y los ingresos del panel siguen igual");
 
+  titulo("4b. Cambiar el método de pago con la suscripción activa (sin cancelar y sin cobro)");
+  const antesCambio = await actual();
+  ok((await pedir("POST", "suscripcion/metodo-de-pago", {})).st === 401, "sin sesión, cambiar el método de pago pide entrar");
+  ok(antesCambio?.metodo?.puede_cambiar === true && antesCambio.metodo.inmediato === false && antesCambio.metodo.cambio === null, "«Mi cuenta» ofrece «Cambiar método de pago» con la suscripción activa");
+  const cm1 = await pedir("POST", "suscripcion/metodo-de-pago", {}, { sesion });
+  if (!ok(cm1.st === 200 && cm1.d.modo === "simulada" && cm1.d.inmediato === false && cerca(cm1.d.primer_cobro_en, antesCambio?.periodo_fin, 60000) && !!cm1.d.cambio_id, "pedir el cambio abre un contrato nuevo de la MISMA suscripción (simulado: no toca Mercado Pago) que empezaría a cobrar el día en que termina lo ya pagado", `HTTP ${cm1.st} ${cm1.d?.error ?? ""}`)) throw new Error("no se pudo pedir el cambio de método de pago: ¿está desplegada la versión nueva?");
+  const cm2 = await pedir("POST", "suscripcion/metodo-de-pago", {}, { sesion });
+  const aMitad = await actual();
+  ok(cm2.d?.cambio_id === cm1.d.cambio_id && aMitad?.estado === "activa" && aMitad.periodo_fin === antesCambio.periodo_fin && aMitad.puede_crear === true && aMitad.metodo?.cambio?.estado === "pendiente", "oprimir el botón otra vez reutiliza el mismo cambio; mientras no «pone su tarjeta nueva», la suscripción sigue exactamente igual (abandonar a la mitad no cambia nada)");
+  const apl = await accion(susId, { accion: "preapproval", contrato: "nuevo", datos: { status: "authorized", next_payment_date: antesCambio.periodo_fin, payer_id: PAGADOR, payment_method_id: "master" }, pagos: [] });
+  const yaCambiada = await actual(), det2 = (await admin("GET", `suscripciones/${susId}`)).d;
+  ok(apl.d?.resultado === "metodo_cambiado" && yaCambiada?.estado === "activa" && yaCambiada.id === antesCambio.id && yaCambiada.folio === antesCambio.folio && yaCambiada.periodo_fin === antesCambio.periodo_fin && cerca(yaCambiada.proximo_cobro, antesCambio.proximo_cobro, 60000) && yaCambiada.puede_crear === true && yaCambiada.metodo?.cambio?.estado === "aplicado" && !!yaCambiada.metodo.cambiado_en && yaCambiada.metodo.medio === "master" && det2?.cobros?.length === 1, "aviso simulado de «tarjeta nueva autorizada»: el método de pago queda cambiado y la suscripción es la misma (mismo folio, mismo periodo, mismo próximo cobro): no se canceló, no se cobró nada y no perdió días", `resultado ${apl.d?.resultado} · cobros ${det2?.cobros?.length}`);
+  const rep = await accion(susId, { accion: "preapproval", contrato: "nuevo", datos: { status: "authorized", next_payment_date: antesCambio.periodo_fin, payer_id: PAGADOR }, pagos: [] });
+  const viejo = await accion(susId, { accion: "preapproval", contrato: "anterior", datos: { status: "cancelled" }, pagos: [] });
+  const sigueViva = await actual();
+  ok(["al_dia", "metodo_ya_cambiado"].includes(rep.d?.resultado) && viejo.d?.resultado === "contrato_anterior_cancelado" && sigueViva?.estado === "activa" && sigueViva.puede_cancelar === true && sigueViva.periodo_fin === antesCambio.periodo_fin, "el aviso repetido no cambia nada, y el aviso de «contrato anterior cancelado» NO cancela la suscripción", `repetido ${rep.d?.resultado} · anterior ${viejo.d?.resultado}`);
+  const fila2 = (await delPanel()).suscripciones?.find((x) => x.id === susId);
+  ok(fila2?.metodo_pago?.cambios === 1 && fila2.metodo_pago.historial?.length === 1 && !!fila2.metodo_pago.ultimo_cambio_en && fila2.metodo_pago.en_curso === false && fila2.metodo_pago.falta_cancelar === 0 && !JSON.stringify(det2 ?? {}).includes("prueba-"), "el panel enseña el cambio en la fila de la suscripción (1 cambio, con su fecha en el historial) y nunca los identificadores de Mercado Pago");
+
   titulo("5. Cobro rechazado: en gracia y vencida");
   const malo = await accion(susId, { accion: "pago", pago: { id: `prueba-${NUMERO}-malo`, status: "rejected", status_detail: "cc_rejected_insufficient_amount", transaction_amount: PRECIO, currency_id: "MXN", payment_type_id: "credit_card" } });
   const a4 = await actual();
   ok(malo.d?.resultado === "rechazado" && a4?.estado === "en_gracia" && a4.puede_crear === false && a4.puede_cancelar === true && cerca(a4.gracia_hasta, Date.now() + 10 * DIA), "un cobro rechazado la deja «en gracia» por 10 días: no puede crear guías nuevas");
+  ok(a4?.metodo?.puede_cambiar === true && a4.metodo.inmediato === true && a4.metodo.esperando_cobro === false, "en gracia, «Mi cuenta» ofrece cambiar el método de pago (el cobro se haría ese mismo día)");
   const d3 = await admin("POST", "suscripciones/diario", { fecha: new Date(Date.now() + 9 * DIA).toISOString() });
   const d4 = await admin("POST", "suscripciones/diario", { fecha: new Date(Date.now() + 10 * DIA + HORA).toISOString() });
   const a5 = await actual();
@@ -226,9 +248,19 @@ try {
   const aut2 = await accion(sus2, { accion: "preapproval", datos: { status: "authorized", payer_id: PAGADOR }, pagos: [] });
   const a6 = await actual();
   ok(aut2.d?.resultado === "esperando_primer_cobro" && a6?.estado === "pendiente" && a6.falta === "cobro" && a6.puede_crear === false, "sin prueba gratis no se activa con solo poner la tarjeta: espera el primer cobro aprobado");
-  const k5 = await accion(sus2, { accion: "pago", pago: { ...pagoAprobado(2), transaction_amount: PRECIO } });
-  const a7 = await actual();
-  ok(k5.d?.resultado === "cobrado" && a7?.estado === "activa" && a7.puede_crear === true && unMesDespues(a7.periodo_fin, Date.now()), "el primer cobro aprobado la activa por un mes");
+  // «Como Xbox»: el primer cobro no pasa → cambia su método de pago SIN cancelar → Mercado Pago cobra con el nuevo.
+  const malo6 = await accion(sus2, { accion: "pago", pago: { id: `prueba-${NUMERO}-malo6`, status: "rejected", status_detail: "cc_rejected_insufficient_amount", transaction_amount: PRECIO, currency_id: "MXN", payment_type_id: "credit_card" } });
+  const g6 = await actual();
+  ok(malo6.d?.resultado === "rechazado" && g6?.estado === "en_gracia" && g6.puede_crear === false && g6.metodo?.puede_cambiar === true && g6.metodo.inmediato === true, "el cobro no pasa: queda en gracia y «Mi cuenta» ofrece cambiar el método de pago (el cobro se haría ese mismo día)", `resultado ${malo6.d?.resultado} · estado ${g6?.estado}`);
+  const cg = await pedir("POST", "suscripcion/metodo-de-pago", {}, { sesion });
+  const sinTocar = await actual();
+  ok(cg.st === 200 && cg.d.inmediato === true && cg.d.primer_cobro_en === null && sinTocar?.estado === "en_gracia" && sinTocar.metodo?.cambio?.estado === "pendiente", "en gracia el contrato nuevo se pide SIN fecha de inicio (cobra al poner la tarjeta); si abandona a la mitad, sigue en gracia como estaba", `HTTP ${cg.st} ${cg.d?.error ?? ""}`);
+  const aplG = await accion(sus2, { accion: "preapproval", contrato: "nuevo", datos: { status: "authorized", payer_id: PAGADOR, payment_method_id: "debvisa" }, pagos: [] });
+  const esperando = await actual(), otroCambio = await pedir("POST", "suscripcion/metodo-de-pago", {}, { sesion });
+  ok(aplG.d?.resultado === "metodo_cambiado" && esperando?.estado === "en_gracia" && esperando.id === g6.id && esperando.metodo?.esperando_cobro === true && esperando.metodo.puede_cambiar === false && otroCambio.st === 409 && otroCambio.d?.esperando_cobro === true, "tarjeta nueva autorizada: la suscripción es la misma, queda esperando el cobro con el método nuevo y NO deja abrir otro cambio encima (nunca dos contratos cobrando a la vez)", `resultado ${aplG.d?.resultado} · otro cambio HTTP ${otroCambio.st}`);
+  const k5 = await accion(sus2, { accion: "pago", contrato: "nuevo", pago: { ...pagoAprobado(2), transaction_amount: PRECIO } });
+  const a7 = await actual(), det6 = (await admin("GET", `suscripciones/${sus2}`)).d;
+  ok(k5.d?.resultado === "cobrado" && a7?.estado === "activa" && a7.puede_crear === true && unMesDespues(a7.periodo_fin, Date.now()) && a7.metodo?.esperando_cobro === false && (det6?.cobros ?? []).filter((x) => x.estado === "aprobado").length === 1 && det6?.metodo_pago?.cambios === 1, "Mercado Pago cobra con el método nuevo: queda activa por un mes, ya puede crear guías y hubo UN solo cobro aprobado (sin cobro doble)", `resultado ${k5.d?.resultado} · aprobados ${(det6?.cobros ?? []).filter((x) => x.estado === "aprobado").length}`);
   const fin = a7?.periodo_fin;
   const can = await pedir("POST", "suscripcion/cancelar", {}, { sesion });
   const a8 = await actual();

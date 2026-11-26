@@ -209,7 +209,12 @@ if (!clave) {
     if (sinAviso.length) falla(`${sinAviso.length} suscripción(es) se cobran en menos de 5 días y no ha salido su aviso de renovación (folio ${sinAviso.map((x) => x.folio).slice(0, 5).join(", ")}): corre la revisión diaria YA (panel → Suscripciones → «Correr la revisión diaria ahora»)`);
     const atrasadas = vivas.filter((x) => x.puede_crear === false);
     if (atrasadas.length) aviso(`${atrasadas.length} suscripción(es) pasaron su fecha de cobro hace más de 48 horas y siguen sin pasar a «en gracia»: falta correr la revisión diaria (panel → Suscripciones)`);
-    if (R.en_gracia) aviso(`${R.en_gracia} suscripción(es) en gracia: Mercado Pago no pudo cobrar y lo está reintentando`);
+    if (R.en_gracia) aviso(`${R.en_gracia} suscripción(es) en gracia: Mercado Pago no pudo cobrar y lo está reintentando (la familia puede cambiar su método de pago en «Mi cuenta»)`);
+    // Cambio de método de pago: el contrato nuevo de un cambio que no se aplicó debe quedar cancelado en Mercado Pago; si sigue vivo, podría cobrar.
+    const sueltos = S.filter((x) => (x.metodo_pago?.falta_cancelar ?? 0) > 0);
+    if (sueltos.length) falla(`${sueltos.length} suscripción(es) con un contrato de cambio de método de pago SIN CANCELAR en Mercado Pago (folio ${sueltos.map((x) => x.folio).slice(0, 5).join(", ")}): podría cobrar. Panel → Suscripciones → «Revisar en Mercado Pago»; si sigue igual, Daniel lo cancela a mano en su cuenta de Mercado Pago`);
+    const aMedias = S.filter((x) => x.metodo_pago?.en_curso).length;
+    if (aMedias) aviso(`${aMedias} suscripción(es) con un cambio de método de pago a medias (la familia no ha terminado en Mercado Pago; pasadas 24 horas se descarta en la revisión diaria)`);
     if (R.por_revisar) aviso(`${R.por_revisar} suscripción(es) con bandera «revisar» (panel → Suscripciones)`);
     if (R.de_prueba) aviso(`hay ${R.de_prueba} suscripción(es) de prueba sin borrar (¿una prueba en curso?). Borrarlas: node probar-suscripcion.mjs --limpiar`);
     if (sus.d.mercadopago?.encendido === false && A.modo !== "no") falla("la suscripción está abierta y Mercado Pago está apagado: nadie puede suscribirse ni se cobra");

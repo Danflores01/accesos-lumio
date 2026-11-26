@@ -117,10 +117,12 @@ for (const [nombre, url, init] of [
   if (info.json?.disponible === false) revisar(/class="boton op-boton apagado"[^>]*>Próximamente</.test(paginas["index.html"].texto), "suscripción · está apagada para el público y la portada publicada dice «Próximamente»");
   const cuentaHtml = await pedir(SITIO + "cuenta.html?humo=" + Date.now());
   revisar(cuentaHtml.texto.includes("/suscripcion/crear") && cuentaHtml.texto.includes("/suscripcion/cancelar"), "sitio · cuenta.html trae la suscripción (suscribirse y cancelar)");
+  revisar(cuentaHtml.texto.includes("/suscripcion/metodo-de-pago") && cuentaHtml.texto.includes("data-cambiar-metodo"), "sitio · cuenta.html trae «Cambiar método de pago» (sin cancelar la suscripción)");
   for (const [nombre, url, init, esperado] of [
     ["POST /suscripcion/crear sin sesión no contrata nada", `${API}/suscripcion/crear`, { method: "POST", body: "{}" }, 401],
     ["GET /suscripcion/estado sin sesión pide entrar", `${API}/suscripcion/estado`, undefined, 401],
     ["POST /suscripcion/cancelar sin sesión pide entrar", `${API}/suscripcion/cancelar`, { method: "POST", body: "{}" }, 401],
+    ["POST /suscripcion/metodo-de-pago sin sesión pide entrar (no cambia nada)", `${API}/suscripcion/metodo-de-pago`, { method: "POST", body: "{}" }, 401],
     ["POST /pago/mercadopago: un aviso de suscripción sin firma se rechaza", `${API}/pago/mercadopago?type=subscription_preapproval&data.id=humo0000`, { method: "POST", body: JSON.stringify({ type: "subscription_preapproval", data: { id: "humo0000" } }) }, 401],
     ["GET /admin/suscripciones pide clave", `${API}/admin/suscripciones`, undefined, 401],
     ["POST /admin/suscripciones/diario pide clave (no revisa nada)", `${API}/admin/suscripciones/diario`, { method: "POST", body: "{}" }, 401],

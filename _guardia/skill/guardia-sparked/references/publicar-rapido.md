@@ -93,7 +93,8 @@ sed -i "s/^\/\/ Versión del código: .*$/\/\/ Versión del código: $V (commit 
    con una cuenta de prueba que se borra sola; unas 40 comprobaciones en cerca de un minuto). Con `--guia` genera además una
    guía completa de verdad con saldo (unos 6 minutos y hasta 5 pesos de IA).
    Si toca la suscripción mensual: `node <carpeta de la skill>/scripts/probar-suscripcion.mjs` (en vivo, con una cuenta
-   de prueba; no toca Mercado Pago ni manda mensajes; unas 35 comprobaciones en cerca de un minuto; `--guia` igual).
+   de prueba; no toca Mercado Pago ni manda mensajes; unas 45 comprobaciones en cerca de un minuto; `--guia` igual).
+   Incluye cambiar el método de pago sin cancelar (activa y con un cobro sin pasar), con contratos simulados.
 
 **Si el despliegue es rechazado por permisos:** no lo intentes por otro lado. Deja el puente como estaba
 (`git checkout -- funciones/puente-sparked/index.ts`), resuelve por el sitio si se puede y pídele a Daniel el sí.

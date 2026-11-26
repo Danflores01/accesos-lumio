@@ -34,6 +34,10 @@
 // abierta al público, o el número está en la lista de probadores), se ve cómo va y se cancela. Vistas: la caja de la
 // suscripción dentro de «Mi cuenta», el regreso de Mercado Pago (?suscripcion=…) y cancelar (?cancelar=1, el link que
 // llega en el aviso de renovación). La tarjeta se pone en Mercado Pago: esta página nunca la pide ni la ve.
+// Método de pago (25 nov 2026, «como Xbox»): «Mi cuenta» dice con qué se cobra y tiene el botón «Cambiar método de pago»
+// (en prueba, activa o con un cobro sin pasar). Si un cobro no pasó, arriba aparece el recuadro «No pudimos cobrar tu
+// suscripción. ¿Quieres cambiar tu método de pago?». La suscripción nunca se cancela por cambiar la tarjeta. Vistas:
+// cambiar (?metodo=1, el link que llega en el aviso de cobro fallido) y el regreso de Mercado Pago (?metodo=<id del cambio>).
 import { api, esc, LADAS, ladaTexto, numeroSinLada, guardarContacto, contactoParaFormulario, pantallaEspera, PAGO_VIVO, mensajeWhatsApp, waLink, t, th, marca, poner, idioma, alCambiarIdioma, textoServidor, nombreGrado, nombreMateria, mensajeError } from "./js/flujo.js";
 import { sparky } from "./js/arte.js";
 import { cuentaApi, paseGuardado, guardarPase, olvidarPase, mostrarPaquete } from "./js/cuenta.js";
@@ -46,7 +50,9 @@ const quiereComprar = params.get("comprar") === "paquete3";
 // Suscripción: ?suscripcion=<id> es el regreso de Mercado Pago; ?cancelar=1 llega del aviso de renovación; ?suscribir=1, de paquetes.html.
 const susUrl = esUuid(params.get("suscripcion")) ? params.get("suscripcion") : null;
 const quiereCancelar = params.get("cancelar") === "1", quiereSuscribirse = params.get("suscribir") === "1";
-const compraUrl = susUrl ? null : [params.get("compra"), params.get("external_reference")].find(esUuid) ?? null;
+// Método de pago: ?metodo=1 llega del aviso de cobro fallido (abre «Cambiar método de pago»); ?metodo=<id> es el regreso de Mercado Pago.
+const metodoUrl = esUuid(params.get("metodo")) ? params.get("metodo") : null, quiereCambiarMetodo = params.get("metodo") === "1";
+const compraUrl = susUrl || metodoUrl ? null : [params.get("compra"), params.get("external_reference")].find(esUuid) ?? null;
 const guiaUrl = esUuid(params.get("guia")) ? params.get("guia") : null;
 // Al regresar de Mercado Pago la dirección trae ?pago=pendiente o ?pago=fallido y sus propios datos del pago.
 const regreso = params.get("pago") || "", pagoId = params.get("payment_id") || params.get("collection_id") || "";
@@ -105,6 +111,36 @@ function ofertaSus() {
       <div class="error" id="err-sus" style="grid-column:1/-1" role="alert"></div>
     </form>`;
 }
+// ---------- Método de pago de la suscripción ----------
+// El servidor manda actual.metodo = { tarjeta, medio, puede_cambiar, cobro_cerca, esperando_cobro, inmediato, cambiado_en,
+// cambio } mientras la suscripción tiene un contrato que cobra (en prueba, activa o con un cobro sin pasar). De la
+// tarjeta solo llegan los últimos 4 dígitos, y solo si Mercado Pago los deja ver.
+const metodoTexto = (m) => m?.medio === "account_money" ? marca("sus.metodo_saldo", null, "b") : m?.tarjeta ? marca("sus.metodo_tarjeta", { digitos: m.tarjeta }, "b") : marca("sus.metodo_registrada", null, "b");
+const renglonMetodo = (m, clave = "sus.metodo_t") => `<span><span aria-hidden="true">💳 </span>${marca(clave)} ${metodoTexto(m)}</span>`;
+// El renglón «Método de pago» con su botón y, si hay un cambio a medias, cómo va.
+function filaMetodo(a) {
+  const m = a?.metodo;
+  if (!m) return "";
+  const k = m.cambio, pendiente = k?.estado === "pendiente";
+  let h = `<div class="cta-dato sus-metodo">${renglonMetodo(m)}${marca("sus.cambiar_metodo", null, "button", 'class="boton linea chico" type="button" data-cambiar-metodo')}</div>`;
+  if (pendiente && k.link) h += `<div class="aviso-saldo"><span class="ico" aria-hidden="true">ℹ️</span>${marca("sus.cambio_pendiente")}</div><div class="acciones"><a class="boton" href="${esc(k.link)}" data-i18n="sus.continuar_mp">${th("sus.continuar_mp")}</a></div>`;
+  else if (pendiente) h += `<div class="aviso-saldo"><span class="ico" aria-hidden="true">ℹ️</span>${marca("sus.cambio_confirmando")}</div>`;
+  else if (m.cambiado_en) h += marca("sus.metodo_cambiado_el", { dia: m.cambiado_en }, "div", 'class="ayuda"');
+  return h;
+}
+// Un cobro no pasó: el recuadro de arriba de «Mi cuenta» pregunta si quiere cambiar su método de pago. Si lo acaba de
+// cambiar, dice que Mercado Pago ya está cobrando con el nuevo (y no ofrece cambiarlo otra vez mientras tanto).
+function cajaFalloCobro() {
+  const a = sus().actual;
+  if (a?.estado !== "en_gracia" || !a.metodo) return "";
+  if (a.metodo.esperando_cobro) return `<section class="panel-paso sus-fallo espera" id="fallo-cobro"><div class="sus-fallo-cab"><span class="ico" aria-hidden="true">⏳</span>${marca("sus.espera_t", null, "h2")}</div>${marca("sus.espera_texto", { precio: a.precio }, "p")}</section>`;
+  return `<section class="panel-paso sus-fallo" id="fallo-cobro"><div class="sus-fallo-cab"><span class="ico" aria-hidden="true">⚠️</span>${marca("sus.fallo_t", null, "h2")}</div>
+    ${marca("sus.fallo_pregunta", null, "p", 'class="sus-fallo-pregunta"')}
+    <div class="acciones">${marca("sus.cambiar_metodo", null, "button", 'class="boton" type="button" data-cambiar-metodo')}${marca("sus.fallo_nota", null, "span", 'class="ayuda"')}</div></section>`;
+}
+// ¿Falta que Mercado Pago confirme algo? (la tarjeta, el primer cobro, un cambio de método de pago o el cobro con el método nuevo)
+const hayQueMirar = () => { const a = sus().actual; return a?.estado === "pendiente" || a?.metodo?.cambio?.estado === "pendiente" || a?.metodo?.esperando_cobro === true; };
+
 // La sección completa. Sin suscripción y sin poder contratar (lo que ve hoy el público): el mismo texto de siempre.
 function seccionSuscripcion() {
   const s = sus(), a = s.actual;
@@ -113,7 +149,8 @@ function seccionSuscripcion() {
   if (a) {
     const alerta = susConAlerta(a);
     // Con derecho a crear, cómo va ya se dice arriba (en la caja «Guías ilimitadas»): aquí van el precio y el folio.
-    cuerpo += a.puede_crear ? marca("sus.detalle", { precio: a.precio, folio: a.folio }, "p") : `<div class="aviso-saldo${alerta ? " alerta" : ""}"><span class="ico" aria-hidden="true">${alerta ? "⚠️" : "ℹ️"}</span>${estadoSus(a)}</div>`;
+    cuerpo += a.puede_crear ? marca("sus.detalle", { precio: a.precio, folio: a.folio }, "p") : `<div class="aviso-saldo${alerta ? " alerta" : ""}"><span class="ico" aria-hidden="true">${alerta ? "⚠️" : "ℹ️"}</span>${a.estado === "en_gracia" && a.metodo?.esperando_cobro ? marca("sus.espera_texto", { precio: a.precio }) : estadoSus(a)}</div>`;
+    cuerpo += filaMetodo(a);
     if (a.estado === "pendiente" && a.link_pago) cuerpo += `<div class="acciones"><a class="boton" href="${esc(a.link_pago)}" data-i18n="sus.continuar_mp">${th("sus.continuar_mp")}</a>${marca("sus.descartar", null, "button", 'class="boton linea" type="button" id="cancelar-sus"')}</div>`;
     else if (a.puede_cancelar) cuerpo += `<div class="acciones">${marca("sus.cancelar", null, "button", 'class="boton linea" type="button" id="cancelar-sus"')}${marca("sus.cancelar_nota", null, "span", 'class="ayuda"')}</div>`;
   }
@@ -149,13 +186,116 @@ async function mirarPendiente(veces = 0) {
     const d = await cuentaApi.get("/suscripcion/estado");
     if (JSON.stringify(d.suscripcion?.actual ?? null) !== antes) { if (await cargarCuenta()) vistaCuenta(false); else sesionTermino(); return; }
   } catch (e) { if (e.status === 401) return sesionTermino(); }
-  if (sus().actual?.estado === "pendiente" && veces < 40) reloj = setTimeout(() => mirarPendiente(veces + 1), 15000);
+  if (hayQueMirar() && veces < 40) reloj = setTimeout(() => mirarPendiente(veces + 1), 15000);
 }
 function conectarSuscripcion() {
   if ($("#cancelar-sus")) $("#cancelar-sus").onclick = () => vistaCancelar();
+  document.querySelectorAll("[data-cambiar-metodo]").forEach((b) => { b.onclick = () => vistaCambiarMetodo(); });
   const f = $("#f-sus");
   if (f) f.onsubmit = (e) => { e.preventDefault(); suscribirme(f); };
-  if (sus().actual?.estado === "pendiente") reloj = setTimeout(() => mirarPendiente(), 15000);
+  if (hayQueMirar()) reloj = setTimeout(() => mirarPendiente(), 15000);
+}
+
+// ---------- Cambiar el método de pago: una pantalla que dice qué va a pasar y manda a Mercado Pago ----------
+// La suscripción no se cancela. Activa o en prueba: hoy no se cobra nada y el próximo cobro (el mismo día de siempre) ya
+// sale con el método nuevo. Con un cobro sin pasar: Mercado Pago lo cobra al terminar y la suscripción vuelve a activa.
+function vistaCambiarMetodo() {
+  const a = sus().actual, m = a?.metodo;
+  if (!m) { quitarDeLaDireccion("metodo"); location.hash = "suscripcion"; return vistaCuenta(); }
+  const cabeza = `<div class="cta-sello">${marca("cta.sello")}</div>${marca("sus.cambiar_t", null, "h1")}`;
+  if (!m.puede_cambiar) {
+    // Mercado Pago está cobrando justo ahora (o acaba de registrar el método nuevo): se cambia cuando ese cobro termine.
+    pintar(`<section class="panel-paso">${cabeza}<div class="aviso-saldo"><span class="ico" aria-hidden="true">⏳</span>${marca(m.esperando_cobro ? "sus.espera_texto" : "sus.cobro_cerca", { precio: a.precio })}</div><div class="acciones">${marca("cta.ir_cuenta", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div></section>`);
+    $("#ir-cuenta").onclick = abrirCuenta;
+    return;
+  }
+  const que = m.inmediato ? marca("sus.cambiar_gracia", { precio: a.precio }, "p") : a.estado === "en_prueba" ? marca("sus.cambiar_prueba", { dia: a.prueba_hasta ?? a.periodo_fin, precio: a.precio }, "p") : marca("sus.cambiar_activa", { dia: a.proximo_cobro ?? a.periodo_fin, precio: a.precio }, "p");
+  pintar(`<section class="panel-paso">
+    ${cabeza}
+    <div class="cta-dato sus-metodo">${renglonMetodo(m, "sus.metodo_actual")}</div>
+    ${que}
+    <ul class="sus-puntos">${marca("sus.cambiar_p1", null, "li")}${marca("sus.cambiar_p2", null, "li")}${marca("sus.cambiar_p3", null, "li")}</ul>
+    <form id="f-metodo" class="rejilla-campos" novalidate>
+      <div class="campo" style="grid-column:1/-1">${marca("sus.correo_pago", null, "label", 'for="m-correo-pago"')}<input id="m-correo-pago" name="correo_pago" type="email" autocomplete="email" maxlength="120">${marca("sus.cambiar_correo_ayuda", null, "div", 'class="ayuda"')}</div>
+      <div class="acciones" style="grid-column:1/-1">${marca("sus.cambiar_boton", null, "button", 'class="boton" type="submit" id="ir-mp"')}${marca("sus.cambiar_no", null, "button", 'class="boton linea" type="button" id="ir-cuenta"')}</div>
+      <div class="error" id="err-metodo" style="grid-column:1/-1" role="alert"></div>
+    </form>
+  </section>`);
+  $("#ir-cuenta").onclick = abrirCuenta;
+  const f = $("#f-metodo");
+  f.onsubmit = async (e) => {
+    e.preventDefault();
+    const err = $("#err-metodo"), boton = $("#ir-mp"), correoPago = f.correo_pago.value.trim().toLowerCase();
+    if (correoPago && (!CORREO_OK.test(correoPago) || correoPago.includes("•"))) { poner(err, "contacto.err_correo"); f.correo_pago.focus(); return; }
+    boton.disabled = true; $("#ir-cuenta").disabled = true; poner(boton, "pago.abriendo"); sinError(err);
+    try {
+      const r = await cuentaApi.post("/suscripcion/metodo-de-pago", correoPago ? { correo_pago: correoPago } : {});
+      // La dirección queda limpia: si la familia regresa con el botón Atrás, ve su cuenta y no vuelve a salir a Mercado Pago.
+      if (r.modo === "mercadopago" && /^https:\/\//.test(r.url ?? "")) { quitarDeLaDireccion(); location.href = r.url; return; }
+      vistaRegresoMetodo(r.cambio_id);   // no hay página que abrir (ya estaba hecho): se ve cómo quedó
+    } catch (e2) {
+      if (e2.status === 401) return sesionTermino();
+      if (e2.datos?.sin_suscripcion) return abrirCuenta();
+      // El cobro está en curso: la misma pantalla, ya con lo último del servidor, dice que hay que esperar.
+      if (e2.datos?.cobro_cerca || e2.datos?.esperando_cobro) { const dentro = await cargarCuenta().catch(() => null); if (dentro === false) return sesionTermino(); if (dentro && !sus().actual?.metodo?.puede_cambiar) return vistaCambiarMetodo(); }
+      errorDe(err, e2); boton.disabled = false; $("#ir-cuenta").disabled = false; poner(boton, "sus.cambiar_boton");
+    }
+  };
+}
+
+// ---------- Regreso de Mercado Pago después de poner la tarjeta nueva (?metodo=<id del cambio>) ----------
+// Se le pregunta al servidor (que a su vez le pregunta a Mercado Pago) hasta saber cómo quedó: cambiado, no cambiado
+// (con su motivo) o todavía sin terminar. Mientras no quede cambiado, la suscripción sigue con el método de antes.
+const MOTIVOS_CAMBIO = { ya_se_cobro: "sus.cambio_no_cobrado", fecha_no_coincide: "sus.cambio_no_fecha", cobro_muy_cerca: "sus.cambio_no_fecha", fecha_no_respetada: "sus.cambio_no_fecha", sin_terminar: "sus.cambio_no_terminaste", cancelado_en_mercadopago: "sus.cambio_no_terminaste" };
+function vistaRegresoMetodo(id) {
+  let vista = "", intentos = 0;
+  const poneVista = (clave, html) => { if (clave === vista) return false; vista = clave; clearTimeout(reloj); app.innerHTML = html; if ($("#ir-cuenta")) $("#ir-cuenta").onclick = abrirCuenta; if ($("#otra-vez")) $("#otra-vez").onclick = () => vistaCambiarMetodo(); return true; };
+  const otraVez = (ms) => { clearTimeout(reloj); reloj = setTimeout(revisar, ms); };
+  const irCuenta = (clase = "boton linea") => marca("cta.ir_cuenta", null, "button", `class="${clase}" type="button" id="ir-cuenta"`);
+  async function revisar() {
+    try {
+      const d = await cuentaApi.get("/suscripcion/estado");
+      if (cuenta) cuenta.suscripcion = d.suscripcion;
+      const a = d.suscripcion?.actual, m = a?.metodo, k = m?.cambio;
+      // Ya no hay una suscripción que cobre, o este cambio ya no es el último: «Mi cuenta» dice cómo quedó todo.
+      if (!m || !k || (id && k.id !== id)) { quitarDeLaDireccion(); location.hash = "suscripcion"; return abrirCuenta(); }
+      if (k.estado === "aplicado" && a.estado === "en_gracia") {
+        // Había un cobro sin pasar: Mercado Pago lo hace ahora con el método nuevo y se espera aquí mismo. Si ese cobro
+        // tampoco pasa, «Mi cuenta» lo dice y ofrece cambiarlo otra vez.
+        if (!m.esperando_cobro) { quitarDeLaDireccion(); return abrirCuenta(); }
+        quitarDeLaDireccion();
+        poneVista("cobrando", `<section class="panel-paso"><div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div>${marca("sus.espera_t", null, "h2")}</div>
+          <div class="caja-clave">${marca("sus.espera_texto", { precio: a.precio }, "p", 'style="margin:0"')}</div>${marca("sus.puedes_cerrar", null, "p", 'class="ayuda" style="text-align:center"')}<div class="acciones">${irCuenta()}</div></section>`);
+        return otraVez(++intentos < 40 ? 10000 : 30000);
+      }
+      if (k.estado === "aplicado") {
+        quitarDeLaDireccion();
+        poneVista("listo", `<section class="panel-paso"><div style="display:flex;gap:14px;align-items:center">${sparky("festejo", 6)}<div>${marca("sus.cambio_listo_t", null, "h1")}</div></div>
+          <div class="cta-dato sus-metodo">${renglonMetodo(m)}</div>
+          ${marca(k.inmediato ? "sus.cambio_listo_cobrado" : "sus.cambio_listo", null, "p")}${estadoSus(a, "p")}
+          <div class="acciones">${irCuenta("boton")}</div></section>`);
+        return;
+      }
+      if (k.estado === "descartado") {
+        quitarDeLaDireccion();
+        poneVista("no", `<section class="panel-paso"><div style="display:flex;gap:14px;align-items:center">${sparky("triste", 5)}<div>${marca("sus.cambio_no_t", null, "h1")}</div></div>
+          ${marca(MOTIVOS_CAMBIO[k.motivo] ?? "sus.cambio_no", null, "p")}${marca("sus.cambio_no_sigue", null, "p")}
+          <div class="acciones">${m.puede_cambiar ? marca("sus.cambio_reintentar", null, "button", 'class="boton" type="button" id="otra-vez"') : ""}${irCuenta()}</div></section>`);
+        return;
+      }
+      // Pendiente: puede que no haya terminado en Mercado Pago. A los pocos segundos se le ofrece continuar.
+      intentos++;
+      poneVista("pendiente:" + (intentos > 3) + ":" + !!k.link, `<section class="panel-paso"><div class="estado-carga"><div class="sk-anima">${sparky("escribiendo", 5)}</div>${marca("sus.cambio_confirmando_t", null, "h2")}</div>
+        ${intentos > 3 ? `${marca(k.link ? "sus.cambio_sin_terminar" : "sus.cambio_confirmando", null, "p", 'style="text-align:center"')}<div class="acciones">${k.link ? `<a class="boton" href="${esc(k.link)}" data-i18n="sus.continuar_mp">${th("sus.continuar_mp")}</a>` : ""}${irCuenta()}</div>` : ""}</section>`);
+      return otraVez(intentos < 60 ? 5000 : 30000);
+    } catch (e) {
+      if (e.status === 401) return sesionTermino();
+      poneVista("error:" + e.message, `<section class="panel-paso"><p class="error" data-i18n-servidor="${esc(e.message)}">${esc(mensajeError(e))}</p><div class="acciones">${irCuenta()}</div></section>`);
+      otraVez(8000);
+    }
+  }
+  pintar(cargando("sus.cambio_confirmando_t"));
+  revisar();
 }
 
 // ---------- Regreso de Mercado Pago después de poner la tarjeta (?suscripcion=…) ----------
@@ -365,8 +505,10 @@ function despuesDeEntrar(datos = {}) {
   if (datos.comprar) return comprar({ nombre: datos.nombre, correo: datos.correo });
   if (guiaUrl) return vistaGuia(guiaUrl);
   if (susUrl) return vistaRegresoSuscripcion();
+  if (metodoUrl) return vistaRegresoMetodo(metodoUrl);
   if (compraUrl) return vistaCompra(compraUrl);
   if (quiereCancelar) return vistaCancelar();
+  if (quiereCambiarMetodo) return vistaCambiarMetodo();
   vistaCuenta();
 }
 
@@ -390,7 +532,7 @@ function vistaCuenta(subir = true, nota = null) {
   };
   const filaPaquete = (x) => `<div class="cta-fila"><div class="cta-fila-texto">${marca("cta.paquete_pagado", { guias: x.guias ?? p.guias ?? 3, dia: x.pagada_en }, "b")}${x.vence_en ? marca(new Date(x.vence_en).getTime() > Date.now() ? "cta.paquete_vence" : "cta.paquete_vencido", { dia: x.vence_en, folio: x.folio }) : marca("cta.paquete_folio", { folio: x.folio })}</div></div>`;
   const correo = c.cuenta?.correo, editable = c.cuenta?.correo_editable === true;
-  pintar(`<section class="panel-paso">
+  pintar(`${cajaFalloCobro()}<section class="panel-paso">
     <div class="cta-cabeza"><div><div class="cta-sello">${marca("cta.sello")}</div>${nombre ? marca("cta.hola", { nombre }, "h1") : marca("cta.mi_cuenta", null, "h1")}${marca("cta.whatsapp_de", { whatsapp: c.cuenta?.whatsapp ?? "" }, "div", 'class="ayuda"')}</div>${marca("cta.salir", null, "button", 'class="boton linea chico" type="button" id="salir"')}</div>
     ${ilim
       ? `<div class="saldo-caja"><div class="saldo-num" aria-hidden="true">∞</div><div class="saldo-texto">${marca("sus.ilimitadas", null, "b")}${estadoSus(a)}</div></div>${n ? `<div class="ayuda">${marca(n === 1 ? "sus.ademas_1" : "sus.ademas_n", { n })} ${vencimiento}</div>` : ""}`
@@ -607,11 +749,13 @@ function vistaGuia(id) {
 try {
   info = await mostrarPaquete(document, true);
   const dentro = await cargarCuenta();
-  if (!dentro) vistaEntrar({ comprar: quiereComprar, aviso: quiereCancelar ? "sus.entra_para_cancelar" : susUrl || quiereSuscribirse ? "sus.entra_para_ver" : compraUrl || guiaUrl ? "cta.entra_para_ver" : null });
+  if (!dentro) vistaEntrar({ comprar: quiereComprar, aviso: quiereCancelar ? "sus.entra_para_cancelar" : metodoUrl || quiereCambiarMetodo ? "sus.entra_para_metodo" : susUrl || quiereSuscribirse ? "sus.entra_para_ver" : compraUrl || guiaUrl ? "cta.entra_para_ver" : null });
   else if (guiaUrl) vistaGuia(guiaUrl);
   else if (susUrl) vistaRegresoSuscripcion();
+  else if (metodoUrl) vistaRegresoMetodo(metodoUrl);
   else if (compraUrl) vistaCompra(compraUrl);
   else if (quiereCancelar) vistaCancelar();
+  else if (quiereCambiarMetodo) vistaCambiarMetodo();
   else if (quiereComprar && cuenta.paquete?.disponible) comprar();
   else vistaCuenta();
 } catch (e) {
