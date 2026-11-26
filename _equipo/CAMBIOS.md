@@ -2,6 +2,13 @@
 
 Lo más nuevo arriba. Cada entrada: qué cambió, por qué, a quién se avisó y qué secciones de su manual.
 
+## 2026-11-26 · Fase 1 (Accesos Lumio) retirada
+- Qué: por decisión de Daniel solo existe SparkEd. `entrar.html`, `accesos/` y el `panel.html` de la raíz redirigen a
+  SparkEd; se quitaron `icons/` y `funciones/ir`, `funciones/admin` del repositorio (sitio 594e6b2). En Supabase, `ir`
+  (v20) redirige a /sparked/ y `admin` (v27) responde 410. La guardia ya no bloquea esos archivos. Los datos viejos
+  (clases tipo `lumio`, sus accesos, colegios) se guardan en la base sin usarse; borrarlos necesita el sí de Daniel.
+- A quién: todas (regla 3 de `LEEME.md` ya no menciona la fase 1).
+
 ## 2026-11-23 · Reproductor: datos celulares, universidad sobria, teoría sin desborde
 - Qué: af47d11 + cc1e324 (capa «Cargando tu guía…», fotos Wikimedia en miniatura en celular y solo las próximas
   2 slides, corte de 15 s + reintento, letras sin @import: 5.8 MB → 554 KB al abrir); d16d12b (perfil universitario:
